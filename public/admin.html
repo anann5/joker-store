@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم الأدمن | Joker Store</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        .admin-container {
+            max-width: 550px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+        }
+        h2 {
+            text-align: center;
+            color: #ff9f43;
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #ccc;
+        }
+        input[type="text"], select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        input[type="text"]:focus, select:focus, textarea:focus {
+            border-color: #ff9f43;
+            outline: none;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        .hint {
+            font-size: 11px;
+            color: #aaa;
+            margin-top: -15px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        button {
+            background: #22c55e;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            width: 100%;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #16a34a;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <h2>🃏 لوحة تحكم الأدمن - إضافة كروت الجوكر</h2>
+        
+        <form id="addCardForm">
+            <label>اسم المنتج (مثال: Windows 11 Pro):</label>
+            <input type="text" id="productName" placeholder="أدخل اسم المنتج بدقة..." required>
+
+            <label>أكواد الشحن (يمكنك إضافة كود واحد أو عدة أكواد):</label>
+            <textarea id="cardCodes" placeholder="أدخل الأكواد هنا...&#10;إذا كانت أكواد متعددة، ضع كل كود في سطر منفصل" required></textarea>
+            <span class="hint">💡 نصيحة: انسخ مجموعة أكواد من ملفك وحطها هون، السيرفر لحاله هيفصلهم كل كود بسطر.</span>
+
+            <div class="form-group">
+    <label for="productCategory">🗂️ اختر القسم الصحيح للمنتج:</label>
+    <select id="productCategory" required>
+        <option value="" disabled selected>-- اختر القسم من القائمة --</option>
+        <option value="gaming_general">🎮 الألعاب بشكل عام</option>
+        <option value="pubg">🏆 شحن ببجي موبايل</option>
+        <option value="fortnite">👑 فورتنايت فبوكس</option>
+        <option value="playstation">💎 بطاقات بلايستيشن</option>
+        <option value="xbox">🟢 بطاقات إكس بوكس</option>
+        <option value="microsoft_windows">💻 مايكروسوفت وويندوز</option>
+        <option value="adobe">🎨 برامج أدوبي الإبداعية</option>
+        <option value="antivirus">🛡️ برامج الحماية والأمان</option>
+        <option value="vpn">🌐 برامج في بي ان VPN</option>
+        <option value="google">🛍️ بطاقات جوجل بلاي</option>
+        <option value="itunes">🍏 بطاقات آيتونز iTunes</option>
+        <option value="razer_gold">🪙 ريزر جولد Razer Gold</option>
+        <option value="amazon">📦 بطاقات تسوق أمازون</option>
+    </select>
+
+<label>🌍 اختر ريجن / دولة الكرت:</label>
+<select id="region">
+    <option value="global">🌐 GLOBAL / عالمي</option>
+    <option value="us">🇺🇸 US / أمريكي</option>
+    <option value="tr">🇹🇷 TR / تركي</option>
+    <option value="eu">🇪🇺 EU / أوروبي</option>
+    <option value="sa">🇸🇦 SA / سعودي</option> 
+</select>
+
+</div>
+
+            <button type="submit">🚀 حفظ وتصنيف الأكواد في السيرفر</button>
+        </form>
+        
+        <div class="footer-note">متجر الجوكر المحلي © 2026</div>
+    </div>
+
+    <script>
+        
+    document.getElementById('addCardForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // تجميع البيانات وفصل الأكواد بناءً على الأسطر
+        const rawCodes = document.getElementById('cardCodes').value;
+        // تنظيف الأكواد وحذف الأسطر الفاضية
+        const codesArray = rawCodes.split('\n').map(code => code.trim()).filter(code => code.length > 0);
+
+        if(codesArray.length === 0) {
+            alert('⚠️ الرجاء إدخال كود واحد على الأقل!');
+            return;
+        }
+
+        const cardData = {
+            productName: document.getElementById('productName').value.trim(),
+            codes: codesArray,
+            category: document.getElementById('productCategory').value,
+            region: document.getElementById('region').value
+        };
+
+        try {
+            // إرسال البيانات للسيرفر المحلي
+            const response = await fetch('/api/admin/add-codes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cardData)
+            });
+            
+            const result = await response.json();
+            alert(result.message);
+            
+            if(result.success) {
+                document.getElementById('addCardForm').reset();
+            }
+        } catch (error) {
+            alert('❌ خطأ: السيرفر المحلي مش شغال أو فيه مشكلة اتصال');
+        }
+    });
+
+    </script>
+</body>
+</html>
