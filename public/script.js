@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ===================================================
-   نظام نافذة الشراء (Checkout Popup)
+   نظام نافذة الشراء المحدث (Checkout Popup) - شامل اختيار الدولة تلقائياً
    =================================================== */
 function openCheckoutPopup(id, name, price) {
     const existingPopup = document.getElementById('checkout-modal');
@@ -238,9 +238,23 @@ function openCheckoutPopup(id, name, price) {
                 <input type="text" id="customer-name" placeholder="أدخل اسمك هنا" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f2937; background: #161b22; color: #fff; outline: none; box-sizing: border-box;">
             </div>
             
-            <div style="margin-bottom: 25px;">
+            <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; color: #aaa;">البريد الإلكتروني (لتسليم الكود):</label>
                 <input type="email" id="customer-email" placeholder="example@mail.com" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f2937; background: #161b22; color: #fff; text-align: left; direction: ltr; outline: none; box-sizing: border-box;">
+            </div>
+
+            <div style="margin-bottom: 25px;">
+                <label style="display: block; margin-bottom: 5px; color: #aaa;">اختر الدولة:</label>
+                <select id="customer-country" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f2937; background: #161b22; color: #fff; outline: none; box-sizing: border-box; cursor: pointer;">
+                    <option value="فلسطين 🇵🇸" selected>فلسطين 🇵🇸</option>
+                    <option value="الأردن 🇯🇴">الأردن 🇯🇴</option>
+                    <option value="السعودية 🇸🇦">المملكة العربية السعودية 🇸🇦</option>
+                    <option value="الإمارات 🇦🇪">الإمارات العربية المتحدة 🇦🇪</option>
+                    <option value="مصر 🇪🇬">جمهورية مصر العربية 🇪🇬</option>
+                    <option value="العراق 🇮🇶">العراق 🇮🇶</option>
+                    <option value="الكويت 🇰🇼">الكويت 🇰🇼</option>
+                    <option value="قطر 🇶🇦">قطر 🇶🇦</option>
+                </select>
             </div>
             
             <button onclick="sendOrderToWhatsApp('${id}', '${name}', '${price}')" style="
@@ -264,10 +278,13 @@ function openCheckoutPopup(id, name, price) {
     document.body.appendChild(modal);
 }
 
-// دالة صياغة الرسالة وإرسالها إلى الواتساب الخاص بك
+/* ===================================================
+   دالة صياغة الرسالة المعدلة - لتصلك شاملة الدولة المختارة
+   =================================================== */
 function sendOrderToWhatsApp(productId, productName, productPrice) {
     const name = document.getElementById('customer-name').value.trim();
     const email = document.getElementById('customer-email').value.trim();
+    const country = document.getElementById('customer-country').value; 
 
     if (!name || !email) {
         alert('الرجاء تعبئة الاسم والبريد الإلكتروني لإتمام الطلب!');
@@ -278,6 +295,7 @@ function sendOrderToWhatsApp(productId, productName, productPrice) {
                         `📦 المنتج: ${productName}\n` +
                         `🆔 كود المنتج: ${productId}\n` +
                         `💰 السعر: ${productPrice}$\n` +
+                        `📍 الدولة: ${country}\n` + 
                         `---------------------------\n` +
                         `👤 اسم العميل: ${name}\n` +
                         `📧 البريد الإلكتروني: ${email}\n\n` +
@@ -286,5 +304,7 @@ function sendOrderToWhatsApp(productId, productName, productPrice) {
     const encodedMessage = encodeURIComponent(messageText);
     const whatsappUrl = `https://wa.me/97259919789?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
-    document.getElementById('checkout-modal').remove();
+    
+    const checkoutModal = document.getElementById('checkout-modal');
+    if (checkoutModal) checkoutModal.remove();
 }
