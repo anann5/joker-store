@@ -808,3 +808,76 @@ footer {
     }
 }
 
+/* تنسيق زر الرجوع الجديد */
+.back-to-main-btn {
+    background: linear-gradient(135deg, #00f0ff, #0072ff); /* تدرج لوني لبني متناسق مع الموقع */
+    color: #ffffff;
+    border: none;
+    padding: 10px 25px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 30px; /* حواف دائرية بالكامل ليصبح مثل الكبسولة */
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3); /* توهج لبني خفيف */
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px; /* مسافة بين السهم والنص */
+}
+
+.back-to-main-btn:hover {
+    transform: translateY(-2px); /* رفعة خفيفة عند تمرير الماوس */
+    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5); /* زيادة التوهج */
+}
+
+.back-to-main-btn:active {
+    transform: translateY(1px);
+}
+
+.back-to-main-btn i {
+    font-size: 16px;
+    color: #ffffff;
+}
+
+.back-to-main-btn:hover i {
+    color: #00f2fe; /* تغيير لون السهم عند التمرير */
+}
+
+.back-to-main-btn {
+    display: inline-flex !important; /* إجبار الزر على أخذ مساحة وظهور */
+    visibility: visible !important;   /* إجبار المتصفح على جعله مرئياً */
+    position: relative;
+    z-index: 9999 !important;        /* رفعه فوق أي عنصر أو خلفية في الموقع */
+    /* باقي التنسيقات السابقة... */
+}
+
+/* تنسيق زر الرجوع الأساسي */
+.back-to-main-btn {
+    background: linear-gradient(135deg, #00f0ff, #0072ff);
+    color: #ffffff;
+    border: none;
+    padding: 10px 25px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 30px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.back-to-main-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5);
+}
+
+/* ==========================================================
+   السر البرمجي: التحكم بالظهور والاختفاء عبر الـ CSS فقط
+   ========================================================== */
+
+/* عندما يكون زر "الكل" بداخل شريط الفلترة نشطاً (active)، قم بإخفاء حاوية زر الرجوع تماماً */
+#filterTabs:has([data-filter="all"].active) ~ #back-container {
+    display: none !important;
+}

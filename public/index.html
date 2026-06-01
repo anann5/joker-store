@@ -274,14 +274,6 @@
     </div>
 </header>
 
-<section class="hero">
-    <h1 id="heroTitle">البطاقات الرقمية <span class="highlight">المتاحة</span></h1>
-    <p id="heroDesc">اختر أقسامك المفضلة واستعرض باقات الشحن الفوري بأعلى أمان</p>
-    <button id="backBtn" class="back-btn" onclick="goBack()"
-        style="display:none; margin-top:20px; background:#00f2fe; color:#000000; padding:10px 20px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">
-        <i class="fa-solid fa-arrow-right"></i> العودة للأقسام الرئيسية
-    </button>
-</section>
 
 <div class="filter-container" id="filterTabs">
     <button class="filter-btn active" data-filter="all">الكل</button>
@@ -299,6 +291,12 @@
     <button class="filter-btn" data-filter="itunes">آيتونز</button>
     <button class="filter-btn" data-filter="razer_gold">ريزر جولد</button>
     <button class="filter-btn" data-filter="amazon">أمازون</button>
+</div>
+
+<div id="back-container" style="text-align: center; margin: 20px 0;">
+    <button class="back-to-main-btn" onclick="document.querySelector('[data-filter=\'all\']').click();">
+        <i class="fas fa-arrow-right"></i> الرجوع للأقسام الرئيسية
+    </button>
 </div>
 
 <div class="main-container">
