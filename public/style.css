@@ -719,3 +719,70 @@ footer {
 #products-container { display: none; }
 .product-card { display: none; }
 
+/* ===================================================
+   تعديلات الهاتف (Responsive Design)
+   =================================================== */
+@media (max-width: 768px) {
+    /* تصغير الهيدر ليتناسب مع شاشة الهاتف */
+    .header-container {
+        padding: 15px 20px;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .logo-text { font-size: 1.6rem; }
+    .header-image { width: 60px; height: 60px; }
+
+    /* جعل شريط البحث والناف يأخذان عرضاً كاملاً */
+    .search-container {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    nav { width: 100%; justify-content: center; }
+
+    /* تحسين قسم الهيرو */
+    .hero {
+        padding: 25px 15px;
+        margin: 20px 10px;
+    }
+    .hero h1 { font-size: 26px; }
+
+    /* جعل الكروت تأخذ عرض الشاشة بالكامل */
+    #mainCategories, .products-grid {
+        grid-template-columns: 1fr; /* عمود واحد فقط */
+        gap: 15px;
+    }
+
+    .main-container {
+        width: 95%;
+        padding: 20px 15px;
+    }
+
+    /* تحسين شريط الفلتر */
+    .filter-container {
+        width: 100%;
+        padding: 10px;
+        gap: 8px;
+    }
+    .filter-btn {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+}
+
+@media (min-width: 769px) {
+    /* إخفاء زر العودة في الشاشات الكبيرة */
+    .back-btn { display: none; }
+}
+
+@media (min-width: 1025px) {
+    /* تحسين عرض الكروت في الشاشات الكبيرة */
+    #mainCategories {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}
+
