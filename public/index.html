@@ -357,102 +357,42 @@
 
 <script>
 // ======================================================
-//  البيانات الأساسية — متاحة للكل (global)
+//  البيانات الأساسية لمجالات الأقسام
 // ======================================================
 var rawServerData = {
     categories: {
-        gaming_general: {
-            title: "الالعاب",
-            image: "image/games.png",
-            desc: "بطاقات شحن لمختلف الألعاب",
-            items: []
-        },
-        steam: {
-            title: "ستيم",
-            image: "image/steam.png",
-            desc: "بطاقات Steam Wallet بالدولار",
-            items: []
-        },
-        pubg: {
-            title: "شحن ببجي موبايل",
-            image: "image/pubg.png",
-            desc: "شدات ببجي الأصلية",
-            items: []
-        },
-        fortnite: {
-            title: "شحن فورتنايت ",
-            image: "image/fortnite.png",
-            desc: "V-Bucks فورتنايت",
-            items: []
-        },
-        playstation: {
-            title: "بطاقات بلايستيشن",
-            image: "image/playstation.png",
-            desc: "PSN Gift Cards",
-            items: []
-        },
-        xbox: {
-            title: "بطاقات إكس بوكس",
-            image: "image/xbox.png",
-            desc: "Xbox Gift Cards",
-            items: []
-        },
-        microsoft_windows: {
-            title: "مفاتيح ويندوز وأوفيس",
-            image: "image/windows.png",
-            desc: "مفاتيح أصلية مضمونة",
-            items: []
-        },
-        adobe: {
-            title: "حسابات أدوبي المفعّلة",
-            image: "image/adobe.png",
-            desc: "Adobe Creative Cloud",
-            items: []
-        },
-        antivirus: {
-            title: "برامج الحماية الرقمية",
-            image: "image/antivirus.png",
-            desc: "حماية شاملة لأجهزتك",
-            items: []
-        },
-        vpn: {
-            title: "اشتراكات VPN العالمية",
-            image: "image/vpn.png",
-            desc: "تصفح آمن وخصوصية كاملة",
-            items: []
-        },
-        google: {
-            title: "بطاقات جوجل بلاي",
-            image: "image/google_play.png",
-            desc: "Google Play Gift Cards",
-            items: []
-        },
-        itunes: {
-            title: "بطاقات آيتونز وعروض آبل",
-            image: "image/itunes.png",
-            desc: "Apple Gift Cards",
-            items: []
-        },
-        razer_gold: {
-            title: "بطاقات ريزر جولد",
-            image: "image/razer.png",
-            desc: "Razer Gold العالمية",
-            items: []
-        },
-        amazon: {
-            title: "بطاقات تسوق أمازون",
-            image: "image/amazon.png",
-            desc: "Amazon Gift Cards",
-            items: []
-        }
+        gaming_general: { title: "الالعاب", image: "image/games.png", desc: "بطاقات شحن لمختلف الألعاب" },
+        steam: { title: "ستيم", image: "image/steam.png", desc: "بطاقات Steam Wallet بالدولار" },
+        pubg: { title: "شحن ببجي موبايل", image: "image/pubg.png", desc: "شدات ببجي الأصلية" },
+        fortnite: { title: "شحن فورتنايت ", image: "image/fortnite.png", desc: "V-Bucks فورتنايت" },
+        playstation: { title: "بطاقات بلايستيشن", image: "image/playstation.png", desc: "PSN Gift Cards" },
+        xbox: { title: "بطاقات إكس بوكس", image: "image/xbox.png", desc: "Xbox Gift Cards" },
+        microsoft_windows: { title: "مفاتيح ويندوز وأوفيس", image: "image/windows.png", desc: "مفاتيح أصلية مضمونة" },
+        adobe: { title: "حسابات أدوبي المفعّلة", image: "image/adobe.png", desc: "Adobe Creative Cloud" },
+        antivirus: { title: "برامج الحماية الرقمية", image: "image/antivirus.png", desc: "حماية شاملة لأجهزتك" },
+        vpn: { title: "اشتراكات VPN العالمية", image: "image/vpn.png", desc: "تصفح آمن وخصوصية كاملة" },
+        google: { title: "بطاقات جوجل بلاي", image: "image/google_play.png", desc: "Google Play Gift Cards" },
+        itunes: { title: "بطاقات آيتونز وعروض آبل", image: "image/itunes.png", desc: "Apple Gift Cards" },
+        razer_gold: { title: "بطاقات ريزر جولد", image: "image/razer.png", desc: "Razer Gold العالمية" },
+        amazon: { title: "بطاقات تسوق أمازون", image: "image/amazon.png", desc: "Amazon Gift Cards" }
     }
 };
 
 var currentSelectedProduct = null;
 
+// ======================================================
+//  دالة تحديد تفاصيل الريجن (الأعلام والشارات) لمنع توقف الكود
+// ======================================================
+function getRegionDetails(region) {
+    var reg = String(region || 'global').toLowerCase();
+    if (reg.includes('us')) return { cls: 'badge-us', flag: '🇺🇸', text: 'أمريكي US' };
+    if (reg.includes('eu')) return { cls: 'badge-eu', flag: '🇪🇺', text: 'أوروبي EU' };
+    if (reg.includes('tr')) return { cls: 'badge-tr', flag: '🇹🇷', text: 'تركي TR' };
+    return { cls: 'badge-global', flag: '🌐', text: 'عالمي Global' };
+}
 
 // ======================================================
-//  عرض الأقسام الرئيسية
+//  عرض الأقسام الرئيسية للمتجر
 // ======================================================
 function showAllCategories() {
     var grid    = document.getElementById('mainCategories');
@@ -484,7 +424,7 @@ function showAllCategories() {
 }
 
 // ======================================================
-//  عرض منتجات قسم معيّن
+//  عرض المنتجات ديناميكياً بجلبها مباشرة من السيرفر الخلفي
 // ======================================================
 function selectCategory(categoryKey) {
     var cat = rawServerData.categories[categoryKey];
@@ -499,7 +439,7 @@ function selectCategory(categoryKey) {
     if (heroDesc)  heroDesc.innerHTML  = cat.desc;
     if (backBtn)   backBtn.style.display = 'inline-flex';
 
-    // تحديث الفلاتر
+    // تحديث حالة أزرار الفلترة العلوية
     document.querySelectorAll('.filter-btn').forEach(function(b) {
         b.classList.remove('active');
         if (b.getAttribute('data-filter') === categoryKey) b.classList.add('active');
@@ -509,39 +449,72 @@ function selectCategory(categoryKey) {
     grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(280px, 1fr))';
     grid.style.display = 'grid';
     grid.style.gap = '25px';
-    grid.innerHTML = '';
+    grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ جاري جلب البطاقات والأسعار الذكية من السيرفر...</p>';
 
-    if (!cat.items || cat.items.length === 0) {
-        grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً جداً!</p>';
-        return;
-    }
+    // 📡 الاتصال بالسيرفر لقراءة المنتجات وحساب نسبة ربحك تلقائياً
+    fetch('/api/products/' + categoryKey)
+        .then(function(res) { return res.json(); })
+        .then(function(products) {
+            grid.innerHTML = '';
 
-    cat.items.forEach(function(item) {
-        var regionInfo = getRegionDetails(item.region);
-        var div = document.createElement('div');
-        div.className = 'product-item-card';
-        div.innerHTML =
-            '<div class="region-badge ' + regionInfo.cls + '">' +
-                '<span>' + regionInfo.flag + '</span>' +
-                '<span>' + regionInfo.text + '</span>' +
-            '</div>' +
-            '<div class="card-img-container">' +
-                '<img src="' + item.image + '" alt="' + item.name + '" onerror="this.src=\'image/logo.png\'">' +
-            '</div>' +
-            '<div class="card-content" style="padding:15px;">' +
-                '<h3>' + item.name + '</h3>' +
-                '<p class="price-tag" style="color:#ff9f43; font-weight:bold; font-size:1.3rem; margin:10px 0;">' + item.price + '</p>' +
-                '<button class="buy-btn" onclick="orderProduct(' + JSON.stringify(item) + ')" ' +
-                    'style="width:100%; padding:12px; background:#ff9f43; color:#111; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">' +
-                    '<i class="fas fa-shopping-cart"></i> شراء واستلام الكود' +
-                '</button>' +
-            '</div>';
-        grid.appendChild(div);
-    });
+            // إذا كان القسم فارغاً في السيرفر حالياً
+            if (!products || products.length === 0) {
+                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً جداً!</p>';
+                return;
+            }
+
+            // بناء كروت المنتجات المستلمة بأسعارها المحدثة
+            products.forEach(function(item) {
+                // تخمين الريجن تلقائياً من اسم أو كود الكارت
+                var detectedRegion = 'global';
+                if (item.id.includes('US') || item.name.toLowerCase().includes('us')) {
+                    detectedRegion = 'us';
+                } else if (item.id.includes('TR') || item.name.toLowerCase().includes('tr')) {
+                    detectedRegion = 'tr';
+                } else if (item.id.includes('EU') || item.name.toLowerCase().includes('eu')) {
+                    detectedRegion = 'eu';
+                }
+
+                var regionInfo = getRegionDetails(detectedRegion);
+                
+                // تجهيز الكائن لإرساله عند الضغط على زر الشراء
+                var clientItem = {
+                    id: item.id,
+                    name: item.name,
+                    price: typeof item.price === 'number' ? item.price + '$' : item.price,
+                    region: detectedRegion,
+                    image: 'image/' + categoryKey + '.png'
+                };
+
+                var div = document.createElement('div');
+                div.className = 'product-item-card';
+                div.innerHTML =
+                    '<div class="region-badge ' + regionInfo.cls + '">' +
+                        '<span>' + regionInfo.flag + '</span>' +
+                        '<span>' + regionInfo.text + '</span>' +
+                    '</div>' +
+                    '<div class="card-img-container">' +
+                        '<img src="' + clientItem.image + '" alt="' + clientItem.name + '" onerror="this.src=\'image/logo.png\'">' +
+                    '</div>' +
+                    '<div class="card-content" style="padding:15px;">' +
+                        '<h3>' + clientItem.name + '</h3>' +
+                        '<p class="price-tag" style="color:#ff9f43; font-weight:bold; font-size:1.3rem; margin:10px 0;">' + clientItem.price + '</p>' +
+                        '<button class="buy-btn" onclick=\'orderProduct(' + JSON.stringify(clientItem) + ')\' ' +
+                            'style="width:100%; padding:12px; background:#ff9f43; color:#111; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">' +
+                            '<i class="fas fa-shopping-cart"></i> شراء واستلام الكود' +
+                        '</button>' +
+                    '</div>';
+                grid.appendChild(div);
+            });
+        })
+        .catch(function(err) {
+            console.error('❌ خطأ أثناء الاتصال بالسيرفر:', err);
+            grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات، يرجى التحقق من تشغيل السيرفر الخلفي.</p>';
+        });
 }
 
 // ======================================================
-//  فتح مودال الشراء
+//  فتح نافذة (مودال) الشراء
 // ======================================================
 function orderProduct(item) {
     currentSelectedProduct = item;
@@ -551,7 +524,7 @@ function orderProduct(item) {
 }
 
 // ======================================================
-//  العودة للأقسام
+//  العودة للقائمة الرئيسية للأقسام
 // ======================================================
 function goBack() {
     var searchInput = document.getElementById('searchInput');
@@ -563,7 +536,7 @@ function goBack() {
 }
 
 // ======================================================
-//  نسخ الكود
+//  نسخ الكود المستلم إلى الحافظة
 // ======================================================
 function copyCode() {
     var codeText = document.getElementById('generatedCode').innerText;
@@ -573,10 +546,10 @@ function copyCode() {
 }
 
 // ======================================================
-//  إرسال إشعار الدفع للسيرفر
+//  إرسال إشعار الدفع الفوري للسيرفر للحصول على الكود
 // ======================================================
 function sendPaymentNotification(gatewayName, status, orderDetails) {
-    fetch('http://localhost:5850/api/v1/payments/webhook', {
+    fetch('/api/v1/payments/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ paymentGateway: gatewayName, status: status, orderDetails: orderDetails })
@@ -603,10 +576,7 @@ function sendPaymentNotification(gatewayName, status, orderDetails) {
 }
 
 // ======================================================
-//  تشغيل الصفحة عند الجهوزية
-// ======================================================
-// ======================================================
-//  Dropdown Functions
+//  التحكم بالقائمة المنسدلة (Dropdown)
 // ======================================================
 function toggleDropdown() {
     var dropdown = document.getElementById('categoriesDropdown');
@@ -622,22 +592,25 @@ function closeDropdown() {
     btn.classList.remove('active');
 }
 
-// إغلاق الـ dropdown عند الضغط خارجه
+// إغلاق الـ Dropdown عند النقر بالخارج
 document.addEventListener('click', function(e) {
     var dropdown = document.getElementById('categoriesDropdown');
-    var btn = document.getElementById('categoriesBtn');
     if (!e.target.closest('.dropdown-wrapper')) {
-        dropdown.classList.remove('active');
-        btn.classList.remove('active');
+        var btn = document.getElementById('categoriesBtn');
+        if(dropdown) dropdown.classList.remove('active');
+        if(btn) btn.classList.remove('active');
     }
 });
 
+// ======================================================
+//  تهيئة وإعداد الأحداث عند تحميل الصفحة بالكامل
+// ======================================================
 document.addEventListener('DOMContentLoaded', function() {
 
-    // عرض الأقسام فور التحميل
+    // عرض الأقسام فوراً عند التحميل
     showAllCategories();
 
-    // فتح/إغلاق الـ dropdown
+    // تشغيل الـ Dropdown
     var categoriesBtn = document.getElementById('categoriesBtn');
     if (categoriesBtn) {
         categoriesBtn.addEventListener('click', function(e) {
@@ -647,11 +620,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // إغلاق المودال بزر X
-    document.getElementById('closeModal').addEventListener('click', function() {
-        document.getElementById('purchaseModal').classList.remove('active');
-    });
+    var closeModalBtn = document.getElementById('closeModal');
+    if(closeModalBtn) {
+        closeModalBtn.addEventListener('click', function() {
+            document.getElementById('purchaseModal').classList.remove('active');
+        });
+    }
 
-    // إغلاق المودال بالضغط خارجه
+    // إغلاق المودالات بالضغط خارج صندوق المحتوى
     document.getElementById('purchaseModal').addEventListener('click', function(e) {
         if (e.target === this) this.classList.remove('active');
     });
@@ -659,7 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target === this) this.classList.remove('active');
     });
 
-    // البحث
+    // إعداد مربع البحث الذكي
     var searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
@@ -698,7 +674,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // أزرار الفلتر
+    // إعداد أزرار الفلاتر العلوية
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
@@ -706,6 +682,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var filter = btn.getAttribute('data-filter');
             var si = document.getElementById('searchInput');
             if (si) si.value = '';
+            
             if (filter === 'all') {
                 showAllCategories();
             } else if (rawServerData.categories[filter]) {

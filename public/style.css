@@ -881,3 +881,128 @@ footer {
 #filterTabs:has([data-filter="all"].active) ~ #back-container {
     display: none !important;
 }
+
+/* ===================================================
+   تطابق تصميم كروت المنتجات مع كروت الأقسام تماماً
+   =================================================== */
+
+/* تعديل هيكل كرت المنتج ليصبح شفافاً وبنفس حواف الأقسام */
+.product-item-card {
+    background: rgba(20, 10, 35, 0.4) !important; /* خلفية داكنة شفافة تطابق ثيم الموقع */
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px !important;
+    padding: 20px !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    overflow: hidden;
+}
+
+/* تأثير التمرير (Hover) مثل كروت الأقسام */
+.product-item-card:hover {
+    transform: translateY(-5px) !important;
+    border-color: rgba(0, 242, 254, 0.4) !important; /* توهج نيوني خفيف عند التمرير */
+    box-shadow: 0 15px 35px rgba(0, 242, 254, 0.15) !important;
+}
+
+/* ضبط حاوية الصورة داخل كرت المنتج */
+.product-item-card .card-img-container {
+    background: transparent !important; /* إزالة أي خلفية ملونة للصورة */
+    padding: 0 !important;
+    margin-bottom: 15px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* ضبط حجم وحواف الصورة لتطابق الأقسام */
+.product-item-card .card-img-container img {
+    width: 100% !important;
+    max-width: 160px !important; /* حجم متناسق داخل الكرت */
+    height: auto !important;
+    border-radius: 12px !important;
+    object-fit: contain;
+}
+
+/* تحسين شكل النصوص داخل الكرت */
+.product-item-card h3 {
+    font-size: 1.15rem !important;
+    color: #ffffff !important;
+    margin-bottom: 8px !important;
+    font-weight: 600;
+}
+
+/* سعر المنتج المريح للعين */
+.product-item-card .price-tag {
+    color: #00f2fe !important; /* لون نيوني هادئ يتماشى مع هوية الجوكر */
+    font-size: 1.25rem !important;
+    margin: 5px 0 15px 0 !important;
+}
+
+/* شارات الريجن (العلم) لتكون متناسقة مع التصميم الجديد */
+.product-item-card .region-badge {
+    background: rgba(0, 0, 0, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+}
+
+/* ===================================================
+   تحديث حجم صور المنتجات وتأثير الوميض الاحترافي
+   =================================================== */
+
+/* 1. تكبير حجم الصور لتصبح بحجم متوسط وممتاز */
+.product-item-card .card-img-container img {
+    width: 100% !important;
+    max-width: 200px !important; /* حجم متناسق ومثالي مريح للعين */
+    height: auto !important;
+    border-radius: 12px !important;
+    object-fit: contain;
+    transition: filter 0.3s ease, transform 0.3s ease !important; /* تنعيم حركة دخول وخروج الماوس */
+}
+
+/* 2. تفعيل تأثير الوميض السريع والقوي بمجرد لمس مؤشر الماوس */
+.product-item-card:hover .card-img-container img {
+    animation: jokerFlashGlow 1.2s infinite ease-in-out; /* سرعة الوميض 1.2 ثانية لتكون حركية وحيوية */
+}
+
+/* 3. حركة الوميض النيوني (تردد الإضاءة والتوهج الأزرق) */
+@keyframes jokerFlashGlow {
+    0% {
+        filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0));
+        transform: scale(1);
+    }
+    50% {
+        filter: brightness(1.35) drop-shadow(0 0 15px rgba(0, 242, 254, 0.9)); /* وميض نيوني واضح وقوي */
+        transform: scale(1.08); /* نبضة تكبير خفيفة جداً مع الوميض */
+    }
+    100% {
+        filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0));
+        transform: scale(1);
+    }
+}
+
+/* ===================================================
+   تغيير لون زر دخول القسم ليطابق زر البطاقات البرتقالي
+   =================================================== */
+
+.category-card .enter-btn {
+    background: #ff9f43 !important; /* اللون البرتقالي المميز لزر الشراء */
+    color: #111 !important;        /* لون النص الداكن لتباُين ممتاز ووضوح عالٍ */
+    font-weight: bold !important;   /* جعل الخط عريضاً واحترافياً */
+    border: none !important;        /* إزالة أي حدود قديمة */
+    border-radius: 8px !important;  /* حواف ناعمة متناسقة مع أزرار الموقع */
+    transition: background 0.3s ease, transform 0.2s ease !important; /* تنعيم الحركة */
+}
+
+/* تأثير تفاعلي فخم عند تمرير الماوس فوق الزر */
+.category-card .enter-btn:hover {
+    background: #ffb366 !important; /* درجة برتقالي أفتح قليلاً تعطي إيحاء بالضغط */
+    transform: scale(1.03) !important; /* تكبير نبضي خفيف جداً للتفاعل */
+    cursor: pointer;
+}
