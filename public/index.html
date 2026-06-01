@@ -222,7 +222,7 @@
                 </button>
                 <div class="dropdown-menu" id="categoriesDropdown">
                     <button class="dropdown-item" onclick="selectCategory('gaming_general'); closeDropdown()">
-                        <i class="fas fa-gamepad"></i> الألعابة
+                        <i class="fas fa-gamepad"></i> الألعاب
                     </button>
                     <button class="dropdown-item" onclick="selectCategory('steam'); closeDropdown()">
                         <i class="fab fa-steam"></i> ستيم
@@ -373,60 +373,37 @@ var rawServerData = {
             title: "ستيم",
             image: "image/steam.png",
             desc: "بطاقات Steam Wallet بالدولار",
-            items: [
-                { id: "steam_5",  name: "Steam $5",  price: "$5.00",  image: "image/steam.png", region: "GLOBAL" },
-                { id: "steam_10", name: "Steam $10", price: "$10.00", image: "image/steam.png", region: "GLOBAL" },
-                { id: "steam_20", name: "Steam $20", price: "$20.00", image: "image/steam.png", region: "US" },
-                { id: "steam_50", name: "Steam $50", price: "$50.00", image: "image/steam.png", region: "EU" }
-            ]
+            items: []
         },
         pubg: {
             title: "شحن ببجي موبايل",
             image: "image/pubg.png",
             desc: "شدات ببجي الأصلية",
-            items: [
-                { id: "pubg_60",   name: "60 UC",   price: "$0.99",  image: "image/pubg.png", region: "GLOBAL" },
-                { id: "pubg_325",  name: "325 UC",  price: "$4.99",  image: "image/pubg.png", region: "GLOBAL" },
-                { id: "pubg_660",  name: "660 UC",  price: "$9.99",  image: "image/pubg.png", region: "GLOBAL" },
-                { id: "pubg_1800", name: "1800 UC", price: "$24.99", image: "image/pubg.png", region: "GLOBAL" }
-            ]
+            items: []
         },
         fortnite: {
             title: "شحن فورتنايت ",
             image: "image/fortnite.png",
             desc: "V-Bucks فورتنايت",
-            items: [
-                { id: "fn_1000", name: "1000 V-Bucks", price: "$7.99",  image: "image/fortnite.png", region: "GLOBAL" },
-                { id: "fn_2800", name: "2800 V-Bucks", price: "$19.99", image: "image/fortnite.png", region: "GLOBAL" }
-            ]
+            items: []
         },
         playstation: {
             title: "بطاقات بلايستيشن",
             image: "image/playstation.png",
             desc: "PSN Gift Cards",
-            items: [
-                { id: "ps_10",  name: "PSN $10",  price: "$10.00", image: "image/playstation.png", region: "US" },
-                { id: "ps_25",  name: "PSN $25",  price: "$25.00", image: "image/playstation.png", region: "US" },
-                { id: "ps_50",  name: "PSN $50",  price: "$50.00", image: "image/playstation.png", region: "EU" }
-            ]
+            items: []
         },
         xbox: {
             title: "بطاقات إكس بوكس",
             image: "image/xbox.png",
             desc: "Xbox Gift Cards",
-            items: [
-                { id: "xbox_15", name: "Xbox $15", price: "$15.00", image: "image/xbox.png", region: "GLOBAL" },
-                { id: "xbox_25", name: "Xbox $25", price: "$25.00", image: "image/xbox.png", region: "US" }
-            ]
+            items: []
         },
         microsoft_windows: {
             title: "مفاتيح ويندوز وأوفيس",
             image: "image/windows.png",
             desc: "مفاتيح أصلية مضمونة",
-            items: [
-                { id: "win11",   name: "Windows 11 Home",   price: "$29.99", image: "image/windows.png", region: "GLOBAL" },
-                { id: "off365",  name: "Office 365 سنوي",   price: "$49.99", image: "image/windows.png", region: "GLOBAL" }
-            ]
+            items: []
         },
         adobe: {
             title: "حسابات أدوبي المفعّلة",
@@ -450,11 +427,7 @@ var rawServerData = {
             title: "بطاقات جوجل بلاي",
             image: "image/google_play.png",
             desc: "Google Play Gift Cards",
-            items: [
-                { id: "gp_5",  name: "Google Play $5",  price: "$5.00",  image: "image/google_play.png", region: "US" },
-                { id: "gp_10", name: "Google Play $10", price: "$10.00", image: "image/google_play.png", region: "US" },
-                { id: "gp_25", name: "Google Play $25", price: "$25.00", image: "image/google_play.png", region: "US" }
-            ]
+            items: []
         },
         itunes: {
             title: "بطاقات آيتونز وعروض آبل",
@@ -472,10 +445,7 @@ var rawServerData = {
             title: "بطاقات تسوق أمازون",
             image: "image/amazon.png",
             desc: "Amazon Gift Cards",
-            items: [
-                { id: "amz_10", name: "Amazon $10", price: "$10.00", image: "image/amazon.png", region: "US" },
-                { id: "amz_25", name: "Amazon $25", price: "$25.00", image: "image/amazon.png", region: "US" }
-            ]
+            items: []
         }
     }
 };
