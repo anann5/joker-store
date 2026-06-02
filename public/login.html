@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>دخول الأدمن</title>
+    <style>
+        body {
+            background: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .box {
+            background: #1e1e1e;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            text-align: center;
+            width: 300px;
+        }
+        h2 { color: #ff9f43; margin-bottom: 25px; }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            box-sizing: border-box;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #ff9f43;
+            color: #121212;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:hover { background: #e08d30; }
+        .error {
+            color: #ff4d4d;
+            margin-top: 10px;
+            font-size: 13px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>🃏 دخول الأدمن</h2>
+        <input type="password" id="passwordInput" placeholder="أدخل كلمة السر..." />
+        <button onclick="login()">دخول</button>
+        <p class="error" id="errorMsg">❌ كلمة السر غلط!</p>
+    </div>
+
+    <script>
+        async function login() {
+            const password = document.getElementById('passwordInput').value.trim();
+            
+            if (!password) return;
+
+            try {
+                const response = await fetch('/admin', {
+                    headers: { 'x-admin-token': password }
+                });
+
+                if (response.ok) {
+                    // حفظ الـ token مؤقتاً في الجلسة
+                   sessionStorage.setItem('adminToken', password);
+// فتح الصفحة بطريقة صحيحة
+const html = await response.text();
+document.open('text/html', 'replace');
+document.write(html);
+document.close();
+// تحديث الـ URL
+window.history.pushState({}, '', '/admin');
+                } else {
+                    document.getElementById('errorMsg').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('errorMsg').style.display = 'block';
+            }
+        }
+
+        // دخول بضغط Enter
+        document.getElementById('passwordInput')
+            .addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') login();
+            });
+    </script>
+</body>
+</html>
