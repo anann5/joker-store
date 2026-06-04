@@ -5,8 +5,13 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize'); // 🔥 أضفنا حماية المونجو
 
 const app = express();
+
+// 🔥 حرج جداً لـ Render: يخبر جدار الحماية بقراءة الـ IP الحقيقي للزائر وليس الـ Proxy
+app.set('trust proxy', 1); 
+
 const PORT = process.env.PORT || 5850;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
@@ -37,16 +42,15 @@ app.use(helmet({
 // 🛡️ طبقة الأمان الثانية: Rate Limiting (منع الهجمات)
 // ====================================================
 
-// حد عام: 100 طلب كل 15 دقيقة لكل IP
+// حد عام لكل الموقع (يقرأ الـ IP الحقيقي الآن بفضل trust proxy)
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 150, // رفعناه قليلاً لراحة المستخدمين أثناء التنقل بين الصفحات
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'كثير طلبات من نفس الـ IP، انتظر شوي وحاول مجدداً' }
 });
 
-// حد صارم للأدمن: 10 محاولات فقط كل 15 دقيقة
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
@@ -55,7 +59,6 @@ const adminLimiter = rateLimit({
     message: { success: false, error: 'محاولات دخول كثيرة، انتظر 15 دقيقة' }
 });
 
-// حد صارم لـ API الشراء: 20 طلب كل 15 دقيقة (لمنع الشراء الوهمي)
 const purchaseLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
@@ -65,20 +68,20 @@ const purchaseLimiter = rateLimit({
 app.use(generalLimiter);
 
 // ====================================================
-// الاتصال بقاعدة البيانات
+// الإعدادات وقاعدة البيانات
 // ====================================================
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ تم الاتصال بمونجو بنجاح!'))
     .catch((err) => console.log('⚠️ لم يتم الاتصال بمونجو:', err.message));
 
-app.use(express.json({ limit: '10kb' })); // تحديد حجم الـ body لمنع هجمات الـ payload الكبير
+app.use(express.json({ limit: '10kb' })); 
+app.use(mongoSanitize()); // 🔥 تنظيف المدخلات تلقائياً لحماية قاعدة البيانات من الـ Injection
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ====================================================
 // 🛡️ Middleware التحقق من هوية الأدمن
 // ====================================================
 function verifyAdmin(req, res, next) {
-    // تحقق إن ADMIN_PASSWORD موجود في .env
     if (!ADMIN_PASSWORD) {
         console.error('❌ خطأ: ADMIN_PASSWORD غير موجود في ملف .env!');
         return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ بشكل صحيح' });
