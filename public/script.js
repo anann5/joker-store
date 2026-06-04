@@ -1,310 +1,357 @@
-let storeData = {}; // متغير لحفظ البيانات حتى نتمكن من استخدامها في القائمة
-
-// تشغيل المتجر عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', initStore);
-
-async function initStore() {
-    try {
-        console.log("📡 جاري جلب الأقسام من ملف cards.json...");
-        const response = await fetch('/cards.json'); // يقرأ ملف الكروت المحلي داخل public
-        const data = await response.json();
-        storeData = data; // حفظ البيانات هنا
-        displayCategories(data);
-    } catch (error) {
-        console.error("❌ خطأ في جلب البيانات الأولية:", error);
+// ======================================================
+//  البيانات الأساسية للأقسام
+// ======================================================
+var rawServerData = {
+    categories: {
+        gaming_general: { title: "الالعاب", image: "image/games.png", desc: "بطاقات شحن لمختلف الألعاب" },
+        steam:          { title: "ستيم", image: "image/steam.png", desc: "بطاقات Steam Wallet بالدولار" },
+        pubg:           { title: "شحن ببجي موبايل", image: "image/pubg.png", desc: "شدات ببجي الأصلية" },
+        fortnite:       { title: "شحن فورتنايت", image: "image/fortnite.png", desc: "V-Bucks فورتنايت" },
+        playstation:    { title: "بطاقات بلايستيشن", image: "image/playstation.png", desc: "PSN Gift Cards" },
+        xbox:           { title: "بطاقات إكس بوكس", image: "image/xbox.png", desc: "Xbox Gift Cards" },
+        microsoft_windows: { title: "مفاتيح ويندوز وأوفيس", image: "image/windows.png", desc: "مفاتيح أصلية مضمونة" },
+        adobe:          { title: "حسابات أدوبي المفعّلة", image: "image/adobe.png", desc: "Adobe Creative Cloud" },
+        antivirus:      { title: "برامج الحماية الرقمية", image: "image/antivirus.png", desc: "حماية شاملة لأجهزتك" },
+        vpn:            { title: "اشتراكات VPN العالمية", image: "image/vpn.png", desc: "تصفح آمن وخصوصية كاملة" },
+        google:         { title: "بطاقات جوجل بلاي", image: "image/google_play.png", desc: "Google Play Gift Cards" },
+        itunes:         { title: "بطاقات آيتونز وعروض آبل", image: "image/itunes.png", desc: "Apple Gift Cards" },
+        razer_gold:     { title: "بطاقات ريزر جولد", image: "image/razer.png", desc: "Razer Gold العالمية" },
+        amazon:         { title: "بطاقات تسوق أمازون", image: "image/amazon.png", desc: "Amazon Gift Cards" }
     }
+};
+
+var currentSelectedProduct = null;
+
+// ======================================================
+//  دالة تحديد الريجن
+// ======================================================
+function getRegionDetails(region) {
+    var reg = String(region || 'global').toLowerCase();
+    if (reg.includes('us')) return { cls: 'badge-us', flag: '🇺🇸', text: 'أمريكي US' };
+    if (reg.includes('eu')) return { cls: 'badge-eu', flag: '🇪🇺', text: 'أوروبي EU' };
+    if (reg.includes('tr')) return { cls: 'badge-tr', flag: '🇹🇷', text: 'تركي TR' };
+    return { cls: 'badge-global', flag: '🌐', text: 'عالمي Global' };
 }
 
-// عرض الأقسام كأيقونات في القائمة الرئيسية
-function displayCategories(data) {
-    const menu = document.getElementById('category-menu') || document.getElementById('mainCategories');
-    if (!menu) {
-        console.warn("⚠️ لم يتم العثور على حاوية الأقسام الرئيسية في الـ HTML.");
-        return;
-    }
-    menu.innerHTML = '';
+// ======================================================
+//  عرض الأقسام الرئيسية
+// ======================================================
+function showAllCategories() {
+    var grid = document.getElementById('mainCategories');
+    grid.className = '';
+    grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
+    grid.innerHTML = '';
 
-    Object.keys(data).forEach(category => {
-        const icon = document.createElement('div');
-        icon.className = 'category-icon';
-        icon.innerHTML = `
-            <img src="image/${category}.png" onerror="this.src='image/logo.png'">
-            <h3>${category.toUpperCase()}</h3>
-        `;
-        // عند الضغط على الأيقونة يفتح المنتجات الخاصة بالقسم من السيرفر
-        icon.onclick = () => showProducts(category);
-        menu.appendChild(icon);
+    // إخفاء زر الرجوع
+    var backContainer = document.getElementById('back-container');
+    if (backContainer) backContainer.style.display = 'none';
+
+    // تفعيل زر "الكل"
+    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    var allBtn = document.querySelector('.filter-btn[data-filter="all"]');
+    if (allBtn) allBtn.classList.add('active');
+
+    Object.keys(rawServerData.categories).forEach(function(key) {
+        var cat = rawServerData.categories[key];
+        var div = document.createElement('div');
+        div.className = 'category-card';
+        div.dataset.category = key;
+
+        var img = document.createElement('img');
+        img.src = cat.image;
+        img.alt = cat.title;
+        img.onerror = function() { this.src = 'image/logo.png'; };
+
+        var h3 = document.createElement('h3');
+        h3.textContent = cat.title;
+
+        var p = document.createElement('p');
+        p.textContent = cat.desc;
+
+        var btn = document.createElement('button');
+        btn.className = 'enter-btn';
+        btn.textContent = 'دخول القسم 📂';
+        btn.dataset.category = key;
+
+        div.appendChild(img);
+        div.appendChild(h3);
+        div.appendChild(p);
+        div.appendChild(btn);
+        grid.appendChild(div);
     });
 }
 
-/* ===================================================
-   الدالة المعدلة: جلب وعرض المنتجات داخل الحاوية الصحيحة
-   =================================================== */
-function showProducts(category) {
-    console.log(`🔄 جاري محاولة فتح قسم: ${category}`);
-    if (typeof closeDropdown === 'function') closeDropdown();
+// ======================================================
+//  عرض المنتجات
+// ======================================================
+function selectCategory(categoryKey) {
+    var cat = rawServerData.categories[categoryKey];
+    if (!cat) return;
 
-    // تحديد مكان طباعة الكروت (بناءً على حاويتك المعتمدة)
-    const grid = document.getElementById('mainCategories') || document.getElementById('innerProductsGrid');
-    
-    if (!grid) {
-        console.error("❌ خطأ حرج: لم نجد حاوية mainCategories في ملف index.html لعرض الكروت بداخلها!");
-        return;
-    }
+    var grid = document.getElementById('mainCategories');
+    var backContainer = document.getElementById('back-container');
 
-    // إظهار زر الرجوع وحاوية المنتجات الفرعية إذا كانت موجودة
-    const productsContainer = document.getElementById('products-container');
-    if (productsContainer) productsContainer.style.display = 'block';
+    if (backContainer) backContainer.style.display = 'block';
 
-    const backBtnContainer = document.getElementById('back-container');
-    if (backBtnContainer) backBtnContainer.style.display = 'block';
-    
-    // تنظيف الحاوية وطباعة عنوان القسم الحالي قبل جلب الكروت
-    grid.innerHTML = `<h2 style="color: #00f0ff; text-align: center; width: 100%; margin-bottom: 25px; grid-column: 1 / -1;">قسم: ${category.toUpperCase()}</h2>`;
-    
-    // جلب المنتجات الحقيقية من قاعدة البيانات عبر السيرفر
-    console.log(`📡 جاري الاتصال بالسيرفر لقراءة كروت: /api/products/${category}`);
-    fetch(`/api/products/${category}`)
-        .then(response => {
-            console.log(`📥 استجابة السيرفر للقسم ${category}:`, response.status);
-            return response.json();
-        })
-        .then(products => {
-            console.log("📦 المنتجات المستلمة من قاعدة البيانات:", products);
-            
+    document.querySelectorAll('.filter-btn').forEach(function(b) {
+        b.classList.remove('active');
+        if (b.getAttribute('data-filter') === categoryKey) b.classList.add('active');
+    });
+
+    grid.className = 'products-grid';
+    grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ جاري جلب البطاقات...</p>';
+
+    fetch('/api/products/' + categoryKey)
+        .then(function(res) { return res.json(); })
+        .then(function(products) {
+            grid.innerHTML = '';
+
             if (!products || products.length === 0) {
-                grid.innerHTML += `<p style="text-align:center; width:100%; color:#fff; grid-column: 1/-1; font-size: 18px; margin-top: 20px;">لا توجد منتجات حالياً في هذا القسم داخل قاعدة البيانات.</p>`;
+                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً!</p>';
                 return;
             }
 
-            // طباعة كروت المنتجات بالأسعار الجديدة شاملة الأرباح
-            products.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'product-card';
-                // تنسيق نيون سريع لضمان الرص الأنيق للكروت بالداخل
-                card.style.background = '#161b22';
-                card.style.border = '1px solid #00f0ff';
-                card.style.boxShadow = '0 0 10px rgba(0, 240, 255, 0.1)';
-                card.style.padding = '20px';
-                card.style.borderRadius = '8px';
-                card.style.textAlign = 'center';
-                card.style.color = 'white';
-                card.style.minWidth = '220px';
+            products.forEach(function(item) {
+                var detectedRegion = 'global';
+                if (item.id && (item.id.includes('US') || item.name.toLowerCase().includes('us'))) detectedRegion = 'us';
+                else if (item.id && (item.id.includes('TR') || item.name.toLowerCase().includes('tr'))) detectedRegion = 'tr';
+                else if (item.id && (item.id.includes('EU') || item.name.toLowerCase().includes('eu'))) detectedRegion = 'eu';
 
-                card.innerHTML = `
-                    <img src="image/${category}.png" alt="${item.name}" onerror="this.src='image/logo.png'" style="max-width: 90px; margin-bottom: 15px;">
-                    <h3 style="font-size: 16px; margin: 10px 0;">${item.name}</h3>
-                    <p style="color: #00ff66; font-weight: bold; font-size: 18px; margin-bottom: 15px;">السعر: ${item.price}$</p>
-                    <button class="buy-now-btn" onclick="openCheckoutPopup('${item.id}', '${item.name}', ${item.price})" style="background: #00f0ff; color: #000; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; width: 100%;">شراء الآن 🚀</button>
-                `;
+                var regionInfo = getRegionDetails(detectedRegion);
+                var clientItem = {
+                    id: item.id,
+                    name: item.name,
+                    price: typeof item.price === 'number' ? item.price + '$' : item.price,
+                    region: detectedRegion,
+                    image: 'image/' + categoryKey + '.png'
+                };
+
+                var card = document.createElement('div');
+                card.className = 'product-item-card';
+
+                var badge = document.createElement('div');
+                badge.className = 'region-badge ' + regionInfo.cls;
+                badge.innerHTML = '<span>' + regionInfo.flag + '</span><span>' + regionInfo.text + '</span>';
+
+                var imgContainer = document.createElement('div');
+                imgContainer.className = 'card-img-container';
+                var img = document.createElement('img');
+                img.src = clientItem.image;
+                img.alt = clientItem.name;
+                img.onerror = function() { this.src = 'image/logo.png'; };
+                imgContainer.appendChild(img);
+
+                var content = document.createElement('div');
+                content.className = 'card-content';
+                content.style.padding = '15px';
+
+                var title = document.createElement('h3');
+                title.textContent = clientItem.name;
+
+                var price = document.createElement('p');
+                price.className = 'price-tag';
+                price.textContent = clientItem.price;
+
+                var buyBtn = document.createElement('button');
+                buyBtn.className = 'buy-btn';
+                buyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> شراء واستلام الكود';
+                buyBtn.dataset.item = JSON.stringify(clientItem);
+
+                content.appendChild(title);
+                content.appendChild(price);
+                content.appendChild(buyBtn);
+
+                card.appendChild(badge);
+                card.appendChild(imgContainer);
+                card.appendChild(content);
                 grid.appendChild(card);
             });
         })
-        .catch(error => {
-            console.error('❌ حدث خطأ أثناء جلب الكروت من السيرفر:', error);
-            grid.innerHTML += `<p style="text-align:center; width:100%; color:red; grid-column: 1/-1;">حدث خطأ غير متوقع أثناء تحميل المنتجات.</p>`;
+        .catch(function(err) {
+            console.error('خطأ:', err);
+            grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات</p>';
         });
 }
 
-// دالة العودة للقائمة الرئيسية وإعادة بناء الأقسام
-function backToCategories() {
-    console.log("🔄 العودة إلى قائمة الأقسام الرئيسية...");
-    const backBtn = document.getElementById('back-container');
-    if (backBtn) backBtn.style.display = 'none';
-
-    const allBtn = document.querySelector('[data-filter="all"]');
-    if (allBtn) {
-        allBtn.click(); // تصفير الفلتر العلوي
-    } else {
-        initStore(); // إعادة بناء الواجهة بالأقسام الأصلية
-    }
+// ======================================================
+//  فتح مودال الشراء
+// ======================================================
+function orderProduct(item) {
+    currentSelectedProduct = item;
+    document.getElementById('modalTitle').textContent = 'استلام كود الشحن لـ ' + item.name;
+    document.getElementById('modalProductPrice').textContent = item.price;
+    document.getElementById('purchaseModal').classList.add('active');
 }
 
-// مراقبة شريط الفلترة العلوي لربطه ديناميكياً مع السيرفر
-document.addEventListener('DOMContentLoaded', () => {
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    const backBtnContainer = document.getElementById('back-container');
+// ======================================================
+//  العودة للرئيسية
+// ======================================================
+function goBack() {
+    var searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    showAllCategories();
+}
 
-    filterButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const filterValue = btn.getAttribute('data-filter');
-            console.log(`🔍 تم الضغط على زر الفلتر: ${filterValue}`);
-            
-            if (filterValue === 'all') {
-                if (backBtnContainer) backBtnContainer.style.display = 'none';
-                initStore(); // إعادة إظهار الأقسام بالكامل
-            } else {
-                if (backBtnContainer) backBtnContainer.style.display = 'block';
-                showProducts(filterValue); // جلب منتجات الفلتر المختار فوراً
+// ======================================================
+//  تهيئة الأحداث عند تحميل الصفحة
+// ======================================================
+document.addEventListener('DOMContentLoaded', function() {
+
+    showAllCategories();
+
+    // زر الرئيسية
+    var homeLink = document.getElementById('homeLink');
+    if (homeLink) homeLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
+
+    var digitalCardsLink = document.getElementById('digitalCardsLink');
+    if (digitalCardsLink) digitalCardsLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
+
+    // زر الرجوع
+    var backToMainBtn = document.getElementById('backToMainBtn');
+    if (backToMainBtn) backToMainBtn.addEventListener('click', goBack);
+
+    // أزرار الـ Dropdown
+    var categoriesBtn = document.getElementById('categoriesBtn');
+    if (categoriesBtn) {
+        categoriesBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var dropdown = document.getElementById('categoriesDropdown');
+            dropdown.classList.toggle('active');
+            categoriesBtn.classList.toggle('active');
+        });
+    }
+
+    // أزرار الأقسام في الـ Dropdown
+    document.querySelectorAll('.dropdown-item[data-category]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            selectCategory(this.dataset.category);
+            document.getElementById('categoriesDropdown').classList.remove('active');
+            document.getElementById('categoriesBtn').classList.remove('active');
+        });
+    });
+
+    // إغلاق الـ Dropdown عند النقر خارجه
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-wrapper')) {
+            var dropdown = document.getElementById('categoriesDropdown');
+            var btn = document.getElementById('categoriesBtn');
+            if (dropdown) dropdown.classList.remove('active');
+            if (btn) btn.classList.remove('active');
+        }
+    });
+
+    // إغلاق مودال الشراء
+    document.getElementById('closeModal').addEventListener('click', function() {
+        document.getElementById('purchaseModal').classList.remove('active');
+    });
+    document.getElementById('purchaseModal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
+    });
+
+    // إغلاق مودال الكود
+    document.getElementById('closeCodeModal').addEventListener('click', function() {
+        document.getElementById('codeModal').classList.remove('active');
+    });
+    document.getElementById('codeModal').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
+    });
+
+    // نسخ الكود
+    document.getElementById('copyCodeBtn').addEventListener('click', function() {
+        var codeText = document.getElementById('generatedCode').textContent;
+        navigator.clipboard.writeText(codeText).then(function() {
+            alert('📋 تم نسخ كود الشحن بنجاح!');
+        });
+    });
+
+    // أزرار الشراء (event delegation)
+    document.getElementById('mainCategories').addEventListener('click', function(e) {
+        // زر دخول القسم
+        var enterBtn = e.target.closest('.enter-btn[data-category]');
+        if (enterBtn) {
+            selectCategory(enterBtn.dataset.category);
+            return;
+        }
+        // زر الشراء
+        var buyBtn = e.target.closest('.buy-btn[data-item]');
+        if (buyBtn) {
+            var item = JSON.parse(buyBtn.dataset.item);
+            orderProduct(item);
+            return;
+        }
+        // الضغط على كرت القسم كله
+        var categoryCard = e.target.closest('.category-card[data-category]');
+        if (categoryCard && !e.target.closest('button')) {
+            selectCategory(categoryCard.dataset.category);
+        }
+    });
+
+    // أزرار الفلتر
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            var filter = btn.getAttribute('data-filter');
+            var si = document.getElementById('searchInput');
+            if (si) si.value = '';
+            if (filter === 'all') {
+                showAllCategories();
+            } else if (rawServerData.categories[filter]) {
+                selectCategory(filter);
             }
         });
     });
-});
 
-/* ===================================================
-   التحكم بالقوائم والـ Dropdowns للـ Header
-   =================================================== */
-function getRegionDetails() { return null; }
+    // البحث
+    var searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            var query = e.target.value.toLowerCase().trim();
+            if (query === '') { goBack(); return; }
 
-function selectCategory(category) {
-    closeDropdown(); 
-    showProducts(category);
-}
+            var grid = document.getElementById('mainCategories');
+            var backContainer = document.getElementById('back-container');
+            grid.className = '';
+            grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
+            grid.innerHTML = '';
+            if (backContainer) backContainer.style.display = 'block';
 
-function closeDropdown() {
-    const dropdownMenu = document.getElementById('categoriesDropdown');
-    if (dropdownMenu) { dropdownMenu.classList.remove('active'); }
-}
+            var found = false;
+            Object.keys(rawServerData.categories).forEach(function(key) {
+                var cat = rawServerData.categories[key];
+                if (cat.title.toLowerCase().includes(query)) {
+                    found = true;
+                    var div = document.createElement('div');
+                    div.className = 'category-card';
+                    div.dataset.category = key;
 
-// إغلاق القوائم عند النقر خارجها
-document.addEventListener('click', function(event) {
-    const dropdowns = document.querySelectorAll('.dropdown-menu');
-    const buttons = document.querySelectorAll('.dropdown-btn');
-    
-    let isClickInsideButton = false;
-    buttons.forEach(btn => { if (btn.contains(event.target)) isClickInsideButton = true; });
+                    var img = document.createElement('img');
+                    img.src = cat.image;
+                    img.alt = cat.title;
+                    img.onerror = function() { this.src = 'image/logo.png'; };
 
-    let isClickInsideMenu = false;
-    dropdowns.forEach(menu => { if(menu.contains(event.target)) isClickInsideMenu = true; });
+                    var h3 = document.createElement('h3');
+                    h3.textContent = cat.title;
 
-    if (!isClickInsideButton && !isClickInsideMenu) {
-        dropdowns.forEach(menu => { menu.classList.remove('active'); });
-    }
-});
+                    var p = document.createElement('p');
+                    p.textContent = cat.desc;
 
-// تفعيل زر الأقسام في الهيدر
-document.addEventListener('DOMContentLoaded', () => {
-    const categoriesBtn = document.getElementById('categoriesBtn');
-    const categoriesDropdown = document.getElementById('categoriesDropdown');
+                    var btn = document.createElement('button');
+                    btn.className = 'enter-btn';
+                    btn.textContent = 'دخول القسم 📂';
+                    btn.dataset.category = key;
 
-    if (categoriesBtn && categoriesDropdown) {
-        categoriesBtn.onclick = function(e) {
-            e.preventDefault();
-            categoriesDropdown.classList.toggle('active');
-        };
-    }
-});
+                    div.appendChild(img); div.appendChild(h3);
+                    div.appendChild(p); div.appendChild(btn);
+                    grid.appendChild(div);
+                }
+            });
 
-/* ===================================================
-   نظام نافذة الشراء المحدث (Checkout Popup) - شامل اختيار الدولة تلقائياً
-   =================================================== */
-function openCheckoutPopup(id, name, price) {
-    const existingPopup = document.getElementById('checkout-modal');
-    if (existingPopup) existingPopup.remove();
-
-    const modal = document.createElement('div');
-    modal.id = 'checkout-modal';
-    modal.style.position = 'fixed';
-    modal.style.top = '0';
-    modal.style.left = '0';
-    modal.style.width = '100%';
-    modal.style.height = '100%';
-    modal.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-    modal.style.display = 'flex';
-    modal.style.justifyContent = 'center';
-    modal.style.alignItems = 'center';
-    modal.style.zIndex = '10000';
-
-    modal.innerHTML = `
-        <div class="popup-content" style="
-            background: #0d1117; 
-            border: 2px solid #00f0ff; 
-            box-shadow: 0 0 20px #00f0ff; 
-            padding: 30px; 
-            border-radius: 12px; 
-            width: 90%; 
-            max-width: 450px; 
-            text-align: right; 
-            direction: rtl; 
-            color: #fff;
-            position: relative;
-        ">
-            <span class="close-popup-btn" onclick="document.getElementById('checkout-modal').remove()" style="
-                position: absolute; 
-                top: 15px; 
-                left: 15px; 
-                font-size: 24px; 
-                cursor: pointer; 
-                color: #ff007f;
-            ">&times;</span>
-            
-            <h3 style="color: #00f0ff; margin-bottom: 20px; border-bottom: 1px solid #1f2937; padding-bottom: 10px; font-size: 22px;">تأكيد طلب الشراء</h3>
-            
-            <p style="margin-bottom: 8px;"><strong>المنتج:</strong> <span style="color: #ff007f;">${name}</span></p>
-            <p style="margin-bottom: 20px;"><strong>السعر النهائي:</strong> <span style="color: #00ff66; font-size: 18px; font-weight: bold;">${price}$</span></p>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: #aaa;">اسم المشتري كاملاً:</label>
-                <input type="text" id="customer-name" placeholder="أدخل اسمك هنا" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f2937; background: #161b22; color: #fff; outline: none; box-sizing: border-box;">
-            </div>
-            
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; color: #aaa;">البريد الإلكتروني (لتسليم الكود):</label>
-                <input type="email" id="customer-email" placeholder="example@mail.com" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f2937; background: #161b22; color: #fff; text-align: left; direction: ltr; outline: none; box-sizing: border-box;">
-            </div>
-
-            <div style="margin-bottom: 25px;">
-                <label style="display: block; margin-bottom: 5px; color: #aaa;">اختر الدولة:</label>
-                <select id="customer-country" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #1f2937; background: #161b22; color: #fff; outline: none; box-sizing: border-box; cursor: pointer;">
-                    <option value="فلسطين 🇵🇸" selected>فلسطين 🇵🇸</option>
-                    <option value="الأردن 🇯🇴">الأردن 🇯🇴</option>
-                    <option value="السعودية 🇸🇦">المملكة العربية السعودية 🇸🇦</option>
-                    <option value="الإمارات 🇦🇪">الإمارات العربية المتحدة 🇦🇪</option>
-                    <option value="مصر 🇪🇬">جمهورية مصر العربية 🇪🇬</option>
-                    <option value="العراق 🇮🇶">العراق 🇮🇶</option>
-                    <option value="الكويت 🇰🇼">الكويت 🇰🇼</option>
-                    <option value="قطر 🇶🇦">قطر 🇶🇦</option>
-                </select>
-            </div>
-            
-            <button onclick="sendOrderToWhatsApp('${id}', '${name}', '${price}')" style="
-                width: 100%; 
-                padding: 12px; 
-                background: #25d366; 
-                color: #fff; 
-                border: none; 
-                border-radius: 6px; 
-                font-size: 16px; 
-                font-weight: bold; 
-                cursor: pointer; 
-                box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
-                transition: 0.3s;
-            ">
-                تأكيد الدفع وإرسال عبر الواتساب 🚀
-            </button>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-}
-
-/* ===================================================
-   دالة صياغة الرسالة المعدلة - لتصلك شاملة الدولة المختارة
-   =================================================== */
-function sendOrderToWhatsApp(productId, productName, productPrice) {
-    const name = document.getElementById('customer-name').value.trim();
-    const email = document.getElementById('customer-email').value.trim();
-    const country = document.getElementById('customer-country').value; 
-
-    if (!name || !email) {
-        alert('الرجاء تعبئة الاسم والبريد الإلكتروني لإتمام الطلب!');
-        return;
+            if (!found) {
+                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:40px;">❌ لا توجد أقسام مطابقة لبحثك...</p>';
+            }
+        });
     }
 
-    const messageText = `مرحباً جوكر ستور، أرغب في شراء بطاقة رقمية:\n\n` +
-                        `📦 المنتج: ${productName}\n` +
-                        `🆔 كود المنتج: ${productId}\n` +
-                        `💰 السعر: ${productPrice}$\n` +
-                        `📍 الدولة: ${country}\n` + 
-                        `---------------------------\n` +
-                        `👤 اسم العميل: ${name}\n` +
-                        `📧 البريد الإلكتروني: ${email}\n\n` +
-                        `يرجى تزويدي بطريقة تحويل الأموال وتفعيل الطلب.`;
-
-    const encodedMessage = encodeURIComponent(messageText);
-    const whatsappUrl = `https://wa.me/97259919789?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-    
-    const checkoutModal = document.getElementById('checkout-modal');
-    if (checkoutModal) checkoutModal.remove();
-}
+});

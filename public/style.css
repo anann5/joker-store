@@ -1,7 +1,12 @@
 /* ===================================================
    إعدادات أساسية
    =================================================== */
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+    font-family: 'Segoe UI', Tahoma, sans-serif; 
+}
 
 body {
     background: url('background.png') no-repeat center center fixed;
@@ -9,6 +14,7 @@ body {
     background-color: #07070a;
     min-height: 100vh;
     color: white;
+    overflow-x: hidden; /* حماية عامة ضد أي تمدد جانبي */
 }
 
 /* ===================================================
@@ -31,13 +37,7 @@ header::after {
     position: absolute;
     bottom: -2px; left: 0;
     width: 100%; height: 2px;
-    background: linear-gradient(to right,
-        transparent,
-        rgba(0, 242, 254, 0.6),
-        #ff9f43,
-        rgba(0, 242, 254, 0.6),
-        transparent
-    );
+    background: linear-gradient(to right, transparent, rgba(0, 242, 254, 0.6), #ff9f43, rgba(0, 242, 254, 0.6), transparent);
     opacity: 1;
 }
 
@@ -52,7 +52,6 @@ header::after {
     flex-wrap: nowrap;
 }
 
-/* اللوجو */
 .logo-zone {
     display: flex;
     align-items: center;
@@ -89,7 +88,6 @@ header::after {
     50%       { box-shadow: 0 0 28px rgba(0, 242, 254, 0.6), 0 0 55px rgba(0, 242, 254, 0.6); }
 }
 
-/* الناف */
 nav {
     display: flex;
     gap: 8px;
@@ -126,46 +124,14 @@ nav a::before {
 }
 
 nav a:hover::before { opacity: 1; }
+nav a:hover { color: #00f2fe; border-color: rgba(0, 242, 254, 0.6); }
+nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
 
-nav a:hover {
-    color: #00f2fe;
-    border-color: rgba(0, 242, 254, 0.6);
-}
-
-nav a.active {
-    color: #9a9da5;
-    text-decoration: none;
-    padding: 11px 24px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 1.02rem;
-    transition: all 0.3s;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    background: transparent;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    position: relative;
-    overflow: hidden;
-}
-
-nav a.active:hover::before { opacity: 1; }
-
-nav a.active:hover {
-    color: #00f2fe;
-    border-color: #00f2fe;
-    }
-
-/* ===== Dropdown Menu ===== */
-.dropdown-wrapper {
-    position: relative;
-}
+/* Dropdown */
+.dropdown-wrapper { position: relative; }
 
 .dropdown-btn {
     color: #9a9da5;
-    text-decoration: none;
     padding: 11px 24px;
     border-radius: 10px;
     font-weight: 700;
@@ -193,16 +159,8 @@ nav a.active:hover {
 }
 
 .dropdown-btn:hover::before { opacity: 1; }
-
-.dropdown-btn:hover {
-    color: #00f2fe;
-    border-color: rgba(0, 242, 254, 0.65);
-}
-
-.dropdown-btn.active {
-    color: #00f2fe;
-    border-color: #00f2fe;
-}
+.dropdown-btn:hover { color: #00f2fe; border-color: rgba(0, 242, 254, 0.65); }
+.dropdown-btn.active { color: #00f2fe; border-color: #00f2fe; }
 
 .dropdown-menu {
     position: absolute;
@@ -219,14 +177,9 @@ nav a.active:hover {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
     z-index: 1001;
     backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
 }
 
-.dropdown-menu.active {
-    max-height: 600px;
-    opacity: 1;
-    margin-top: 8px;
-}
+.dropdown-menu.active { max-height: 600px; opacity: 1; margin-top: 8px; }
 
 .dropdown-item {
     width: 100%;
@@ -247,19 +200,10 @@ nav a.active:hover {
 }
 
 .dropdown-item:last-child { border-bottom: none; }
+.dropdown-item i { color: #ff9f43; font-size: 1rem; }
+.dropdown-item:hover { background: rgba(0, 242, 254, 0.1); color: #00f2fe; padding-right: 30px; }
 
-.dropdown-item i {
-    color: #ff9f43;
-    font-size: 1rem;
-}
-
-.dropdown-item:hover {
-    background: rgba(0, 242, 254, 0.6);
-    color: #00f2fe;
-    padding-right: 30px;
-}
-
-/* حقل البحث */
+/* البحث */
 .search-container {
     display: flex;
     align-items: center;
@@ -271,13 +215,12 @@ nav a.active:hover {
     min-width: 280px;
     flex: 1;
     max-width: 400px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .search-container:focus-within {
     border-color: #00f2fe;
     background: rgba(0, 242, 254, 0.07);
-    box-shadow: 0 0 18px rgba(0, 242, 254, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 18px rgba(0, 242, 254, 0.2);
 }
 
 .search-container input {
@@ -291,72 +234,12 @@ nav a.active:hover {
     font-family: inherit;
 }
 
-.search-container input::placeholder {
-    color: rgba(0, 242, 254, 0.6);
-    font-style: italic;
-}
-
-.search-btn {
-    background: transparent;
-    border: none;
-    color: rgba(0, 242, 254, 0.6);
-    padding: 12px 16px;
-    cursor: pointer;
-    transition: color 0.3s;
-    font-size: 1rem;
-}
-
+.search-container input::placeholder { color: rgba(0, 242, 254, 0.6); font-style: italic; }
+.search-btn { background: transparent; border: none; color: rgba(0, 242, 254, 0.6); padding: 12px 16px; cursor: pointer; transition: color 0.3s; font-size: 1rem; }
 .search-btn:hover { color: #00f2fe; }
 
 /* ===================================================
-   قسم النص الترحيبي (Hero Section) المفعم بالحيوية
-   =================================================== */
-.hero {
-    text-align: center;
-    background: linear-gradient(135deg, rgba(15, 15, 25, 0.8), rgba(25, 20, 35, 0.8)); 
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 159, 67, 0.2);
-    border-radius: 20px;
-    padding: 40px 30px;
-    margin: 30px auto 40px auto;
-    max-width: 900px;
-    /* تأثير النبض البصري */
-    animation: breatheGlow 3.5s infinite alternate; 
-}
-
-@keyframes breatheGlow {
-    0% { 
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 10px rgba(255, 159, 67, 0.1); 
-    }
-    100% { 
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 35px rgba(255, 159, 67, 0.4); 
-        border-color: rgba(0, 242, 254, 0.6);
-    }
-}
-
-.hero h1 {
-    font-size: 38px;
-    color: #00f2fe;
-    margin-bottom: 15px;
-    font-weight: 900;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-}
-
-.hero h1 .highlight {
-    color: var(--accent-joker);
-    text-shadow: 0 0 20px rgba(0, 242, 254, 0.6); /* لمعان أقوى للكلمة المميزة */
-}
-
-.hero p {
-    color: #e0e0e0;
-    font-size: 17px;
-    margin: 0;
-    line-height: 1.6;
-}
-
-/* ===================================================
-   شريط الفلترة (Filter Tabs) - تم تصحيح العرض
+   شريط الفلترة
    =================================================== */
 .filter-container {
     display: flex;
@@ -370,11 +253,8 @@ nav a.active:hover {
     border-radius: 50px;
     padding: 15px 30px;
     margin: 0 auto 50px auto;
-    
-    /* التعديل الجوهري هنا لفرد الكبسولة */
-    width: max-content; 
-    max-width: 95%; /* عشان ما تطلع برا الشاشة في الجوال */
-    
+    width: max-content;
+    max-width: 95%;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), inset 0 0 15px rgba(0, 242, 254, 0.05);
     direction: rtl;
 }
@@ -389,21 +269,19 @@ nav a.active:hover {
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1) !important;
-    white-space: nowrap; /* يمنع الكلمة من الانقسام لسطرين */
+    white-space: nowrap;
 }
 
-/* لون سيان (أزرق نيون) عند التمرير */
 .filter-btn:hover {
-    border-color: #00f2fe !important; 
+    border-color: #00f2fe !important;
     color: #ffffff !important;
     background: rgba(0, 242, 254, 0.1) !important;
     transform: translateY(-4px);
     box-shadow: 0 5px 15px rgba(0, 242, 254, 0.3);
 }
 
-/* تدرج ناري للزر الفعال */
 .filter-btn.active {
-    background: linear-gradient(45deg, #00f2fe, #0f0820) !important; 
+    background: linear-gradient(45deg, #00f2fe, #0f0820) !important;
     color: #ffffff !important;
     font-weight: bold !important;
     border: none !important;
@@ -412,12 +290,11 @@ nav a.active:hover {
 }
 
 /* ===================================================
-   الحاوية الرئيسية الزجاجية
+   الحاوية الرئيسية
    =================================================== */
 .main-container {
     background: rgba(13, 13, 22, 0.65);
     backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
     padding: 35px 30px;
@@ -427,9 +304,6 @@ nav a.active:hover {
     min-height: 400px;
 }
 
-/* ===================================================
-   كروت الأقسام الرئيسية
-   =================================================== */
 #mainCategories {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -437,60 +311,44 @@ nav a.active:hover {
 }
 
 /* ===================================================
-   كروت الأقسام (مخفية الخلفية وتومض بالسيان عند اللمس)
+   كروت الأقسام — تم التنظيف ومنع مشاكل التمدد والكيرفات
    =================================================== */
 .category-card {
-    background: transparent !important; /* إزالة الخلفية تماماً */
-    border: 1px solid transparent !important; /* إخفاء الإطار في الوضع العادي */
-    border-radius: 15px;
-    padding: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1% solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 15px;
     text-align: center;
-    transition: all 0.4s ease-in-out;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     cursor: pointer;
-    box-shadow: none !important; /* إزالة أي ظل قديم */
-}
-
-/* تأثير الوميض (السيان) عند تمرير الماوس */
-.category-card:hover {
-    background: rgba(0, 242, 254, 0.05) !important; /* خلفية سيان شفافة جداً */
-    border: 1px solid #00f2fe !important; /* إطار نيون سيان */
-    /* توهج خارجي وداخلي للكرت */
-    box-shadow: 0 0 25px rgba(0, 242, 254, 0.4), inset 0 0 15px rgba(0, 242, 254, 0.1) !important; 
-    transform: translateY(-8px) scale(1.02); /* قفزة ناعمة للأعلى */
-}
-
-/* حركة إضافية: تغيير لون زر "دخول القسم" للسيان عند لمس الكرت */
-.category-card:hover .enter-btn {
-    background: #fe7b00 !important;
-    color: #000000 !important;
-    box-shadow: 0 0 15px rgba(0, 242, 254, 0.6) !important;
-    transition: all 0.3s ease;
+    overflow: hidden; /* تم التعديل لمنع تشوه الكيرف الفخم */
+    position: relative;
 }
 
 .category-card img {
-    width: 100%;
-    height: 130px;
-    object-fit: contain;
-    border-radius: 16px;
-    margin-bottom: 6px;
+    width: 220px;          /* السر هنا: صغرنا عرض الصورة نفسها لتترك مسافة أمان عن الجوانب */
+    height: 135px;        /* تقليل الارتفاع لتصبح الصورة متناسقة وملمومة */
+    object-fit: cover;    /* تعود لتنحت وتدوّر زوايا الصورة نفسها مباشرة */
+    border-radius: 24px;  /* الكيرف الفخم على أطراف الصورة الحقيقية */
+    margin: 10px auto 0;  /* توسيط الصورة داخل الكرت وترك مسافة جمالية من الأعلى */
+    display: block;
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
+    animation: floatImage 4s ease-in-out infinite;
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-.category-card h3 {
-    color: #fff;
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 0;
+.category-card:hover img {
+    animation: none;
+    transform: scale(1.04) translateY(-4px); /* زووم خفيف ممتع عند التمرير بدون تشويه */
+    filter: drop-shadow(0 15px 25px rgba(0, 242, 254, 0.6));
 }
 
-.category-card p {
-    color: #72767d;
-    font-size: 0.82rem;
-    margin: 0;
-}
+.category-card h3 { color: #fff; font-size: 1.1rem; font-weight: 700; margin: 12px 0 6px; }
+.category-card p  { color: #72767d; font-size: 0.85rem; margin: 0 0 4px; }
 
 .category-card .enter-btn {
-    margin-top: 14px;
-    background: #60daf8;
+    margin-top: 12px;
+    background: #ff9f43;
     color: #111;
     border: none;
     padding: 12px 0;
@@ -500,10 +358,38 @@ nav a.active:hover {
     cursor: pointer;
     width: 100%;
     font-size: 0.98rem;
-    transition: background 0.3s;
+    transition: all 0.3s ease;
 }
 
-.category-card .enter-btn:hover { background: #e08528; }
+.category-card:hover .enter-btn {
+    background: #00f2fe !important;
+    color: #000000 !important;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.6) !important;
+}
+
+/* الأنميشنز كما هي بدون تغيير */
+@keyframes floatImage {
+    0%   { transform: translateY(0px); }
+    50%  { transform: translateY(-6px); }
+    100% { transform: translateY(0px); }
+}
+
+@keyframes jokerFlashGlow {
+    0%   { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
+    50%  { filter: brightness(1.35) drop-shadow(0 0 15px rgba(0, 242, 254, 0.9)); transform: scale(1.06); }
+    100% { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
+}
+
+/* 1. الحاوية (البوكس) هي اللي بتطفو باستمرار وبنعومة */
+.card-img-container, .category-card .card-img-container {
+    animation: floatImage 4s ease-in-out infinite;
+}
+
+/* 2. عند تمرير الماوس، الصورة اللي جوا الحاوية تعمل الوميض والتكبير الفخم */
+.product-item-card:hover .card-img-container img,
+.category-card:hover img {
+    animation: jokerFlashGlow 1.2s infinite ease-in-out;
+}
 
 /* ===================================================
    كروت المنتجات
@@ -515,64 +401,62 @@ nav a.active:hover {
 }
 
 .product-item-card {
-    background: rgba(20, 20, 30, 0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(20, 10, 35, 0.4);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
+    padding: 20px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     position: relative;
-    transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .product-item-card:hover {
-    border-color: rgba(0, 242, 254, 0.6);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-    transform: translateY(-3px);
+    transform: translateY(-5px);
+    border-color: rgba(0, 242, 254, 0.4);
+    box-shadow: 0 15px 35px rgba(0, 242, 254, 0.15);
 }
 
 .card-img-container {
+    background: transparent;
     width: 100%;
-    height: 180px;
-    overflow: hidden;
-    background: #0f0f18;
     display: flex;
-    align-items: center;
     justify-content: center;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 16px;
+    margin-bottom: 15px;
 }
 
 .card-img-container img {
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    border-radius: 12px;
     object-fit: contain;
-    transition: transform 0.3s;
-    border-radius: 16px;
+    transition: filter 0.3s ease, transform 0.3s ease;
 }
 
-.product-item-card:hover .card-img-container img { transform: scale(1.05); }
-
-.card-content {
-    padding: 18px 16px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
+@keyframes jokerFlashGlow {
+    0%   { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
+    50%  { filter: brightness(1.35) drop-shadow(0 0 15px rgba(0, 242, 254, 0.9)); transform: scale(1.08); }
+    100% { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
 }
 
-.card-content h3 {
-    color: #fff;
-    font-size: 1.05rem;
-    font-weight: 700;
-    margin-bottom: 8px;
+.product-item-card:hover .card-img-container img {
+    animation: jokerFlashGlow 1.2s infinite ease-in-out;
 }
+
+.card-content { padding: 0; display: flex; flex-direction: column; width: 100%; }
+.card-content h3 { color: #fff; font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
 
 .price-tag {
-    color: #ff9f43 !important;
+    color: #00f2fe !important;
     font-weight: 900 !important;
-    font-size: 1.3rem !important;
-    margin: 6px 0 12px !important;
+    font-size: 1.25rem !important;
+    margin: 5px 0 15px !important;
 }
 
 .buy-btn {
@@ -590,14 +474,9 @@ nav a.active:hover {
     margin-top: auto;
 }
 
-.buy-btn:hover {
-    background: #00f2fe;
-    box-shadow: 0 0 14px rgba(0, 242, 254, 0.4);
-}
+.buy-btn:hover { background: #00f2fe; box-shadow: 0 0 14px rgba(0, 242, 254, 0.4); }
 
-/* ===================================================
-   شارات الريجن
-   =================================================== */
+/* شارات الريجن */
 .region-badge {
     position: absolute;
     top: 12px; right: 12px;
@@ -619,26 +498,46 @@ nav a.active:hover {
 .badge-tr     { background: rgba(231, 76, 60, 0.2);  border: 1px solid rgba(231, 76, 60, 0.4);  color: #e74c3c; }
 
 /* ===================================================
-   زر العودة
+   زر الرجوع
    =================================================== */
-.back-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: #00f2fe;
-    color: #111;
+#filterTabs:has([data-filter="all"].active) ~ #back-container { display: none !important; }
+
+.back-to-main-btn {
+    background: linear-gradient(135deg, #00f0ff, #0072ff);
+    color: #ffffff;
     border: none;
-    padding: 10px 22px;
-    border-radius: 8px;
+    padding: 10px 20px;         /* حجم حشو متناسق ومريح */
+    font-size: 14px;             /* حجم خط مناسب تماماً للقوائم */
     font-weight: bold;
-    font-family: inherit;
+    border-radius: 30px;
     cursor: pointer;
-    margin-bottom: 20px;
-    font-size: 0.95rem;
-    transition: background 0.3s;
+    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    
+    /* 🌟 الحل النهائي لمشكلة الضخامة 🌟 */
+    display: flex !important;    
+    width: fit-content;          /* السر هنا: الزر سينكمش ليكون على قد النص والأيقونة بدون زيادة */
+    margin: 15px auto;           /* يضمن بقاء الزر متمركزاً في السنتر تماماً ومبتعداً عن الأطراف */
+    justify-content: center;     
+    align-items: center;
+    gap: 8px;                    /* مسافة ناعمة بين الأيقونة والنص */
+    
+    position: relative;
+    z-index: 2 !important;       
 }
 
-.back-btn:hover { background: #00f2fe; }
+/* تأثيرات الـ Hover والضغط لحركة ناعمة */
+.back-to-main-btn:hover { 
+    transform: translateY(-2px); 
+    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5); 
+}
+.back-to-main-btn:active { 
+    transform: translateY(1px); 
+}
+.back-to-main-btn i { 
+    font-size: 15px; 
+    color: #ffffff; 
+}
 
 /* ===================================================
    الفوتر
@@ -656,12 +555,7 @@ footer {
 .footer-container { max-width: 1200px; margin: 0 auto; }
 .footer-brand .logo-text { font-size: 1.8rem; font-weight: 900; letter-spacing: 1px; }
 .footer-slogan { color: #b9bbbe; font-size: 0.95rem; margin-top: 8px; margin-bottom: 20px; }
-.footer-divider {
-    border: 0; height: 1px;
-    background: linear-gradient(to right, transparent, rgba(255, 159, 67, 0.3), transparent);
-    margin: 20px 0;
-}
-
+.footer-divider { border: 0; height: 1px; background: linear-gradient(to right, transparent, rgba(255, 159, 67, 0.3), transparent); margin: 20px 0; }
 .payment-zone h4 { font-size: 1.1rem; margin-bottom: 14px; color: #fff; }
 .payment-methods { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
 .pay-item {
@@ -670,17 +564,9 @@ footer {
     padding: 10px 20px; border-radius: 8px;
     font-size: 0.9rem; font-weight: bold; color: #b9bbbe;
     display: flex; align-items: center; gap: 8px;
-    transition: all 0.3s ease;
-    cursor: default;
+    transition: all 0.3s ease; cursor: default;
 }
-
-.pay-item:hover {
-    color: #00f2fe; border-color: #00f2fe;
-    background: rgba(0, 242, 254, 0.05);
-    box-shadow: 0 0 12px rgba(0, 242, 254, 0.25);
-    transform: translateY(-3px);
-}
-
+.pay-item:hover { color: #00f2fe; border-color: #00f2fe; background: rgba(0, 242, 254, 0.05); box-shadow: 0 0 12px rgba(0, 242, 254, 0.25); transform: translateY(-3px); }
 .pay-item i { font-size: 1.1rem; color: #ff9f43; }
 .copyright { font-size: 0.82rem; color: #555; margin-top: 20px; }
 
@@ -692,14 +578,12 @@ footer {
     width: 100vw; height: 100vh;
     background: rgba(7, 7, 13, 0.88);
     backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
     z-index: 99999;
     display: none;
     align-items: center; justify-content: center;
     transition: opacity 0.3s ease-in-out;
     opacity: 0;
 }
-
 .modal-overlay.active { display: flex !important; opacity: 1; }
 
 .delivery-container {
@@ -712,311 +596,117 @@ footer {
     box-shadow: 0 0 40px rgba(255, 159, 67, 0.25);
     position: relative;
 }
-
 .delivery-container h3 { color: #ff9f43; margin-bottom: 10px; font-size: 1.3rem; font-weight: 800; }
 .delivery-container input[type="email"] {
     width: 100%; padding: 12px 14px;
     border-radius: 8px; border: 1px solid #333;
     background: #1a1a28; color: #fff;
     box-sizing: border-box; direction: ltr; text-align: left;
-    font-size: 0.95rem; outline: none;
-    transition: border-color 0.3s;
+    font-size: 0.95rem; outline: none; transition: border-color 0.3s;
 }
-
 .delivery-container input[type="email"]:focus { border-color: #ff9f43; }
-
 .close-modal-btn {
     position: absolute; top: 14px; right: 18px;
     background: transparent; border: none;
     color: #555; font-size: 26px; cursor: pointer;
     line-height: 1; transition: color 0.3s;
 }
-
 .close-modal-btn:hover { color: #00f2fe; }
 
 /* ===================================================
-   Legacy (للتوافق مع القديم)
+   Responsive Mobile - تعديل بروفشنال متكامل للشاشات الذكية
    =================================================== */
+@media (max-width: 768px) {
+    .header-container { 
+        padding: 20px 15px; 
+        flex-direction: column; 
+        gap: 18px; 
+        text-align: center;
+    }
+    
+    .logo-text { font-size: 1.8rem; letter-spacing: 2px; }
+    .header-image { width: 70px; height: 70px; }
+    .search-container { width: 100%; max-width: 100%; }
+    
+    nav { 
+        width: 100%; 
+        justify-content: center; 
+        gap: 4px;
+    }
+    nav a, .dropdown-btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* حماية صندوق القائمة المنسدلة من الخروج عن الشاشة */
+    .dropdown-menu {
+        right: 50%;
+        transform: translateX(50%);
+        width: 290px;
+    }
+    .dropdown-menu.active {
+        transform: translateX(50%);
+        margin-top: 12px;
+    }
+
+    /* تعديل شريط الفلترة ليكون قابل للتمرير الأفقي بلمسة إصبع وبدون زحام */
+    .filter-container { 
+        width: 100%; 
+        padding: 10px 15px; 
+        gap: 10px; 
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        overflow-x: auto;
+        border-radius: 25px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .filter-container::-webkit-scrollbar {
+        display: none; /* إخفاء خط السكرول المزعج للمظهر الاحترافي */
+    }
+    .filter-btn { 
+        padding: 8px 16px !important; 
+        font-size: 14px; 
+        flex-shrink: 0;
+    }
+
+    /* عرض كرتين متجاورين بشكل منظم ومريح بدلاً من كرت واحد طويل */
+    #mainCategories, .products-grid { 
+        grid-template-columns: repeat(2, 1fr); 
+        gap: 12px; 
+    }
+    
+    .main-container { width: 95%; padding: 20px 10px; }
+    
+    /* تعديلات أحجام الكروت على الموبايل */
+    .category-card { padding: 8px; }
+    .category-card img { height: 110px; border-radius: 10px; }
+    .category-card h3 { font-size: 0.9rem; }
+    .category-card p { font-size: 0.75rem; }
+    .category-card .enter-btn, .buy-btn { padding: 10px 0; font-size: 0.88rem; }
+    
+    .product-item-card { padding: 12px; }
+    .price-tag { font-size: 1.1rem !important; margin: 5px 0 10px !important; }
+    .card-content h3 { font-size: 0.9rem; min-height: 38px; display: flex; align-items: center; justify-content: center; }
+}
+
+@media (max-width: 400px) {
+    /* للهواتف الصغيرة جداً لتفادي تداخل الكروت */
+    #mainCategories, .products-grid { 
+        grid-template-columns: 1fr; 
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    #mainCategories, .products-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1025px) {
+    #mainCategories { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+    .products-grid  { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }
+}
+
+/* Legacy */
 #category-menu { display: none; }
 #products-container { display: none; }
 .product-card { display: none; }
 
-/* ===================================================
-   تعديلات الهاتف (Responsive Design)
-   =================================================== */
-@media (max-width: 768px) {
-    /* تصغير الهيدر ليتناسب مع شاشة الهاتف */
-    .header-container {
-        padding: 15px 20px;
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .logo-text { font-size: 1.6rem; }
-    .header-image { width: 60px; height: 60px; }
-
-    /* جعل شريط البحث والناف يأخذان عرضاً كاملاً */
-    .search-container {
-        width: 100%;
-        max-width: 100%;
-    }
-
-    nav { width: 100%; justify-content: center; }
-
-    /* تحسين قسم الهيرو */
-    .hero {
-        padding: 25px 15px;
-        margin: 20px 10px;
-    }
-    .hero h1 { font-size: 26px; }
-
-    /* جعل الكروت تأخذ عرض الشاشة بالكامل */
-    #mainCategories, .products-grid {
-        grid-template-columns: 1fr; /* عمود واحد فقط */
-        gap: 15px;
-    }
-
-    .main-container {
-        width: 95%;
-        padding: 20px 15px;
-    }
-
-    /* تحسين شريط الفلتر */
-    .filter-container {
-        width: 100%;
-        padding: 10px;
-        gap: 8px;
-    }
-    .filter-btn {
-        padding: 8px 15px;
-        font-size: 14px;
-    }
-}
-
-@media (min-width: 769px) {
-    /* إخفاء زر العودة في الشاشات الكبيرة */
-    .back-btn { display: none; }
-}
-
-@media (min-width: 1025px) {
-    /* تحسين عرض الكروت في الشاشات الكبيرة */
-    #mainCategories {
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    }
-    .products-grid {
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    }
-}
-
-/* تنسيق زر الرجوع الجديد */
-.back-to-main-btn {
-    background: linear-gradient(135deg, #00f0ff, #0072ff); /* تدرج لوني لبني متناسق مع الموقع */
-    color: #ffffff;
-    border: none;
-    padding: 10px 25px;
-    font-size: 15px;
-    font-weight: bold;
-    border-radius: 30px; /* حواف دائرية بالكامل ليصبح مثل الكبسولة */
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3); /* توهج لبني خفيف */
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px; /* مسافة بين السهم والنص */
-}
-
-.back-to-main-btn:hover {
-    transform: translateY(-2px); /* رفعة خفيفة عند تمرير الماوس */
-    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5); /* زيادة التوهج */
-}
-
-.back-to-main-btn:active {
-    transform: translateY(1px);
-}
-
-.back-to-main-btn i {
-    font-size: 16px;
-    color: #ffffff;
-}
-
-.back-to-main-btn:hover i {
-    color: #00f2fe; /* تغيير لون السهم عند التمرير */
-}
-
-.back-to-main-btn {
-    display: inline-flex !important; /* إجبار الزر على أخذ مساحة وظهور */
-    visibility: visible !important;   /* إجبار المتصفح على جعله مرئياً */
-    position: relative;
-    z-index: 9999 !important;        /* رفعه فوق أي عنصر أو خلفية في الموقع */
-    /* باقي التنسيقات السابقة... */
-}
-
-/* تنسيق زر الرجوع الأساسي */
-.back-to-main-btn {
-    background: linear-gradient(135deg, #00f0ff, #0072ff);
-    color: #ffffff;
-    border: none;
-    padding: 10px 25px;
-    font-size: 15px;
-    font-weight: bold;
-    border-radius: 30px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.back-to-main-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 240, 255, 0.5);
-}
-
-/* ==========================================================
-   السر البرمجي: التحكم بالظهور والاختفاء عبر الـ CSS فقط
-   ========================================================== */
-
-/* عندما يكون زر "الكل" بداخل شريط الفلترة نشطاً (active)، قم بإخفاء حاوية زر الرجوع تماماً */
-#filterTabs:has([data-filter="all"].active) ~ #back-container {
-    display: none !important;
-}
-
-/* ===================================================
-   تطابق تصميم كروت المنتجات مع كروت الأقسام تماماً
-   =================================================== */
-
-/* تعديل هيكل كرت المنتج ليصبح شفافاً وبنفس حواف الأقسام */
-.product-item-card {
-    background: rgba(20, 10, 35, 0.4) !important; /* خلفية داكنة شفافة تطابق ثيم الموقع */
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 16px !important;
-    padding: 20px !important;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    text-align: center;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
-    overflow: hidden;
-}
-
-/* تأثير التمرير (Hover) مثل كروت الأقسام */
-.product-item-card:hover {
-    transform: translateY(-5px) !important;
-    border-color: rgba(0, 242, 254, 0.4) !important; /* توهج نيوني خفيف عند التمرير */
-    box-shadow: 0 15px 35px rgba(0, 242, 254, 0.15) !important;
-}
-
-/* ضبط حاوية الصورة داخل كرت المنتج */
-.product-item-card .card-img-container {
-    background: transparent !important; /* إزالة أي خلفية ملونة للصورة */
-    padding: 0 !important;
-    margin-bottom: 15px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-
-/* ضبط حجم وحواف الصورة لتطابق الأقسام */
-.product-item-card .card-img-container img {
-    width: 100% !important;
-    max-width: 160px !important; /* حجم متناسق داخل الكرت */
-    height: auto !important;
-    border-radius: 12px !important;
-    object-fit: contain;
-}
-
-/* تحسين شكل النصوص داخل الكرت */
-.product-item-card h3 {
-    font-size: 1.15rem !important;
-    color: #ffffff !important;
-    margin-bottom: 8px !important;
-    font-weight: 600;
-}
-
-/* سعر المنتج المريح للعين */
-.product-item-card .price-tag {
-    color: #00f2fe !important; /* لون نيوني هادئ يتماشى مع هوية الجوكر */
-    font-size: 1.25rem !important;
-    margin: 5px 0 15px 0 !important;
-}
-
-/* شارات الريجن (العلم) لتكون متناسقة مع التصميم الجديد */
-.product-item-card .region-badge {
-    background: rgba(0, 0, 0, 0.6) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(5px);
-}
-
-/* ===================================================
-   تحديث حجم صور المنتجات وتأثير الوميض الاحترافي
-   =================================================== */
-
-/* 1. تكبير حجم الصور لتصبح بحجم متوسط وممتاز */
-.product-item-card .card-img-container img {
-    width: 100% !important;
-    max-width: 200px !important; /* حجم متناسق ومثالي مريح للعين */
-    height: auto !important;
-    border-radius: 12px !important;
-    object-fit: contain;
-    transition: filter 0.3s ease, transform 0.3s ease !important; /* تنعيم حركة دخول وخروج الماوس */
-}
-
-/* 2. تفعيل تأثير الوميض السريع والقوي بمجرد لمس مؤشر الماوس */
-.product-item-card:hover .card-img-container img {
-    animation: jokerFlashGlow 1.2s infinite ease-in-out; /* سرعة الوميض 1.2 ثانية لتكون حركية وحيوية */
-}
-
-/* 3. حركة الوميض النيوني (تردد الإضاءة والتوهج الأزرق) */
-@keyframes jokerFlashGlow {
-    0% {
-        filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0));
-        transform: scale(1);
-    }
-    50% {
-        filter: brightness(1.35) drop-shadow(0 0 15px rgba(0, 242, 254, 0.9)); /* وميض نيوني واضح وقوي */
-        transform: scale(1.08); /* نبضة تكبير خفيفة جداً مع الوميض */
-    }
-    100% {
-        filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0));
-        transform: scale(1);
-    }
-}
-
-/* ===================================================
-   تغيير لون زر دخول القسم ليطابق زر البطاقات البرتقالي
-   =================================================== */
-
-.category-card .enter-btn {
-    background: #ff9f43 !important; /* اللون البرتقالي المميز لزر الشراء */
-    color: #111 !important;        /* لون النص الداكن لتباُين ممتاز ووضوح عالٍ */
-    font-weight: bold !important;   /* جعل الخط عريضاً واحترافياً */
-    border: none !important;        /* إزالة أي حدود قديمة */
-    border-radius: 8px !important;  /* حواف ناعمة متناسقة مع أزرار الموقع */
-    transition: background 0.3s ease, transform 0.2s ease !important; /* تنعيم الحركة */
-}
-
-/* تأثير تفاعلي فخم عند تمرير الماوس فوق الزر */
-.category-card .enter-btn:hover {
-    background: #ffb366 !important; /* درجة برتقالي أفتح قليلاً تعطي إيحاء بالضغط */
-    transform: scale(1.03) !important; /* تكبير نبضي خفيف جداً للتفاعل */
-    cursor: pointer;
-}
-
-/* ===================================================
-   إصلاح وإخفاء الشريط الأزرق السفلي على الهواتف
-   =================================================== */
-@media (max-width: 768px) {
-    /* استهداف أي شريط سفلي ثابت أو فوتر ممتد */
-    .mobile-nav, .bottom-bar, .fixed-footer, [class*="bottom-"] {
-        background-color: #0b0615 !important; /* تحويله للون الداكن المطابق لثيم المتجر */
-        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-    }
-    
-    /* إذا كان الشريط عبارة عن عنصر زائد وتريد حذفه تماماً من شاشة الموبايل */
-    /* .mobile-nav { display: none !important; } */
-}
