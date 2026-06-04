@@ -17,13 +17,20 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", 
+                "https://fonts.googleapis.com",
+                "https://cdnjs.cloudflare.com"],
+            fontSrc: ["'self'", 
+                "https://fonts.gstatic.com",
+                "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https:"],
-            scriptSrc: ["'self'", "'unsafe-inline'"], // عدّله لاحقاً إذا أضفت CDN
+            scriptSrc: ["'self'", "'unsafe-inline'",
+                "https://www.paypal.com",
+                "https://cdnjs.cloudflare.com"],
+            frameSrc: ["https://www.paypal.com"],
         },
     },
-    crossOriginEmbedderPolicy: false, // مهم لعدم كسر الصور
+    crossOriginEmbedderPolicy: false,
 }));
 
 // ====================================================
