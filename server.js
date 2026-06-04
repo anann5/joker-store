@@ -5,7 +5,6 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize'); // 🔥 أضفنا حماية المونجو
 
 const app = express();
 
@@ -42,10 +41,10 @@ app.use(helmet({
 // 🛡️ طبقة الأمان الثانية: Rate Limiting (منع الهجمات)
 // ====================================================
 
-// حد عام لكل الموقع (يقرأ الـ IP الحقيقي الآن بفضل trust proxy)
+// حد عام لكل الموقع
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 150, // رفعناه قليلاً لراحة المستخدمين أثناء التنقل بين الصفحات
+    max: 150, 
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'كثير طلبات من نفس الـ IP، انتظر شوي وحاول مجدداً' }
@@ -74,8 +73,30 @@ mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ تم الاتصال بمونجو بنجاح!'))
     .catch((err) => console.log('⚠️ لم يتم الاتصال بمونجو:', err.message));
 
+// 1. أولاً: السيرفر يقرأ ويحلل بيانات الـ JSON القادمة من المستخدم
 app.use(express.json({ limit: '10kb' })); 
-app.use(mongoSanitize()); // 🔥 تنظيف المدخلات تلقائياً لحماية قاعدة البيانات من الـ Injection
+
+// 2. ثانياً 🔥 (الترتيب الصحيح): كود الحماية المخصص يشتغل فوراً بعد تحليل الـ JSON لتنظيف الـ req.body بنجاح
+app.use((req, res, next) => {
+    const sanitizeObject = (obj) => {
+        if (obj && typeof obj === 'object') {
+            for (const key in obj) {
+                // إذا كان المفتاح يبدأ بـ $ أو يحتوي على نقطة (محاولة حقن NoSQL)، يتم حذفه فوراً
+                if (key.startsWith('$') || key.includes('.')) {
+                    delete obj[key];
+                } else if (typeof obj[key] === 'object') {
+                    sanitizeObject(obj[key]); // تنظيف الكائنات المتداخلة
+                }
+            }
+        }
+    };
+    
+    sanitizeObject(req.body);
+    sanitizeObject(req.params);
+    sanitizeObject(req.query); 
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ====================================================
