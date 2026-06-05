@@ -311,46 +311,60 @@ nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
 }
 
 /* ===================================================
-   كروت الأقسام — تم التنظيف ومنع مشاكل التمدد والكيرفات
+   كروت الأقسام — تم تصحيح المظهر الداكن مع الحفاظ الكامل على الأنميشنز
    =================================================== */
 .category-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1% solid rgba(255, 255, 255, 0.05);
+    /* 🌟 تم تحويل الخلفية للون الداكن العميق مثل كروت المنتجات */
+    background: #0f0c1be0 !important; 
+    border: 1px solid rgba(255, 255, 255, 0.05) !important; /* تصحيح الـ 1% إلى 1px */
     border-radius: 16px;
     padding: 15px;
     text-align: center;
     transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
     cursor: pointer;
-    overflow: hidden; /* تم التعديل لمنع تشوه الكيرف الفخم */
+    overflow: hidden; 
     position: relative;
 }
 
 .category-card img {
-    width: 220px;          /* السر هنا: صغرنا عرض الصورة نفسها لتترك مسافة أمان عن الجوانب */
-    height: 135px;        /* تقليل الارتفاع لتصبح الصورة متناسقة وملمومة */
-    object-fit: cover;    /* تعود لتنحت وتدوّر زوايا الصورة نفسها مباشرة */
-    border-radius: 24px;  /* الكيرف الفخم على أطراف الصورة الحقيقية */
-    margin: 10px auto 0;  /* توسيط الصورة داخل الكرت وترك مسافة جمالية من الأعلى */
+    width: 220px;          
+    height: 135px;        
+    object-fit: cover;    
+    border-radius: 24px;  
+    margin: 10px auto 0;  
     display: block;
     filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
     animation: floatImage 4s ease-in-out infinite;
     transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    
+    /* 🌟 دمج خلفية اللوجوهات الذكي مع الخلفية الداكنة الجديدة */
+    mix-blend-mode: lighten; 
 }
 
+/* 🌟 تم الحفاظ على أنميشن الوميض الأصلي jokerFlashGlow الخاص بك عند الـ Hover */
 .category-card:hover img {
-    animation: none;
-    transform: scale(1.04) translateY(-4px); /* زووم خفيف ممتع عند التمرير بدون تشويه */
-    filter: drop-shadow(0 15px 25px rgba(0, 242, 254, 0.6));
+    animation: jokerFlashGlow 1.2s infinite ease-in-out !important;
 }
 
-.category-card h3 { color: #fff; font-size: 1.1rem; font-weight: 700; margin: 12px 0 6px; }
-.category-card p  { color: #72767d; font-size: 0.85rem; margin: 0 0 4px; }
+.category-card h3 { 
+    color: #fff; 
+    font-size: 1.1rem; 
+    font-weight: 700; 
+    margin: 12px 0 6px; 
+}
 
+.category-card p  { 
+    color: #72767d; 
+    font-size: 0.85rem; 
+    margin: 0 0 4px; 
+}
+
+/* 🌟 تم تحويل زر الدخول ليصبح داكناً ومتناسقاً مع زر "شراء واستلام الكود" اللّي بالمنتجات */
 .category-card .enter-btn {
     margin-top: 12px;
-    background: #ff9f43;
-    color: #111;
-    border: none;
+    background: #19142d !important; /* نفس لون زر الشراء الداكن */
+    color: #ffffff !important;        /* نص أبيض فخم */
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     padding: 12px 0;
     border-radius: 8px;
     font-weight: bold;
@@ -361,13 +375,16 @@ nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
     transition: all 0.3s ease;
 }
 
+/* 🌟 الحفاظ على تأثير تحول زر الدخول للنيون المتوهج عند الـ Hover */
 .category-card:hover .enter-btn {
     background: #00f2fe !important;
     color: #000000 !important;
     box-shadow: 0 0 15px rgba(0, 242, 254, 0.6) !important;
 }
 
-/* الأنميشنز كما هي بدون تغيير */
+/* ==========================================
+   الأنميشنز الأصلية الخاصة بك (بدون أي تعديل)
+   ========================================== */
 @keyframes floatImage {
     0%   { transform: translateY(0px); }
     50%  { transform: translateY(-6px); }
@@ -385,7 +402,7 @@ nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
     animation: floatImage 4s ease-in-out infinite;
 }
 
-/* 2. عند تمرير الماوس، الصورة اللي جوا الحاوية تعمل الوميض والتكبير الفخم */
+/* 2. عند تمرير الماوس، الصورة تعمل الوميض والتكبير الفخم */
 .product-item-card:hover .card-img-container img,
 .category-card:hover img {
     animation: jokerFlashGlow 1.2s infinite ease-in-out;
