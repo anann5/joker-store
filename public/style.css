@@ -290,10 +290,12 @@ nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
 }
 
 /* ===================================================
-   الحاوية الرئيسية
+   🎨 الهوية البصرية النيونية الموحدة (JOKER STORE)
    =================================================== */
+
+/* الحاوية الرئيسية الداكنة الفخمة */
 .main-container {
-    background: rgba(13, 13, 22, 0.65);
+    background: #0f0c1be0 !important;
     backdrop-filter: blur(15px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 24px;
@@ -304,86 +306,187 @@ nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
     min-height: 400px;
 }
 
+/* توزيع الشاشات الشبكي الموحد */
 #mainCategories {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 25px;
 }
 
-/* ===================================================
-   كروت الأقسام — تم تصحيح المظهر الداكن مع الحفاظ الكامل على الأنميشنز
-   =================================================== */
-.category-card {
-    /* 🌟 تم تحويل الخلفية للون الداكن العميق مثل كروت المنتجات */
-    background: #0f0c1be0 !important; 
-    border: 1px solid rgba(255, 255, 255, 0.05) !important; /* تصحيح الـ 1% إلى 1px */
-    border-radius: 16px;
-    padding: 15px;
-    text-align: center;
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-    cursor: pointer;
-    overflow: hidden; 
-    position: relative;
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 25px;
 }
 
+/* ===================================================
+   🎨 الهوية البصرية النيونية الموحدة (JOKER STORE)
+   =================================================== */
+
+/* الحاوية الرئيسية الداكنة الفخمة */
+.main-container {
+    background: #0f0c1be0 !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    padding: 35px 30px;
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto 40px;
+    min-height: 400px;
+}
+
+/* توزيع الشاشات الشبكي الموحد */
+#mainCategories {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 25px;
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 25px;
+}
+
+/* ===================================================
+   💎 التوحيد الشامل للكروت (الأقسام الرئيسية + بطاقات الألعاب)
+   =================================================== */
+.category-card, .product-item-card {
+    background: rgba(20, 10, 35, 0.4) !important;
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 16px;
+    padding: 20px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                box-shadow 0.4s cubic-bezier(0.25, 1, 0.5, 1), 
+                border-color 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    cursor: pointer;
+}
+
+/* 🔥 الحركة الحية عند ملامسة الماوس للبوكس */
+.category-card:hover, .product-item-card:hover {
+    transform: translateY(-5px) !important;
+    border-color: rgba(0, 242, 254, 0.5) !important;
+    box-shadow: 0 15px 35px rgba(0, 242, 254, 0.15) !important;
+}
+
+/* ===================================================
+   🖼️ الصور وحاويات العرض (حماية الكيرفات والنبض المستمر)
+   =================================================== */
+
+/* حاوية صور المنتجات الافتراضية */
+.card-img-container, .category-card .card-img-container {
+    background: transparent;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+/* 🌟 خصائص صور الأقسام الرئيسية (إرجاع الكيرف الأصلي الفخم 24px) */
 .category-card img {
-    width: 220px;          
-    height: 135px;        
-    object-fit: cover;    
-    border-radius: 24px;  
-    margin: 10px auto 0;  
+    width: 200px !important;
+    height: 135px !important;
+    object-fit: cover !important;
+    border-radius: 24px !important; /* 👈 الكيرف المظبوط للأقسام */
+    margin: 10px auto 0 !important;
     display: block;
     filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
-    animation: floatImage 4s ease-in-out infinite;
+    mix-blend-mode: lighten;
+    animation: floatImage 4s ease-in-out infinite !important;
     transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
-    
-    /* 🌟 دمج خلفية اللوجوهات الذكي مع الخلفية الداكنة الجديدة */
-    mix-blend-mode: lighten; 
 }
 
-/* 🌟 تم الحفاظ على أنميشن الوميض الأصلي jokerFlashGlow الخاص بك عند الـ Hover */
-.category-card:hover img {
+/* 🌟 خصائص صور الألعاب والمنتجات الفرعية (حفظ الكيرف 12px) */
+.card-img-container img {
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    border-radius: 12px !important; /* 👈 الكيرف المظبوط للألعاب */
+    object-fit: contain;
+    display: block;
+    margin: 0 auto;
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.5));
+    animation: floatImage 4s ease-in-out infinite !important;
+    transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+/* 🔥 تفعيل وميض ونبض الصور الموحد عند الـ Hover */
+.category-card:hover img, 
+.product-item-card:hover .card-img-container img {
     animation: jokerFlashGlow 1.2s infinite ease-in-out !important;
 }
 
-.category-card h3 { 
-    color: #fff; 
-    font-size: 1.1rem; 
-    font-weight: 700; 
-    margin: 12px 0 6px; 
-}
-
-.category-card p  { 
-    color: #72767d; 
-    font-size: 0.85rem; 
-    margin: 0 0 4px; 
-}
-
-/* 🌟 تم تحويل زر الدخول ليصبح داكناً ومتناسقاً مع زر "شراء واستلام الكود" اللّي بالمنتجات */
-.category-card .enter-btn {
+/* ===================================================
+   ✍️ النصوص والتسعير الموحد
+   =================================================== */
+.category-card h3, .card-content h3 {
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 8px;
     margin-top: 12px;
-    background: #19142d !important; /* نفس لون زر الشراء الداكن */
-    color: #ffffff !important;        /* نص أبيض فخم */
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    padding: 12px 0;
+}
+
+.category-card p, .card-content p {
+    color: #72767d;
+    font-size: 0.85rem;
+    margin: 0 0 4px;
+}
+
+.card-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.price-tag {
+    color: #00f2fe !important;
+    font-weight: 900 !important;
+    font-size: 1.25rem !important;
+    margin: 5px 0 15px !important;
+}
+
+/* ===================================================
+   ⚡ توحيد شكل وتوهج الأزرار باللون النيون الفيروزي بالكامل
+   =================================================== */
+.category-card .enter-btn, .buy-btn {
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #00f0ff, #0072ff) !important;
+    color: #ffffff !important;
+    border: none !important;
     border-radius: 8px;
     font-weight: bold;
     font-family: inherit;
     cursor: pointer;
-    width: 100%;
     font-size: 0.98rem;
-    transition: all 0.3s ease;
+    margin-top: auto;
+    box-shadow: 0 4px 12px rgba(0, 242, 254, 0.2);
+    transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
 }
 
-/* 🌟 الحفاظ على تأثير تحول زر الدخول للنيون المتوهج عند الـ Hover */
-.category-card:hover .enter-btn {
-    background: #00f2fe !important;
-    color: #000000 !important;
-    box-shadow: 0 0 15px rgba(0, 242, 254, 0.6) !important;
+.category-card:hover .enter-btn, .buy-btn:hover {
+    background: linear-gradient(135deg, #00ffff, #0055ff) !important;
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.6) !important;
+    transform: scale(1.02);
+}
+
+.category-card .enter-btn:active, .buy-btn:active {
+    transform: scale(0.97);
 }
 
 /* ==========================================
-   الأنميشنز الأصلية الخاصة بك (بدون أي تعديل)
+   🔄 أنميشنز النبض والطفو الرياضية الصافية
    ========================================== */
 @keyframes floatImage {
     0%   { transform: translateY(0px); }
@@ -396,102 +499,6 @@ nav a.active:hover { color: #00f2fe; border-color: #00f2fe; }
     50%  { filter: brightness(1.35) drop-shadow(0 0 15px rgba(0, 242, 254, 0.9)); transform: scale(1.06); }
     100% { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
 }
-
-/* 1. الحاوية (البوكس) هي اللي بتطفو باستمرار وبنعومة */
-.card-img-container, .category-card .card-img-container {
-    animation: floatImage 4s ease-in-out infinite;
-}
-
-/* 2. عند تمرير الماوس، الصورة تعمل الوميض والتكبير الفخم */
-.product-item-card:hover .card-img-container img,
-.category-card:hover img {
-    animation: jokerFlashGlow 1.2s infinite ease-in-out;
-}
-
-/* ===================================================
-   كروت المنتجات
-   =================================================== */
-.products-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-    gap: 25px;
-}
-
-.product-item-card {
-    background: rgba(20, 10, 35, 0.4);
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 20px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    position: relative;
-    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-}
-
-.product-item-card:hover {
-    transform: translateY(-5px);
-    border-color: rgba(0, 242, 254, 0.4);
-    box-shadow: 0 15px 35px rgba(0, 242, 254, 0.15);
-}
-
-.card-img-container {
-    background: transparent;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    margin-bottom: 15px;
-}
-
-.card-img-container img {
-    width: 100%;
-    max-width: 200px;
-    height: auto;
-    border-radius: 12px;
-    object-fit: contain;
-    transition: filter 0.3s ease, transform 0.3s ease;
-}
-
-@keyframes jokerFlashGlow {
-    0%   { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
-    50%  { filter: brightness(1.35) drop-shadow(0 0 15px rgba(0, 242, 254, 0.9)); transform: scale(1.08); }
-    100% { filter: brightness(1) drop-shadow(0 0 0px rgba(0, 242, 254, 0)); transform: scale(1); }
-}
-
-.product-item-card:hover .card-img-container img {
-    animation: jokerFlashGlow 1.2s infinite ease-in-out;
-}
-
-.card-content { padding: 0; display: flex; flex-direction: column; width: 100%; }
-.card-content h3 { color: #fff; font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
-
-.price-tag {
-    color: #00f2fe !important;
-    font-weight: 900 !important;
-    font-size: 1.25rem !important;
-    margin: 5px 0 15px !important;
-}
-
-.buy-btn {
-    width: 100%;
-    padding: 13px;
-    background: #ff9f43;
-    color: #111;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    font-family: inherit;
-    cursor: pointer;
-    font-size: 0.98rem;
-    transition: background 0.3s, box-shadow 0.3s;
-    margin-top: auto;
-}
-
-.buy-btn:hover { background: #00f2fe; box-shadow: 0 0 14px rgba(0, 242, 254, 0.4); }
 
 /* شارات الريجن */
 .region-badge {
