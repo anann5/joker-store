@@ -64,38 +64,40 @@
 
     <script>
         async function login() {
-            const password = document.getElementById('passwordInput').value.trim();
+    const password = document.getElementById('passwordInput').value.trim();
+    
+    if (!password) return;
+
+    try {
+        // إرسال طلب بوست آمن ومحمي بالسيرفر
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // 🔥 حفظ التوكن المشفر والمؤقت فقط (وليس كلمة السر الصريحة!)
+            sessionStorage.setItem('adminToken', data.token);
             
-            if (!password) return;
-
-            try {
-                const response = await fetch('/admin', {
-                    headers: { 'x-admin-token': password }
-                });
-
-                if (response.ok) {
-                    // حفظ الـ token مؤقتاً في الجلسة
-                   sessionStorage.setItem('adminToken', password);
-// فتح الصفحة بطريقة صحيحة
-const html = await response.text();
-document.open('text/html', 'replace');
-document.write(html);
-document.close();
-// تحديث الـ URL
-window.history.pushState({}, '', '/admin');
-                } else {
-                    document.getElementById('errorMsg').style.display = 'block';
-                }
-            } catch (err) {
-                document.getElementById('errorMsg').style.display = 'block';
-            }
+            // تحويل المتصفح لصفحة الأدمن مع تمرير التوكن لقراءتها بنجاح وآمان
+            window.location.href = `/admin?token=${data.token}`;
+        } else {
+            document.getElementById('errorMsg').innerText = `❌ ${data.error || 'كلمة السر غلط!'}`;
+            document.getElementById('errorMsg').style.display = 'block';
         }
+    } catch (err) {
+        document.getElementById('errorMsg').innerText = '❌ حدث خطأ في الاتصال بالسيرفر';
+        document.getElementById('errorMsg').style.display = 'block';
+    }
+}
 
-        // دخول بضغط Enter
-        document.getElementById('passwordInput')
-            .addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') login();
-            });
+// دخول بضغط Enter
+document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') login();
+});
     </script>
 </body>
 </html>

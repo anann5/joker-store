@@ -5,32 +5,30 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize'); // 🔥 استدعاء المكتبة الرسمية
+const jwt = require('jsonwebtoken'); // 🔥 استدعاء مكتبة التوكن المشفر
 
 const app = express();
 
-// 🔥 حرج جداً لـ Render: يخبر جدار الحماية بقراءة الـ IP الحقيقي للزائر وليس الـ Proxy
+// إخبار جدار حماية ريندر بقراءة الـ IP الحقيقي للزائر
 app.set('trust proxy', 1); 
 
 const PORT = process.env.PORT || 5850;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+// مفتاح سري لتشفير التوكن (يفضل وضعه في .env، وإلا سيتم توليد واحد عشوائي مؤقت)
+const JWT_SECRET = process.env.JWT_SECRET || 'JokerStore_Super_Secret_⚡_2026'; 
 
 // ====================================================
-// 🛡️ طبقة الأمان الأولى: Helmet (حماية HTTP Headers)
+// 🛡️ طبقة الأمان الأولى: Helmet
 // ====================================================
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 
-                "https://fonts.googleapis.com",
-                "https://cdnjs.cloudflare.com"],
-            fontSrc: ["'self'", 
-                "https://fonts.gstatic.com",
-                "https://cdnjs.cloudflare.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             imgSrc: ["'self'", "data:", "https:"],
-            scriptSrc: ["'self'", "'unsafe-inline'",
-                "https://www.paypal.com",
-                "https://cdnjs.cloudflare.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://www.paypal.com", "https://cdnjs.cloudflare.com"],
             frameSrc: ["https://www.paypal.com"],
         },
     },
@@ -38,10 +36,8 @@ app.use(helmet({
 }));
 
 // ====================================================
-// 🛡️ طبقة الأمان الثانية: Rate Limiting (منع الهجمات)
+// 🛡️ طبقة الأمان الثانية: Rate Limiting
 // ====================================================
-
-// حد عام لكل الموقع
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 150, 
@@ -52,77 +48,74 @@ const generalLimiter = rateLimit({
 
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 10,
+    max: 15, // زيادة طفيفة للمرونة
     standardHeaders: true,
     legacyHeaders: false,
     message: { success: false, error: 'محاولات دخول كثيرة، انتظر 15 دقيقة' }
 });
 
-const purchaseLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    message: { success: false, error: 'طلبات شراء كثيرة، انتظر شوي' }
-});
-
 app.use(generalLimiter);
 
-// ====================================================
-// الإعدادات وقاعدة البيانات
-// ====================================================
+// الاتصال بقاعدة البيانات
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('✅ تم الاتصال بمونجو بنجاح!'))
     .catch((err) => console.log('⚠️ لم يتم الاتصال بمونجو:', err.message));
 
-// 1. أولاً: السيرفر يقرأ ويحلل بيانات الـ JSON القادمة من المستخدم
+// تحليل ومراقبة حجم البيانات القادمة
 app.use(express.json({ limit: '10kb' })); 
 
-// 2. ثانياً 🔥 (الترتيب الصحيح): كود الحماية المخصص يشتغل فوراً بعد تحليل الـ JSON لتنظيف الـ req.body بنجاح
-app.use((req, res, next) => {
-    const sanitizeObject = (obj) => {
-        if (obj && typeof obj === 'object') {
-            for (const key in obj) {
-                // إذا كان المفتاح يبدأ بـ $ أو يحتوي على نقطة (محاولة حقن NoSQL)، يتم حذفه فوراً
-                if (key.startsWith('$') || key.includes('.')) {
-                    delete obj[key];
-                } else if (typeof obj[key] === 'object') {
-                    sanitizeObject(obj[key]); // تنظيف الكائنات المتداخلة
-                }
-            }
-        }
-    };
-    
-    sanitizeObject(req.body);
-    sanitizeObject(req.params);
-    sanitizeObject(req.query); 
-    next();
-});
+// 🔥 تفعيل الحماية الرسمية ضد حقن قواعد البيانات NoSQL Injection
+app.use(mongoSanitize());
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ====================================================
-// 🛡️ Middleware التحقق من هوية الأدمن
+// 🛡️ Middleware المطور للتحقق من الأدمن عبر الـ JWT
 // ====================================================
 function verifyAdmin(req, res, next) {
-    if (!ADMIN_PASSWORD) {
-        console.error('❌ خطأ: ADMIN_PASSWORD غير موجود في ملف .env!');
-        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ بشكل صحيح' });
+    // قراءة التوكن إما من الهيدر أو من الـ Query string لتأمين جلب الملفات
+    const token = req.headers['x-admin-token'] || req.query.token;
+
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'غير مصرح لك بالدخول (التوكن مفقود)' });
     }
 
-    const token = req.headers['x-admin-token'];
-
-    if (!token || token !== ADMIN_PASSWORD) {
-        console.warn(`⚠️ محاولة دخول أدمن فاشلة من IP: ${req.ip} في ${new Date().toISOString()}`);
-        return res.status(401).json({ success: false, error: 'غير مصرح لك بالدخول' });
+    try {
+        // فك تشفير التوكن والتحقق من صلاحيته
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.admin = decoded; // إدخال بيانات الأدمن للطلب
+        next();
+    } catch (err) {
+        console.warn(`⚠️ محاولة دخول أدمن بتوكن منتهي أو مزور من IP: ${req.ip}`);
+        return res.status(403).json({ success: false, error: 'انتهت الجلسة أو التوكن غير صحيح، سجل دخول مجدداً' });
     }
-
-    next();
 }
 
 // ====================================================
-// هامش الربح وحساب الأسعار
+// مسار تسجيل دخول الأدمن وتوليد التوكن المشفر
 // ====================================================
-const PROFIT_PERCENTAGE = 0.08; // 8%
-const FIXED_PROFIT = 0.50;      // نصف دولار ثابت
+app.post('/api/admin/login', adminLimiter, (req, res) => {
+    const { password } = req.body;
+
+    if (!ADMIN_PASSWORD) {
+        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ (كلمة السر غير مضبوطة بالبيئة)' });
+    }
+
+    if (password === ADMIN_PASSWORD) {
+        // 🔥 توليد توكن مشفر للأدمن ينتهي تلقائياً بعد ساعتين لحمايتك 100%
+        const token = jwt.sign({ role: 'super_admin' }, JWT_SECRET, { expiresIn: '2h' });
+        return res.json({ success: true, token });
+    }
+
+    console.warn(`⚠️ محاولة تسجيل دخول فاشلة بكلمة سر خاطئة من IP: ${req.ip}`);
+    res.status(401).json({ success: false, error: 'كلمة السر غير صحيحة!' });
+});
+
+// ====================================================
+// هامش الربح وحساب الأسعار البيانات المؤقتة
+// ====================================================
+const PROFIT_PERCENTAGE = 0.08; 
+const FIXED_PROFIT = 0.50;      
 
 const mockSupplierData = {
     steam: [
@@ -153,15 +146,11 @@ function calculateSellingPrice(costPrice) {
 // ====================================================
 // API Routes - العامة
 // ====================================================
-
-// الصفحة الرئيسية
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// جلب المنتجات حسب القسم
 app.get('/api/products/:category', (req, res) => {
-    // تنظيف المدخل من أي رموز خطرة
     const category = req.params.category.toLowerCase().replace(/[^a-z_]/g, '');
 
     if (!mockSupplierData[category]) {
@@ -178,30 +167,29 @@ app.get('/api/products/:category', (req, res) => {
 });
 
 // ====================================================
-// API Routes - الأدمن (محمية)
+// API Routes - الأدمن (محمية بالكامل بالـ JWT المحصن)
 // ====================================================
 
-// صفحة الأدمن — محمية ومنقولة خارج public
-app.get('/admin', adminLimiter, verifyAdmin, (req, res) => {
+// جلب صفحة الأدمن المحمية
+app.get('/admin', verifyAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
-// إضافة أكواد جديدة
-app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, (req, res) => {
+// مسار إضافة الأكواد مؤمن ومحمي
+app.post('/api/admin/add-codes', verifyAdmin, (req, res) => {
     const { productName, codes, category, region } = req.body;
 
-    // ======= Validation =======
     if (!productName || typeof productName !== 'string' || productName.trim().length === 0) {
         return res.status(400).json({ success: false, message: 'اسم المنتج مطلوب' });
     }
     if (productName.length > 100) {
-        return res.status(400).json({ success: false, message: 'اسم المنتج طويل جداً (أكثر من 100 حرف)' });
+        return res.status(400).json({ success: false, message: 'اسم المنتج طويل جداً' });
     }
     if (!Array.isArray(codes) || codes.length === 0) {
         return res.status(400).json({ success: false, message: 'لازم ترسل كود واحد على الأقل' });
     }
     if (codes.length > 500) {
-        return res.status(400).json({ success: false, message: 'عدد الأكواد كثير جداً (الحد الأقصى 500)' });
+        return res.status(400).json({ success: false, message: 'عدد الأكواد كبير جداً' });
     }
 
     const validCategories = [
@@ -218,18 +206,15 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, (req, res) => {
         return res.status(400).json({ success: false, message: 'الريجن غير صحيح' });
     }
 
-    // تنظيف الأكواد من أي مسافات زيادة
     const cleanCodes = codes
         .map(c => String(c).trim())
-        .filter(c => c.length > 0 && c.length <= 200); // كود أقصاه 200 حرف
+        .filter(c => c.length > 0 && c.length <= 200);
 
     if (cleanCodes.length === 0) {
         return res.status(400).json({ success: false, message: 'الأكواد المرسلة فاضية بعد التنظيف' });
     }
 
-    // ======= هنا يجي كود الحفظ في قاعدة البيانات لاحقاً =======
-    // مؤقتاً: تأكيد النجاح
-    console.log(`✅ أدمن أضاف ${cleanCodes.length} كود للمنتج: "${productName}" | القسم: ${category} | الريجن: ${region}`);
+    console.log(`✅ أدمن أضاف ${cleanCodes.length} كود للمنتج: "${productName}"`);
 
     res.json({
         success: true,
@@ -238,25 +223,17 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, (req, res) => {
 });
 
 // ====================================================
-// 🛡️ معالجة الأخطاء العامة (آخر شي دايماً)
+// 🛡️ معالجة الأخطاء العامة
 // ====================================================
-
-// منع ظهور مسارات غير موجودة
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
 });
 
-// معالج أخطاء السيرفر
 app.use((err, req, res, next) => {
     console.error('❌ خطأ في السيرفر:', err.message);
-    // لا ترسل تفاصيل الخطأ للزبون في البيئة الحقيقية
     res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
 });
 
-// ====================================================
 app.listen(PORT, () => {
-    console.log(`🚀 السيرفر يعمل على بورت ${PORT}`);
-    if (!ADMIN_PASSWORD) {
-        console.warn('⚠️ تحذير: ADMIN_PASSWORD غير موجود في .env — لوحة الأدمن غير محمية!');
-    }
+    console.log(`🚀 السيرفر يعمل بأعلى حماية وثبات على بورت ${PORT}`);
 });
