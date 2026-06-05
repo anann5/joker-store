@@ -23,14 +23,19 @@ var rawServerData = {
 var currentSelectedProduct = null;
 
 // ======================================================
-//  دالة تحديد الريجن
+//  دالة تحديد الريجن وجلب روابط الأعلام المحلية بالترتيب الجديد
 // ======================================================
 function getRegionDetails(region) {
     var reg = String(region || 'global').toLowerCase();
-    if (reg.includes('us')) return { cls: 'badge-us', flag: '🇺🇸', text: 'أمريكي US' };
-    if (reg.includes('eu')) return { cls: 'badge-eu', flag: '🇪🇺', text: 'أوروبي EU' };
-    if (reg.includes('tr')) return { cls: 'badge-tr', flag: '🇹🇷', text: 'تركي TR' };
-    return { cls: 'badge-global', flag: '🌐', text: 'عالمي Global' };
+    
+    if (reg.includes('tr')) return { cls: 'badge-tr', flagUrl: '/image/flags/tr.png', isIcon: false };
+if (reg.includes('ae')) return { cls: 'badge-ae', flagUrl: '/image/flags/ae.png', isIcon: false };
+if (reg.includes('sa')) return { cls: 'badge-sa', flagUrl: '/image/flags/sa.png', isIcon: false };
+if (reg.includes('vn') || reg.includes('viet')) return { cls: 'badge-vn', flagUrl: '/image/flags/vn.png', isIcon: false };
+if (reg.includes('cn') || reg.includes('china')) return { cls: 'badge-cn', flagUrl: '/image/flags/cn.png', isIcon: false };
+if (reg.includes('us')) return { cls: 'badge-us', flagUrl: '/image/flags/us.png', isIcon: false };
+    
+    return { cls: 'badge-global', flagUrl: '', isIcon: true }; 
 }
 
 // ======================================================
@@ -42,13 +47,14 @@ function showAllCategories() {
     grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
     grid.innerHTML = '';
 
-    // إخفاء زر الرجوع
     var backContainer = document.getElementById('back-container');
     if (backContainer) backContainer.style.display = 'none';
+    
+    var regionBar = document.getElementById('regionFilterBar');
+    if (regionBar) regionBar.style.display = 'none';
 
-    // تفعيل زر "الكل"
-    document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
-    var allBtn = document.querySelector('.filter-btn[data-filter="all"]');
+    document.querySelectorAll('#filterTabs .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+    var allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
     if (allBtn) allBtn.classList.add('active');
 
     Object.keys(rawServerData.categories).forEach(function(key) {
@@ -82,7 +88,7 @@ function showAllCategories() {
 }
 
 // ======================================================
-//  عرض المنتجات
+//  عرض المنتجات داخل القسم مع التجميل الزجاجي للأعلام
 // ======================================================
 function selectCategory(categoryKey) {
     var cat = rawServerData.categories[categoryKey];
@@ -93,7 +99,15 @@ function selectCategory(categoryKey) {
 
     if (backContainer) backContainer.style.display = 'block';
 
-    document.querySelectorAll('.filter-btn').forEach(function(b) {
+    var regionBar = document.getElementById('regionFilterBar');
+    if (regionBar) {
+        regionBar.style.display = 'flex';
+        regionBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        var allRegionBtn = regionBar.querySelector('.filter-btn[data-target="all"]');
+        if (allRegionBtn) allRegionBtn.classList.add('active');
+    }
+
+    document.querySelectorAll('#filterTabs .filter-btn').forEach(function(b) {
         b.classList.remove('active');
         if (b.getAttribute('data-filter') === categoryKey) b.classList.add('active');
     });
@@ -113,9 +127,15 @@ function selectCategory(categoryKey) {
 
             products.forEach(function(item) {
                 var detectedRegion = 'global';
-                if (item.id && (item.id.includes('US') || item.name.toLowerCase().includes('us'))) detectedRegion = 'us';
-                else if (item.id && (item.id.includes('TR') || item.name.toLowerCase().includes('tr'))) detectedRegion = 'tr';
-                else if (item.id && (item.id.includes('EU') || item.name.toLowerCase().includes('eu'))) detectedRegion = 'eu';
+                var nameLower = item.name.toLowerCase();
+                var idUpper = (item.id || '').toUpperCase();
+
+                if (idUpper.includes('US') || nameLower.includes('us') || nameLower.includes('امريكي') || nameLower.includes('أمريكي')) detectedRegion = 'us';
+                else if (idUpper.includes('TR') || nameLower.includes('tr') || nameLower.includes('تركي')) detectedRegion = 'tr';
+                else if (idUpper.includes('SA') || nameLower.includes('sa') || nameLower.includes('سعودي')) detectedRegion = 'sa';
+                else if (idUpper.includes('AE') || nameLower.includes('ae') || nameLower.includes('امارات') || nameLower.includes('إمارات')) detectedRegion = 'ae';
+                else if (idUpper.includes('KW') || nameLower.includes('kw') || nameLower.includes('كويت') || nameLower.includes('كويتي')) detectedRegion = 'kw';
+                else if (idUpper.includes('EU') || nameLower.includes('eu') || nameLower.includes('اوروب') || nameLower.includes('أوروب')) detectedRegion = 'eu';
 
                 var regionInfo = getRegionDetails(detectedRegion);
                 var clientItem = {
@@ -127,17 +147,28 @@ function selectCategory(categoryKey) {
                 };
 
                 var card = document.createElement('div');
-                card.className = 'product-item-card';
+                card.className = 'product-item-card card'; 
+                card.dataset.region = detectedRegion;
+                card.style.position = 'relative'; 
 
+                // 🌟 تصميم كبسولة العلم الزجاجية الفخمة (مجمل الكرت 100%)
                 var badge = document.createElement('div');
-                badge.className = 'region-badge ' + regionInfo.cls;
-                badge.innerHTML = '<span>' + regionInfo.flag + '</span><span>' + regionInfo.text + '</span>';
+                badge.className = 'card-flag-badge ' + regionInfo.cls;
+                badge.style.cssText = 'position: absolute; top: 12px; left: 12px; background: rgba(15, 18, 27, 0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding: 5px 7px; border-radius: 8px; display: flex; align-items: center; justify-content: center; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 10px rgba(0,0,0,0.4);';
+                
+                // حقن العلم كصورة أو كأيقونة الفونتوأسوم بدقة خارقة
+                if (regionInfo.isIcon) {
+                    badge.innerHTML = '<i class="fas fa-globe" style="color: #64ffda; font-size: 14px;"></i>';
+                } else {
+                    badge.innerHTML = '<img src="' + regionInfo.flagUrl + '" style="width: 20px; height: auto; border-radius: 2px; display: block;" />';
+                }
 
                 var imgContainer = document.createElement('div');
                 imgContainer.className = 'card-img-container';
                 var img = document.createElement('img');
                 img.src = clientItem.image;
                 img.alt = clientItem.name;
+                img.className = 'card-inner-img';
                 img.onerror = function() { this.src = 'image/logo.png'; };
                 imgContainer.appendChild(img);
 
@@ -146,10 +177,11 @@ function selectCategory(categoryKey) {
                 content.style.padding = '15px';
 
                 var title = document.createElement('h3');
+                title.className = 'card-title';
                 title.textContent = clientItem.name;
 
                 var price = document.createElement('p');
-                price.className = 'price-tag';
+                price.className = 'price-tag card-price';
                 price.textContent = clientItem.price;
 
                 var buyBtn = document.createElement('button');
@@ -161,7 +193,7 @@ function selectCategory(categoryKey) {
                 content.appendChild(price);
                 content.appendChild(buyBtn);
 
-                card.appendChild(badge);
+                card.appendChild(badge); // إضافة كبسولة العلم الفخمة المحدثة
                 card.appendChild(imgContainer);
                 card.appendChild(content);
                 grid.appendChild(card);
@@ -199,18 +231,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     showAllCategories();
 
-    // زر الرئيسية
+    var regionFilterBar = document.getElementById('regionFilterBar');
+    if (regionFilterBar) {
+        regionFilterBar.addEventListener('click', function(e) {
+            var btn = e.target.closest('.filter-btn');
+            if (!btn) return;
+
+            regionFilterBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+
+            var targetRegion = btn.getAttribute('data-target');
+            var productCards = document.querySelectorAll('.product-item-card');
+
+            productCards.forEach(function(card) {
+                var cardRegion = card.dataset.region;
+                if (targetRegion === 'all' || cardRegion === targetRegion) {
+                    card.classList.remove('hidden');
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+        });
+    }
+
     var homeLink = document.getElementById('homeLink');
     if (homeLink) homeLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
 
     var digitalCardsLink = document.getElementById('digitalCardsLink');
     if (digitalCardsLink) digitalCardsLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
 
-    // زر الرجوع
     var backToMainBtn = document.getElementById('backToMainBtn');
     if (backToMainBtn) backToMainBtn.addEventListener('click', goBack);
 
-    // أزرار الـ Dropdown
     var categoriesBtn = document.getElementById('categoriesBtn');
     if (categoriesBtn) {
         categoriesBtn.addEventListener('click', function(e) {
@@ -222,7 +274,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // أزرار الأقسام في الـ Dropdown
     document.querySelectorAll('.dropdown-item[data-category]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             selectCategory(this.dataset.category);
@@ -231,7 +282,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // إغلاق الـ Dropdown عند النقر خارجه
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.dropdown-wrapper')) {
             var dropdown = document.getElementById('categoriesDropdown');
@@ -241,7 +291,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // إغلاق مودال الشراء
     document.getElementById('closeModal').addEventListener('click', function() {
         document.getElementById('purchaseModal').classList.remove('active');
     });
@@ -249,7 +298,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target === this) this.classList.remove('active');
     });
 
-    // إغلاق مودال الكود
     document.getElementById('closeCodeModal').addEventListener('click', function() {
         document.getElementById('codeModal').classList.remove('active');
     });
@@ -257,7 +305,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target === this) this.classList.remove('active');
     });
 
-    // نسخ الكود
     document.getElementById('copyCodeBtn').addEventListener('click', function() {
         var codeText = document.getElementById('generatedCode').textContent;
         navigator.clipboard.writeText(codeText).then(function() {
@@ -265,32 +312,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // أزرار الشراء (event delegation)
     document.getElementById('mainCategories').addEventListener('click', function(e) {
-        // زر دخول القسم
         var enterBtn = e.target.closest('.enter-btn[data-category]');
         if (enterBtn) {
             selectCategory(enterBtn.dataset.category);
             return;
         }
-        // زر الشراء
         var buyBtn = e.target.closest('.buy-btn[data-item]');
         if (buyBtn) {
             var item = JSON.parse(buyBtn.dataset.item);
             orderProduct(item);
             return;
         }
-        // الضغط على كرت القسم كله
         var categoryCard = e.target.closest('.category-card[data-category]');
         if (categoryCard && !e.target.closest('button')) {
             selectCategory(categoryCard.dataset.category);
         }
     });
 
-    // أزرار الفلتر
-    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+    document.querySelectorAll('#filterTabs .filter-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('#filterTabs .filter-btn').forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
             var filter = btn.getAttribute('data-filter');
             var si = document.getElementById('searchInput');
@@ -303,7 +345,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // البحث
     var searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
