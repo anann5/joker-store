@@ -785,10 +785,40 @@ footer {
 .card:hover .buy-btn { background: linear-gradient(135deg, #00ffcc, #00b3ff); color: #0f0c1b; border-color: transparent; box-shadow: 0 5px 15px rgba(0, 255, 204, 0.3); }
 .card.hidden { display: none; }
 
+/* ======================================================
+   تنسيق شريط الفلاتر المطور ليتوافق 100% مع الموبايل
+====================================================== */
+.region-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;                  /* المسافة بين الأزرار */
+    padding: 10px 15px;         /* حشوة داخلية مريحة */
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    
+    /* الفخامة هان للموبايل 👇 */
+    direction: rtl;             /* إجبار الترتيب يبدأ من اليمين */
+    justify-content: flex-start;/* محاذاة العناصر من أول اليمين */
+    overflow-x: auto;           /* تفعيل السحب الأفقي بالإصبع إذا زادت الأزرار */
+    white-space: nowrap;        /* منع الأزرار من النزول لسطر جديد */
+    -webkit-overflow-scrolling: touch; /* سحب ناعم وسلس جداً على أجهزة الآيفون */
+
+    /* إخفاء شريط التمرير السفلي المزعج عشان يضل الشكل نظيف وفخم */
+    scrollbar-width: none;      /* لمتصفح فايرفوكس */
+}
+
+/* إخفاء شريط التمرير لمتصفحات كروم وسفاري (تلفونات أندرويد وآيفون) */
+.region-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+/* تعديل تنسيق الزر نفسه ليتجاوب مع السحب */
 .region-filter-bar .filter-btn {
+    flex-shrink: 0;             /* 🔥 خطوة جوهرية: تمنع المتصفح من ضغط أو تشويه حجم الزر */
     display: inline-flex;
     align-items: center;
-    gap: 8px; /* مسافة بين العلم والنص */
+    gap: 8px;
     padding: 8px 16px;
     border-radius: 20px;
     background: rgba(255, 255, 255, 0.05);
@@ -798,17 +828,11 @@ footer {
     transition: all 0.3s ease;
 }
 
+/* تنسيق صورة العلم بداخل الزر */
 .region-filter-bar .flag-img {
-    width: 20px;         /* حجم العلم داخل الزر */
+    width: 20px;
     height: auto;
-    border-radius: 3px;  /* حواف ناعمة للعلم */
-    display: block;
+    border-radius: 3px;
     object-fit: cover;
-}
-
-.region-filter-bar .filter-btn:hover, 
-.region-filter-bar .filter-btn.active {
-    background: #64ffda; /* لون التوهج اللّي بتحبه */
-    color: #0a192f;
-    border-color: #64ffda;
+    display: block;
 }
