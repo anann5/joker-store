@@ -816,7 +816,7 @@ footer {
 /* تعديل تنسيق الزر نفسه ليتجاوب مع السحب */
 .region-filter-bar .filter-btn {
     flex-shrink: 0;             /* 🔥 خطوة جوهرية: تمنع المتصفح من ضغط أو تشويه حجم الزر */
-    display: inline-flex;
+    display:flex;
     align-items: center;
     gap: 8px;
     padding: 8px 16px;
