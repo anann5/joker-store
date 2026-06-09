@@ -318,12 +318,21 @@ document.addEventListener('DOMContentLoaded', function() {
             selectCategory(enterBtn.dataset.category);
             return;
         }
-        var buyBtn = e.target.closest('.buy-btn[data-item]');
-        if (buyBtn) {
-            var item = JSON.parse(buyBtn.dataset.item);
-            orderProduct(item);
-            return;
-        }
+        //  الجزء الجديد: يرسل المنتج للسلة المحلية فوراً بدلاً من فتح الدفع اليدوي
+var buyBtn = e.target.closest('.buy-btn[data-item]');
+if (buyBtn) {
+    var item = JSON.parse(buyBtn.dataset.item);
+    
+    // تحويل حقول الاسم ليتوافق مع السلة المحلية
+    var correctedProduct = {
+        id: item.id,
+        productName: item.name, // الدالة تحت بتتوقع productName
+        price: parseFloat(item.price) || 0
+    };
+    
+    addToCart(correctedProduct);
+    return;
+}
         var categoryCard = e.target.closest('.category-card[data-category]');
         if (categoryCard && !e.target.closest('button')) {
             selectCategory(categoryCard.dataset.category);
@@ -396,3 +405,254 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 });
+
+// ======================================================
+// 🛒 تشغيل منطق السلة الفورية والدفع اليدوي
+// ======================================================
+var purchaseModal = document.getElementById('purchaseModal');
+var closeModalBtn = document.getElementById('closeModal');
+var paymentSelect = document.getElementById('paymentMethodSelect');
+var instructionsZone = document.getElementById('paymentInstructions');
+var submitOrderBtn = document.getElementById('submitOrderBtn');
+
+// متغير لحفظ المنتج الحالي اللّي اختاره الزبون
+var activeProduct = null;
+
+/**
+ * 1. دالة لفتح السلة وتعبئة بيانات الكرت المختار
+ */
+function openPurchaseModal(product) {
+    activeProduct = product;
+    
+    // تعبئة البيانات ديناميكياً داخل السلة
+    document.getElementById('modalTitle').textContent = `إكمال شراء: ${product.productName}`;
+    document.getElementById('modalProductPrice').textContent = `${product.price}$`;
+    
+    // تصفير الخانات السابقة عشان لو فتحها زبون ثاني
+    document.getElementById('user-email').value = '';
+    document.getElementById('paymentRefInput').value = '';
+    
+    // إظهار المودال (السلة)
+    purchaseModal.style.display = 'flex';
+}
+
+/**
+ * 2. إغلاق السلة عند الضغط على زر الإغلاق (×)
+ */
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', function() {
+        purchaseModal.style.display = 'none';
+    });
+}
+
+/**
+ * 3. تغيير أرقام المحافظ والتعليمات ديناميكياً حسب اختيار الزبون
+ */
+if (paymentSelect) {
+    paymentSelect.addEventListener('change', function(e) {
+        var method = e.target.value;
+        
+        if (method === 'jawwal_pay') {
+            instructionsZone.innerHTML = `
+                <p style="margin: 0 0 8px 0; color: #00f0ff; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p>
+                <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">059XXXXXXX</span></p>
+                <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>
+            `;
+        } else if (method === 'palpay') {
+            instructionsZone.innerHTML = `
+                <p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p>
+                <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">9XXXXX</span></p>
+                <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>
+            `;
+        }
+    });
+}
+
+/**
+ * 4. إرسال الطلب إلى السيرفر عند الضغط على زر "تأكيد التحويل"
+ */
+if (submitOrderBtn) {
+    submitOrderBtn.addEventListener('click', async function() {
+        var email = document.getElementById('user-email').value.trim();
+        var paymentRef = document.getElementById('paymentRefInput').value.trim();
+        var gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
+
+        // تحقق بسيط من المدخلات قبل الإرسال
+        if (!email) {
+            alert('الرجاء إدخال إيميل مستلم الكود أولاً!');
+            return;
+        }
+        if (!paymentRef) {
+            alert('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!');
+            return;
+        }
+        if (!activeProduct) return;
+
+        // تجهيز بيانات الطلب لإرسالها للـ API
+        var orderData = {
+            productId: activeProduct._id || activeProduct.id,
+            buyerEmail: email,
+            paymentGateway: gateway,
+            paymentRef: paymentRef
+        };
+
+        submitOrderBtn.disabled = true;
+        submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
+
+        try {
+            // هان بنستدعي الـ API اللّي رح نبنيه في الـ Backend لاستقبال الطلبات
+            const response = await fetch('/api/orders/new', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // إخفاء سلة الشراء
+                purchaseModal.style.display = 'none';
+                
+                // تنبيه الزبون بنجاح العملية الإيداعية
+                alert('🚀 تم استلام طلبك بنجاح! بمجرد تحقق الأدمن من التحويل، سيصلك كود الشحن فوراً على إيميلك.');
+            } else {
+                alert('❌ فشل إرسال الطلب: ' + (result.error || 'حدث خطأ غير متوقع'));
+            }
+        } catch (err) {
+            alert('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.');
+        } finally {
+            submitOrderBtn.disabled = false;
+            submitOrderBtn.textContent = '🚀 تأكيد التحويل وإرسال الطلب';
+        }
+    });
+}
+
+// ======================================================
+// 🛒 سيستم السلة المحلية المستقلة (بدون روابط دفع)
+// ======================================================
+var cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
+var purchaseModal = document.getElementById('purchaseModal');
+var closeModalBtn = document.getElementById('closeModal');
+var cartHeaderBtn = document.getElementById('cartHeaderBtn');
+
+// تحديث العداد فوق بالهيدر أول ما يفتح الموقع
+updateCartUI();
+
+/**
+ * دالة لإضافة منتج إلى السلة المحلية النظيفة
+ */
+function addToCart(product) {
+    var existingItem = cart.find(item => item.id === product.id);
+    
+    if (existingItem) {
+        existingItem.qty += 1;
+    } else {
+        cart.push({
+            id: product.id,
+            name: product.productName,
+            price: product.price,
+            qty: 1
+        });
+    }
+    
+    localStorage.setItem('joker_cart', JSON.stringify(cart));
+    updateCartUI();
+    
+    alert(`📥 تم إضافة [${product.name}] إلى السلة بنجاح!`);
+}
+
+/**
+ * دالة لتحديث عداد السلة وعرض العناصر بالبوب أب
+ */
+function updateCartUI() {
+    // 1. تحديث العداد في الهيدر
+    var totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+    var badge = document.getElementById('cartCountBadge');
+    if (badge) badge.textContent = totalQty;
+
+    // 2. بناء عناصر السلة داخل البوب أب
+    var listZone = document.getElementById('cartItemsList');
+    var totalZone = document.getElementById('cartTotalAmount');
+    
+    if (!listZone || !totalZone) return;
+    
+    if (cart.length === 0) {
+        listZone.innerHTML = '<p style="color:#b9bbbe; text-align:center; padding:20px;">السلة فارغة حالياً 🛒</p>';
+        totalZone.textContent = '0.00$';
+        return;
+    }
+
+    listZone.innerHTML = '';
+    var totalCost = 0;
+
+   cart.forEach((item, index) => {
+    totalCost += (item.price * item.qty);
+    
+    var row = document.createElement('div');
+    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(0,240,255,0.05);";
+    
+    row.innerHTML = `
+        <button class="delete-item-btn" data-index="${index}" style="background:none; border:none; color:#ff0055; cursor:pointer; font-size:1.1rem; padding: 5px;">
+            <i class="fas fa-trash-alt" style="pointer-events: none;"></i>
+        </button>
+        <span style="color:#00f0ff; font-weight:bold;">${(item.price * item.qty)}$</span>
+        <span style="color:#fff; font-size:0.9rem;">${item.name} (${item.qty}x)</span>
+    `;
+    listZone.appendChild(row);
+});
+
+    totalZone.textContent = totalCost + "$";
+}
+
+/**
+ * دالة لحذف عنصر واحد من السلة
+ */
+function removeFromCart(index) {
+    cart.splice(index, 1); // حذف العنصر من المصفوفة بناءً على ترتيبه
+    localStorage.setItem('joker_cart', JSON.stringify(cart)); // حفظ التغيير بالمتصفح
+    updateCartUI(); // إعادة تحديث شكل السلة والمجموع فوراً
+}
+
+// تصدير الدالة للمتصفح بشكل رسمي عشان الـ onclick يشوفها فوراً
+window.removeFromCart = removeFromCart;
+
+/**
+ * فتح السلة عند الضغط على الأيقونة بالهيدر (نظام الـ Class الموحد)
+ */
+if (cartHeaderBtn) {
+    cartHeaderBtn.addEventListener('click', function() {
+        updateCartUI();
+        // تأكدنا هنا أنه يضيف كلاس active المتوافق مع الـ CSS الخاص بموقعك
+        purchaseModal.classList.add('active'); 
+    });
+}
+
+/**
+ * إغلاق السلة عند الضغط على زر (×)
+ */
+if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', function() {
+        purchaseModal.classList.remove('active');
+    });
+}
+
+/**
+ * 🎯 صائد الضغطات الذكي لحذف العناصر من السلة فوراً
+ */
+var listZone = document.getElementById('cartItemsList');
+if (listZone) {
+    listZone.addEventListener('click', function(e) {
+        // التحقق إذا الضغطة تمت على زر الحذف
+        var deleteBtn = e.target.closest('.delete-item-btn');
+        if (deleteBtn) {
+            var index = parseInt(deleteBtn.getAttribute('data-index'));
+            
+            // حذف العنصر من المصفوفة
+            cart.splice(index, 1);
+            
+            // حفظ التحديث في المتصفح وإعادة بناء السلة
+            localStorage.setItem('joker_cart', JSON.stringify(cart));
+            updateCartUI();
+        }
+    });
+}

@@ -89,6 +89,13 @@
             <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
             <img src="image/logo.png" alt="Logo" class="header-image">
         </div>
+
+<div class="cart-icon-container" id="cartHeaderBtn" style="position: relative; cursor: pointer; padding: 10px; font-size: 1.4rem; color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.4);">
+    <i class="fas fa-shopping-cart"></i>
+    <span id="cartCountBadge" style="position: absolute; top: 0; right: 0; background: #ff0055; color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 50%; box-shadow: 0 0 8px #ff0055;">0</span>
+</div>
+
+
         <nav>
             <a href="#" class="active" id="homeLink">الرئيسية</a>
             <div class="dropdown-wrapper">
@@ -161,18 +168,28 @@
 </div>
 
 <div class="modal-overlay" id="purchaseModal">
-    <div class="delivery-container">
+    <div class="delivery-container" style="background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 500px; width: 95%;">
         <button class="close-modal-btn" id="closeModal">×</button>
-        <h3 id="modalTitle">إكمال عملية الشراء</h3>
-        <p id="modalProductPrice" style="color:#ff9f43; font-size:1.5rem; font-weight:bold; margin:10px 0;"></p>
-        <div style="margin-bottom:20px;">
-            <input type="email" id="user-email" placeholder="name@example.com" required
-                style="width:100%; padding:12px; border-radius:6px; border:1px solid #444; background:#222; color:#fff; box-sizing:border-box; direction:ltr; text-align:left;">
+        <h3 style="color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.5); margin-bottom: 20px;">
+            <i class="fas fa-shopping-cart"></i> سلة المشتريات الخاصة بك
+        </h3>
+
+        <button id="clearCartBtn" style="background: none; border: 1px solid #ff0055; color: #ff0055; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; margin-bottom: 10px; float: left; transition: 0.2s;">
+    <i class="fas fa-trash"></i> تفريغ السلة
+</button>
+<div style="clear: both;"></div>
+        
+        <div id="cartItemsList" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px; direction: rtl;">
+            </div>
+
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; direction: rtl; font-weight: bold;">
+            <span style="color: #b9bbbe;">المجموع الإجمالي:</span>
+            <span id="cartTotalAmount" style="color: #00f0ff; font-size: 1.3rem;">0.00$</span>
         </div>
-        <div id="payment-info" style="background:#1a1a2e; border:1px solid #ff9f43; border-radius:10px; padding:20px; text-align:right;">
-            <p style="color:#ff9f43; font-weight:bold; margin-bottom:10px;">طريقة الدفع:</p>
-            <p style="color:#b9bbbe; font-size:0.9rem;">سيتم إضافة طريقة دفع قريباً</p>
-        </div>
+
+        <button style="background: rgba(255, 255, 255, 0.1); color: #b9bbbe; border: 1px solid rgba(255,255,255,0.2); padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: not-allowed; font-size: 1.1rem; width: 100%;">
+            🔒 طرق الدفع ستتوفر قريباً
+        </button>
     </div>
 </div>
 

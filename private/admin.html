@@ -32,7 +32,9 @@
             font-weight: bold;
             color: #ccc;
         }
-        input[type="text"], select, textarea {
+        input[type="text"],
+        input[type="number"],
+        select, textarea {
             width: 100%;
             padding: 12px;
             margin-bottom: 20px;
@@ -44,14 +46,13 @@
             font-size: 14px;
             font-family: inherit;
         }
-        input[type="text"]:focus, select:focus, textarea:focus {
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus, textarea:focus {
             border-color: #ff9f43;
             outline: none;
         }
-        textarea {
-            resize: vertical;
-            min-height: 120px;
-        }
+        textarea { resize: vertical; min-height: 120px; }
         .hint {
             font-size: 11px;
             color: #aaa;
@@ -71,119 +72,172 @@
             border-radius: 8px;
             transition: background 0.3s ease;
         }
-        button:hover {
-            background: #16a34a;
-        }
+        button:hover { background: #16a34a; }
+        button:disabled { background: #555; cursor: not-allowed; }
         .footer-note {
             text-align: center;
             margin-top: 20px;
             font-size: 12px;
             color: #666;
         }
+        .success-msg {
+            background: #1a3a1a;
+            border: 1px solid #22c55e;
+            color: #22c55e;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+        }
+        .error-msg {
+            background: #3a1a1a;
+            border: 1px solid #e74c3c;
+            color: #e74c3c;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
-
     <div class="admin-container">
         <h2>🃏 لوحة تحكم الأدمن - إضافة كروت الجوكر</h2>
-        
+
         <form id="addCardForm">
             <label>اسم المنتج (مثال: Windows 11 Pro):</label>
             <input type="text" id="productName" placeholder="أدخل اسم المنتج بدقة..." required>
 
-            <label>أكواد الشحن (يمكنك إضافة كود واحد أو عدة أكواد):</label>
+            <label>💰 سعر البيع بالدولار:</label>
+            <input type="number" id="productPrice" placeholder="مثال: 9.99" step="0.01" min="0.01" required>
+
+            <label>أكواد الشحن (كود واحد أو عدة أكواد):</label>
             <textarea id="cardCodes" placeholder="أدخل الأكواد هنا...&#10;إذا كانت أكواد متعددة، ضع كل كود في سطر منفصل" required></textarea>
             <span class="hint">💡 نصيحة: انسخ مجموعة أكواد من ملفك وحطها هون، السيرفر لحاله هيفصلهم كل كود بسطر.</span>
 
-            <div class="form-group">
-    <label for="productCategory">🗂️ اختر القسم الصحيح للمنتج:</label>
-    <select id="productCategory" required>
-        <option value="" disabled selected>-- اختر القسم من القائمة --</option>
-        <option value="gaming_general">🎮 الألعاب بشكل عام</option>
-        <option value="pubg">🏆 شحن ببجي موبايل</option>
-        <option value="fortnite">👑 فورتنايت فبوكس</option>
-        <option value="playstation">💎 بطاقات بلايستيشن</option>
-        <option value="xbox">🟢 بطاقات إكس بوكس</option>
-        <option value="microsoft_windows">💻 مايكروسوفت وويندوز</option>
-        <option value="adobe">🎨 برامج أدوبي الإبداعية</option>
-        <option value="antivirus">🛡️ برامج الحماية والأمان</option>
-        <option value="vpn">🌐 برامج في بي ان VPN</option>
-        <option value="google">🛍️ بطاقات جوجل بلاي</option>
-        <option value="itunes">🍏 بطاقات آيتونز iTunes</option>
-        <option value="razer_gold">🪙 ريزر جولد Razer Gold</option>
-        <option value="amazon">📦 بطاقات تسوق أمازون</option>
-    </select>
+            <label for="productCategory">🗂️ اختر القسم الصحيح للمنتج:</label>
+            <select id="productCategory" required>
+                <option value="" disabled selected>-- اختر القسم من القائمة --</option>
+                <option value="gaming_general">🎮 الألعاب بشكل عام</option>
+                <option value="steam">🎮 ستيم Steam</option>
+                <option value="pubg">🏆 شحن ببجي موبايل</option>
+                <option value="fortnite">👑 فورتنايت V-Bucks</option>
+                <option value="playstation">💎 بطاقات بلايستيشن</option>
+                <option value="xbox">🟢 بطاقات إكس بوكس</option>
+                <option value="microsoft_windows">💻 مايكروسوفت وويندوز</option>
+                <option value="adobe">🎨 برامج أدوبي الإبداعية</option>
+                <option value="antivirus">🛡️ برامج الحماية والأمان</option>
+                <option value="vpn">🌐 برامج VPN</option>
+                <option value="google">🛍️ بطاقات جوجل بلاي</option>
+                <option value="itunes">🍏 بطاقات آيتونز iTunes</option>
+                <option value="razer_gold">🪙 ريزر جولد Razer Gold</option>
+                <option value="amazon">📦 بطاقات تسوق أمازون</option>
+            </select>
 
-<label>🌍 اختر ريجن / دولة الكرت:</label>
-<select id="region">
-    <option value="global">🌐 GLOBAL / عالمي</option>
-    <option value="us">🇺🇸 US / أمريكي</option>
-    <option value="tr">🇹🇷 TR / تركي</option>
-    <option value="eu">🇪🇺 EU / أوروبي</option>
-    <option value="sa">🇸🇦 SA / سعودي</option> 
-</select>
+            <label>🌍 اختر ريجن / دولة الكرت:</label>
+            <select id="region">
+                <option value="global">🌐 GLOBAL / عالمي</option>
+                <option value="us">🇺🇸 US / أمريكي</option>
+                <option value="tr">🇹🇷 TR / تركي</option>
+                <option value="eu">🇪🇺 EU / أوروبي</option>
+                <option value="sa">🇸🇦 SA / سعودي</option>
+            </select>
 
-</div>
-
-            <button type="submit">🚀 حفظ وتصنيف الأكواد في السيرفر</button>
+            <button type="submit" id="submitBtn">🚀 حفظ وتصنيف الأكواد في السيرفر</button>
         </form>
-        
-        <div class="footer-note">متجر الجوكر المحلي © 2026</div>
+
+        <div class="success-msg" id="successMsg"></div>
+        <div class="error-msg" id="errorMsg"></div>
+
+        <div class="footer-note">متجر الجوكر © 2026</div>
     </div>
 
     <script>
-        
-    document.getElementById('addCardForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // تجميع البيانات وفصل الأكواد بناءً على الأسطر
-        const rawCodes = document.getElementById('cardCodes').value;
-        // تنظيف الأكواد وحذف الأسطر الفاضية
-        const codesArray = rawCodes.split('\n').map(code => code.trim()).filter(code => code.length > 0);
-
-        if(codesArray.length === 0) {
-            alert('⚠️ الرجاء إدخال كود واحد على الأقل!');
-            return;
-        }
-
-        const cardData = {
-            productName: document.getElementById('productName').value.trim(),
-            codes: codesArray,
-            category: document.getElementById('productCategory').value,
-            region: document.getElementById('region').value
-        };
-
-        try {
-            // إرسال البيانات للسيرفر المحلي
-           // طلب كلمة السر من الأدمن عند الضغط على زر الحفظ
-const adminToken = prompt('🔐 أدخل كلمة سر الأدمن:');
-
-if (!adminToken) {
-    alert('❌ ما أدخلت كلمة السر!');
-    return;
-}
-
-const response = await fetch('/api/admin/add-codes', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'x-admin-token': adminToken  // ← هون بتنحكي كلمة السر للسيرفر
-    },
-    body: JSON.stringify(cardData)
-});
-            
-            const result = await response.json();
-            alert(result.message);
-            
-            if(result.success) {
-                document.getElementById('addCardForm').reset();
+        // تحقق من الجلسة عند تحميل الصفحة
+        window.addEventListener('DOMContentLoaded', function() {
+            const token = sessionStorage.getItem('adminToken');
+            if (!token) {
+                alert('❌ انتهت الجلسة، ارجع لصفحة الدخول');
+                window.location.href = '/admin-login';
             }
-        } catch (error) {
-            alert('❌ خطأ: السيرفر المحلي مش شغال أو فيه مشكلة اتصال');
-        }
-    });
+        });
 
+        document.getElementById('addCardForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const token = sessionStorage.getItem('adminToken');
+            if (!token) {
+                window.location.href = '/admin-login';
+                return;
+            }
+
+            const submitBtn  = document.getElementById('submitBtn');
+            const successMsg = document.getElementById('successMsg');
+            const errorMsg   = document.getElementById('errorMsg');
+
+            // إخفاء الرسائل القديمة
+            successMsg.style.display = 'none';
+            errorMsg.style.display   = 'none';
+
+            // تجميع الأكواد
+            const rawCodes   = document.getElementById('cardCodes').value;
+            const codesArray = rawCodes.split('\n').map(c => c.trim()).filter(c => c.length > 0);
+
+            if (codesArray.length === 0) {
+                errorMsg.textContent   = '⚠️ الرجاء إدخال كود واحد على الأقل!';
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            const cardData = {
+                productName: document.getElementById('productName').value.trim(),
+                price:       parseFloat(document.getElementById('productPrice').value),
+                codes:       codesArray,
+                category:    document.getElementById('productCategory').value,
+                region:      document.getElementById('region').value
+            };
+
+            // تعطيل الزر أثناء الإرسال
+            submitBtn.disabled    = true;
+            submitBtn.textContent = '⏳ جاري الحفظ...';
+
+            try {
+                const response = await fetch('/api/admin/add-codes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-token': token
+                    },
+                    body: JSON.stringify(cardData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    successMsg.textContent   = result.message;
+                    successMsg.style.display = 'block';
+                    document.getElementById('addCardForm').reset();
+                } else {
+                    // لو انتهت الجلسة
+                    if (response.status === 401) {
+                        sessionStorage.removeItem('adminToken');
+                        alert('❌ انتهت الجلسة، ارجع لصفحة الدخول');
+                        window.location.href = '/admin-login';
+                        return;
+                    }
+                    errorMsg.textContent   = result.message || result.error || 'حدث خطأ';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                errorMsg.textContent   = '❌ السيرفر مش شغال أو فيه مشكلة اتصال';
+                errorMsg.style.display = 'block';
+            } finally {
+                submitBtn.disabled    = false;
+                submitBtn.textContent = '🚀 حفظ وتصنيف الأكواد في السيرفر';
+            }
+        });
     </script>
 </body>
 </html>
-

@@ -1,262 +1,390 @@
 require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
+const express    = require('express');
+const mongoose   = require('mongoose');
+const path       = require('path');
+const crypto     = require('crypto');
+const rateLimit  = require('express-rate-limit');
+const helmet     = require('helmet');
+const { Product, Order } = require('./models');
 
-const app = express();
+const app  = express();
+app.set('trust proxy', 1);
 
-// 🔥 حرج جداً لـ Render: يخبر جدار الحماية بقراءة الـ IP الحقيقي للزائر وليس الـ Proxy
-app.set('trust proxy', 1); 
-
-const PORT = process.env.PORT || 5850;
+const PORT           = process.env.PORT || 5850;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 // ====================================================
-// 🛡️ طبقة الأمان الأولى: Helmet (حماية HTTP Headers)
+// 🛡️ Helmet
 // ====================================================
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
-            defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", 
-                "https://fonts.googleapis.com",
-                "https://cdnjs.cloudflare.com"],
-            fontSrc: ["'self'", 
-                "https://fonts.gstatic.com",
-                "https://cdnjs.cloudflare.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-            scriptSrc: ["'self'", "'unsafe-inline'",
-                "https://www.paypal.com",
-                "https://cdnjs.cloudflare.com"],
-            frameSrc: ["https://www.paypal.com"],
+            defaultSrc:  ["'self'"],
+            styleSrc:    ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+            fontSrc:     ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+            imgSrc:      ["'self'", "data:", "https:"],
+            scriptSrc:   ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+            connectSrc:  ["'self'"],
+            frameSrc:    ["'none'"],
         },
     },
     crossOriginEmbedderPolicy: false,
 }));
 
 // ====================================================
-// 🛡️ طبقة الأمان الثانية: Rate Limiting (منع الهجمات)
+// 🛡️ Rate Limiting
 // ====================================================
-
-// حد عام لكل الموقع
 const generalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 150, 
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: 'كثير طلبات من نفس الـ IP، انتظر شوي وحاول مجدداً' }
+    windowMs: 15 * 60 * 1000, max: 150,
+    standardHeaders: true, legacyHeaders: false,
+    message: { success: false, error: 'كثير طلبات، انتظر شوي' }
 });
 
 const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: 'محاولات دخول كثيرة، انتظر 15 دقيقة' }
-});
-
-const purchaseLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 20,
-    message: { success: false, error: 'طلبات شراء كثيرة، انتظر شوي' }
+    windowMs: 15 * 60 * 1000, max: 10,
+    message: { success: false, error: 'محاولات كثيرة، انتظر 15 دقيقة' }
 });
 
 app.use(generalLimiter);
 
 // ====================================================
-// الإعدادات وقاعدة البيانات
+// قاعدة البيانات
 // ====================================================
 mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('✅ تم الاتصال بمونجو بنجاح!'))
-    .catch((err) => console.log('⚠️ لم يتم الاتصال بمونجو:', err.message));
+    .then(() => console.log('✅ MongoDB متصل'))
+    .catch(err => console.log('⚠️ MongoDB غير متصل:', err.message));
 
-// 1. أولاً: السيرفر يقرأ ويحلل بيانات الـ JSON القادمة من المستخدم
-app.use(express.json({ limit: '10kb' })); 
+// ====================================================
+// Middleware
+// ====================================================
+app.use(express.json({ limit: '10kb' }));
 
-// 2. ثانياً 🔥 (الترتيب الصحيح): كود الحماية المخصص يشتغل فوراً بعد تحليل الـ JSON لتنظيف الـ req.body بنجاح
+// NoSQL Sanitize يدوي
 app.use((req, res, next) => {
-    const sanitizeObject = (obj) => {
+    const sanitize = (obj) => {
         if (obj && typeof obj === 'object') {
             for (const key in obj) {
-                // إذا كان المفتاح يبدأ بـ $ أو يحتوي على نقطة (محاولة حقن NoSQL)، يتم حذفه فوراً
                 if (key.startsWith('$') || key.includes('.')) {
                     delete obj[key];
                 } else if (typeof obj[key] === 'object') {
-                    sanitizeObject(obj[key]); // تنظيف الكائنات المتداخلة
+                    sanitize(obj[key]);
                 }
             }
         }
     };
-    
-    sanitizeObject(req.body);
-    sanitizeObject(req.params);
-    sanitizeObject(req.query); 
+    sanitize(req.body);
+    sanitize(req.params);
+    sanitize(req.query);
     next();
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ====================================================
-// 🛡️ Middleware التحقق من هوية الأدمن
+// 🛡️ التحقق من الأدمن
 // ====================================================
 function verifyAdmin(req, res, next) {
     if (!ADMIN_PASSWORD) {
-        console.error('❌ خطأ: ADMIN_PASSWORD غير موجود في ملف .env!');
-        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ بشكل صحيح' });
+        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ' });
     }
-
     const token = req.headers['x-admin-token'];
-
     if (!token || token !== ADMIN_PASSWORD) {
-        console.warn(`⚠️ محاولة دخول أدمن فاشلة من IP: ${req.ip} في ${new Date().toISOString()}`);
-        return res.status(401).json({ success: false, error: 'غير مصرح لك بالدخول' });
+        console.warn(`⚠️ دخول أدمن فاشل من IP: ${req.ip}`);
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
     }
-
     next();
 }
 
 // ====================================================
-// هامش الربح وحساب الأسعار
+// هامش الربح
 // ====================================================
-const PROFIT_PERCENTAGE = 0.08; // 8%
-const FIXED_PROFIT = 0.50;      // نصف دولار ثابت
-
-const mockSupplierData = {
-    steam: [
-        { id: "ST-10", name: "Steam Gift Card 10$ Global", costPrice: 9.20 },
-        { id: "ST-20", name: "Steam Gift Card 20$ Global", costPrice: 18.40 },
-        { id: "ST-50", name: "Steam Gift Card 50$ Global", costPrice: 46.00 }
-    ],
-    pubg: [
-        { id: "PB-60",  name: "PUBG Mobile 60 UC",  costPrice: 0.80 },
-        { id: "PB-325", name: "PUBG Mobile 325 UC", costPrice: 3.90 },
-        { id: "PB-660", name: "PUBG Mobile 660 UC", costPrice: 7.75 }
-    ],
-    fortnite: [
-        { id: "FT-1000", name: "Fortnite 1000 V-Bucks", costPrice: 7.90 },
-        { id: "FT-2800", name: "Fortnite 2800 V-Bucks", costPrice: 19.90 }
-    ],
-    playstation: [
-        { id: "PS-10", name: "PlayStation Store 10$ US", costPrice: 9.60 },
-        { id: "PS-20", name: "PlayStation Store 20$ US", costPrice: 19.30 }
-    ]
-};
+const PROFIT_PERCENTAGE = 0.08;
+const FIXED_PROFIT      = 0.50;
 
 function calculateSellingPrice(costPrice) {
-    let finalPrice = costPrice + (costPrice * PROFIT_PERCENTAGE) + FIXED_PROFIT;
-    return parseFloat(finalPrice.toFixed(2));
+    return parseFloat((costPrice + (costPrice * PROFIT_PERCENTAGE) + FIXED_PROFIT).toFixed(2));
 }
 
 // ====================================================
-// API Routes - العامة
+// Routes — العامة
 // ====================================================
 
-// الصفحة الرئيسية
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// جلب المنتجات حسب القسم
-app.get('/api/products/:category', (req, res) => {
-    // تنظيف المدخل من أي رموز خطرة
-    const category = req.params.category.toLowerCase().replace(/[^a-z_]/g, '');
+// جلب المنتجات من DB
+app.get('/api/products/:category', async (req, res) => {
+    try {
+        const category = req.params.category.toLowerCase().replace(/[^a-z_]/g, '');
 
-    if (!mockSupplierData[category]) {
-        return res.json([]);
+        const products = await Product.find({ 
+            category,
+            isActive: true 
+        }).select('productName category region price codes');
+
+        // أرسل فقط المنتجات اللي عندها مخزون
+        const result = products
+            .filter(p => p.codes.some(c => c.status === 'available'))
+            .map(p => ({
+                id:    p._id,
+                name:  p.productName,
+                price: p.price,
+                region: p.region,
+                stock: p.codes.filter(c => c.status === 'available').length
+            }));
+
+        res.json(result);
+    } catch (err) {
+        console.error('خطأ في جلب المنتجات:', err);
+        res.status(500).json({ success: false, error: 'خطأ في السيرفر' });
     }
-
-    const clientProducts = mockSupplierData[category].map(product => ({
-        id: product.id,
-        name: product.name,
-        price: calculateSellingPrice(product.costPrice)
-    }));
-
-    res.json(clientProducts);
 });
 
 // ====================================================
-// API Routes - الأدمن (محمية)
+// Routes — الأدمن
 // ====================================================
 
-// صفحة الأدمن — محمية ومنقولة خارج public
+app.get('/admin-login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
 app.get('/admin', adminLimiter, verifyAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
-// إضافة أكواد جديدة
-app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, (req, res) => {
-    const { productName, codes, category, region } = req.body;
+// إضافة منتج مع أكواده
+app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
+    try {
+        const { productName, codes, category, region, price } = req.body;
 
-    // ======= Validation =======
-    if (!productName || typeof productName !== 'string' || productName.trim().length === 0) {
-        return res.status(400).json({ success: false, message: 'اسم المنتج مطلوب' });
-    }
-    if (productName.length > 100) {
-        return res.status(400).json({ success: false, message: 'اسم المنتج طويل جداً (أكثر من 100 حرف)' });
-    }
-    if (!Array.isArray(codes) || codes.length === 0) {
-        return res.status(400).json({ success: false, message: 'لازم ترسل كود واحد على الأقل' });
-    }
-    if (codes.length > 500) {
-        return res.status(400).json({ success: false, message: 'عدد الأكواد كثير جداً (الحد الأقصى 500)' });
-    }
+        // Validation
+        if (!productName || typeof productName !== 'string' || productName.trim().length === 0)
+            return res.status(400).json({ success: false, message: 'اسم المنتج مطلوب' });
+        if (productName.length > 100)
+            return res.status(400).json({ success: false, message: 'اسم المنتج طويل جداً' });
+        if (!Array.isArray(codes) || codes.length === 0)
+            return res.status(400).json({ success: false, message: 'لازم كود واحد على الأقل' });
+        if (codes.length > 500)
+            return res.status(400).json({ success: false, message: 'الحد الأقصى 500 كود' });
+        if (!price || isNaN(price) || price <= 0)
+            return res.status(400).json({ success: false, message: 'السعر مطلوب' });
 
-    const validCategories = [
-        'gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
-        'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
-        'itunes', 'razer_gold', 'amazon'
-    ];
-    if (!validCategories.includes(category)) {
-        return res.status(400).json({ success: false, message: 'القسم المختار غير صحيح' });
+        const validCategories = ['gaming_general','pubg','fortnite','playstation','xbox',
+            'microsoft_windows','adobe','antivirus','vpn','google','itunes','razer_gold','amazon','steam'];
+        if (!validCategories.includes(category))
+            return res.status(400).json({ success: false, message: 'القسم غير صحيح' });
+
+        const validRegions = ['global','us','tr','eu','sa'];
+        if (!validRegions.includes(region))
+            return res.status(400).json({ success: false, message: 'الريجن غير صحيح' });
+
+        // تنظيف الأكواد
+        const cleanCodes = codes
+            .map(c => String(c).trim())
+            .filter(c => c.length > 0 && c.length <= 200)
+            .map(value => ({ value, status: 'available' }));
+
+        if (cleanCodes.length === 0)
+            return res.status(400).json({ success: false, message: 'الأكواد فاضية بعد التنظيف' });
+
+        // ابحث عن منتج موجود بنفس الاسم والريجن
+        let product = await Product.findOne({ 
+            productName: productName.trim(), 
+            category, 
+            region 
+        });
+
+        if (product) {
+            // أضف الأكواد الجديدة للمنتج الموجود
+            product.codes.push(...cleanCodes);
+            product.updatedAt = new Date();
+            await product.save();
+        } else {
+            // أنشئ منتج جديد
+            product = await Product.create({
+                productName: productName.trim(),
+                category,
+                region,
+                price: parseFloat(price),
+                codes: cleanCodes
+            });
+        }
+
+        console.log(`✅ أضيف ${cleanCodes.length} كود للمنتج: "${productName}"`);
+
+        res.json({
+            success: true,
+            message: `✅ تم إضافة ${cleanCodes.length} كود للمنتج "${productName}" بنجاح`,
+            productId: product._id,
+            totalStock: product.codes.filter(c => c.status === 'available').length
+        });
+
+    } catch (err) {
+        console.error('خطأ في إضافة الأكواد:', err);
+        res.status(500).json({ success: false, error: 'خطأ في السيرفر' });
     }
+});
 
-    const validRegions = ['global', 'us', 'tr', 'eu', 'sa'];
-    if (!validRegions.includes(region)) {
-        return res.status(400).json({ success: false, message: 'الريجن غير صحيح' });
+// جلب إحصائيات المخزون للأدمن
+app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
+    try {
+        const products = await Product.find({ isActive: true })
+            .select('productName category region price codes updatedAt');
+
+        const inventory = products.map(p => ({
+            id:             p._id,
+            productName:    p.productName,
+            category:       p.category,
+            region:         p.region,
+            price:          p.price,
+            available:      p.codes.filter(c => c.status === 'available').length,
+            sold:           p.codes.filter(c => c.status === 'sold').length,
+            total:          p.codes.length,
+            lastUpdated:    p.updatedAt
+        }));
+
+        res.json({ success: true, inventory });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'خطأ في السيرفر' });
     }
+});
 
-    // تنظيف الأكواد من أي مسافات زيادة
-    const cleanCodes = codes
-        .map(c => String(c).trim())
-        .filter(c => c.length > 0 && c.length <= 200); // كود أقصاه 200 حرف
+const axios = require('axios');
 
-    if (cleanCodes.length === 0) {
-        return res.status(400).json({ success: false, message: 'الأكواد المرسلة فاضية بعد التنظيف' });
+// التأكد من قراءة المفتاح السري من الـ .env
+const DIGIBANKAR_API_KEY = process.env.DIGIBANKAR_API_KEY; 
+
+// ====================================================
+// ⚡ 1. إنشاء رابط دفع تلقائي عبر Digibankar
+// ====================================================
+app.post('/api/orders/checkout', async (req, res) => {
+    try {
+        const { productId, buyerEmail } = req.body;
+
+        if (!productId || !buyerEmail) {
+            return res.status(400).json({ success: false, error: 'الرجاء إدخال الإيميل واختيار المنتج' });
+        }
+
+        // جلب بيانات المنتج والمخزون من MongoDB
+        const product = await Product.findById(productId);
+        if (!product || !product.isActive) {
+            return res.status(404).json({ success: false, error: 'المنتج غير متاح حالياً' });
+        }
+
+        // فحص المخزون قبل توليد الفاتورة
+        const availableCodes = product.codes.filter(c => c.status === 'available');
+        if (availableCodes.length === 0) {
+            return res.status(400).json({ success: false, error: 'للأسف نفذت كمية هذا المنتج حالياً' });
+        }
+
+        // توليد رقم طلب فريد للموقع
+        const orderId = 'JKR-' + crypto.randomBytes(3).toString('hex').toUpperCase();
+
+        // إنشاء سجل طلب "معلق بانتظار الدفع الرقمي"
+        const newOrder = new Order({
+            orderId:        orderId,
+            productId:      product._id,
+            productName:    product.productName,
+            category:       product.category,
+            region:         product.region,
+            price:          product.price,
+            buyerEmail:     buyerEmail,
+            status:         'pending',
+            paymentGateway: 'digibankar'
+        });
+        await newOrder.save();
+
+        // 🚀 إرسال طلب لـ Digibankar لتوليد الفاتورة ورابط الدفع
+        // ملاحظة: الحقول بناءً على توثيق API المنصة الخاص بإنشاء الدفعات (Payment/Invoice Session)
+        const response = await axios.post('https://api.digibankar.com/v1/payments/create', {
+            amount:       product.price,
+            currency:     'USD', // أو العملة المعتمدة بحسابك عندهم
+            order_id:     orderId,
+            callback_url: `https://${req.get('host')}/api/payments/callback`, // صفحة العودة بعد الدفع
+            webhook_url:  `https://${req.get('host')}/api/payments/webhook`,   // الـ Webhook السري للتسليم الفوري
+            description:  `شراء ${product.productName} لـ ${buyerEmail}`
+        }, {
+            headers: {
+                'Authorization': `Bearer ${DIGIBANKAR_API_KEY}`,
+                'Content-Type':  'application/json'
+            }
+        });
+
+        // إذا نجح توليد الفاتورة، أرسل رابط الدفع للواجهة الأمامية
+        if (response.data && response.data.payment_url) {
+            res.json({ 
+                success: true, 
+                paymentUrl: response.data.payment_url, 
+                orderId: orderId 
+            });
+        } else {
+            throw new Error('لم يتم استلام رابط الدفع من المنصة');
+        }
+
+    } catch (err) {
+        console.error('❌ خطأ أثناء توليد فاتورة Digibankar:', err.message);
+        res.status(500).json({ success: false, error: 'فشل الاتصال ببوابة الدفع الرقمية، حاول لاحقاً' });
     }
-
-    // ======= هنا يجي كود الحفظ في قاعدة البيانات لاحقاً =======
-    // مؤقتاً: تأكيد النجاح
-    console.log(`✅ أدمن أضاف ${cleanCodes.length} كود للمنتج: "${productName}" | القسم: ${category} | الريجن: ${region}`);
-
-    res.json({
-        success: true,
-        message: `✅ تم استلام ${cleanCodes.length} كود بنجاح للمنتج "${productName}"`
-    });
 });
 
 // ====================================================
-// 🛡️ معالجة الأخطاء العامة (آخر شي دايماً)
+// ⚡ 2. الـ Webhook السري: استقبال تأكيد الدفع والتسليم الفوري
 // ====================================================
+app.post('/api/payments/webhook', async (req, res) => {
+    try {
+        // Digibankar يرسل تفاصيل العملية في الـ body
+        const { order_id, status, hash } = req.body; 
 
-// منع ظهور مسارات غير موجودة
+        // [خطوة حماية اختيارية]: يمكنك التحقق من الـ Hash هنا لضمان أن الطلب قادم من سيرفرهم فعلاً
+
+        if (status === 'success' || status === 'completed') {
+            // ابحث عن الطلب المعلق في قاعدة بياناتك
+            const order = await Order.findOne({ orderId: order_id, status: 'pending' });
+            
+            if (!order) {
+                return res.status(404).json({ success: false, error: 'الطلب غير موجود أو تم معالجته مسبقاً' });
+            }
+
+            // جلب المنتج وسحب كود متاح تلقائياً باستخدام الدالة المبنية في الـ Models عندك
+            const product = await Product.findById(order.productId);
+            
+            // سحب كود وتحديث حالته لـ sold فوراً في قاعدة البيانات
+            const deliveredCode = await product.pullAvailableCode(order.orderId, order.buyerEmail);
+
+            // تحديث سجل الطلب كـ مكتمل وحفظ الكود فيه
+            order.status = 'completed';
+            order.code   = deliveredCode;
+            await order.save();
+
+            // 📧 هان بتشغل دالة إرسال الإيميل الفوري للزبون (Nodemailer)
+            console.log(`🚀 تم شحن الكود [${deliveredCode}] بنجاح إلى إيميل: ${order.buyerEmail}`);
+
+            // إرجاع رد نجاح لسيرفر Digibankar عشان يوقف الإشعارات
+            return res.json({ success: true, message: 'Webhook processed and code delivered' });
+        }
+
+        res.json({ success: true, message: 'Status is not successful' });
+
+    } catch (err) {
+        console.error('❌ خطأ في معالجة Webhook الدفع:', err.message);
+        res.status(500).json({ success: false, error: 'Internal Webhook Error' });
+    }
+});
+
+// ====================================================
+// 🛡️ معالجة الأخطاء
+// ====================================================
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
 });
 
-// معالج أخطاء السيرفر
 app.use((err, req, res, next) => {
-    console.error('❌ خطأ في السيرفر:', err.message);
-    // لا ترسل تفاصيل الخطأ للزبون في البيئة الحقيقية
+    console.error('❌ خطأ:', err.message);
     res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
 });
 
-// ====================================================
 app.listen(PORT, () => {
-    console.log(`🚀 السيرفر يعمل على بورت ${PORT}`);
-    if (!ADMIN_PASSWORD) {
-        console.warn('⚠️ تحذير: ADMIN_PASSWORD غير موجود في .env — لوحة الأدمن غير محمية!');
-    }
+    console.log(`🚀 السيرفر على بورت ${PORT}`);
+    if (!ADMIN_PASSWORD) console.warn('⚠️ ADMIN_PASSWORD غير موجود!');
 });
