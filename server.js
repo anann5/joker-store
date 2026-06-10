@@ -73,27 +73,36 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🛡️ التحقق الصارم من الأدمن (يدعم الخطأ الإملائي في ريندر في كل مكان)
+// 🛡️ التحقق من الأدمن بدون كراشات وبأعلى حماية
 function verifyAdmin(req, res, next) {
     const token = req.headers['x-admin-token'];
     const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
     
-    if (!token || token !== securePass) {
+    if (!token || !securePass || token !== securePass) {
         return res.status(401).json({ success: false, error: 'غير مصرح بالوصول للوحة الأدمن' });
     }
     next();
 }
 
-// راوت تسجيل الدخول
+// راوت تسجيل الدخول الآمن والمضمون
 app.post('/api/admin/login', adminLimiter, (req, res) => {
-    const { password } = req.body;
-    const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
-    
-    if (password && password === securePass) {
-        // نرسل نفس المتغير اللّي السيرفر معتمده بالظبط
-        return res.json({ success: true, token: securePass });
+    try {
+        const { password } = req.body;
+        const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
+
+        if (!securePass) {
+            return res.status(500).json({ success: false, error: 'خطأ: كلمة مرور الأدمن غير معرفة بالسيرفر' });
+        }
+
+        if (password && String(password) === String(securePass)) {
+            return res.json({ success: true, token: securePass });
+        }
+        
+        return res.status(401).json({ success: false, error: 'الباسورد خاطئ!' });
+    } catch (err) {
+        console.error('Login Route Error:', err);
+        return res.status(500).json({ success: false, error: 'خطأ داخلي في معالجة الطلب' });
     }
-    res.status(401).json({ success: false, error: 'الباسورد خاطئ!' });
 });
 
 // ====================================================
