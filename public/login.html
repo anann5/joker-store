@@ -66,43 +66,42 @@
     </div>
 
     <script>
-        async function login() {
-            const password  = document.getElementById('passwordInput').value.trim();
-            const loginBtn  = document.getElementById('loginBtn');
-            const errorMsg  = document.getElementById('errorMsg');
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('password').value;
+    const btn = document.querySelector('button');
+    
+    // تغيير حالة الزر أثناء التحقق
+    btn.innerText = '⏳ جاري التحقق...';
+    btn.disabled = true;
 
-            if (!password) return;
+    try {
+        const res = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        
+        const data = await res.json();
 
-            errorMsg.style.display  = 'none';
-            loginBtn.disabled       = true;
-            loginBtn.textContent    = '⏳ جاري التحقق...';
-
-            try {
-                const response = await fetch('/admin', {
-                    headers: { 'x-admin-token': password }
-                });
-
-                if (response.ok) {
-                    // احفظ التوكن في الجلسة فقط
-                    sessionStorage.setItem('adminToken', password);
-                    // افتح صفحة الأدمن بدون كشف التوكن في الـ URL
-                    const html = await response.text();
-                    document.open('text/html', 'replace');
-                    document.write(html);
-                    document.close();
-                    window.history.pushState({}, '', '/admin');
-                } else {
-                    errorMsg.textContent   = '❌ كلمة السر غلط!';
-                    errorMsg.style.display = 'block';
-                }
-            } catch (err) {
-                errorMsg.textContent   = '❌ حدث خطأ في الاتصال بالسيرفر';
-                errorMsg.style.display = 'block';
-            } finally {
-                loginBtn.disabled    = false;
-                loginBtn.textContent = 'دخول';
-            }
+        if (data.success) {
+            // تخزين التوكن فوراً بالمتصفح قبل التوجيه لمنع رسالة المودال اللعينة
+            localStorage.setItem('adminToken', data.token);
+            
+            // توجيه مباشر إلى لوحة التحكم
+            window.location.href = '/admin';
+        } else {
+            alert(data.error || 'الباسورد خاطئ!');
+            btn.innerText = 'دخول الأدمن 🃏';
+            btn.disabled = false;
         }
+    } catch (err) {
+        console.error(err);
+        alert('حدث خطأ في الاتصال بالسيرفر');
+        btn.innerText = 'دخول الأدمن 🃏';
+        btn.disabled = false;
+    }
+});
 
         document.getElementById('loginBtn').addEventListener('click', login);
         document.getElementById('passwordInput').addEventListener('keypress', function(e) {

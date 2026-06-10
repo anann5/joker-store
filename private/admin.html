@@ -240,10 +240,10 @@
 
 <script>
     const token = localStorage.getItem('adminToken');
-    if (!token) {
-        alert('غير مصرح لك، يرجى تسجيل الدخول أولاً');
-        window.location.href = '/admin-login';
-    }
+if (!token) {
+    // إذا ما في توكن، بننقله فوراً لصفحة اللوجن بدون ما نطلع alert يضايقه
+    window.location.replace('/admin-login');
+}
 
     // 1. جلب وعرض المنتجات بالجدول
     async function loadInventory() {
