@@ -187,7 +187,32 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
     }
 });
 
-// 5. راوت إضافة كرت جديد للمخزن
+// ====================================================
+// 🌐 1. راوت جلب المنتجات العام لزوار المتجر (لمنع فشل التحميل)
+// ====================================================
+app.get('/api/products', adminLimiter, async (req, res) => {
+    try {
+        const products = await Product.find({ isActive: true });
+        
+        const formattedProducts = products.map(p => ({
+            id:             p._id,
+            productName:    p.productName || p["اسم المنتج"],
+            category:       p.category || p["فئة"],
+            region:         p.region || p["منطقة"],
+            price:          p.price || p["سعر"],
+            available:      p.codes ? p.codes.filter(c => c.status === 'available').length : 0
+        }));
+
+        res.json({ success: true, products: formattedProducts });
+    } catch (err) {
+        console.error('Public Products Error:', err);
+        res.status(500).json({ success: false, error: 'فشل في تحميل المنتجات' });
+    }
+});
+
+// ====================================================
+// ➕ 2. راوت إضافة كرت جديد للمخزن (يدعم الموديل القديم والجديد)
+// ====================================================
 app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const { productName, price, region, category, codes } = req.body;
@@ -196,9 +221,13 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
             return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول بشكل صحيح' });
         }
 
-        const codesObjects = codes.map(code => ({ code: code.trim(), status: 'available' }));
+        const codesObjects = codes.map(code => ({
+            code: code.trim(),
+            status: 'available'
+        }));
 
-        const product = new Product({
+        // بناء المستند ليتوافق مع الحقول القديمة والجديدة لضمان الحفظ بنجاح
+        const productData = {
             productName: productName.trim(),
             category: category.toLowerCase(),
             region: region.toLowerCase(),
@@ -206,13 +235,17 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
             codes: codesObjects,
             isActive: true,
             updatedAt: new Date(),
+
+            // حقول التوافق مع النسخة القديمة
             "اسم المنتج": productName.trim(),
             "فئة": category.toLowerCase(),
             "منطقة": region.toLowerCase(),
             "سعر": parseFloat(price)
-        });
+        };
 
+        const product = new Product(productData);
         await product.save();
+
         res.json({ success: true, message: '✅ تم حفظ الكرت والأكواد بنجاح في المخزن!' });
     } catch (err) {
         console.error('Add Codes Error:', err);
@@ -221,23 +254,21 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
 });
 
 // ====================================================
-// معالجة الأخطاء والتشغيل
+// 🛡️ 3. معالجة الأخطاء والـ 404
 // ====================================================
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
 });
 
 app.use((err, req, res, next) => {
-    console.error('❌ خطأ:', err.message);
+    console.error('❌ خطأ داخلي:', err.message);
     res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
 });
 
-// تشغيل السيرفر المتوافق مع ريندر وبورت الاستضافة تلقائياً
-if (typeof PORT !== 'undefined') {
-    app.listen(PORT, () => { console.log(`🚀 السيرفر شغال على بورت ${PORT}`); });
-} else {
-    const FINAL_PORT = process.env.PORT || 3000;
-    app.listen(FINAL_PORT, '0.0.0.0', () => {
-        console.log(`🚀 السيرفر شغال على بورت ${FINAL_PORT}`);
-    });
-}
+// ====================================================
+// 🚀 4. تشغيل السيرفر والربط الديناميكي مع بورت ريندر
+// ====================================================
+const FINAL_PORT = process.env.PORT || 3000;
+app.listen(FINAL_PORT, '0.0.0.0', () => {
+    console.log(`🚀 السيرفر شغال ومثالي تماماً على بورت ${FINAL_PORT}`);
+});
