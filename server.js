@@ -2,7 +2,6 @@ require('dotenv').config();
 const express    = require('express');
 const mongoose   = require('mongoose');
 const path       = require('path');
-const crypto     = require('crypto');
 const rateLimit  = require('express-rate-limit');
 const helmet     = require('helmet');
 const { Product, Order } = require('./models');
@@ -11,7 +10,7 @@ const app  = express();
 app.set('trust proxy', 1);
 
 const PORT           = process.env.PORT || 5850;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD; // ضمان لقط المتغير بأي تهجئة
 
 // ====================================================
 // 🛡️ Helmet
@@ -81,28 +80,19 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ====================================================
-// 🛡️ التحقق من الأدمن
+// 🛡️ التحقق من الأدمن (تم الإصلاح الجذري 🛠️)
 // ====================================================
 function verifyAdmin(req, res, next) {
-    if (password === process.env.ADMIN_PASSWROD) {
-        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ' });
+    if (!ADMIN_PASSWORD) {
+        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ، الباسورد مفقود بالبيئة' });
     }
+    
     const token = req.headers['x-admin-token'];
     if (!token || token !== ADMIN_PASSWORD) {
         console.warn(`⚠️ دخول أدمن فاشل من IP: ${req.ip}`);
-        return res.status(401).json({ success: false, error: 'غير مصرح' });
+        return res.status(401).json({ success: false, error: 'غير مصرح بالوصول للوحة الأدمن' });
     }
     next();
-}
-
-// ====================================================
-// هامش الربح
-// ====================================================
-const PROFIT_PERCENTAGE = 0.08;
-const FIXED_PROFIT      = 0.50;
-
-function calculateSellingPrice(costPrice) {
-    return parseFloat((costPrice + (costPrice * PROFIT_PERCENTAGE) + FIXED_PROFIT).toFixed(2));
 }
 
 // ====================================================
@@ -153,6 +143,15 @@ app.get('/admin', adminLimiter, verifyAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
+// استقبال طلب تسجيل الدخول والمقارنة الفورية
+app.post('/api/admin/login', adminLimiter, (req, res) => {
+    const { password } = req.body;
+    if (password && password === ADMIN_PASSWORD) {
+        return res.json({ success: true, token: ADMIN_PASSWORD });
+    }
+    res.status(401).json({ success: false, error: 'الباسورد خاطئ!' });
+});
+
 // إضافة منتج مع أكواده
 app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
     try {
@@ -188,7 +187,6 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
         if (cleanCodes.length === 0)
             return res.status(400).json({ success: false, message: 'الأكواد فاضية بعد التنظيف' });
 
-        // ابحث عن منتج موجود بنفس الاسم والريجن
         let product = await Product.findOne({ 
             productName: productName.trim(), 
             category, 
@@ -196,12 +194,10 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
         });
 
         if (product) {
-            // أضف الأكواد الجديدة للمنتج الموجود
             product.codes.push(...cleanCodes);
             product.updatedAt = new Date();
             await product.save();
         } else {
-            // أنشئ منتج جديد
             product = await Product.create({
                 productName: productName.trim(),
                 category,
@@ -250,128 +246,6 @@ app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
     }
 });
 
-const axios = require('axios');
-
-// التأكد من قراءة المفتاح السري من الـ .env
-const DIGIBANKAR_API_KEY = process.env.DIGIBANKAR_API_KEY; 
-
-// ====================================================
-// ⚡ 1. إنشاء رابط دفع تلقائي عبر Digibankar
-// ====================================================
-app.post('/api/orders/checkout', async (req, res) => {
-    try {
-        const { productId, buyerEmail } = req.body;
-
-        if (!productId || !buyerEmail) {
-            return res.status(400).json({ success: false, error: 'الرجاء إدخال الإيميل واختيار المنتج' });
-        }
-
-        // جلب بيانات المنتج والمخزون من MongoDB
-        const product = await Product.findById(productId);
-        if (!product || !product.isActive) {
-            return res.status(404).json({ success: false, error: 'المنتج غير متاح حالياً' });
-        }
-
-        // فحص المخزون قبل توليد الفاتورة
-        const availableCodes = product.codes.filter(c => c.status === 'available');
-        if (availableCodes.length === 0) {
-            return res.status(400).json({ success: false, error: 'للأسف نفذت كمية هذا المنتج حالياً' });
-        }
-
-        // توليد رقم طلب فريد للموقع
-        const orderId = 'JKR-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-
-        // إنشاء سجل طلب "معلق بانتظار الدفع الرقمي"
-        const newOrder = new Order({
-            orderId:        orderId,
-            productId:      product._id,
-            productName:    product.productName,
-            category:       product.category,
-            region:         product.region,
-            price:          product.price,
-            buyerEmail:     buyerEmail,
-            status:         'pending',
-            paymentGateway: 'digibankar'
-        });
-        await newOrder.save();
-
-        // 🚀 إرسال طلب لـ Digibankar لتوليد الفاتورة ورابط الدفع
-        // ملاحظة: الحقول بناءً على توثيق API المنصة الخاص بإنشاء الدفعات (Payment/Invoice Session)
-        const response = await axios.post('https://api.digibankar.com/v1/payments/create', {
-            amount:       product.price,
-            currency:     'USD', // أو العملة المعتمدة بحسابك عندهم
-            order_id:     orderId,
-            callback_url: `https://${req.get('host')}/api/payments/callback`, // صفحة العودة بعد الدفع
-            webhook_url:  `https://${req.get('host')}/api/payments/webhook`,   // الـ Webhook السري للتسليم الفوري
-            description:  `شراء ${product.productName} لـ ${buyerEmail}`
-        }, {
-            headers: {
-                'Authorization': `Bearer ${DIGIBANKAR_API_KEY}`,
-                'Content-Type':  'application/json'
-            }
-        });
-
-        // إذا نجح توليد الفاتورة، أرسل رابط الدفع للواجهة الأمامية
-        if (response.data && response.data.payment_url) {
-            res.json({ 
-                success: true, 
-                paymentUrl: response.data.payment_url, 
-                orderId: orderId 
-            });
-        } else {
-            throw new Error('لم يتم استلام رابط الدفع من المنصة');
-        }
-
-    } catch (err) {
-        console.error('❌ خطأ أثناء توليد فاتورة Digibankar:', err.message);
-        res.status(500).json({ success: false, error: 'فشل الاتصال ببوابة الدفع الرقمية، حاول لاحقاً' });
-    }
-});
-
-// ====================================================
-// ⚡ 2. الـ Webhook السري: استقبال تأكيد الدفع والتسليم الفوري
-// ====================================================
-app.post('/api/payments/webhook', async (req, res) => {
-    try {
-        // Digibankar يرسل تفاصيل العملية في الـ body
-        const { order_id, status, hash } = req.body; 
-
-        // [خطوة حماية اختيارية]: يمكنك التحقق من الـ Hash هنا لضمان أن الطلب قادم من سيرفرهم فعلاً
-
-        if (status === 'success' || status === 'completed') {
-            // ابحث عن الطلب المعلق في قاعدة بياناتك
-            const order = await Order.findOne({ orderId: order_id, status: 'pending' });
-            
-            if (!order) {
-                return res.status(404).json({ success: false, error: 'الطلب غير موجود أو تم معالجته مسبقاً' });
-            }
-
-            // جلب المنتج وسحب كود متاح تلقائياً باستخدام الدالة المبنية في الـ Models عندك
-            const product = await Product.findById(order.productId);
-            
-            // سحب كود وتحديث حالته لـ sold فوراً في قاعدة البيانات
-            const deliveredCode = await product.pullAvailableCode(order.orderId, order.buyerEmail);
-
-            // تحديث سجل الطلب كـ مكتمل وحفظ الكود فيه
-            order.status = 'completed';
-            order.code   = deliveredCode;
-            await order.save();
-
-            // 📧 هان بتشغل دالة إرسال الإيميل الفوري للزبون (Nodemailer)
-            console.log(`🚀 تم شحن الكود [${deliveredCode}] بنجاح إلى إيميل: ${order.buyerEmail}`);
-
-            // إرجاع رد نجاح لسيرفر Digibankar عشان يوقف الإشعارات
-            return res.json({ success: true, message: 'Webhook processed and code delivered' });
-        }
-
-        res.json({ success: true, message: 'Status is not successful' });
-
-    } catch (err) {
-        console.error('❌ خطأ في معالجة Webhook الدفع:', err.message);
-        res.status(500).json({ success: false, error: 'Internal Webhook Error' });
-    }
-});
-
 // ====================================================
 // 🛡️ معالجة الأخطاء
 // ====================================================
@@ -380,11 +254,11 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    console.error('❌ خطأ:', err.message);
+    console.error('❌ خطأ غير متوقع بالسيستم:', err.message);
     res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
 });
 
 app.listen(PORT, () => {
     console.log(`🚀 السيرفر على بورت ${PORT}`);
-    if (!ADMIN_PASSWORD) console.warn('⚠️ ADMIN_PASSWORD غير موجود!');
+    if (!ADMIN_PASSWORD) console.warn('⚠️ تذكير: الباسورد الخاص بالأدمن غير مضبوط في المتغيرات!');
 });
