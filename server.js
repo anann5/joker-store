@@ -229,7 +229,7 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
 });
 
 // ====================================================
-// ➕ الراوت الجديد: نظام إضافة الكروت والمخزون للأدمن
+// ➕ الراوت المطور: نظام إضافة الكروت والمخزون للأدمن (يدعم الموديل القديم والجديد)
 // ====================================================
 app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
     try {
@@ -239,44 +239,36 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
             return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول بشكل صحيح' });
         }
 
-        // تحويل مصفوفة الأكواد النصية إلى الصيغة المطلوبة داخل الـ Schema في الـ Database
+        // تحويل مصفوفة الأكواد النصية إلى الصيغة المطلوبة داخل الـ Schema
         const codesObjects = codes.map(code => ({
             code: code.trim(),
             status: 'available'
         }));
 
-        // إنشاء كرت جديد وحفظه في المونجو دي بي
-        const product = new Product({
+        // بناء المستند ليطابق الحقول العربية القديمة والحقول الإنجليزية الجديدة لضمان الحفظ بدون كراش
+        const productData = {
+            // الحقول بالإنجليزية
             productName: productName.trim(),
             category: category.toLowerCase(),
             region: region.toLowerCase(),
             price: parseFloat(price),
             codes: codesObjects,
             isActive: true,
-            updatedAt: new Date()
-        });
+            updatedAt: new Date(),
 
+            // الحقول بالعربية (دعم للموديل القديم والصفحة الرئيسية للمتجر)
+            "اسم المنتج": productName.trim(),
+            "فئة": category.toLowerCase(),
+            "منطقة": region.toLowerCase(),
+            "سعر": parseFloat(price)
+        };
+
+        const product = new Product(productData);
         await product.save();
+
         res.json({ success: true, message: '✅ تم حفظ الكرت والأكواد بنجاح في المخزن!' });
     } catch (err) {
-        console.error('Add Codes Error:', err);
-        res.status(500).json({ success: false, message: '❌ فشل في حفظ البيانات بالسيرفر' });
+        console.error('❌ خطأ تفصيلي أثناء حفظ الكرت بالداتابيز:', err);
+        res.status(500).json({ success: false, message: '❌ فشل في حفظ البيانات بالسيرفر - تحقق من حقول الـ Schema' });
     }
-});
-
-
-// ====================================================
-// معالجة الأخطاء والتشغيل (نهاية الملف)
-// ====================================================
-app.use((req, res) => {
-    res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
-});
-
-app.use((err, req, res, next) => {
-    console.error('❌ خطأ:', err.message);
-    res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
-});
-
-app.listen(PORT, () => {
-    console.log(`🚀 السيرفر على بورت ${PORT}`);
 });
