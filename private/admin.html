@@ -25,7 +25,7 @@
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -45,11 +45,10 @@
             gap: 30px;
         }
 
-        @media(min-width: 768px) {
-            .grid { grid-template-columns: 350px 1fr; }
+        @media(min-width: 992px) {
+            .grid { grid-template-columns: 380px 1fr; }
         }
 
-        /* كرت إضافة المنتجات */
         .card {
             background: var(--card-bg);
             padding: 25px;
@@ -89,7 +88,6 @@
         }
         button:hover { background: var(--primary-hover); }
 
-        /* جدول إدارة المخزون */
         .inventory-table {
             width: 100%;
             border-collapse: collapse;
@@ -118,7 +116,6 @@
         .btn-delete { background: var(--danger); width: auto; padding: 6px 12px; font-size: 13px; }
         .btn-delete:hover { background: #cc0000; }
 
-        /* النافذة المنبثقة للتعديل Modal */
         .modal {
             display: none;
             position: fixed;
@@ -152,21 +149,30 @@
             <h2>➕ إضافة بطاقات جديدة</h2>
             <form id="addForm">
                 <div class="form-group">
-                    <label>اسم المنتج (مثل: pubg 100$):</label>
+                    <label>اسم المنتج (مثل: 60 UC PUBG):</label>
                     <input type="text" id="prodName" required placeholder="ادخل اسم الكرت بدقة">
                 </div>
                 <div class="form-group">
                     <label>القسم (Category):</label>
                     <select id="prodCategory">
-                        <option value="pubg">ببجي (pubg)</option>
-                        <option value="fortnite">فورتنايت (fortnite)</option>
-                        <option value="playstation">بلايستيشن (playstation)</option>
-                        <option value="steam">ستيم (steam)</option>
+                        <option value="pubg">ببجي (PUBG)</option>
+                        <option value="fortnite">فورتنايت (Fortnite)</option>
+                        <option value="playstation">بلايستيشن (Playstation)</option>
+                        <option value="steam">ستيم (Steam)</option>
+                        <option value="xbox">إكس بوكس (Xbox)</option>
+                        <option value="freefire">فري فاير (Free Fire)</option>
+                        <option value="itunes">آيتونز (iTunes)</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>المنطقة (Region):</label>
-                    <input type="text" id="prodRegion" value="global" required>
+                    <select id="prodRegion">
+                        <option value="global">عالمي (Global)</option>
+                        <option value="tr">تركي (TR)</option>
+                        <option value="usa">أمريكي (USA)</option>
+                        <option value="eu">أوروبي (Europe)</option>
+                        <option value="mena">شرق أوسط (MENA)</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>السعر ($):</label>
@@ -183,7 +189,7 @@
         <div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                 <h2 style="margin: 0; font-size: 22px; color: #fff;">📦 المنتجات المعروضة حالياً بالمتجر</h2>
-                <button onclick="loadInventory()" style="width: auto; padding: 6px 15px; font-size: 13px; background: #34495e;">تحديث البيانات 🔄</button>
+                <button id="refreshBtn" style="width: auto; padding: 6px 15px; font-size: 13px; background: #34495e;">تحديث البيانات 🔄</button>
             </div>
             <table class="inventory-table">
                 <thead>
@@ -217,90 +223,111 @@
         <div class="form-group">
             <label>القسم:</label>
             <select id="editCategory">
-                <option value="pubg">ببجي (pubg)</option>
-                <option value="fortnite">فورتنايت (fortnite)</option>
-                <option value="playstation">بلايستيشن (playstation)</option>
-                <option value="steam">ستيم (steam)</option>
+                <option value="pubg">ببجي (PUBG)</option>
+                <option value="fortnite">فورتنايت (Fortnite)</option>
+                <option value="playstation">بلايستيشن (Playstation)</option>
+                <option value="steam">ستيم (Steam)</option>
+                <option value="xbox">إكس بوكس (Xbox)</option>
+                <option value="freefire">فري فاير (Free Fire)</option>
+                <option value="itunes">آيتونز (iTunes)</option>
             </select>
         </div>
         <div class="form-group">
             <label>المنطقة:</label>
-            <input type="text" id="editRegion" required>
+            <select id="editRegion">
+                <option value="global">عالمي (Global)</option>
+                <option value="tr">تركي (TR)</option>
+                <option value="usa">أمريكي (USA)</option>
+                <option value="eu">أوروبي (Europe)</option>
+                <option value="mena">شرق أوسط (MENA)</option>
+            </select>
         </div>
         <div class="form-group">
             <label>السعر ($):</label>
             <input type="number" id="editPrice" step="0.01" required>
         </div>
         <div class="modal-actions">
-            <button onclick="submitEdit()">حفظ التعديلات ✅</button>
-            <button class="btn-cancel" onclick="closeModal()">إلغاء</button>
+            <button id="saveEditBtn">حفظ التعديلات ✅</button>
+            <button class="btn-cancel" id="closeModalBtn">إلغاء</button>
         </div>
     </div>
 </div>
 
 <script>
     const token = localStorage.getItem('adminToken');
-
-// إذا التوكن مش موجود نهائياً، حوّله لصفحة اللوجن
-if (!token) {
-    window.location.replace('/admin-login');
-}
-
-// دالة جلب المنتجات وعرضها بالجدول
-async function loadInventory() {
-    if (!token) return; // حماية إضافية
-    try {
-        const res = await fetch('/api/admin/inventory', {
-            headers: { 'x-admin-token': token }
-        });
-        
-        // إذا السيرفر حكى إن التوكن غلط (401)، هون بس بنمسحه وبنخليه يسجل دخول من جديد
-        if (res.status === 401) {
-            localStorage.removeItem('adminToken');
-            window.location.replace('/admin-login');
-            return;
-        }
-
-        const data = await res.json();
-        if (!data.success) {
-            alert(data.error || 'فشلت عملية جلب البيانات');
-            return;
-        }
-
-        const tbody = document.getElementById('inventoryBody');
-        tbody.innerHTML = '';
-
-        if (data.inventory.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px;">لا يوجد منتجات مضافة حالياً. ابدأ بإضافة أول كرت!</td></tr>`;
-            return;
-        }
-
-        data.inventory.forEach(item => {
-            const tr = document.createElement('tr');
-            const badgeClass = item.available > 0 ? 'instock' : 'outstock';
-            const badgeText = item.available > 0 ? `${item.available} كود متاح` : 'خلص المخزون ⚠️';
-
-            tr.innerHTML = `
-                <td style="font-weight: bold; color: #fff;">${item.productName}</td>
-                <td><span style="color: #bdc3c7;">${item.category}</span></td>
-                <td>${item.region}</td>
-                <td style="color: #2ecc71; font-weight: bold;">$${item.price}</td>
-                <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-                <td>
-                    <div class="btn-actions">
-                        <button class="btn-edit" onclick="openEditModal('${item.id}', '${item.productName}', '${item.category}', '${item.region}', ${item.price})">تعديل</button>
-                        <button class="btn-delete" onclick="deleteProduct('${item.id}')">حذف</button>
-                    </div>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    } catch (err) {
-        console.error('Inventory Load Error:', err);
+    if (!token) {
+        window.location.replace('/admin-login');
     }
-}
 
-    // 2. معالجة نموذج الإضافة الحالي
+    // جلب وعرض المنتجات بالجدول
+    async function loadInventory() {
+        if (!token) return;
+        try {
+            const res = await fetch('/api/admin/inventory', {
+                headers: { 'x-admin-token': token }
+            });
+            
+            if (res.status === 401) {
+                localStorage.removeItem('adminToken');
+                window.location.replace('/admin-login');
+                return;
+            }
+
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.error || 'فشلت عملية جلب البيانات');
+                return;
+            }
+
+            const tbody = document.getElementById('inventoryBody');
+            tbody.innerHTML = '';
+
+            if (data.inventory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px;">لا يوجد منتجات مضافة حالياً. ابدأ بإضافة أول كرت!</td></tr>`;
+                return;
+            }
+
+            data.inventory.forEach(item => {
+                const tr = document.createElement('tr');
+                const badgeClass = item.available > 0 ? 'instock' : 'outstock';
+                const badgeText = item.available > 0 ? `${item.available} كود متاح` : 'خلص المخزون ⚠️';
+
+                tr.innerHTML = `
+                    <td style="font-weight: bold; color: #fff;">${item.productName}</td>
+                    <td><span style="color: #bdc3c7;">${item.category.toUpperCase()}</span></td>
+                    <td><span style="color: #45f3ff; font-weight: 600;">${item.region.toUpperCase()}</span></td>
+                    <td style="color: #2ecc71; font-weight: bold;">$${item.price}</td>
+                    <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                    <td>
+                        <div class="btn-actions">
+                            <button class="btn-edit" data-id="${item.id}" data-name="${item.productName}" data-category="${item.category}" data-region="${item.region}" data-price="${item.price}">تعديل</button>
+                            <button class="btn-delete" data-id="${item.id}">حذف</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // ربط أزرار التعديل والحذف بشكل آمن ومتوافق مع جدار الحماية
+            document.querySelectorAll('.btn-edit').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const b = e.target;
+                    openEditModal(b.dataset.id, b.dataset.name, b.dataset.category, b.dataset.region, b.dataset.price);
+                });
+            });
+
+            document.querySelectorAll('.btn-delete').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    deleteProduct(e.target.dataset.id);
+                });
+            });
+
+        } catch (err) {
+            console.error('Inventory Load Error:', err);
+        }
+    }
+
+    // معالجة نموذج الإضافة
     document.getElementById('addForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const codesArray = document.getElementById('prodCodes').value.split('\n').filter(c => c.trim().length > 0);
@@ -323,14 +350,13 @@ async function loadInventory() {
         if (data.success) {
             alert(data.message);
             document.getElementById('addForm').reset();
-            document.getElementById('prodRegion').value = 'global'; // إعادة القيمة الافتراضية
-            loadInventory(); // تحديث الجدول فوراً
+            loadInventory();
         } else {
             alert(data.message || data.error);
         }
     });
 
-    // 3. فتح نافذة التعديل وتعبئة البيانات فيها
+    // دالة فتح مودال التعديل
     function openEditModal(id, name, cat, reg, price) {
         document.getElementById('editId').value = id;
         document.getElementById('editName').value = name;
@@ -370,7 +396,7 @@ async function loadInventory() {
         }
     }
 
-    // 4. حذف كرت (إخفائه من المتجر والأدمن)
+    // حذف كرت
     async function deleteProduct(id) {
         if (!confirm('هل أنت متأكد تماماً أنك تريد حذف هذا المنتج من المتجر؟')) return;
 
@@ -388,7 +414,12 @@ async function loadInventory() {
         }
     }
 
-    // تشغيل جلب البيانات فور فتح الصفحة تلقائياً
+    // ربط الأحداث الثابتة بالأزرار
+    document.getElementById('refreshBtn').addEventListener('click', loadInventory);
+    document.getElementById('saveEditBtn').addEventListener('click', submitEdit);
+    document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+
+    // تشغيل الجلب التلقائي عند فتح الصفحة
     window.onload = loadInventory;
 </script>
 </body>
