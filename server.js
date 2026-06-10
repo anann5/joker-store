@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const express    = require('express');
 const mongoose   = require('mongoose');
 const path       = require('path');
@@ -76,11 +77,18 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 🛡️ التحقق من الأدمن بدون كراشات وبأعلى حماية
 function verifyAdmin(req, res, next) {
     const token = req.headers['x-admin-token'];
-    const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
     
-    if (!token || !securePass || token !== securePass) {
-        return res.status(401).json({ success: false, error: 'غير مصرح بالوصول للوحة الأدمن' });
+    if (!token) {
+        return res.status(401).json({ success: false, error: 'غير مصرح' });
     }
+
+    const tokenData = activeTokens.get(token);
+    
+    if (!tokenData || tokenData.expiresAt < Date.now()) {
+        activeTokens.delete(token);
+        return res.status(401).json({ success: false, error: 'انتهت الجلسة، ادخل من جديد' });
+    }
+
     next();
 }
 
@@ -91,37 +99,69 @@ app.get('/admin-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// هذا الرابط يعرض الصفحة فقط! الحماية بتصير جوة الصفحة بالـ JS لما يطلب البيانات
-app.get('/admin', (req, res) => {
+app.get('/admin', adminLimiter, (req, res) => {
+    const token = req.headers['x-admin-token'] || req.query.token;
+
+    if (!token) {
+        return res.redirect('/admin-login');
+    }
+
+    const tokenData = activeTokens.get(token);
+    if (!tokenData || tokenData.expiresAt < Date.now()) {
+        activeTokens.delete(token);
+        return res.redirect('/admin-login');
+    }
+
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
-// ====================================================
-// Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
-// ====================================================
+// Map لحفظ التوكنات النشطة في الذاكرة
+const activeTokens = new Map();
+
+// تنظيف التوكنات المنتهية كل ساعة
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, data] of activeTokens.entries()) {
+        if (data.expiresAt < now) {
+            activeTokens.delete(token);
+        }
+    }
+}, 60 * 60 * 1000);
 
 // ====================================================
 // Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
 // ====================================================
 
-// 1. راوت تسجيل الدخول
+// ====================================================
+// Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
+// ====================================================
+
 app.post('/api/admin/login', adminLimiter, (req, res) => {
     try {
         const { password } = req.body;
-        const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
+        const securePass = process.env.ADMIN_PASSWORD;
 
         if (!securePass) {
-            return res.status(500).json({ success: false, error: 'خطأ: كلمة مرور الأدمن غير معرفة بالسيرفر' });
+            return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ' });
         }
 
-        if (password && String(password) === String(securePass)) {
-            return res.json({ success: true, token: securePass });
+        if (!password || String(password) !== String(securePass)) {
+            return res.status(401).json({ success: false, error: 'كلمة المرور غير صحيحة' });
         }
+
+        // ولّد token عشوائي مؤقت — مش كلمة السر الأصلية ✅
+        const sessionToken = crypto.randomBytes(32).toString('hex');
         
-        return res.status(401).json({ success: false, error: 'الباسورد خاطئ!' });
+        // احفظه في الذاكرة مع وقت انتهاء 8 ساعات
+        activeTokens.set(sessionToken, {
+            createdAt: Date.now(),
+            expiresAt: Date.now() + (8 * 60 * 60 * 1000)
+        });
+
+        return res.json({ success: true, token: sessionToken });
+
     } catch (err) {
-        console.error('Login Route Error:', err);
-        return res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
+        return res.status(500).json({ success: false, error: 'خطأ داخلي' });
     }
 });
 
@@ -210,59 +250,63 @@ app.get('/api/products', adminLimiter, async (req, res) => {
     }
 });
 
-// ====================================================
-// ➕ 2. راوت إضافة كرت جديد للمخزن (يدعم الموديل القديم والجديد)
-// ====================================================
 app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const { productName, price, region, category, codes } = req.body;
 
-        if (!productName || !price || !region || !category || !codes || !Array.isArray(codes)) {
-            return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول بشكل صحيح' });
+        // Validation
+        if (!productName || !price || !region || !category) {
+            return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول' });
+        }
+        if (!Array.isArray(codes) || codes.length === 0) {
+            return res.status(400).json({ success: false, message: '❌ لازم كود واحد على الأقل' });
+        }
+        if (codes.length > 500) {
+            return res.status(400).json({ success: false, message: '❌ الحد الأقصى 500 كود' });
         }
 
-        const codesObjects = codes.map(code => ({
-            code: code.trim(),
-            status: 'available'
-        }));
+        // تنظيف الأكواد
+        const cleanCodes = codes
+            .map(c => String(c).trim())
+            .filter(c => c.length > 0 && c.length <= 200)
+            .map(value => ({ value, status: 'available' }));
 
-        // بناء المستند ليتوافق مع الحقول القديمة والجديدة لضمان الحفظ بنجاح
-        const productData = {
+        if (cleanCodes.length === 0) {
+            return res.status(400).json({ success: false, message: '❌ الأكواد فاضية بعد التنظيف' });
+        }
+
+        // ابحث عن منتج موجود
+        let product = await Product.findOne({
             productName: productName.trim(),
             category: category.toLowerCase(),
-            region: region.toLowerCase(),
-            price: parseFloat(price),
-            codes: codesObjects,
-            isActive: true,
-            updatedAt: new Date(),
+            region: region.toLowerCase()
+        });
 
-            // حقول التوافق مع النسخة القديمة
-            "اسم المنتج": productName.trim(),
-            "فئة": category.toLowerCase(),
-            "منطقة": region.toLowerCase(),
-            "سعر": parseFloat(price)
-        };
+        if (product) {
+            product.codes.push(...cleanCodes);
+            product.updatedAt = new Date();
+            await product.save();
+        } else {
+            product = await Product.create({
+                productName: productName.trim(),
+                category:    category.toLowerCase(),
+                region:      region.toLowerCase(),
+                price:       parseFloat(price),
+                codes:       cleanCodes,
+                isActive:    true
+            });
+        }
 
-        const product = new Product(productData);
-        await product.save();
+        return res.json({
+            success: true,
+            message: `✅ تم إضافة ${cleanCodes.length} كود للمنتج "${productName}"`,
+            totalStock: product.codes.filter(c => c.status === 'available').length
+        });
 
-        res.json({ success: true, message: '✅ تم حفظ الكرت والأكواد بنجاح في المخزن!' });
     } catch (err) {
-        console.error('Add Codes Error:', err);
-        res.status(500).json({ success: false, message: '❌ فشل في حفظ البيانات بالسيرفر' });
+        console.error('Failed to add codes:', err);
+        res.status(500).json({ success: false, error: 'فشل في إضافة الأكواد' });
     }
-});
-
-// ====================================================
-// 🛡️ 3. معالجة الأخطاء والـ 404
-// ====================================================
-app.use((req, res) => {
-    res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
-});
-
-app.use((err, req, res, next) => {
-    console.error('❌ خطأ داخلي:', err.message);
-    res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
 });
 
 // ====================================================

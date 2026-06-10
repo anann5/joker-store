@@ -82,10 +82,8 @@
 </div>
 
 <script>
-    // تنظيف أي توكن قديم تالف لمنع التعليق
-    localStorage.removeItem('adminToken');
-
-    document.getElementById('jokerLoginForm').addEventListener('submit', async (e) => {
+    
+        document.getElementById('jokerLoginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const passwordField = document.getElementById('jokerPassword');
@@ -109,8 +107,8 @@
 
             if (data.success && data.token) {
                 // حفظ التوكن فوراً والتوجه للأدمن
-                localStorage.setItem('adminToken', data.token);
-                window.location.replace('/admin');
+                sessionStorage.setItem('adminToken', data.token);
+             window.location.replace('/admin?token=' + data.token);
             } else {
                 alert(data.error || 'كلمة المرور غير صحيحة!');
                 submitBtn.innerText = 'دخول لوحة التحكم 🚀';
