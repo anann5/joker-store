@@ -84,7 +84,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // 🛡️ التحقق من الأدمن
 // ====================================================
 function verifyAdmin(req, res, next) {
-    if (!ADMIN_PASSWORD) {
+    if (password === process.env.ADMIN_PASSWROD) {
         return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ' });
     }
     const token = req.headers['x-admin-token'];
