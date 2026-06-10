@@ -73,11 +73,12 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🛡️ التحقق من الأدمن المطور والمقاوم للريفريش
+// 🛡️ التحقق الصارم من الأدمن (يدعم الخطأ الإملائي في ريندر في كل مكان)
 function verifyAdmin(req, res, next) {
     const token = req.headers['x-admin-token'];
-    // التحقق من التوكن مباشرة مع البيئة المحفوظة بريندر
-    if (!token || token !== (process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD)) {
+    const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
+    
+    if (!token || token !== securePass) {
         return res.status(401).json({ success: false, error: 'غير مصرح بالوصول للوحة الأدمن' });
     }
     next();
@@ -89,7 +90,7 @@ app.post('/api/admin/login', adminLimiter, (req, res) => {
     const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
     
     if (password && password === securePass) {
-        // نرسل الباسورد نفسه كتوكن ثابت ومطابق تماماً
+        // نرسل نفس المتغير اللّي السيرفر معتمده بالظبط
         return res.json({ success: true, token: securePass });
     }
     res.status(401).json({ success: false, error: 'الباسورد خاطئ!' });
