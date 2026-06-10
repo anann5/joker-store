@@ -229,7 +229,44 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
 });
 
 // ====================================================
-// معالجة الأخطاء والتشغيل
+// ➕ الراوت الجديد: نظام إضافة الكروت والمخزون للأدمن
+// ====================================================
+app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
+    try {
+        const { productName, price, region, category, codes } = req.body;
+
+        if (!productName || !price || !region || !category || !codes || !Array.isArray(codes)) {
+            return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول بشكل صحيح' });
+        }
+
+        // تحويل مصفوفة الأكواد النصية إلى الصيغة المطلوبة داخل الـ Schema في الـ Database
+        const codesObjects = codes.map(code => ({
+            code: code.trim(),
+            status: 'available'
+        }));
+
+        // إنشاء كرت جديد وحفظه في المونجو دي بي
+        const product = new Product({
+            productName: productName.trim(),
+            category: category.toLowerCase(),
+            region: region.toLowerCase(),
+            price: parseFloat(price),
+            codes: codesObjects,
+            isActive: true,
+            updatedAt: new Date()
+        });
+
+        await product.save();
+        res.json({ success: true, message: '✅ تم حفظ الكرت والأكواد بنجاح في المخزن!' });
+    } catch (err) {
+        console.error('Add Codes Error:', err);
+        res.status(500).json({ success: false, message: '❌ فشل في حفظ البيانات بالسيرفر' });
+    }
+});
+
+
+// ====================================================
+// معالجة الأخطاء والتشغيل (نهاية الملف)
 // ====================================================
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
