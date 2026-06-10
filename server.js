@@ -100,6 +100,10 @@ app.get('/admin', (req, res) => {
 // Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
 // ====================================================
 
+// ====================================================
+// Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
+// ====================================================
+
 // 1. راوت تسجيل الدخول
 app.post('/api/admin/login', adminLimiter, (req, res) => {
     try {
@@ -133,8 +137,8 @@ app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
             category:       p.category || p["فئة"],
             region:         p.region || p["منطقة"],
             price:          p.price || p["سعر"],
-            available:      p.codes ? p.codes.filter(c => c.status === 'available').length : 5,
-            total:          p.codes ? p.codes.length : 5,
+            available:      p.codes ? p.codes.filter(c => c.status === 'available').length : 0,
+            total:          p.codes ? p.codes.length : 0,
             lastUpdated:    p.updatedAt || new Date()
         }));
 
@@ -144,7 +148,7 @@ app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
     }
 });
 
-// 3. راوت تعديل منتج
+// 3. راوت تعديل بيانات منتج معين
 app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const { productName, price, region, category } = req.body;
@@ -168,7 +172,7 @@ app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) =
     }
 });
 
-// 4. راوت حذف منتج
+// 4. راوت حذف منتج بالكامل (Soft Delete)
 app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
@@ -183,54 +187,7 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
     }
 });
 
-// ====================================================
-// ✨ الإضافات الجديدة: نظام ميزات الـ CRUD للأدمن ✨
-// ====================================================
-
-// 1. راوت تعديل بيانات منتج معين (سعر، اسم، ريجن)
-app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
-    try {
-        const { productName, price, region, category } = req.body;
-        
-        const updatedProduct = await Product.findByIdAndUpdate(
-            req.params.id,
-            { 
-                productName: productName.trim(), 
-                price: parseFloat(price), 
-                region, 
-                category,
-                updatedAt: new Date()
-            },
-            { new: true }
-        );
-
-        if (!updatedProduct) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
-        
-        res.json({ success: true, message: '✅ تم تحديث بيانات البطاقة بنجاح' });
-    } catch (err) {
-        res.status(500).json({ success: false, error: 'فشل في تحديث المنتج' });
-    }
-});
-
-// 2. راوت حذف منتج بالكامل من الواجهة (Soft Delete لسلامة البيانات القديمة)
-app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
-    try {
-        const product = await Product.findById(req.params.id);
-        if (!product) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
-        
-        // تحويله لـ غير نشط لكي يختفي فوراً من الموقع والأدمن
-        product.isActive = false;
-        await product.save();
-
-        res.json({ success: true, message: '🗑️ تم حذف المنتج بنجاح من العرض' });
-    } catch (err) {
-        res.status(500).json({ success: false, error: 'فشل في حذف المنتج' });
-    }
-});
-
-// ====================================================
-// ➕ الراوت المطور: نظام إضافة الكروت والمخزون للأدمن (يدعم الموديل القديم والجديد)
-// ====================================================
+// 5. راوت إضافة كرت جديد للمخزن
 app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const { productName, price, region, category, codes } = req.body;
@@ -239,15 +196,9 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
             return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول بشكل صحيح' });
         }
 
-        // تحويل مصفوفة الأكواد النصية إلى الصيغة المطلوبة داخل الـ Schema
-        const codesObjects = codes.map(code => ({
-            code: code.trim(),
-            status: 'available'
-        }));
+        const codesObjects = codes.map(code => ({ code: code.trim(), status: 'available' }));
 
-        // بناء المستند ليطابق الحقول العربية القديمة والحقول الإنجليزية الجديدة لضمان الحفظ بدون كراش
-        const productData = {
-            // الحقول بالإنجليزية
+        const product = new Product({
             productName: productName.trim(),
             category: category.toLowerCase(),
             region: region.toLowerCase(),
@@ -255,20 +206,38 @@ app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => 
             codes: codesObjects,
             isActive: true,
             updatedAt: new Date(),
-
-            // الحقول بالعربية (دعم للموديل القديم والصفحة الرئيسية للمتجر)
             "اسم المنتج": productName.trim(),
             "فئة": category.toLowerCase(),
             "منطقة": region.toLowerCase(),
             "سعر": parseFloat(price)
-        };
+        });
 
-        const product = new Product(productData);
         await product.save();
-
         res.json({ success: true, message: '✅ تم حفظ الكرت والأكواد بنجاح في المخزن!' });
     } catch (err) {
-        console.error('❌ خطأ تفصيلي أثناء حفظ الكرت بالداتابيز:', err);
-        res.status(500).json({ success: false, message: '❌ فشل في حفظ البيانات بالسيرفر - تحقق من حقول الـ Schema' });
+        console.error('Add Codes Error:', err);
+        res.status(500).json({ success: false, message: '❌ فشل في حفظ البيانات بالسيرفر' });
     }
 });
+
+// ====================================================
+// معالجة الأخطاء والتشغيل
+// ====================================================
+app.use((req, res) => {
+    res.status(404).json({ success: false, error: 'الصفحة غير موجودة' });
+});
+
+app.use((err, req, res, next) => {
+    console.error('❌ خطأ:', err.message);
+    res.status(500).json({ success: false, error: 'خطأ داخلي في السيرفر' });
+});
+
+// تشغيل السيرفر المتوافق مع ريندر وبورت الاستضافة تلقائياً
+if (typeof PORT !== 'undefined') {
+    app.listen(PORT, () => { console.log(`🚀 السيرفر شغال على بورت ${PORT}`); });
+} else {
+    const FINAL_PORT = process.env.PORT || 3000;
+    app.listen(FINAL_PORT, '0.0.0.0', () => {
+        console.log(`🚀 السيرفر شغال على بورت ${FINAL_PORT}`);
+    });
+}
