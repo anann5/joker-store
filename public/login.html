@@ -14,7 +14,6 @@
             --text-color: #c5c6c7;
             --accent: #45f3ff;
         }
-
         body {
             font-family: 'Cairo', sans-serif;
             background-color: var(--bg-color);
@@ -25,7 +24,6 @@
             height: 100vh;
             margin: 0;
         }
-
         .login-card {
             background: var(--card-bg);
             padding: 40px;
@@ -37,26 +35,10 @@
             text-align: center;
             box-sizing: border-box;
         }
-
-        h2 {
-            color: #fff;
-            margin-bottom: 30px;
-            font-size: 24px;
-        }
+        h2 { color: #fff; margin-bottom: 30px; font-size: 24px; }
         h2 span { color: var(--accent); }
-
-        .form-group {
-            margin-bottom: 20px;
-            text-align: right;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-
+        .form-group { margin-bottom: 20px; text-align: right; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; }
         input {
             width: 100%;
             padding: 12px;
@@ -68,15 +50,8 @@
             font-family: 'Cairo', sans-serif;
             text-align: center;
             font-size: 16px;
-            letter-spacing: 2px;
         }
-
-        input:focus {
-            border-color: var(--primary);
-            outline: none;
-            box-shadow: 0 0 8px rgba(162, 0, 255, 0.5);
-        }
-
+        input:focus { border-color: var(--primary); outline: none; }
         button {
             width: 100%;
             padding: 12px;
@@ -88,17 +63,8 @@
             font-weight: 700;
             font-size: 16px;
             transition: 0.3s;
-            margin-top: 10px;
         }
-
-        button:hover {
-            background: var(--primary-hover);
-        }
-        
-        button:disabled {
-            background: #444;
-            cursor: not-allowed;
-        }
+        button:hover { background: var(--primary-hover); }
     </style>
 </head>
 <body>
@@ -106,56 +72,57 @@
 <div class="login-card">
     <h2>🃏 دخول الأدمن — <span>JOKER</span></h2>
     
-    <form id="loginForm">
+    <form id="jokerLoginForm">
         <div class="form-group">
-            <label for="password">أدخل كلمة المرور الخاصة بالإدارة:</label>
-            <input type="password" id="password" required placeholder="••••••••••••">
+            <label>أدخل كلمة المرور الخاصة بالإدارة:</label>
+            <input type="password" id="jokerPassword" name="password" required placeholder="••••••••••••">
         </div>
-        <button type="submit" id="loginBtn">دخول لوحة التحكم 🚀</button>
+        <button type="submit" id="jokerBtn">دخول لوحة التحكم 🚀</button>
     </form>
 </div>
 
 <script>
-    // التأكد من مسح أي توكن قديم معلق عند فتح صفحة اللوجن
+    // تنظيف أي توكن قديم تالف لمنع التعليق
     localStorage.removeItem('adminToken');
 
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    document.getElementById('jokerLoginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        const passwordInput = document.getElementById('password');
-        const loginBtn = document.getElementById('loginBtn');
-        const password = passwordInput.value;
+        const passwordField = document.getElementById('jokerPassword');
+        const submitBtn = document.getElementById('jokerBtn');
+        const passwordValue = passwordField.value.trim();
 
-        // تغيير شكل الزر لتعطيل الضغط المتكرر
-        loginBtn.innerText = '⏳ جاري التحقق والدخول...';
-        loginBtn.disabled = true;
+        submitBtn.innerText = '⏳ جاري التحقق...';
+        submitBtn.disabled = true;
 
         try {
             const res = await fetch('/api/admin/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ password: password })
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ password: passwordValue }) // إرسال صريح ومباشر
             });
 
             const data = await res.json();
 
-            if (data.success) {
-                // تخزين التوكن بالـ localStorage
+            if (data.success && data.token) {
+                // حفظ التوكن فوراً والتوجه للأدمن
                 localStorage.setItem('adminToken', data.token);
-                // توجيه مباشر ومضمون لصفحة الأدمن
                 window.location.replace('/admin');
             } else {
                 alert(data.error || 'كلمة المرور غير صحيحة!');
-                loginBtn.innerText = 'دخول لوحة التحكم 🚀';
-                loginBtn.disabled = false;
-                passwordInput.value = '';
-                passwordInput.focus();
+                submitBtn.innerText = 'دخول لوحة التحكم 🚀';
+                submitBtn.disabled = false;
+                passwordField.value = '';
+                passwordField.focus();
             }
         } catch (err) {
-            console.error('Error during login:', err);
-            alert('حدث خطأ أثناء الاتصال بالسيرفر، حاول مجدداً.');
-            loginBtn.innerText = 'دخول لوحة التحكم 🚀';
-            loginBtn.disabled = false;
+            console.error('Login Error:', err);
+            alert('حدث خطأ أثناء الاتصال بالسيرفر، تأكد من تحديث السيرفر.');
+            submitBtn.innerText = 'دخول لوحة التحكم 🚀';
+            submitBtn.disabled = false;
         }
     });
 </script>
