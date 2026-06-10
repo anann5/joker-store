@@ -240,56 +240,65 @@
 
 <script>
     const token = localStorage.getItem('adminToken');
+
+// إذا التوكن مش موجود نهائياً، حوّله لصفحة اللوجن
 if (!token) {
-    // إذا ما في توكن، بننقله فوراً لصفحة اللوجن بدون ما نطلع alert يضايقه
     window.location.replace('/admin-login');
 }
 
-    // 1. جلب وعرض المنتجات بالجدول
-    async function loadInventory() {
-        try {
-            const res = await fetch('/api/admin/inventory', {
-                headers: { 'x-admin-token': token }
-            });
-            const data = await res.json();
-            
-            if (!data.success) {
-                alert(data.error || 'فشلت عملية جلب البيانات');
-                return;
-            }
-
-            const tbody = document.getElementById('inventoryBody');
-            tbody.innerHTML = '';
-
-            if (data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px;">لا يوجد منتجات مضافة حالياً. ابدأ بإضافة أول كرت!</td></tr>`;
-                return;
-            }
-
-            data.inventory.forEach(item => {
-                const tr = document.createElement('tr');
-                const badgeClass = item.available > 0 ? 'instock' : 'outstock';
-                const badgeText = item.available > 0 ? `${item.available} كود متاح` : 'خلص المخزون ⚠️';
-
-                tr.innerHTML = `
-                    <td style="font-weight: bold; color: #fff;">${item.productName}</td>
-                    <td><span style="color: #bdc3c7;">${item.category}</span></td>
-                    <td>${item.region}</td>
-                    <td style="color: #2ecc71; font-weight: bold;">$${item.price}</td>
-                    <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-                    <td>
-                        <div class="btn-actions">
-                            <button class="btn-edit" onclick="openEditModal('${item.id}', '${item.productName}', '${item.category}', '${item.region}', ${item.price})">تعديل</button>
-                            <button class="btn-delete" onclick="deleteProduct('${item.id}')">حذف</button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-        } catch (err) {
-            console.error(err);
+// دالة جلب المنتجات وعرضها بالجدول
+async function loadInventory() {
+    if (!token) return; // حماية إضافية
+    try {
+        const res = await fetch('/api/admin/inventory', {
+            headers: { 'x-admin-token': token }
+        });
+        
+        // إذا السيرفر حكى إن التوكن غلط (401)، هون بس بنمسحه وبنخليه يسجل دخول من جديد
+        if (res.status === 401) {
+            localStorage.removeItem('adminToken');
+            window.location.replace('/admin-login');
+            return;
         }
+
+        const data = await res.json();
+        if (!data.success) {
+            alert(data.error || 'فشلت عملية جلب البيانات');
+            return;
+        }
+
+        const tbody = document.getElementById('inventoryBody');
+        tbody.innerHTML = '';
+
+        if (data.inventory.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px;">لا يوجد منتجات مضافة حالياً. ابدأ بإضافة أول كرت!</td></tr>`;
+            return;
+        }
+
+        data.inventory.forEach(item => {
+            const tr = document.createElement('tr');
+            const badgeClass = item.available > 0 ? 'instock' : 'outstock';
+            const badgeText = item.available > 0 ? `${item.available} كود متاح` : 'خلص المخزون ⚠️';
+
+            tr.innerHTML = `
+                <td style="font-weight: bold; color: #fff;">${item.productName}</td>
+                <td><span style="color: #bdc3c7;">${item.category}</span></td>
+                <td>${item.region}</td>
+                <td style="color: #2ecc71; font-weight: bold;">$${item.price}</td>
+                <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                <td>
+                    <div class="btn-actions">
+                        <button class="btn-edit" onclick="openEditModal('${item.id}', '${item.productName}', '${item.category}', '${item.region}', ${item.price})">تعديل</button>
+                        <button class="btn-delete" onclick="deleteProduct('${item.id}')">حذف</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        console.error('Inventory Load Error:', err);
     }
+}
 
     // 2. معالجة نموذج الإضافة الحالي
     document.getElementById('addForm').addEventListener('submit', async (e) => {

@@ -73,19 +73,27 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ====================================================
-// 🛡️ التحقق من الأدمن
-// ====================================================
+// 🛡️ التحقق من الأدمن المطور والمقاوم للريفريش
 function verifyAdmin(req, res, next) {
-    if (!ADMIN_PASSWORD) {
-        return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ، الباسورد مفقود' });
-    }
     const token = req.headers['x-admin-token'];
-    if (!token || token !== ADMIN_PASSWORD) {
+    // التحقق من التوكن مباشرة مع البيئة المحفوظة بريندر
+    if (!token || token !== (process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD)) {
         return res.status(401).json({ success: false, error: 'غير مصرح بالوصول للوحة الأدمن' });
     }
     next();
 }
+
+// راوت تسجيل الدخول
+app.post('/api/admin/login', adminLimiter, (req, res) => {
+    const { password } = req.body;
+    const securePass = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
+    
+    if (password && password === securePass) {
+        // نرسل الباسورد نفسه كتوكن ثابت ومطابق تماماً
+        return res.json({ success: true, token: securePass });
+    }
+    res.status(401).json({ success: false, error: 'الباسورد خاطئ!' });
+});
 
 // ====================================================
 // Routes — العامة
