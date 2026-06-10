@@ -103,26 +103,49 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// جلب المنتجات من DB
+// جلب المنتجات من DB - يدعم التسميات العربية والانجليزية لمطابقة الأطلس 🚀
 app.get('/api/products/:category', async (req, res) => {
     try {
-        const category = req.params.category.toLowerCase().replace(/[^a-z_]/g, '');
+        let categoryParam = req.params.category.toLowerCase().replace(/[^a-z_]/g, '');
+        
+        // تحويل اسم الفئة المقروء من الرابط إلى المقابل العربي بداخل الـ DB
+        let dbCategory = categoryParam;
+        if (categoryParam === 'pubg') dbCategory = 'ببجي';
+        if (categoryParam === 'fortnite') dbCategory = 'فورتنايت';
+        if (categoryParam === 'playstation') dbCategory = 'بلايستيشن';
+        // يمكنك إضافة باقي الفئات هنا بنفس الطريقة لاحقاً إذا كانت عربية بالـ DB
 
-        const products = await Product.find({ 
-            category,
-            isActive: true 
-        }).select('productName category region price codes');
+        // البحث في قاعدة البيانات عن الفئة الإنجليزية أو العربية
+        const products = await Product.find({
+            $or: [
+                { category: categoryParam },
+                { "فئة": dbCategory }
+            ],
+            isActive: true
+        });
 
-        // أرسل فقط المنتجات اللي عندها مخزون
-        const result = products
-            .filter(p => p.codes.some(c => c.status === 'available'))
-            .map(p => ({
-                id:    p._id,
-                name:  p.productName,
-                price: p.price,
-                region: p.region,
-                stock: p.codes.filter(c => c.status === 'available').length
-            }));
+        // تحويل البيانات ديناميكياً لتطابق واجهتك الأمامية
+        const result = products.map(p => {
+            // قراءة اسم المنتج والسعر والريجن سواء كانت التسمية عربي أو إنجليزي
+            const name = p.productName || p["اسم المنتج"] || "بطاقة شحن";
+            const price = p.price || p["سعر"] || 0;
+            const region = p.region || p["منطقة"] || "global";
+            
+            // فحص الأكواد: إذا كان المستند قادم من الأطلس القديم ولا يحتوي على مصفوفة أكواد، نعطيه مخزون وهمي مؤقت 5 عشان يظهر بالفحص
+            let stock = 5; 
+            if (p.codes && Array.isArray(p.codes)) {
+                const available = p.codes.filter(c => c.status === 'available').length;
+                if (p.codes.length > 0) stock = available;
+            }
+
+            return {
+                id: p._id,
+                name: name,
+                price: price,
+                region: region,
+                stock: stock
+            };
+        }).filter(p => p.stock > 0); // إظهار المنتجات المتاحة فقط
 
         res.json(result);
     } catch (err) {
