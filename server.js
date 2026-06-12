@@ -228,84 +228,69 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
 });
 
 // ====================================================
-// 🌐 1. راوت جلب المنتجات العام لزوار المتجر (لمنع فشل التحميل)
+// 🌐 قسم زوار المتجر (العام) - حماية حديدية وثابتة 100% لـ script.js
 // ====================================================
-app.get('/api/products/:category', async (req, res) => {
+app.get('/api/products/:category', adminLimiter, async (req, res) => {
     try {
-        const products = await Product.find({ isActive: true });
-        
-        const formattedProducts = products.map(p => ({
-            id:             p._id,
-            productName:    p.productName || p["اسم المنتج"],
-            category:       p.category || p["فئة"],
-            region:         p.region || p["منطقة"],
-            price:          p.price || p["سعر"],
-            available:      p.codes ? p.codes.filter(c => c.status === 'available').length : 0
-        }));
+        const { category } = req.params;
+        let query = { isActive: true };
 
-        res.json({ success: true, products: formattedProducts });
+        if (category && category !== 'all' && category !== 'الكل') {
+            query.$or = [
+                { category: category.toLowerCase() },
+                { "فئة": category.toLowerCase() }
+            ];
+        }
+
+        const products = await Product.find(query);
+        
+        const formattedProducts = products.map(p => {
+            // 🛡️ تأمين جلب الخصائص وتحويلها لنصوص آمنة تماماً لمنع كراش الـ Frontend
+            const catVal = p.category || p["فئة"] || "all";
+            const regVal = p.region || p["منطقة"] || "عالمي";
+            const nameVal = p.productName || p["اسم المنتج"] || "منتج بدون اسم";
+
+            return {
+    id:        p._id,
+    name:      String(nameVal).trim(),  // ← name مش productName
+    category:  String(catVal).trim().toLowerCase(),
+    region:    String(regVal).trim().toLowerCase(),
+    price:     Number(p.price || p["سعر"] || 0),
+    available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
+};
+        });
+
+        res.json(formattedProducts);
     } catch (err) {
-        console.error('Public Products Error:', err);
-        res.status(500).json({ success: false, error: 'فشل في تحميل المنتجات' });
+        console.error('Public Products Filter Error:', err);
+        res.status(500).json([]);
     }
 });
 
-app.post('/api/admin/add-codes', adminLimiter, verifyAdmin, async (req, res) => {
+// الراوت الاحتياطي بدون بارامتر
+app.get('/api/products', adminLimiter, async (req, res) => {
     try {
-        const { productName, price, region, category, codes } = req.body;
+        const products = await Product.find({ isActive: true });
+        
+        const formattedProducts = products.map(p => {
+            const catVal = p.category || p["فئة"] || "all";
+            const regVal = p.region || p["منطقة"] || "عالمي";
+            const nameVal = p.productName || p["اسم المنتج"] || "منتج بدون اسم";
 
-        // Validation
-        if (!productName || !price || !region || !category) {
-            return res.status(400).json({ success: false, message: '❌ يرجى ملء جميع الحقول' });
-        }
-        if (!Array.isArray(codes) || codes.length === 0) {
-            return res.status(400).json({ success: false, message: '❌ لازم كود واحد على الأقل' });
-        }
-        if (codes.length > 500) {
-            return res.status(400).json({ success: false, message: '❌ الحد الأقصى 500 كود' });
-        }
-
-        // تنظيف الأكواد
-        const cleanCodes = codes
-            .map(c => String(c).trim())
-            .filter(c => c.length > 0 && c.length <= 200)
-            .map(value => ({ value, status: 'available' }));
-
-        if (cleanCodes.length === 0) {
-            return res.status(400).json({ success: false, message: '❌ الأكواد فاضية بعد التنظيف' });
-        }
-
-        // ابحث عن منتج موجود
-        let product = await Product.findOne({
-            productName: productName.trim(),
-            category: category.toLowerCase(),
-            region: region.toLowerCase()
+            return {
+    id:        p._id,
+    name:      String(nameVal).trim(),  // ← name مش productName
+    category:  String(catVal).trim().toLowerCase(),
+    region:    String(regVal).trim().toLowerCase(),
+    price:     Number(p.price || p["سعر"] || 0),
+    available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
+            };
         });
-
-        if (product) {
-            product.codes.push(...cleanCodes);
-            product.updatedAt = new Date();
-            await product.save();
-        } else {
-            product = await Product.create({
-                productName: productName.trim(),
-                category:    category.toLowerCase(),
-                region:      region.toLowerCase(),
-                price:       parseFloat(price),
-                codes:       cleanCodes,
-                isActive:    true
-            });
-        }
-
-        return res.json({
-            success: true,
-            message: `✅ تم إضافة ${cleanCodes.length} كود للمنتج "${productName}"`,
-            totalStock: product.codes.filter(c => c.status === 'available').length
-        });
-
+        
+        res.json(formattedProducts);
     } catch (err) {
-        console.error('Failed to add codes:', err);
-        res.status(500).json({ success: false, error: 'فشل في إضافة الأكواد' });
+        console.error('Public Products Error:', err);
+        res.status(500).json([]);
     }
 });
 

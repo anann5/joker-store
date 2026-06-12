@@ -127,8 +127,8 @@ function selectCategory(categoryKey) {
 
             products.forEach(function(item) {
                 var detectedRegion = 'global';
-                var nameLower = item.name.toLowerCase();
-                var idUpper = (item.id || '').toUpperCase();
+                var nameLower = (item.name || item.productName || '').toLowerCase();
+                var idUpper = (item.id || item._id || '').toString().toUpperCase();
 
                 if (idUpper.includes('US') || nameLower.includes('us') || nameLower.includes('امريكي') || nameLower.includes('أمريكي')) detectedRegion = 'us';
                 else if (idUpper.includes('TR') || nameLower.includes('tr') || nameLower.includes('تركي')) detectedRegion = 'tr';
@@ -558,7 +558,7 @@ function addToCart(product) {
     localStorage.setItem('joker_cart', JSON.stringify(cart));
     updateCartUI();
     
-    alert(`📥 تم إضافة [${product.name}] إلى السلة بنجاح!`);
+    alert(`📥 تم إضافة [${product.productName || product.name}] إلى السلة بنجاح!`);
 }
 
 /**
