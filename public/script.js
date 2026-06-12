@@ -200,10 +200,10 @@ function selectCategory(categoryKey) {
             });
         })
         .catch(function(err) {
-            console.error('خطأ:', err);
-            grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات</p>';
-        });
-}
+    console.error('خطأ:', err);
+    grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات</p>';
+});    
+            }
 
 // ======================================================
 //  فتح مودال الشراء
