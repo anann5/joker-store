@@ -231,6 +231,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     showAllCategories();
 
+    var logoHomeBtn = document.getElementById('logoHomeBtn');
+if (logoHomeBtn) {
+    logoHomeBtn.addEventListener('click', function() {
+        goBack();
+    });
+}
+
     var regionFilterBar = document.getElementById('regionFilterBar');
     if (regionFilterBar) {
         regionFilterBar.addEventListener('click', function(e) {
