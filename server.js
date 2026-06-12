@@ -230,7 +230,7 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
 // ====================================================
 // 🌐 1. راوت جلب المنتجات العام لزوار المتجر (لمنع فشل التحميل)
 // ====================================================
-app.get('/api/products', adminLimiter, async (req, res) => {
+app.get('/api/products/:category', async (req, res) => {
     try {
         const products = await Product.find({ isActive: true });
         

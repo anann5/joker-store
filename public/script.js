@@ -118,12 +118,12 @@ function selectCategory(categoryKey) {
     fetch('/api/products/' + categoryKey)
         .then(function(res) { return res.json(); })
         .then(function(products) {
-            grid.innerHTML = '';
+    grid.innerHTML = '';
 
-            if (!products || products.length === 0) {
-                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً!</p>';
-                return;
-            }
+    if (!products || products.length === 0) {
+        grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً!</p>';
+        return;  // ← تأكد هاد السطر موجود
+    }
 
             products.forEach(function(item) {
                 var detectedRegion = 'global';
