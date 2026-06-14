@@ -92,6 +92,15 @@ const adminLimiter = rateLimit({
 
 app.use(generalLimiter);
 
+// 🛡️ محدد طلبات صارم مخصص لحماية حقل الشراء والإيميلات من السبام
+const checkoutLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // كل 15 دقيقة
+    max: 5, // يسمح بـ 5 محاولات فقط كحد أقصى من نفس الجهاز
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'لقد قمت بمحاولات شراء كثيرة، يرجى الانتظار 15 دقيقة ثم المحاولة مجدداً.' }
+});
+
 // Map لحفظ التوكنات النشطة في الذاكرة
 const activeTokens = new Map();
 
@@ -297,35 +306,61 @@ app.get('/api/products', adminLimiter, async (req, res) => {
     }
 });
 
+// دالة أمنية سريعة لتشفيير وتطهير النصوص ومنع حقن الـ HTML
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#x27;')
+        .replace(/\//g, '&#x2F;');
+}
+
 // ==========================================================
-// 🚀 راوت استقبال الطلبات وإرسال الفاتورة عبر Resend
+// 🚀 راوت استقبال الطلبات المحمي تماماً ضد الـ CRLF والـ HTML Injection
 // ==========================================================
-app.post('/api/checkout', async (req, res) => {
+app.post('/api/checkout', checkoutLimiter, async (req, res) => {
     try {
-        // قراءة البيانات القادمة من بوستمان أو الموقع
         const { customerEmail, customerName, cartItems, totalAmount } = req.body;
 
-        if (!customerEmail || !cartItems || !Array.isArray(cartItems)) {
-            return res.status(400).json({ success: false, error: 'بيانات الطلب غير مكتملة أو غير صحيحة!' });
+        // 🛡️ 1. فحص البريد الإلكتروني الصارم (منع CRLF وحظر الاختراق)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!customerEmail || !emailRegex.test(customerEmail) || customerEmail.includes('\r') || customerEmail.includes('\n')) {
+            return res.status(400).json({ success: false, error: 'صيغة البريد الإلكتروني غير صالحة أو غير آمنة!' });
         }
 
-        // بناء قائمة المشتريات بشكل منظم للبريد الإلكتروني
+        if (!cartItems || !Array.isArray(cartItems)) {
+            return res.status(400).json({ success: false, error: 'بيانات الطلب غير مكتملة!' });
+        }
+
+        // 🛡️ 2. تنظيف وتطهير المدخلات النصية باستخدام دالة الحماية
+        const cleanCustomerName = escapeHTML(customerName || 'عزيزنا الزبون');
+        const cleanTotalAmount = escapeHTML(totalAmount);
+
+        // 3. بناء قائمة المشتريات الآمنة
         let itemsHtml = '';
         cartItems.forEach(item => {
+            // تطهير اسم المنتج قبل وضعه في الـ HTML
+            const cleanItemName = escapeHTML(item.name);
+            const cleanItemQty = Number(item.qty || 1);
+            const cleanItemPrice = Number(item.price || 0);
+
             itemsHtml += `
                 <li style="padding: 10px 0; border-bottom: 1px solid rgba(0, 240, 255, 0.1); display: flex; justify-content: space-between; direction: rtl;">
-                    <span>${item.name} (x${item.qty})</span>
-                    <span style="color: #00f0ff; font-weight: bold; margin-right: 10px;">${Number(item.price * item.qty).toFixed(2)}$</span>
+                    <span>${cleanItemName} (x${cleanItemQty})</span>
+                    <span style="color: #00f0ff; font-weight: bold; margin-right: 10px;">${(cleanItemPrice * cleanItemQty).toFixed(2)}$</span>
                 </li>`;
         });
 
         const mailOptions = {
             from: '"Joker Store 🃏" <onboarding@resend.dev>', 
-            to: customerEmail, 
+            to: customerEmail.trim(), 
             subject: '📦 تأكيد استلام طلبك من متجر Joker Store',
             html: `
                 <div style="font-family: sans-serif; direction: rtl; text-align: right; padding: 25px; border: 1px solid #00f0ff; border-radius: 12px; background-color: #0b0e14; color: #fff; max-width: 500px; margin: auto;">
-                    <h2 style="color: #00f0ff; border-bottom: 2px solid #00f0ff; padding-bottom: 10px; margin-top: 0;">مرحباً ${customerName || 'عزيزنا الزبون'} 👋</h2>
+                    <h2 style="color: #00f0ff; border-bottom: 2px solid #00f0ff; padding-bottom: 10px; margin-top: 0;">مرحباً ${cleanCustomerName} 👋</h2>
                     <p style="font-size: 1rem; color: #b9bbbe;">تم استلام طلبك بنجاح في نظامنا، وإليك تفاصيل فاتورتك الرقمية:</p>
                     
                     <ul style="list-style: none; padding: 0; margin: 20px 0;">
@@ -333,7 +368,7 @@ app.post('/api/checkout', async (req, res) => {
                     </ul>
                     
                     <div style="background: rgba(0, 240, 255, 0.05); padding: 15px; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 240, 255, 0.2);">
-                        <h3 style="margin: 0; color: #ff0055; font-size: 1.3rem;">المجموع الإجمالي: ${totalAmount}$</h3>
+                        <h3 style="margin: 0; color: #ff0055; font-size: 1.3rem;">المجموع الإجمالي: ${cleanTotalAmount}$</h3>
                     </div>
                     
                     <p style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 30px; margin-bottom: 0;">هذا الإيميل تلقائي وصادر عن نظام فحص متجر Joker Store.</p>
@@ -341,13 +376,12 @@ app.post('/api/checkout', async (req, res) => {
             `
         };
 
-        // إرسال الفاتورة عبر الناقل الأصلي المربوط بـ Resend فوق
         await transporter.sendMail(mailOptions);
-        res.json({ success: true, message: 'تم استلام الطلب وإرسال الفاتورة للهوتميل بنجاح! 🚀' });
+        res.json({ success: true, message: 'تم استلام الطلب وإرسال الفاتورة بأمان كامل! 🚀' });
 
     } catch (error) {
         console.error('❌ حدث خطأ أثناء إرسال الإيميل:', error);
-        res.status(500).json({ success: false, error: 'فشل السيرفر في إرسال الإيميل، تأكد من مفتاح RESEND_API_KEY' });
+        res.status(500).json({ success: false, error: 'فشل السيرفر في معالجة الإيميل بأمان.' });
     }
 });
 
