@@ -21,19 +21,20 @@ var rawServerData = {
 };
 
 var currentSelectedProduct = null;
+var cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
 
 // ======================================================
-//  دالة تحديد الريجن وجلب روابط الأعلام المحلية بالترتيب الجديد
+//  دالة تحديد الريجن وجلب روابط الأعلام المحلية
 // ======================================================
 function getRegionDetails(region) {
     var reg = String(region || 'global').toLowerCase();
     
     if (reg.includes('tr')) return { cls: 'badge-tr', flagUrl: '/image/flags/tr.png', isIcon: false };
-if (reg.includes('ae')) return { cls: 'badge-ae', flagUrl: '/image/flags/ae.png', isIcon: false };
-if (reg.includes('sa')) return { cls: 'badge-sa', flagUrl: '/image/flags/sa.png', isIcon: false };
-if (reg.includes('vn') || reg.includes('viet')) return { cls: 'badge-vn', flagUrl: '/image/flags/vn.png', isIcon: false };
-if (reg.includes('cn') || reg.includes('china')) return { cls: 'badge-cn', flagUrl: '/image/flags/cn.png', isIcon: false };
-if (reg.includes('us')) return { cls: 'badge-us', flagUrl: '/image/flags/us.png', isIcon: false };
+    if (reg.includes('ae')) return { cls: 'badge-ae', flagUrl: '/image/flags/ae.png', isIcon: false };
+    if (reg.includes('sa')) return { cls: 'badge-sa', flagUrl: '/image/flags/sa.png', isIcon: false };
+    if (reg.includes('vn') || reg.includes('viet')) return { cls: 'badge-vn', flagUrl: '/image/flags/vn.png', isIcon: false };
+    if (reg.includes('cn') || reg.includes('china')) return { cls: 'badge-cn', flagUrl: '/image/flags/cn.png', isIcon: false };
+    if (reg.includes('us')) return { cls: 'badge-us', flagUrl: '/image/flags/us.png', isIcon: false };
     
     return { cls: 'badge-global', flagUrl: '', isIcon: true }; 
 }
@@ -43,6 +44,7 @@ if (reg.includes('us')) return { cls: 'badge-us', flagUrl: '/image/flags/us.png'
 // ======================================================
 function showAllCategories() {
     var grid = document.getElementById('mainCategories');
+    if (!grid) return;
     grid.className = '';
     grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
     grid.innerHTML = '';
@@ -88,7 +90,7 @@ function showAllCategories() {
 }
 
 // ======================================================
-//  عرض المنتجات داخل القسم مع التجميل الزجاجي للأعلام
+//  عرض المنتجات داخل القسم
 // ======================================================
 function selectCategory(categoryKey) {
     var cat = rawServerData.categories[categoryKey];
@@ -96,6 +98,7 @@ function selectCategory(categoryKey) {
 
     var grid = document.getElementById('mainCategories');
     var backContainer = document.getElementById('back-container');
+    if (!grid) return;
 
     if (backContainer) backContainer.style.display = 'block';
 
@@ -118,12 +121,12 @@ function selectCategory(categoryKey) {
     fetch('/api/products/' + categoryKey)
         .then(function(res) { return res.json(); })
         .then(function(products) {
-    grid.innerHTML = '';
+            grid.innerHTML = '';
 
-    if (!products || products.length === 0) {
-        grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً!</p>';
-        return;  // ← تأكد هاد السطر موجود
-    }
+            if (!products || products.length === 0) {
+                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً!</p>';
+                return;
+            }
 
             products.forEach(function(item) {
                 var detectedRegion = 'global';
@@ -138,10 +141,14 @@ function selectCategory(categoryKey) {
                 else if (idUpper.includes('EU') || nameLower.includes('eu') || nameLower.includes('اوروب') || nameLower.includes('أوروب')) detectedRegion = 'eu';
 
                 var regionInfo = getRegionDetails(detectedRegion);
+                
+                // حفظ السعر النقي كعدد عشان السلة والحسابات
+                var rawPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
+
                 var clientItem = {
-                    id: item.id,
-                    name: item.name,
-                    price: typeof item.price === 'number' ? item.price + '$' : item.price,
+                    id: item.id || item._id,
+                    name: item.name || item.productName,
+                    price: rawPrice,
                     region: detectedRegion,
                     image: 'image/' + categoryKey + '.png'
                 };
@@ -151,12 +158,10 @@ function selectCategory(categoryKey) {
                 card.dataset.region = detectedRegion;
                 card.style.position = 'relative'; 
 
-                // 🌟 تصميم كبسولة العلم الزجاجية الفخمة (مجمل الكرت 100%)
                 var badge = document.createElement('div');
                 badge.className = 'card-flag-badge ' + regionInfo.cls;
                 badge.style.cssText = 'position: absolute; top: 12px; left: 12px; background: rgba(15, 18, 27, 0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding: 5px 7px; border-radius: 8px; display: flex; align-items: center; justify-content: center; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 10px rgba(0,0,0,0.4);';
                 
-                // حقن العلم كصورة أو كأيقونة الفونتوأسوم بدقة خارقة
                 if (regionInfo.isIcon) {
                     badge.innerHTML = '<i class="fas fa-globe" style="color: #64ffda; font-size: 14px;"></i>';
                 } else {
@@ -182,7 +187,7 @@ function selectCategory(categoryKey) {
 
                 var price = document.createElement('p');
                 price.className = 'price-tag card-price';
-                price.textContent = clientItem.price;
+                price.textContent = clientItem.price + '$';
 
                 var buyBtn = document.createElement('button');
                 buyBtn.className = 'buy-btn';
@@ -193,26 +198,16 @@ function selectCategory(categoryKey) {
                 content.appendChild(price);
                 content.appendChild(buyBtn);
 
-                card.appendChild(badge); // إضافة كبسولة العلم الفخمة المحدثة
+                card.appendChild(badge);
                 card.appendChild(imgContainer);
                 card.appendChild(content);
                 grid.appendChild(card);
             });
         })
         .catch(function(err) {
-    console.error('خطأ:', err);
-    grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات</p>';
-});    
-            }
-
-// ======================================================
-//  فتح مودال الشراء
-// ======================================================
-function orderProduct(item) {
-    currentSelectedProduct = item;
-    document.getElementById('modalTitle').textContent = 'استلام كود الشحن لـ ' + item.name;
-    document.getElementById('modalProductPrice').textContent = item.price;
-    document.getElementById('purchaseModal').classList.add('active');
+            console.error('خطأ:', err);
+            grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات</p>';
+        });    
 }
 
 // ======================================================
@@ -230,13 +225,12 @@ function goBack() {
 document.addEventListener('DOMContentLoaded', function() {
 
     showAllCategories();
+    updateCartUI(); // تحديث السلة فور فتح الصفحة
 
     var logoHomeBtn = document.getElementById('logoHomeBtn');
-if (logoHomeBtn) {
-    logoHomeBtn.addEventListener('click', function() {
-        goBack();
-    });
-}
+    if (logoHomeBtn) {
+        logoHomeBtn.addEventListener('click', function() { goBack(); });
+    }
 
     var regionFilterBar = document.getElementById('regionFilterBar');
     if (regionFilterBar) {
@@ -298,48 +292,44 @@ if (logoHomeBtn) {
         }
     });
 
-    document.getElementById('closeModal').addEventListener('click', function() {
-        document.getElementById('purchaseModal').classList.remove('active');
-    });
-    document.getElementById('purchaseModal').addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('active');
-    });
+    // أحداث المودالات العامة لتجنب التكرار
+    var purchaseModal = document.getElementById('purchaseModal');
+    var closePurchaseBtn = document.getElementById('closeModal');
+    if (closePurchaseBtn && purchaseModal) {
+        closePurchaseBtn.addEventListener('click', function() { purchaseModal.classList.remove('active'); });
+    }
 
-    document.getElementById('closeCodeModal').addEventListener('click', function() {
-        document.getElementById('codeModal').classList.remove('active');
-    });
-    document.getElementById('codeModal').addEventListener('click', function(e) {
-        if (e.target === this) this.classList.remove('active');
-    });
+    var codeModal = document.getElementById('codeModal');
+    var closeCodeBtn = document.getElementById('closeCodeModal');
+    if (closeCodeBtn && codeModal) {
+        closeCodeBtn.addEventListener('click', function() { codeModal.classList.remove('active'); });
+    }
 
-    document.getElementById('copyCodeBtn').addEventListener('click', function() {
-        var codeText = document.getElementById('generatedCode').textContent;
-        navigator.clipboard.writeText(codeText).then(function() {
-            alert('📋 تم نسخ كود الشحن بنجاح!');
+    var copyCodeBtn = document.getElementById('copyCodeBtn');
+    if (copyCodeBtn) {
+        copyCodeBtn.addEventListener('click', function() {
+            var codeText = document.getElementById('generatedCode').textContent;
+            navigator.clipboard.writeText(codeText).then(function() {
+                alert('📋 تم نسخ كود الشحن بنجاح!');
+            });
         });
-    });
+    }
 
+    // صائد ضغطات الكروت والدخول للسلة
     document.getElementById('mainCategories').addEventListener('click', function(e) {
         var enterBtn = e.target.closest('.enter-btn[data-category]');
         if (enterBtn) {
             selectCategory(enterBtn.dataset.category);
             return;
         }
-        //  الجزء الجديد: يرسل المنتج للسلة المحلية فوراً بدلاً من فتح الدفع اليدوي
-var buyBtn = e.target.closest('.buy-btn[data-item]');
-if (buyBtn) {
-    var item = JSON.parse(buyBtn.dataset.item);
-    
-    // تحويل حقول الاسم ليتوافق مع السلة المحلية
-    var correctedProduct = {
-        id: item.id,
-        productName: item.name, // الدالة تحت بتتوقع productName
-        price: parseFloat(item.price) || 0
-    };
-    
-    addToCart(correctedProduct);
-    return;
-}
+        
+        var buyBtn = e.target.closest('.buy-btn[data-item]');
+        if (buyBtn) {
+            var item = JSON.parse(buyBtn.dataset.item);
+            addToCart(item);
+            return;
+        }
+
         var categoryCard = e.target.closest('.category-card[data-category]');
         if (categoryCard && !e.target.closest('button')) {
             selectCategory(categoryCard.dataset.category);
@@ -369,6 +359,7 @@ if (buyBtn) {
 
             var grid = document.getElementById('mainCategories');
             var backContainer = document.getElementById('back-container');
+            if (!grid) return;
             grid.className = '';
             grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
             grid.innerHTML = '';
@@ -411,143 +402,91 @@ if (buyBtn) {
         });
     }
 
+    // فتح السلة عبر زر الهيدر
+    var cartHeaderBtn = document.getElementById('cartHeaderBtn');
+    if (cartHeaderBtn && purchaseModal) {
+        cartHeaderBtn.addEventListener('click', function() {
+            updateCartUI();
+            purchaseModal.classList.add('active'); 
+        });
+    }
+
+    // تغيير المحافظ ديناميكياً داخل المودال
+    var paymentSelect = document.getElementById('paymentMethodSelect');
+    var instructionsZone = document.getElementById('paymentInstructions');
+    if (paymentSelect && instructionsZone) {
+        paymentSelect.addEventListener('change', function(e) {
+            var method = e.target.value;
+            if (method === 'jawwal_pay') {
+                instructionsZone.innerHTML = `
+                    <p style="margin: 0 0 8px 0; color: #00f0ff; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p>
+                    <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">059XXXXXXX</span></p>
+                    <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>
+                `;
+            } else if (method === 'palpay') {
+                instructionsZone.innerHTML = `
+                    <p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p>
+                    <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">9XXXXX</span></p>
+                    <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>
+                `;
+            }
+        });
+    }
+
+    // إرسال طلب السلة الكامل بالكامل للـ Backend
+    var submitOrderBtn = document.getElementById('submitOrderBtn');
+    if (submitOrderBtn) {
+        submitOrderBtn.addEventListener('click', async function() {
+            var email = document.getElementById('user-email').value.trim();
+            var paymentRef = document.getElementById('paymentRefInput').value.trim();
+            var gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
+
+            if (!email) { alert('الرجاء إدخال إيميل مستلم الكود أولاً!'); return; }
+            if (!paymentRef) { alert('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!'); return; }
+            if (cart.length === 0) { alert('سلتك فارغة!'); return; }
+
+            // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
+            var orderData = {
+                items: cart.map(item => ({ productId: item.id, qty: item.qty })),
+                buyerEmail: email,
+                paymentGateway: gateway,
+                paymentRef: paymentRef
+            };
+
+            submitOrderBtn.disabled = true;
+            submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
+
+            try {
+                const response = await fetch('/api/orders/new', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    purchaseModal.classList.remove('active');
+                    cart = [];
+                    localStorage.removeItem('joker_cart');
+                    updateCartUI();
+                    alert('🚀 تم استلام طلبك بنجاح! بمجرد تحقق الأدمن من التحويل، سيصلك كود الشحن فوراً على إيميلك.');
+                } else {
+                    alert('❌ فشل إرسال الطلب: ' + (result.error || 'حدث خطأ غير متوقع'));
+                }
+            } catch (err) {
+                alert('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.');
+            } finally {
+                submitOrderBtn.disabled = false;
+                submitOrderBtn.textContent = '🚀 تأكيد التحويل وإرسال الطلب';
+            }
+        });
+    }
 });
 
 // ======================================================
-// 🛒 تشغيل منطق السلة الفورية والدفع اليدوي
+// 🛒 سيستم السلة المحلية المستقلة النظيفة
 // ======================================================
-var purchaseModal = document.getElementById('purchaseModal');
-var closeModalBtn = document.getElementById('closeModal');
-var paymentSelect = document.getElementById('paymentMethodSelect');
-var instructionsZone = document.getElementById('paymentInstructions');
-var submitOrderBtn = document.getElementById('submitOrderBtn');
-
-// متغير لحفظ المنتج الحالي اللّي اختاره الزبون
-var activeProduct = null;
-
-/**
- * 1. دالة لفتح السلة وتعبئة بيانات الكرت المختار
- */
-function openPurchaseModal(product) {
-    activeProduct = product;
-    
-    // تعبئة البيانات ديناميكياً داخل السلة
-    document.getElementById('modalTitle').textContent = `إكمال شراء: ${product.productName}`;
-    document.getElementById('modalProductPrice').textContent = `${product.price}$`;
-    
-    // تصفير الخانات السابقة عشان لو فتحها زبون ثاني
-    document.getElementById('user-email').value = '';
-    document.getElementById('paymentRefInput').value = '';
-    
-    // إظهار المودال (السلة)
-    purchaseModal.style.display = 'flex';
-}
-
-/**
- * 2. إغلاق السلة عند الضغط على زر الإغلاق (×)
- */
-if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', function() {
-        purchaseModal.style.display = 'none';
-    });
-}
-
-/**
- * 3. تغيير أرقام المحافظ والتعليمات ديناميكياً حسب اختيار الزبون
- */
-if (paymentSelect) {
-    paymentSelect.addEventListener('change', function(e) {
-        var method = e.target.value;
-        
-        if (method === 'jawwal_pay') {
-            instructionsZone.innerHTML = `
-                <p style="margin: 0 0 8px 0; color: #00f0ff; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p>
-                <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">059XXXXXXX</span></p>
-                <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>
-            `;
-        } else if (method === 'palpay') {
-            instructionsZone.innerHTML = `
-                <p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p>
-                <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">9XXXXX</span></p>
-                <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>
-            `;
-        }
-    });
-}
-
-/**
- * 4. إرسال الطلب إلى السيرفر عند الضغط على زر "تأكيد التحويل"
- */
-if (submitOrderBtn) {
-    submitOrderBtn.addEventListener('click', async function() {
-        var email = document.getElementById('user-email').value.trim();
-        var paymentRef = document.getElementById('paymentRefInput').value.trim();
-        var gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
-
-        // تحقق بسيط من المدخلات قبل الإرسال
-        if (!email) {
-            alert('الرجاء إدخال إيميل مستلم الكود أولاً!');
-            return;
-        }
-        if (!paymentRef) {
-            alert('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!');
-            return;
-        }
-        if (!activeProduct) return;
-
-        // تجهيز بيانات الطلب لإرسالها للـ API
-        var orderData = {
-            productId: activeProduct._id || activeProduct.id,
-            buyerEmail: email,
-            paymentGateway: gateway,
-            paymentRef: paymentRef
-        };
-
-        submitOrderBtn.disabled = true;
-        submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
-
-        try {
-            // هان بنستدعي الـ API اللّي رح نبنيه في الـ Backend لاستقبال الطلبات
-            const response = await fetch('/api/orders/new', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderData)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                // إخفاء سلة الشراء
-                purchaseModal.style.display = 'none';
-                
-                // تنبيه الزبون بنجاح العملية الإيداعية
-                alert('🚀 تم استلام طلبك بنجاح! بمجرد تحقق الأدمن من التحويل، سيصلك كود الشحن فوراً على إيميلك.');
-            } else {
-                alert('❌ فشل إرسال الطلب: ' + (result.error || 'حدث خطأ غير متوقع'));
-            }
-        } catch (err) {
-            alert('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.');
-        } finally {
-            submitOrderBtn.disabled = false;
-            submitOrderBtn.textContent = '🚀 تأكيد التحويل وإرسال الطلب';
-        }
-    });
-}
-
-// ======================================================
-// 🛒 سيستم السلة المحلية المستقلة (بدون روابط دفع)
-// ======================================================
-var cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
-var purchaseModal = document.getElementById('purchaseModal');
-var closeModalBtn = document.getElementById('closeModal');
-var cartHeaderBtn = document.getElementById('cartHeaderBtn');
-
-// تحديث العداد فوق بالهيدر أول ما يفتح الموقع
-updateCartUI();
-
-/**
- * دالة لإضافة منتج إلى السلة المحلية النظيفة
- */
 function addToCart(product) {
     var existingItem = cart.find(item => item.id === product.id);
     
@@ -556,7 +495,7 @@ function addToCart(product) {
     } else {
         cart.push({
             id: product.id,
-            name: product.productName,
+            name: product.name,
             price: product.price,
             qty: 1
         });
@@ -564,102 +503,104 @@ function addToCart(product) {
     
     localStorage.setItem('joker_cart', JSON.stringify(cart));
     updateCartUI();
-    
-    alert(`📥 تم إضافة [${product.productName || product.name}] إلى السلة بنجاح!`);
+    alert(`📥 تم إضافة [${product.name}] إلى السلة بنجاح!`);
 }
 
-/**
- * دالة لتحديث عداد السلة وعرض العناصر بالبوب أب
- */
+// ======================================================
+// 🛒 الدالة الأصلية لتحديث السلة وإصلاح الأيقونة الحمراء
+// ======================================================
 function updateCartUI() {
-    // 1. تحديث العداد في الهيدر
-    var totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+    // تحديث العداد العلوي إن وجد
     var badge = document.getElementById('cartCountBadge');
+    var totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     if (badge) badge.textContent = totalQty;
 
-    // 2. بناء عناصر السلة داخل البوب أب
-    var listZone = document.getElementById('cartItemsList');
+    // جلب منطقة السلة والمجموع
+    var listZone = document.getElementById('cartItemsList'); 
     var totalZone = document.getElementById('cartTotalAmount');
     
-    if (!listZone || !totalZone) return;
+    if (!listZone) return;
     
+    // إذا كانت السلة فارغة
     if (cart.length === 0) {
-        listZone.innerHTML = '<p style="color:#b9bbbe; text-align:center; padding:20px;">السلة فارغة حالياً 🛒</p>';
-        totalZone.textContent = '0.00$';
+        listZone.innerHTML = '<p style="color:#b9bbbe; text-align:center; padding:20px; font-size:0.9rem;">السلة فارغة حالياً 🛒</p>';
+        if (totalZone) totalZone.textContent = '0.00$';
         return;
     }
 
+    // تفريغ زون المنتجات قبل إعادة البناء لمنع التكرار
     listZone.innerHTML = '';
     var totalCost = 0;
 
-   cart.forEach((item, index) => {
-    totalCost += (item.price * item.qty);
-    
-    var row = document.createElement('div');
-    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(0,240,255,0.05);";
-    
-    row.innerHTML = `
-        <button class="delete-item-btn" data-index="${index}" style="background:none; border:none; color:#ff0055; cursor:pointer; font-size:1.1rem; padding: 5px;">
-            <i class="fas fa-trash-alt" style="pointer-events: none;"></i>
-        </button>
-        <span style="color:#00f0ff; font-weight:bold;">${(item.price * item.qty)}$</span>
-        <span style="color:#fff; font-size:0.9rem;">${item.name} (${item.qty}x)</span>
-    `;
-    listZone.appendChild(row);
-});
+    cart.forEach((item, index) => {
+        totalCost += (item.price * item.qty);
+        
+        var row = document.createElement('div');
+        row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(0,240,255,0.05); direction: rtl;";
+        
+        // ربط الدالة بـ window.removeFromCart صراحة لحل مشكلة عدم الاستجابة نهائياً
+        row.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <i data-index="${index}" class="fas fa-trash-alt remove-cart-btn" style="color:#ff0055; cursor:pointer; font-size:1.2rem; padding: 5px;" title="حذف المنتج"></i>
+                <span style="color:#00f0ff; font-weight:bold;">${(item.price * item.qty).toFixed(2)}$</span>
+            </div>
+            
+            <div style="display: flex; align-items: center;">
+                <span style="color:#fff; font-size:0.95rem;">${item.name} <span style="color: #00f0ff; font-size: 0.85rem;">(${item.qty}x)</span></span>
+            </div>
+        `;
+        listZone.appendChild(row);
+    });
 
-    totalZone.textContent = totalCost + "$";
+    if (totalZone) totalZone.textContent = totalCost.toFixed(2) + "$";
+
+    // ربط أزرار الحذف ✅
+    listZone.querySelectorAll('.remove-cart-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = parseInt(this.getAttribute('data-index'));
+            removeFromCart(idx);
+        });
+    });
 }
 
-/**
- * دالة لحذف عنصر واحد من السلة
- */
+// ======================================================
+// 🗑️ دالة الحذف الفردي المستقرة
+// ======================================================
 function removeFromCart(index) {
-    cart.splice(index, 1); // حذف العنصر من المصفوفة بناءً على ترتيبه
-    localStorage.setItem('joker_cart', JSON.stringify(cart)); // حفظ التغيير بالمتصفح
-    updateCartUI(); // إعادة تحديث شكل السلة والمجموع فوراً
+    if (index > -1 && index < cart.length) {
+        cart.splice(index, 1); // حذف العنصر من المصفوفة بناءً على ترتيبه
+        localStorage.setItem('joker_cart', JSON.stringify(cart)); // حفظ التعديل في الكاش
+        updateCartUI(); // إعادة تحديث شكل السلة فوراً
+    }
 }
 
-// تصدير الدالة للمتصفح بشكل رسمي عشان الـ onclick يشوفها فوراً
+// ======================================================
+// 🧼 دالة تفريغ السلة بالكامل (التي كانت ناقصة وتعطل الزر بسببها)
+// ======================================================
+function clearCart() {
+    if (cart.length === 0) return;
+    if (confirm('هل أنت متأكد من رغبتك في تفريغ السلة بالكامل؟')) {
+        cart = []; // مسح المصفوفة
+        localStorage.setItem('joker_cart', JSON.stringify(cart)); // تحديث الكاش
+        updateCartUI(); // إعادة تحديث الواجهة
+    }
+}
+
+// تصدير الدوال بالكامل لتكون معرّفة على مستوى المتصفح
 window.removeFromCart = removeFromCart;
+window.clearCart = clearCart;
+window.updateCartUI = updateCartUI;
 
-/**
- * فتح السلة عند الضغط على الأيقونة بالهيدر (نظام الـ Class الموحد)
- */
-if (cartHeaderBtn) {
-    cartHeaderBtn.addEventListener('click', function() {
-        updateCartUI();
-        // تأكدنا هنا أنه يضيف كلاس active المتوافق مع الـ CSS الخاص بموقعك
-        purchaseModal.classList.add('active'); 
-    });
-}
-
-/**
- * إغلاق السلة عند الضغط على زر (×)
- */
-if (closeModalBtn) {
-    closeModalBtn.addEventListener('click', function() {
-        purchaseModal.classList.remove('active');
-    });
-}
-
-/**
- * 🎯 صائد الضغطات الذكي لحذف العناصر من السلة فوراً
- */
-var listZone = document.getElementById('cartItemsList');
-if (listZone) {
-    listZone.addEventListener('click', function(e) {
-        // التحقق إذا الضغطة تمت على زر الحذف
-        var deleteBtn = e.target.closest('.delete-item-btn');
-        if (deleteBtn) {
-            var index = parseInt(deleteBtn.getAttribute('data-index'));
-            
-            // حذف العنصر من المصفوفة
-            cart.splice(index, 1);
-            
-            // حفظ التحديث في المتصفح وإعادة بناء السلة
-            localStorage.setItem('joker_cart', JSON.stringify(cart));
-            updateCartUI();
-        }
-    });
-}
+// ======================================================
+// ⚡ تفعيل الأحداث عند تحميل الصفحة
+// ======================================================
+document.addEventListener('DOMContentLoaded', function() {
+    var clearBtn = document.getElementById('clearCartBtn'); 
+    if (clearBtn) {
+        // ربط مباشر ونظيف لزر التفريغ لمنع التعارض
+        clearBtn.onclick = window.clearCart;
+    }
+    
+    // تشغيل تحديث السلة عند تحميل الصفحة لأول مرة
+    updateCartUI();
+});

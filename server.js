@@ -5,13 +5,63 @@ const mongoose   = require('mongoose');
 const path       = require('path');
 const rateLimit  = require('express-rate-limit');
 const helmet     = require('helmet');
-const { Product, Order } = require('./models');
+const nodemailer = require('nodemailer');
+const axios      = require('axios');
 
-const app  = express();
+// ====================================================
+// 📧 إعداد مُرسل الإيميلات الصاروخي عبر منصة Resend
+// ====================================================
+const transporter = nodemailer.createTransport({
+    host: 'smtp.resend.com',
+    port: 465,
+    secure: true, 
+    auth: {
+        user: 'resend', 
+        pass: process.env.RESEND_API_KEY
+    }
+});
+
+// تحقق من الاتصال بالإيميل عند تشغيل السيرفر
+transporter.verify(function(error, success) {
+    if (error) {
+        console.log('⚠️ مشكلة في إعداد الإيميل:', error.message);
+    } else {
+        console.log('✅ الإيميل جاهز للإرسال!');
+    }
+});
+
+async function sendCodeByEmail(buyerEmail, productName, code, orderId) {
+    const mailOptions = {
+        from: `"Joker Store 🃏" <onboarding@resend.dev>`,
+        to: buyerEmail, // ✅ تم الإصلاح: مطابقة المتغير القادم للدالة لمنع الكراش
+        subject: `✅ كود الشحن الخاص بك — ${productName}`,
+        html: `
+        <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #1a1a2e; color: #fff; padding: 30px; border-radius: 12px;">
+            <h2 style="color: #ff9f43; text-align: center;">🃏 Joker Store</h2>
+            <h3 style="text-align: center; color: #00f2fe;">✅ تم الشراء بنجاح!</h3>
+            <p style="color: #ccc;">شكراً لشرائك من متجر الجوكر!</p>
+            <p><strong>المنتج:</strong> ${productName}</p>
+            <p><strong>رقم الطلب:</strong> ${orderId}</p>
+            <div style="background: #0f0f18; border: 2px solid #ff9f43; border-radius: 10px; padding: 20px; text-align: center; margin: 20px 0;">
+                <p style="color: #aaa; margin-bottom: 8px;">كود الشحن الخاص بك:</p>
+                <p style="color: #ff9f43; font-size: 1.5rem; font-weight: bold; letter-spacing: 3px; word-break: break-all;">${code}</p>
+            </div>
+            <p style="color: #aaa; font-size: 0.85rem; text-align: center;">احتفظ بهذا الكود في مكان آمن</p>
+            <hr style="border-color: #333; margin: 20px 0;">
+            <p style="color: #666; font-size: 0.8rem; text-align: center;">© 2026 Joker Store — جميع الحقوق محفوظة</p>
+        </div>
+        `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`📧 تم إرسال الكود لـ ${buyerEmail}`);
+}
+
+const { Product, Order } = require('./models');
+const app = express();
 app.set('trust proxy', 1);
 
-const PORT           = process.env.PORT || 5850;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWROD;
+const PORT = process.env.PORT || 5850;
 
 // ====================================================
 // 🛡️ Helmet & Rate Limiting
@@ -38,11 +88,24 @@ const generalLimiter = rateLimit({
 });
 
 const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, max: 20, // زدنا المحاولات قليلاً لتسهيل الإدارة
+    windowMs: 15 * 60 * 1000, max: 1000, // ✅ تم التكبير محلياً لمنع حظرك أثناء التجريد والعمل
     message: { success: false, error: 'محاولات كثيرة، انتظر 15 دقيقة' }
 });
 
 app.use(generalLimiter);
+
+// Map لحفظ التوكنات النشطة في الذاكرة
+const activeTokens = new Map();
+
+// تنظيف التوكنات المنتهية كل ساعة
+setInterval(() => {
+    const now = Date.now();
+    for (const [token, data] of activeTokens.entries()) {
+        if (data.expiresAt < now) {
+            activeTokens.delete(token);
+        }
+    }
+}, 60 * 60 * 1000);
 
 // ====================================================
 // قاعدة البيانات
@@ -72,87 +135,97 @@ app.use((req, res, next) => {
     next();
 });
 
+// السطر القديم لديك
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 🛡️ التحقق من الأدمن بدون كراشات وبأعلى حماية
+// ==========================================================
+// 🔒 1. مسارات صفحات الأدمن (Admin UI Routes) - توضع هنا لتجنب خطأ Cannot GET
+// ==========================================================
+
+// رابط صفحة تسجيل الدخول
+app.get(['/admin-login', '/admin-login.html'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html')); 
+});
+
+// دعم الرابطين: /admin  و  /admin.html مع التحقق من التوكن
+app.get(['/admin', '/admin.html'], (req, res) => {
+    const token = req.query.token;
+    
+    // التحقق من وجود الجلسة والتوكن
+    if (!token || !activeTokens.has(token)) {
+        return res.status(403).send(`
+            <div style="font-family: sans-serif; text-align: center; padding: 50px; direction: rtl;">
+                <h1 style="color: #ff0055;">عذراً، انتهت صلاحية الجلسة أو غير مصرح لك!</h1>
+                <p style="color: #666;">يرجى الانتقال لصفحة تسجيل الدخول أولاً لتوليد صلاحية جديدة.</p>
+                <a href="/admin-login" style="display: inline-block; padding: 10px 20px; background: #00f0ff; color: #000; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">الانتقال لصفحة تسجيل الدخول</a>
+            </div>
+        `);
+    }
+    
+    res.sendFile(path.join(__dirname, 'private', 'admin.html'));
+});
+
+// ==========================================================
+// 🛡️ 2. دالة التحقق لحماية عمليات الـ API (تعديل، حذف، إضافة)
+// ==========================================================
 function verifyAdmin(req, res, next) {
-    const token = req.headers['x-admin-token'];
+    const token = req.headers['x-admin-token'] || req.query.token;
     
     if (!token) {
         return res.status(401).json({ success: false, error: 'غير مصرح' });
     }
 
     const tokenData = activeTokens.get(token);
-    
     if (!tokenData || tokenData.expiresAt < Date.now()) {
         activeTokens.delete(token);
-        return res.status(401).json({ success: false, error: 'انتهت الجلسة، ادخل من جديد' });
+        return res.status(401).json({ success: false, error: 'انتهت الجلسة، سجل دخول مجدداً' });
     }
 
     next();
 }
 
 // ====================================================
-// Routes — الأدمن (عرض الصفحات - حرة بدون حماية سطر الدالة)
+// Routes — تقديم صفحة الأدمن (راوت واحد نظيف وموحد لمنع الرمشة)
 // ====================================================
-app.get('/admin-login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.get('/admin', adminLimiter, (req, res) => {
-    const token = req.headers['x-admin-token'] || req.query.token;
+app.get('/admin', (req, res) => {
+    const token = req.query.token;
 
     if (!token) {
-        return res.redirect('/admin-login');
+        return res.redirect('/admin-login.html'); // التوجيه لصفحة الدخول بامتدادها الفعلي
     }
 
     const tokenData = activeTokens.get(token);
     if (!tokenData || tokenData.expiresAt < Date.now()) {
-        activeTokens.delete(token);
-        return res.redirect('/admin-login');
+        if (tokenData) activeTokens.delete(token);
+        return res.redirect('/admin-login.html');
     }
 
+    // السيرفر يسلم الصفحة بأمان من المجلد الخاص
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
-// Map لحفظ التوكنات النشطة في الذاكرة
-const activeTokens = new Map();
-
-// تنظيف التوكنات المنتهية كل ساعة
-setInterval(() => {
-    const now = Date.now();
-    for (const [token, data] of activeTokens.entries()) {
-        if (data.expiresAt < now) {
-            activeTokens.delete(token);
-        }
-    }
-}, 60 * 60 * 1000);
-
 // ====================================================
-// Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
-// ====================================================
-
-// ====================================================
-// Routes — الـ API للأدمن (محمية بـ verifyAdmin بشكل صارم)
+// Routes — الـ API للأدمن
 // ====================================================
 
 app.post('/api/admin/login', adminLimiter, (req, res) => {
     try {
         const { password } = req.body;
-        const securePass = process.env.ADMIN_PASSWORD;
+        // ✅ تم الإصلاح: تعديل cnv إلى env وقراءة صحيحة للباسورد
+        const securePass = process.env.ADMIN_PASSWORD ? process.env.ADMIN_PASSWORD.trim() : null;
 
         if (!securePass) {
-            return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ' });
+            return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ في الـ .env' });
         }
 
-        if (!password || String(password) !== String(securePass)) {
+        if (!password || password.trim() !== securePass) {
             return res.status(401).json({ success: false, error: 'كلمة المرور غير صحيحة' });
         }
 
-        // ولّد token عشوائي مؤقت — مش كلمة السر الأصلية ✅
+        // توليد توكن عشوائي آمن
         const sessionToken = crypto.randomBytes(32).toString('hex');
         
-        // احفظه في الذاكرة مع وقت انتهاء 8 ساعات
+        // حفظ التوكن بذاكرة السيرفر لمدة 8 ساعات
         activeTokens.set(sessionToken, {
             createdAt: Date.now(),
             expiresAt: Date.now() + (8 * 60 * 60 * 1000)
@@ -161,7 +234,7 @@ app.post('/api/admin/login', adminLimiter, (req, res) => {
         return res.json({ success: true, token: sessionToken });
 
     } catch (err) {
-        return res.status(500).json({ success: false, error: 'خطأ داخلي' });
+        return res.status(500).json({ success: false, error: 'خطأ داخلي بالسيرفر' });
     }
 });
 
@@ -202,7 +275,7 @@ app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) =
                 category,
                 updatedAt: new Date()
             },
-            { new: true }
+           { returnDocument: 'after' }
         );
 
         if (!updatedProduct) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
@@ -228,7 +301,7 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
 });
 
 // ====================================================
-// 🌐 قسم زوار المتجر (العام) - حماية حديدية وثابتة 100% لـ script.js
+// 🌐 قسم زوار المتجر (العام)
 // ====================================================
 app.get('/api/products/:category', adminLimiter, async (req, res) => {
     try {
@@ -245,19 +318,18 @@ app.get('/api/products/:category', adminLimiter, async (req, res) => {
         const products = await Product.find(query);
         
         const formattedProducts = products.map(p => {
-            // 🛡️ تأمين جلب الخصائص وتحويلها لنصوص آمنة تماماً لمنع كراش الـ Frontend
             const catVal = p.category || p["فئة"] || "all";
             const regVal = p.region || p["منطقة"] || "عالمي";
             const nameVal = p.productName || p["اسم المنتج"] || "منتج بدون اسم";
 
             return {
-    id:        p._id,
-    name:      String(nameVal).trim(),  // ← name مش productName
-    category:  String(catVal).trim().toLowerCase(),
-    region:    String(regVal).trim().toLowerCase(),
-    price:     Number(p.price || p["سعر"] || 0),
-    available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
-};
+                id:        p._id,
+                name:      String(nameVal).trim(),  
+                category:  String(catVal).trim().toLowerCase(),
+                region:    String(regVal).trim().toLowerCase(),
+                price:     Number(p.price || p["سعر"] || 0),
+                available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
+            };
         });
 
         res.json(formattedProducts);
@@ -278,12 +350,12 @@ app.get('/api/products', adminLimiter, async (req, res) => {
             const nameVal = p.productName || p["اسم المنتج"] || "منتج بدون اسم";
 
             return {
-    id:        p._id,
-    name:      String(nameVal).trim(),  // ← name مش productName
-    category:  String(catVal).trim().toLowerCase(),
-    region:    String(regVal).trim().toLowerCase(),
-    price:     Number(p.price || p["سعر"] || 0),
-    available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
+                id:        p._id,
+                name:      String(nameVal).trim(),  
+                category:  String(catVal).trim().toLowerCase(),
+                region:    String(regVal).trim().toLowerCase(),
+                price:     Number(p.price || p["سعر"] || 0),
+                available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
             };
         });
         
@@ -295,7 +367,7 @@ app.get('/api/products', adminLimiter, async (req, res) => {
 });
 
 // ====================================================
-// 🚀 4. تشغيل السيرفر والربط الديناميكي مع بورت ريندر
+// 🚀 تشغيل السيرفر والربط الديناميكي مع بورت ريندر
 // ====================================================
 const FINAL_PORT = process.env.PORT || 5850;
 app.listen(FINAL_PORT, '0.0.0.0', () => {

@@ -270,9 +270,19 @@
 </div>
 
 <script>
-    const token = localStorage.getItem('adminToken');
-    if (!token) {
-        window.location.replace('/admin-login');
+    // 🔥 تأمين واستخراج التوكن ديناميكياً سواء من الرابط أو الجلسة المخزنة لمنع التكرار والرمشة
+    const urlParams = new URLSearchParams(window.location.search);
+    let token = urlParams.get('token') || sessionStorage.getItem('adminToken');
+
+    if (token) {
+        sessionStorage.setItem('adminToken', token);
+        // حماية إضافية: تنظيف شريط العنوان من التوكن المكشوف فوراً لرفع الأمان الفني للموقع
+        if (urlParams.has('token')) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    } else {
+        // التوجيه لصفحة الدخول بامتدادها الصحيح والمستقر في السيرفر
+        window.location.replace('/admin-login.html');
     }
 
     // قاموس لتحويل القيم البرمجية إلى نصوص عربية مفهومة داخل الجدول
@@ -291,8 +301,8 @@
             });
             
             if (res.status === 401) {
-                localStorage.removeItem('adminToken');
-                window.location.replace('/admin-login');
+                sessionStorage.removeItem('adminToken');
+                window.location.replace('/admin-login.html');
                 return;
             }
 
@@ -375,11 +385,11 @@
         const data = await res.json();
 
         if (data.success) {
-            alert(data.message);
+            alert(data.message || '✅ تم حفظ وإضافة الكروت بنجاح!');
             document.getElementById('addForm').reset();
             loadInventory();
         } else {
-            alert(data.message || data.error);
+            alert(data.message || data.error || 'حدث خطأ أثناء الإضافة');
         }
     });
 
@@ -413,11 +423,11 @@
         const data = await res.json();
 
         if (data.success) {
-            alert(data.message);
+            alert(data.message || '✅ تم تحديث المنتج بنجاح');
             closeModal();
             loadInventory();
         } else {
-            alert(data.message || data.error);
+            alert(data.message || data.error || 'فشل التحديث');
         }
     }
 
@@ -431,10 +441,10 @@
         const data = await res.json();
 
         if (data.success) {
-            alert(data.message);
+            alert(data.message || '🗑️ تم الحذف بنجاح');
             loadInventory();
         } else {
-            alert(data.message || data.error);
+            alert(data.message || data.error || 'فشل الحذف');
         }
     }
 

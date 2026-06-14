@@ -82,8 +82,7 @@
 </div>
 
 <script>
-    
-        document.getElementById('jokerLoginForm').addEventListener('submit', async (e) => {
+    document.getElementById('jokerLoginForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const passwordField = document.getElementById('jokerPassword');
@@ -100,15 +99,16 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ password: passwordValue }) // إرسال صريح ومباشر
+                body: JSON.stringify({ password: passwordValue })
             });
 
             const data = await res.json();
 
+            // ✅ تم تصحيح الشرط المتداخل والأقواس بالملي
             if (data.success && data.token) {
-                // حفظ التوكن فوراً والتوجه للأدمن
                 sessionStorage.setItem('adminToken', data.token);
-             window.location.replace('/admin?token=' + data.token);
+                // توجيه آمن ومباشر متوافق مع تعديل السيرفر النهائي
+                window.location.replace('/admin?token=' + data.token);
             } else {
                 alert(data.error || 'كلمة المرور غير صحيحة!');
                 submitBtn.innerText = 'دخول لوحة التحكم 🚀';
