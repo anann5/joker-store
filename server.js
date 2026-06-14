@@ -33,7 +33,7 @@ transporter.verify(function(error, success) {
 async function sendCodeByEmail(buyerEmail, productName, code, orderId) {
     const mailOptions = {
         from: `"Joker Store 🃏" <onboarding@resend.dev>`,
-        to: buyerEmail, // ✅ تم الإصلاح: مطابقة المتغير القادم للدالة لمنع الكراش
+        to: buyerEmail, 
         subject: `✅ كود الشحن الخاص بك — ${productName}`,
         html: `
         <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; background: #1a1a2e; color: #fff; padding: 30px; border-radius: 12px;">
@@ -61,8 +61,6 @@ const { Product, Order } = require('./models');
 const app = express();
 app.set('trust proxy', 1);
 
-const PORT = process.env.PORT || 5850;
-
 // ====================================================
 // 🛡️ Helmet & Rate Limiting
 // ====================================================
@@ -88,7 +86,7 @@ const generalLimiter = rateLimit({
 });
 
 const adminLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, max: 1000, // ✅ تم التكبير محلياً لمنع حظرك أثناء التجريد والعمل
+    windowMs: 15 * 60 * 1000, max: 1000, 
     message: { success: false, error: 'محاولات كثيرة، انتظر 15 دقيقة' }
 });
 
@@ -135,115 +133,73 @@ app.use((req, res, next) => {
     next();
 });
 
-// السطر القديم لديك
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================================
-// 🔒 1. مسارات صفحات الأدمن (Admin UI Routes) - توضع هنا لتجنب خطأ Cannot GET
+// 🔒 مسارات صفحات الأدمن (Admin UI Routes)
 // ==========================================================
-
-// رابط صفحة تسجيل الدخول
-app.get(['/admin-login', '/admin-login.html'], (req, res) => {
+app.get('/admin-login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html')); 
 });
 
-// دعم الرابطين: /admin  و  /admin.html مع التحقق من التوكن
-app.get(['/admin', '/admin.html'], (req, res) => {
+app.get('/admin.html', (req, res) => {
     const token = req.query.token;
-    
-    // التحقق من وجود الجلسة والتوكن
     if (!token || !activeTokens.has(token)) {
-        return res.status(403).send(`
-            <div style="font-family: sans-serif; text-align: center; padding: 50px; direction: rtl;">
-                <h1 style="color: #ff0055;">عذراً، انتهت صلاحية الجلسة أو غير مصرح لك!</h1>
-                <p style="color: #666;">يرجى الانتقال لصفحة تسجيل الدخول أولاً لتوليد صلاحية جديدة.</p>
-                <a href="/admin-login" style="display: inline-block; padding: 10px 20px; background: #00f0ff; color: #000; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px;">الانتقال لصفحة تسجيل الدخول</a>
-            </div>
-        `);
+        return res.status(403).send('<h1>عذراً، انتهت صلاحية الجلسة أو غير مصرح لك بالدخول! يرجى تسجيل الدخول مجدداً من صفحة admin-login.</h1>');
     }
-    
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
-// ==========================================================
-// 🛡️ 2. دالة التحقق لحماية عمليات الـ API (تعديل، حذف، إضافة)
-// ==========================================================
 function verifyAdmin(req, res, next) {
     const token = req.headers['x-admin-token'] || req.query.token;
-    
-    if (!token) {
-        return res.status(401).json({ success: false, error: 'غير مصرح' });
-    }
+    if (!token) return res.status(401).json({ success: false, error: 'غير مصرح' });
 
     const tokenData = activeTokens.get(token);
     if (!tokenData || tokenData.expiresAt < Date.now()) {
         activeTokens.delete(token);
         return res.status(401).json({ success: false, error: 'انتهت الجلسة، سجل دخول مجدداً' });
     }
-
     next();
 }
 
-// ====================================================
-// Routes — تقديم صفحة الأدمن (راوت واحد نظيف وموحد لمنع الرمشة)
-// ====================================================
 app.get('/admin', (req, res) => {
     const token = req.query.token;
-
-    if (!token) {
-        return res.redirect('/admin-login.html'); // التوجيه لصفحة الدخول بامتدادها الفعلي
-    }
+    if (!token) return res.redirect('/admin-login.html');
 
     const tokenData = activeTokens.get(token);
     if (!tokenData || tokenData.expiresAt < Date.now()) {
         if (tokenData) activeTokens.delete(token);
         return res.redirect('/admin-login.html');
     }
-
-    // السيرفر يسلم الصفحة بأمان من المجلد الخاص
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
 // ====================================================
-// Routes — الـ API للأدمن
+// 🛡️ الـ API للأدمن
 // ====================================================
-
 app.post('/api/admin/login', adminLimiter, (req, res) => {
     try {
         const { password } = req.body;
-        // ✅ تم الإصلاح: تعديل cnv إلى env وقراءة صحيحة للباسورد
         const securePass = process.env.ADMIN_PASSWORD ? process.env.ADMIN_PASSWORD.trim() : null;
 
-        if (!securePass) {
-            return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ في الـ .env' });
-        }
+        if (!securePass) return res.status(500).json({ success: false, error: 'السيرفر غير مهيأ في الـ .env' });
+        if (!password || password.trim() !== securePass) return res.status(401).json({ success: false, error: 'كلمة المرور غير صحيحة' });
 
-        if (!password || password.trim() !== securePass) {
-            return res.status(401).json({ success: false, error: 'كلمة المرور غير صحيحة' });
-        }
-
-        // توليد توكن عشوائي آمن
         const sessionToken = crypto.randomBytes(32).toString('hex');
-        
-        // حفظ التوكن بذاكرة السيرفر لمدة 8 ساعات
         activeTokens.set(sessionToken, {
             createdAt: Date.now(),
             expiresAt: Date.now() + (8 * 60 * 60 * 1000)
         });
 
         return res.json({ success: true, token: sessionToken });
-
     } catch (err) {
         return res.status(500).json({ success: false, error: 'خطأ داخلي بالسيرفر' });
     }
 });
 
-// 2. راوت جلب المخزون والجدول
 app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
     try {
-        const products = await Product.find({ isActive: true })
-            .select('productName category region price codes updatedAt فئة اسم المنتج سعر منطقة');
-
+        const products = await Product.find({ isActive: true }).select('productName category region price codes updatedAt فئة اسم المنتج سعر منطقة');
         const inventory = products.map(p => ({
             id:             p._id,
             productName:    p.productName || p["اسم المنتج"],
@@ -254,30 +210,20 @@ app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
             total:          p.codes ? p.codes.length : 0,
             lastUpdated:    p.updatedAt || new Date()
         }));
-
         res.json({ success: true, inventory });
     } catch (err) {
         res.status(500).json({ success: false, error: 'خطأ في السيرفر' });
     }
 });
 
-// 3. راوت تعديل بيانات منتج معين
 app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const { productName, price, region, category } = req.body;
-        
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
-            { 
-                productName: productName.trim(), 
-                price: parseFloat(price), 
-                region, 
-                category,
-                updatedAt: new Date()
-            },
-           { returnDocument: 'after' }
+            { productName: productName.trim(), price: parseFloat(price), region, category, updatedAt: new Date() },
+            { returnDocument: 'after' }
         );
-
         if (!updatedProduct) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
         res.json({ success: true, message: '✅ تم تحديث بيانات البطاقة بنجاح' });
     } catch (err) {
@@ -285,15 +231,12 @@ app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) =
     }
 });
 
-// 4. راوت حذف منتج بالكامل (Soft Delete)
 app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
         if (!product) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
-        
         product.isActive = false;
         await product.save();
-
         res.json({ success: true, message: '🗑️ تم حذف المنتج بنجاح من العرض' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'فشل في حذف المنتج' });
@@ -309,19 +252,14 @@ app.get('/api/products/:category', adminLimiter, async (req, res) => {
         let query = { isActive: true };
 
         if (category && category !== 'all' && category !== 'الكل') {
-            query.$or = [
-                { category: category.toLowerCase() },
-                { "فئة": category.toLowerCase() }
-            ];
+            query.$or = [{ category: category.toLowerCase() }, { "فئة": category.toLowerCase() }];
         }
 
         const products = await Product.find(query);
-        
         const formattedProducts = products.map(p => {
             const catVal = p.category || p["فئة"] || "all";
             const regVal = p.region || p["منطقة"] || "عالمي";
             const nameVal = p.productName || p["اسم المنتج"] || "منتج بدون اسم";
-
             return {
                 id:        p._id,
                 name:      String(nameVal).trim(),  
@@ -331,24 +269,19 @@ app.get('/api/products/:category', adminLimiter, async (req, res) => {
                 available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
             };
         });
-
         res.json(formattedProducts);
     } catch (err) {
-        console.error('Public Products Filter Error:', err);
         res.status(500).json([]);
     }
 });
 
-// الراوت الاحتياطي بدون بارامتر
 app.get('/api/products', adminLimiter, async (req, res) => {
     try {
         const products = await Product.find({ isActive: true });
-        
         const formattedProducts = products.map(p => {
             const catVal = p.category || p["فئة"] || "all";
             const regVal = p.region || p["منطقة"] || "عالمي";
             const nameVal = p.productName || p["اسم المنتج"] || "منتج بدون اسم";
-
             return {
                 id:        p._id,
                 name:      String(nameVal).trim(),  
@@ -358,11 +291,63 @@ app.get('/api/products', adminLimiter, async (req, res) => {
                 available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
             };
         });
-        
         res.json(formattedProducts);
     } catch (err) {
-        console.error('Public Products Error:', err);
         res.status(500).json([]);
+    }
+});
+
+// ==========================================================
+// 🚀 راوت استقبال الطلبات وإرسال الفاتورة عبر Resend
+// ==========================================================
+app.post('/api/checkout', async (req, res) => {
+    try {
+        // قراءة البيانات القادمة من بوستمان أو الموقع
+        const { customerEmail, customerName, cartItems, totalAmount } = req.body;
+
+        if (!customerEmail || !cartItems || !Array.isArray(cartItems)) {
+            return res.status(400).json({ success: false, error: 'بيانات الطلب غير مكتملة أو غير صحيحة!' });
+        }
+
+        // بناء قائمة المشتريات بشكل منظم للبريد الإلكتروني
+        let itemsHtml = '';
+        cartItems.forEach(item => {
+            itemsHtml += `
+                <li style="padding: 10px 0; border-bottom: 1px solid rgba(0, 240, 255, 0.1); display: flex; justify-content: space-between; direction: rtl;">
+                    <span>${item.name} (x${item.qty})</span>
+                    <span style="color: #00f0ff; font-weight: bold; margin-right: 10px;">${Number(item.price * item.qty).toFixed(2)}$</span>
+                </li>`;
+        });
+
+        const mailOptions = {
+            from: '"Joker Store 🃏" <onboarding@resend.dev>', 
+            to: customerEmail, 
+            subject: '📦 تأكيد استلام طلبك من متجر Joker Store',
+            html: `
+                <div style="font-family: sans-serif; direction: rtl; text-align: right; padding: 25px; border: 1px solid #00f0ff; border-radius: 12px; background-color: #0b0e14; color: #fff; max-width: 500px; margin: auto;">
+                    <h2 style="color: #00f0ff; border-bottom: 2px solid #00f0ff; padding-bottom: 10px; margin-top: 0;">مرحباً ${customerName || 'عزيزنا الزبون'} 👋</h2>
+                    <p style="font-size: 1rem; color: #b9bbbe;">تم استلام طلبك بنجاح في نظامنا، وإليك تفاصيل فاتورتك الرقمية:</p>
+                    
+                    <ul style="list-style: none; padding: 0; margin: 20px 0;">
+                        ${itemsHtml}
+                    </ul>
+                    
+                    <div style="background: rgba(0, 240, 255, 0.05); padding: 15px; border-radius: 8px; text-align: center; border: 1px solid rgba(0, 240, 255, 0.2);">
+                        <h3 style="margin: 0; color: #ff0055; font-size: 1.3rem;">المجموع الإجمالي: ${totalAmount}$</h3>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 0.8rem; text-align: center; margin-top: 30px; margin-bottom: 0;">هذا الإيميل تلقائي وصادر عن نظام فحص متجر Joker Store.</p>
+                </div>
+            `
+        };
+
+        // إرسال الفاتورة عبر الناقل الأصلي المربوط بـ Resend فوق
+        await transporter.sendMail(mailOptions);
+        res.json({ success: true, message: 'تم استلام الطلب وإرسال الفاتورة للهوتميل بنجاح! 🚀' });
+
+    } catch (error) {
+        console.error('❌ حدث خطأ أثناء إرسال الإيميل:', error);
+        res.status(500).json({ success: false, error: 'فشل السيرفر في إرسال الإيميل، تأكد من مفتاح RESEND_API_KEY' });
     }
 });
 
