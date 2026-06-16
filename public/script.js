@@ -457,7 +457,7 @@ document.addEventListener('DOMContentLoaded', function() {
             submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
 
             try {
-                const response = await fetch('/api/orders/new', {
+                const response = await fetch('/api/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderData)
@@ -604,3 +604,82 @@ document.addEventListener('DOMContentLoaded', function() {
     // تشغيل تحديث السلة عند تحميل الصفحة لأول مرة
     updateCartUI();
 });
+
+// ======================================================\r
+// 🚀 دالة إتمام الشراء المحدثة والمطابقة للسيرفر بالملي\r
+// ======================================================\r
+async function submitOrderToServer() {
+    // 1. التحقق من وجود عناصر في السلة
+    if (!cart || cart.length === 0) {
+        alert('سلتك فارغة حالياً! قم بإضافة باقات أو بطاقات أولاً.');
+        return;
+    }
+
+    // 2. طلب بيانات الزبون بشكل منبثق ومؤقت
+    const customerName = prompt('الرجاء إدخال اسمك الكريم لإتمام الطلب:');
+    if (!customerName) return;
+
+    const customerEmail = prompt('الرجاء إدخال بريدك الإلكتروني لاستلام الفاتورة:');
+    if (!customerEmail) {
+        alert('البريد الإلكتروني مطلوب لإرسال الفاتورة الرقمية!');
+        return;
+    }
+
+    // 3. حساب المجموع الإجمالي الفعلي بدقة
+    const totalAmount = cart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0).toFixed(2);
+
+    // 4. تجهيز كائن البيانات المنسق والمطابق لراوت السيرفر (/api/checkout)
+    const orderData = {
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
+        cartItems: cart.map(item => ({
+            id: item.id,
+            qty: item.qty || 1
+        }))
+    };
+
+    try {
+        // تغيير مظهر الزر أثناء المعالجة لمنع تكرار الضغط والتأمين للـ Session
+        const btn = document.getElementById('checkoutSubmitBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = 'جاري معالجة طلبك وتأمينه...';
+        }
+
+        // إرسال الطلب إلى المسار الصحيح والمعدل بواسطة الـ Agent
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`🎉 ${result.message}\nرقم طلبك في النظام هو: ${result.orderId || 'JOKR-OK'}`);
+            
+            // تفريغ السلة وتحديث الشاشة فوراً
+            cart = [];
+            if (typeof updateCartUI === 'function') updateCartUI();
+            if (typeof saveCart === 'function') saveCart();
+            
+            // إغلاق الموديل الخاص بالسلة
+            const purchaseModal = document.getElementById('purchaseModal');
+            if (purchaseModal) purchaseModal.classList.remove('active');
+        } else {
+            alert(`⚠️ خطأ من السيرفر: ${result.error || result.message}`);
+        }
+
+    } catch (error) {
+        console.error('Checkout Error:', error);
+        alert('حدث خطأ أثناء الاتصال بالسيرفر، يرجى المحاولة مرة أخرى.');
+    } finally {
+        const btn = document.getElementById('checkoutSubmitBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🚀 إتمام الطلب واستلام الفاتورة';
+        }
+    }
+}

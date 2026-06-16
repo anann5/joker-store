@@ -187,9 +187,9 @@
             <span id="cartTotalAmount" style="color: #00f0ff; font-size: 1.3rem;">0.00$</span>
         </div>
 
-        <button style="background: rgba(255, 255, 255, 0.1); color: #b9bbbe; border: 1px solid rgba(255,255,255,0.2); padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: not-allowed; font-size: 1.1rem; width: 100%;">
-            🔒 طرق الدفع ستتوفر قريباً
-        </button>
+        <button type="button" id="checkoutSubmitBtn" style="background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);">
+    🚀 إتمام الطلب واستلام الفاتورة
+</button>
     </div>
 </div>
 
@@ -228,5 +228,88 @@
 </footer>
 
 <script src="script.js"></script>
+
+<script>
+async function submitOrderToServer() {
+    // 1. التحقق من وجود عناصر في السلة
+    if (typeof cart === 'undefined' || cart.length === 0) {
+        alert('سلتك فارغة حالياً! قم بإضافة باقات أو بطاقات أولاً.');
+        return;
+    }
+
+    // 2. طلب بيانات الزبون
+    const customerName = prompt('الرجاء إدخال اسمك الكريم لإتمام الطلب:');
+    if (!customerName) return;
+
+    const customerEmail = prompt('الرجاء إدخال بريدك الإلكتروني لاستلام الفاتورة:');
+    if (!customerEmail) {
+        alert('البريد الإلكتروني مطلوب لإرسال الفاتورة!');
+        return;
+    }
+
+    // 3. حساب المجموع الإجمالي الفعلي من واقع سلتك
+    const totalAmount = cart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0).toFixed(2);
+
+    // 4. تجهيز البيانات بالصيغة المطابقة تماماً لراوت السيرفر الأصلي
+    const orderData = {
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
+        cartItems: cart.map(item => ({
+            name: item.name,
+            price: item.price,
+            qty: item.qty || 1
+        })),
+        totalAmount: totalAmount
+    };
+
+    try {
+        const btn = document.getElementById('checkoutSubmitBtn');
+        btn.disabled = true;
+        btn.innerText = 'جاري معالجة طلبك وتأمينه...';
+
+        // 🔥 الربط المباشر مع الراوت الأصلي والمحمي في السيرفر الخاص بك
+        const response = await fetch('/api/checkout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(`🎉 ${result.message}`);
+            
+            // تفريغ السلة وتحديث الشاشة وإغلاق الموديل
+            cart = [];
+            if (typeof updateCartUI === 'function') updateCartUI();
+            if (typeof saveCart === 'function') saveCart();
+            if (typeof closeModal === 'function') closeModal();
+        } else {
+            alert(`⚠️ خطأ من السيرفر: ${result.error}`);
+        }
+
+    } catch (error) {
+        console.error('Checkout Error:', error);
+        alert('حدث خطأ أثناء الاتصال بالسيرفر، يرجى المحاولة مرة أخرى.');
+    } finally {
+        const btn = document.getElementById('checkoutSubmitBtn');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = '🚀 إتمام الطلب واستلام الفاتورة';
+        }
+    }
+}
+
+// الرابط الآمن تلبيةً لشروط الحماية المتوافقة مع الـ CSP لمتصفحك
+document.addEventListener('DOMContentLoaded', () => {
+    const checkoutBtn = document.getElementById('checkoutSubmitBtn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', submitOrderToServer);
+    }
+});
+</script>
+
 </body>
 </html>

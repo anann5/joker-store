@@ -47,23 +47,29 @@ productSchema.virtual('availableStock').get(function() {
 // ======================================================
 // Method: سحب كود واحد بأمان (atomic)
 // ======================================================
-productSchema.methods.claimCode = async function(orderId, buyerEmail) {
-    // دور على أول كود متاح
-    const availableCode = this.codes.find(c => c.status === 'available');
-    
-    if (!availableCode) {
-        throw new Error('لا يوجد مخزون متاح لهذا المنتج');
+productSchema.statics.claimCodeAtomic = async function(productId, orderId, buyerEmail) {
+    const updatedProduct = await this.findOneAndUpdate(
+        { 
+            _id: productId, 
+            'codes.status': 'available' 
+        },
+        { 
+            $set: { 
+                'codes.$.status': 'sold',
+                'codes.$.soldAt': new Date(),
+                'codes.$.soldTo': buyerEmail,
+                'codes.$.orderId': orderId,
+                'updatedAt': new Date()
+            }
+        },
+        { new: true, select: { codes: { $elemMatch: { orderId: orderId } } } }
+    );
+
+    if (!updatedProduct || !updatedProduct.codes || updatedProduct.codes.length === 0) {
+        throw new Error('نفذت الكمية أو حدث خطأ أثناء الحجز');
     }
 
-    // حدّث حالة الكود فوراً
-    availableCode.status  = 'sold';
-    availableCode.soldAt  = new Date();
-    availableCode.soldTo  = buyerEmail || 'unknown';
-    availableCode.orderId = orderId;
-    this.updatedAt        = new Date();
-
-    await this.save();
-    return availableCode.value;
+    return updatedProduct.codes[0].value;
 };
 
 // ======================================================
@@ -71,10 +77,8 @@ productSchema.methods.claimCode = async function(orderId, buyerEmail) {
 // ======================================================
 const orderSchema = new mongoose.Schema({
     orderId:     { type: String, required: true, unique: true },
-    productId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-    productName: { type: String, required: true },
-    category:    { type: String, required: true },
-    region:      { type: String, required: true },
+    productName: { type: String, required: true }, // ملخص للمنتجات المطلوبة
+    items:       { type: Array, default: [] },    // تفاصيل كل منتج (ID, الاسم, الكمية)
     price:       { type: Number, required: true },
     buyerEmail:  { type: String, required: true },
     code:        { type: String, default: null }, // الكود المسلّم
@@ -89,7 +93,18 @@ const orderSchema = new mongoose.Schema({
     completedAt:    { type: Date, default: null }
 });
 
+// ======================================================
+// Schema سجل النشاطات (Logs)
+// ======================================================
+const logSchema = new mongoose.Schema({
+    action:    { type: String, required: true }, // نوع الحركة (تسجيل دخول، تعديل، حذف)
+    details:   { type: String },                 // تفاصيل الحركة
+    ip:        { type: String },                 // عنوان الجهاز
+    createdAt: { type: Date, default: Date.now }
+});
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
-    Order:   mongoose.model('Order',   orderSchema)
+    Order:   mongoose.model('Order',   orderSchema),
+    Log:     mongoose.model('Log',     logSchema)
 };
