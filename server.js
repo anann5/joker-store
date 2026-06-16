@@ -1,7 +1,7 @@
 const dotenv = require('dotenv');
 const envResult = dotenv.config();
 
-if (envResult.error) {
+if (envResult.error && process.env.NODE_ENV !== 'production') {
     console.log('⚠️ خطأ: لم يتم العثور على ملف .env في المجلد الرئيسي!');
 }
 
