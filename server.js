@@ -294,6 +294,36 @@ app.post('/api/admin/login', adminLimiter, async (req, res) => {
     }
 });
 
+// ✅ إضافة منتج جديد (صنف)
+app.post('/api/admin/products', adminLimiter, verifyAdmin, async (req, res) => {
+    try {
+        const { productName, category, region, price, image } = req.body;
+        
+        if (!productName || !category || price === undefined) {
+            return res.status(400).json({ success: false, error: 'اسم المنتج، الفئة، والسعر حقول مطلوبة' });
+        }
+
+        const newProduct = new Product({
+            productName: productName.trim(),
+            category,
+            region: region || 'global',
+            price: parseFloat(price),
+            image: image || ''
+        });
+        await newProduct.save();
+
+        await new Log({ 
+            action: 'إضافة منتج', 
+            details: `تم إضافة منتج جديد: ${productName}`, 
+            ip: req.ip 
+        }).save();
+
+        res.json({ success: true, message: '✅ تم إضافة المنتج بنجاح' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'فشل في إضافة المنتج: ' + err.message });
+    }
+});
+
 // ✅ الترتيب الصحيح: الـ Middlewares أولاً، ثم كلمة async قبل الـ (req, res)
 app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
     try {
@@ -317,13 +347,57 @@ app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
     }
 });
 
+// ✅ إضافة أكواد/بطاقات لمنتج موجود (Atomic Update)
+app.post('/api/admin/products/:id/codes', adminLimiter, verifyAdmin, async (req, res) => {
+    try {
+        const { codes } = req.body; 
+        if (!codes) return res.status(400).json({ success: false, error: 'لم يتم إرسال أي أكواد' });
+
+        let newCodes = [];
+        if (Array.isArray(codes)) {
+            newCodes = codes.map(c => ({ value: String(c).trim(), status: 'available' }));
+        } else if (typeof codes === 'string') {
+            newCodes = codes.split('\n').filter(c => c.trim()).map(c => ({ value: c.trim(), status: 'available' }));
+        }
+        if (newCodes.length === 0) return res.status(400).json({ success: false, error: 'تنسيق الأكواد غير صحيح' });
+
+        const product = await Product.findByIdAndUpdate(
+            req.params.id, 
+            { 
+                $push: { codes: { $each: newCodes } }, 
+                $set: { updatedAt: new Date() } 
+            },
+            { new: true }
+        );
+
+        if (!product) return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
+
+        await new Log({ 
+            action: 'إضافة أكواد', 
+            details: `تم إضافة ${newCodes.length} كود للمنتج: ${product.productName}`, 
+            ip: req.ip 
+        }).save();
+
+        res.json({ success: true, message: `✅ تم إضافة ${newCodes.length} كود بنجاح` });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'فشل في إضافة الأكواد' });
+    }
+});
+
 app.put('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const { productName, price, region, category } = req.body;
+        
+        const updateData = { updatedAt: new Date() };
+        if (productName) updateData.productName = productName.trim();
+        if (price !== undefined) updateData.price = parseFloat(price);
+        if (region) updateData.region = region;
+        if (category) updateData.category = category;
+
         const updatedProduct = await Product.findByIdAndUpdate(
             req.params.id,
-            { productName: productName.trim(), price: parseFloat(price), region, category, updatedAt: new Date() },
-            { returnDocument: 'after' }
+            updateData,
+            { new: true, runValidators: true }
         );
         if (!updatedProduct) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
         
