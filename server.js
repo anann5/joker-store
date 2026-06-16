@@ -174,8 +174,8 @@ mongoose.connect(process.env.MONGODB_URI)
         if (process.env.ADMIN_PASSWORD_HASH) {
             console.log('🛡️ نظام حماية الأدمن: جاهز (Hash موجود)');
         } else {
-            console.log('❌ نظام حماية الأدمن: تعذر التشغيل (ADMIN_PASSWORD_HASH مفقود في ملف .env)');
-            console.log('❌ خطأ أمني: ADMIN_PASSWORD_HASH غير موجود في ملف .env');
+            console.log('❌ نظام حماية الأدمن: تعذر التشغيل (ADMIN_PASSWORD_HASH غير معرف)');
+            console.log('❌ خطأ أمني: يرجى إضافة ADMIN_PASSWORD_HASH في إعدادات البيئة (Environment Variables)');
         }
     })
     .catch(err => console.log('⚠️ MongoDB غير متصل:', err.message));
