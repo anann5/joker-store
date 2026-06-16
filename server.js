@@ -430,6 +430,29 @@ app.delete('/api/admin/products/:id', adminLimiter, verifyAdmin, async (req, res
     }
 });
 
+// ✅ مسار الإحصائيات الجديد
+app.get('/api/admin/stats', adminLimiter, verifyAdmin, async (req, res) => {
+    try {
+        const totalOrders = await Order.countDocuments({ status: 'completed' });
+        const pendingOrders = await Order.countDocuments({ status: 'pending' });
+        const outOfStock = await Product.countDocuments({ 
+            isActive: true, 
+            $expr: { $eq: [{ $size: { $filter: { input: "$codes", as: "c", cond: { $eq: ["$$c.status", "available"] } } } }, 0] } 
+        });
+        const totalSales = await Order.aggregate([
+            { $match: { status: 'completed' } },
+            { $group: { _id: null, total: { $sum: "$price" } } }
+        ]);
+
+        res.json({ 
+            success: true, 
+            stats: { totalOrders, pendingOrders, outOfStock, revenue: totalSales[0]?.total || 0 } 
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'فشل جلب الإحصائيات' });
+    }
+});
+
 // ✅ جلب جميع الطلبات للأدمن
 app.get('/api/admin/orders', adminLimiter, verifyAdmin, async (req, res) => {
     try {
