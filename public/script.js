@@ -447,8 +447,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
             var orderData = {
-                items: cart.map(item => ({ productId: item.id, qty: item.qty })),
-                buyerEmail: email,
+                cartItems: cart.map(item => ({ id: item.id, qty: item.qty })),
+                customerEmail: email,
+                customerName: "عميل المتجر", // قيمة افتراضية لأن النموذج لا يحتوي على حقل اسم
                 paymentGateway: gateway,
                 paymentRef: paymentRef
             };
