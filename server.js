@@ -169,8 +169,6 @@ mongoose.connect(process.env.MONGODB_URI)
         console.log('✅ MongoDB متصل');
         // فحص وجود الـ Hash عند التشغيل لمساعدة المطور
         
-        console.log('📂 المجلد الحالي للسيرفر:', process.cwd());
-
         if (process.env.ADMIN_PASSWORD_HASH) {
             console.log('🛡️ نظام حماية الأدمن: جاهز (Hash موجود)');
         } else {
@@ -324,7 +322,6 @@ app.post('/api/admin/products', adminLimiter, verifyAdmin, async (req, res) => {
     }
 });
 
-// ✅ الترتيب الصحيح: الـ Middlewares أولاً، ثم كلمة async قبل الـ (req, res)
 app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
     try {
         const products = await Product.find({ isActive: true }).select('productName category region price codes updatedAt');
@@ -342,7 +339,6 @@ app.get('/api/admin/inventory', adminLimiter, verifyAdmin, async (req, res) => {
 
         res.json({ success: true, inventory });
     } catch (err) {
-        console.error('Inventory Route Error:', err);
         res.status(500).json({ success: false, error: 'حدث خطأ داخلي في السيرفر' });
     }
 });
