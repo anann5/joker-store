@@ -7,11 +7,20 @@ const rateLimit = require("express-rate-limit");
 const generalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 200,
-    message: "طلبات كثيرة جداً من هذا الجهاز، يرجى المحاولة لاحقاً."
+    message: "Requests many from this device, please try later."
 });
+
+// middleware للتحقق من صحة بيانات طلب الدفع
+const validateCheckout = (req, res, next) => {
+    const { customerEmail, cartItems, paymentMethod } = req.body;
+    if (!customerEmail || !cartItems || !Array.isArray(cartItems) || cartItems.length === 0) {
+        return res.status(400).json({ success: false, message: "بيانات الطلب غير مكتملة" });
+    }
+    next();
+};
 
 router.get('/products', generalLimiter, storeController.getProducts);
 router.get('/products/:category', generalLimiter, storeController.getProducts);
-router.post('/checkout', storeController.checkout);
+router.post('/checkout', generalLimiter, validateCheckout, storeController.checkout);
 
 module.exports = router;
