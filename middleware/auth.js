@@ -1,16 +1,13 @@
-const activeTokens = new Map();
+const jwt = require('jsonwebtoken');
 
-const verifyAdmin = (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'غير مصرح' });
+exports.authMiddleware = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Authorization token required' });
 
-    const token = authHeader.split(' ')[1];
-    const session = activeTokens.get(token);
-
-    if (!session || session.expiresAt < Date.now()) {
-        return res.status(401).json({ error: 'انتهت الجلسة' });
-    }
-    next();
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(401).json({ success: false, message: 'Invalid or expired token' });
+        req.user = decoded;
+        next();
+    });
 };
-
-module.exports = { verifyAdmin, activeTokens };
