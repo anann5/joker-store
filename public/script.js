@@ -1,7 +1,7 @@
 // ======================================================
 //  البيانات الأساسية للأقسام
 // ======================================================
-var rawServerData = {
+const rawServerData = {
     categories: {
         gaming_general: { title: "الالعاب", image: "image/games.png", desc: "بطاقات شحن لمختلف الألعاب" },
         steam:          { title: "ستيم", image: "image/steam.png", desc: "بطاقات Steam Wallet بالدولار" },
@@ -20,14 +20,74 @@ var rawServerData = {
     }
 };
 
-var currentSelectedProduct = null;
-var cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
+let currentCategoryKey = 'all'; // متغير عالمي لمتابعة القسم الحالي
+let currentSelectedProduct = null;
+let cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
+
+// ======================================================
+// 🚀 تشغيل سلايدر العروض تلقائياً
+// ======================================================
+function initHeroSlider() {
+    const slides = document.querySelectorAll('.hero-section .slide');
+    if (slides.length <= 1) return;
+
+    let currentSlide = 0;
+    setInterval(() => {
+        slides[currentSlide].classList.remove('active');
+        currentSlide = (currentSlide + 1) % slides.length;
+        slides[currentSlide].classList.add('active');
+    }, 5000); // تبديل كل 5 ثوانٍ
+}
+
+// ======================================================
+// 🛡️ تحديث شريط الثقة ببيانات حقيقية
+// ======================================================
+async function updateTrustTicker() {
+    const tickerZone = document.querySelector('.ticker-content');
+    if (!tickerZone) return;
+
+    try {
+        const res = await fetch('/api/products/latest-orders'); // سنفترض وجود هذا المسار البسيط
+        const data = await res.json();
+        if (data.success && data.orders.length > 0) {
+            const tickerText = data.orders.map(o => 
+                `✨ تم تسليم طلب #${o.orderId.substring(0,8)} بنجاح (${o.productName}) .. `
+            ).join(' ✅ ');
+            tickerZone.innerHTML = tickerText + " 🛡️ جميع الأكواد أصلية ومضمونة 100%";
+        }
+    } catch (e) {
+        // في حال الفشل نترك النص الافتراضي الجميل الذي وضعناه
+    }
+}
+
+// ======================================================
+//  دوالمساعدة (Helper Functions)
+// ======================================================
+function detectRegion(item) {
+    const text = ((item.productName || item.name || "") + " " + (item._id || item.id || "")).toLowerCase();
+    if (text.includes('tr') || text.includes('تركي')) return 'tr';
+    if (text.includes('ae') || text.includes('امارات')) return 'ae';
+    if (text.includes('sa') || text.includes('سعودي')) return 'sa';
+    if (text.includes('us') || text.includes('امريكي')) return 'us';
+    if (text.includes('eu') || text.includes('اوروب')) return 'eu';
+    return 'global';
+}
+
+function formatItem(item, categoryKey, region) {
+    return {
+        id: item._id || item.id,
+        name: item.productName || item.name,
+        price: (typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0).toFixed(2),
+        region: region,
+        image: item.image || 'image/' + categoryKey + '.png'
+    };
+}
 
 // ======================================================
 //  دالة تحديد الريجن وجلب روابط الأعلام المحلية
 // ======================================================
 function getRegionDetails(region) {
-    var reg = String(region || 'global').toLowerCase();
+    const reg = String(region || 'global').toLowerCase();
     
     if (reg.includes('tr')) return { cls: 'badge-tr', flagUrl: '/image/flags/tr.png', isIcon: false };
     if (reg.includes('ae')) return { cls: 'badge-ae', flagUrl: '/image/flags/ae.png', isIcon: false };
@@ -43,209 +103,180 @@ function getRegionDetails(region) {
 //  عرض الأقسام الرئيسية
 // ======================================================
 function showAllCategories() {
-    var grid = document.getElementById('mainCategories');
+    const grid = document.getElementById('mainCategories');
     if (!grid) return;
-    grid.className = '';
-    grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
-    grid.innerHTML = '';
+    
+    grid.className = ''; 
+    grid.removeAttribute('style'); // مسح كافة الستايلات البرمجية لضمان العودة لـ CSS الأصلي
 
-    var backContainer = document.getElementById('back-container');
+    const backContainer = document.getElementById('back-container');
     if (backContainer) backContainer.style.display = 'none';
     
-    var regionBar = document.getElementById('regionFilterBar');
+    const regionBar = document.getElementById('regionFilterBar');
     if (regionBar) regionBar.style.display = 'none';
 
-    document.querySelectorAll('#filterTabs .filter-btn').forEach(function(b) { b.classList.remove('active'); });
-    var allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
+    document.querySelectorAll('#filterTabs .filter-btn').forEach(b => b.classList.remove('active'));
+    const allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
     if (allBtn) allBtn.classList.add('active');
 
-    Object.keys(rawServerData.categories).forEach(function(key) {
-        var cat = rawServerData.categories[key];
-        var div = document.createElement('div');
-        div.className = 'category-card';
-        div.dataset.category = key;
-
-        var img = document.createElement('img');
-        img.src = cat.image;
-        img.alt = cat.title;
-        img.onerror = function() { this.src = 'image/logo.png'; };
-
-        var h3 = document.createElement('h3');
-        h3.textContent = cat.title;
-
-        var p = document.createElement('p');
-        p.textContent = cat.desc;
-
-        var btn = document.createElement('button');
-        btn.className = 'enter-btn';
-        btn.textContent = 'دخول القسم 📂';
-        btn.dataset.category = key;
-
-        div.appendChild(img);
-        div.appendChild(h3);
-        div.appendChild(p);
-        div.appendChild(btn);
-        grid.appendChild(div);
-    });
+    grid.innerHTML = Object.entries(rawServerData.categories).map(([key, cat]) => `
+        <div class="category-card" data-category="${key}">
+            <img src="${cat.image}" alt="${cat.title}" onerror="this.src='image/logo.png'">
+            <h3>${cat.title}</h3>
+            <p>${cat.desc}</p>
+            <button class="enter-btn" data-category="${key}">دخول القسم 📂</button>
+        </div>
+    `).join('');
 }
 
 // ======================================================
 //  عرض المنتجات داخل القسم
 // ======================================================
 function selectCategory(categoryKey) {
-    var cat = rawServerData.categories[categoryKey];
-    if (!cat) return;
-
-    var grid = document.getElementById('mainCategories');
-    var backContainer = document.getElementById('back-container');
+    currentCategoryKey = categoryKey; // تحديث القسم الحالي
+    const grid = document.getElementById('mainCategories');
+    const backContainer = document.getElementById('back-container');
+    const regionBar = document.getElementById('regionFilterBar');
+    
     if (!grid) return;
+    grid.className = 'products-grid'; // تطبيق كلاس الشبكة للمنتجات
+    grid.removeAttribute('style');
 
     if (backContainer) backContainer.style.display = 'block';
-
-    var regionBar = document.getElementById('regionFilterBar');
     if (regionBar) {
         regionBar.style.display = 'flex';
-        regionBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
-        var allRegionBtn = regionBar.querySelector('.filter-btn[data-target="all"]');
-        if (allRegionBtn) allRegionBtn.classList.add('active');
+        regionBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        const allBtn = regionBar.querySelector('[data-target="all"]');
+        if (allBtn) allBtn.classList.add('active');
     }
 
-    document.querySelectorAll('#filterTabs .filter-btn').forEach(function(b) {
-        b.classList.remove('active');
-        if (b.getAttribute('data-filter') === categoryKey) b.classList.add('active');
-    });
-
-    grid.className = 'products-grid';
     grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ جاري جلب البطاقات...</p>';
 
     fetch('/api/products/' + categoryKey)
         .then(function(res) { return res.json(); })
-        .then(function(products) {
+        .then(function(products) { 
             grid.innerHTML = '';
 
-            if (!products || products.length === 0) {
-                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ هذا القسم سيتم تزويده بالبطاقات قريباً!</p>';
-                return;
-            }
-
             products.forEach(function(item) {
-                var detectedRegion = 'global';
-                var nameLower = (item.name || item.productName || '').toLowerCase();
-                var idUpper = (item.id || item._id || '').toString().toUpperCase();
+                const detectedRegion = detectRegion(item);
+                const regionInfo = getRegionDetails(detectedRegion);
+                const clientItem = formatItem(item, categoryKey, detectedRegion);
 
-                if (idUpper.includes('US') || nameLower.includes('us') || nameLower.includes('امريكي') || nameLower.includes('أمريكي')) detectedRegion = 'us';
-                else if (idUpper.includes('TR') || nameLower.includes('tr') || nameLower.includes('تركي')) detectedRegion = 'tr';
-                else if (idUpper.includes('SA') || nameLower.includes('sa') || nameLower.includes('سعودي')) detectedRegion = 'sa';
-                else if (idUpper.includes('AE') || nameLower.includes('ae') || nameLower.includes('امارات') || nameLower.includes('إمارات')) detectedRegion = 'ae';
-                else if (idUpper.includes('KW') || nameLower.includes('kw') || nameLower.includes('كويت') || nameLower.includes('كويتي')) detectedRegion = 'kw';
-                else if (idUpper.includes('EU') || nameLower.includes('eu') || nameLower.includes('اوروب') || nameLower.includes('أوروب')) detectedRegion = 'eu';
-
-                var regionInfo = getRegionDetails(detectedRegion);
-                
-                // حفظ السعر النقي كعدد عشان السلة والحسابات
-                var rawPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
-
-                var clientItem = {
-                    id: item.id || item._id,
-                    name: item.name || item.productName,
-                    price: rawPrice,
-                    region: detectedRegion,
-                    image: 'image/' + categoryKey + '.png'
-                };
-
-                var card = document.createElement('div');
-                card.className = 'product-item-card card'; 
-                card.dataset.region = detectedRegion;
-                card.style.position = 'relative'; 
-
-                var badge = document.createElement('div');
-                badge.className = 'card-flag-badge ' + regionInfo.cls;
-                badge.style.cssText = 'position: absolute; top: 12px; left: 12px; background: rgba(15, 18, 27, 0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); padding: 5px 7px; border-radius: 8px; display: flex; align-items: center; justify-content: center; z-index: 10; border: 1px solid rgba(255, 255, 255, 0.15); box-shadow: 0 4px 10px rgba(0,0,0,0.4);';
-                
-                if (regionInfo.isIcon) {
-                    badge.innerHTML = '<i class="fas fa-globe" style="color: #64ffda; font-size: 14px;"></i>';
-                } else {
-                    badge.innerHTML = '<img src="' + regionInfo.flagUrl + '" style="width: 20px; height: auto; border-radius: 2px; display: block;" />';
-                }
-
-                var imgContainer = document.createElement('div');
-                imgContainer.className = 'card-img-container';
-                var img = document.createElement('img');
-                img.src = clientItem.image;
-                img.alt = clientItem.name;
-                img.className = 'card-inner-img';
-                img.onerror = function() { this.src = 'image/logo.png'; };
-                imgContainer.appendChild(img);
-
-                var content = document.createElement('div');
-                content.className = 'card-content';
-                content.style.padding = '15px';
-
-                var title = document.createElement('h3');
-                title.className = 'card-title';
-                title.textContent = clientItem.name;
-
-                var price = document.createElement('p');
-                price.className = 'price-tag card-price';
-                price.textContent = clientItem.price + '$';
-
-                var buyBtn = document.createElement('button');
-                buyBtn.className = 'buy-btn';
-                buyBtn.innerHTML = '<i class="fas fa-shopping-cart"></i> شراء واستلام الكود';
-                buyBtn.dataset.item = JSON.stringify(clientItem);
-
-                content.appendChild(title);
-                content.appendChild(price);
-                content.appendChild(buyBtn);
-
-                card.appendChild(badge);
-                card.appendChild(imgContainer);
-                card.appendChild(content);
-                grid.appendChild(card);
+                                const cardHTML = `
+                    <div class="product-item-card card" data-region="${detectedRegion}" onclick='showProductDetails(${JSON.stringify(clientItem)})'>
+                        <div class="card-flag-badge ${regionInfo.cls}">
+                            ${regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`}
+                        </div>
+                        <div class="card-img-container">
+                            <img src="${clientItem.image}" alt="${clientItem.name}" class="card-inner-img">
+                        </div>
+                        <div class="card-content">
+                            <h3 class="card-title">${clientItem.name}</h3>
+                            <p class="price-tag card-price">${clientItem.price}$</p>
+                            <button class="enter-btn" style="margin-top: 10px;">عرض التفاصيل 🔍</button>
+                        </div>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', cardHTML);
             });
-        })
-        .catch(function(err) {
-            console.error('خطأ:', err);
-            grid.innerHTML = '<p style="color:#e74c3c; grid-column:1/-1; text-align:center; padding:60px 0;">❌ فشل تحميل المنتجات</p>';
-        });    
+            
+            if (products.length === 0) {
+                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">🚫 لا توجد بطاقات متاحة في هذا القسم حالياً.</p>';
+            }
+        }).catch(err => console.error("Error fetching products:", err));
+}
+
+// ======================================================
+//  عرض تفاصيل المنتج (New View)
+// ======================================================
+function showProductDetails(item) {
+    const grid = document.getElementById('mainCategories');
+    const regionBar = document.getElementById('regionFilterBar');
+    if (regionBar) regionBar.style.display = 'none';
+
+    // تنظيف الكلاسات القديمة وإضافة كلاس وضع التفاصيل
+    grid.className = 'product-details-wrapper'; // تطبيق كلاس التفاصيل
+    grid.removeAttribute('style');
+
+    // تحويل البيانات لنص آمن لمنع مشاكل الـ HTML
+    const safeItem = encodeURIComponent(JSON.stringify(item));
+
+    grid.innerHTML = `
+        <div class="product-detail-container">
+            <div class="detail-media">
+                <img src="${item.image}" class="detail-img" onerror="this.src='image/logo.png'">
+            </div>
+            <div class="detail-info">
+                <h2>${item.name}</h2>
+                <div class="detail-desc">
+                    <p>✨ <b>وصف المنتج:</b> استلم كود شحن أصلي ومضمون 100%.</p>
+                    <p>🌍 <b>المنطقة:</b> ${item.region.toUpperCase()}</p>
+                    <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
+                    <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
+                </div>
+                <div class="price-tag" style="font-size: 2.5rem; margin-bottom:30px;">${item.price}$</div>
+                <button class="buy-btn" style="padding: 20px; font-size: 1.2rem;" onclick='handleAddToCart("${safeItem}")'>
+                    <i class="fas fa-shopping-cart"></i> إضافة للسلة وإتمام الشراء
+                </button>
+                <button class="back-to-main-btn" onclick="selectCategory('${currentCategoryKey}')" style="margin-top:20px; background:transparent; border:1px solid #333;">
+                    ⬅️ العودة لقائمة البطاقات
+                </button>
+            </div>
+        </div>
+    `;
+    window.scrollTo(0, 0);
+}
+
+// دالة وسيطة لفك تشفير البيانات وإضافتها للسلة
+function handleAddToCart(encodedItem) {
+    const item = JSON.parse(decodeURIComponent(encodedItem));
+    addToCart(item);
 }
 
 // ======================================================
 //  العودة للرئيسية
+
 // ======================================================
 function goBack() {
-    var searchInput = document.getElementById('searchInput');
+    const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.value = '';
     showAllCategories();
 }
 
-// ======================================================
 //  تهيئة الأحداث عند تحميل الصفحة
 // ======================================================
 document.addEventListener('DOMContentLoaded', function() {
+    // 🔝 إجبار المتصفح على بدء الصفحة من الأعلى عند التحديث
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
 
     showAllCategories();
+    initHeroSlider(); // تشغيل السلايدر
+    updateTrustTicker(); // تحديث شريط الثقة
+    
     updateCartUI(); // تحديث السلة فور فتح الصفحة
 
-    var logoHomeBtn = document.getElementById('logoHomeBtn');
+    const logoHomeBtn = document.getElementById('logoHomeBtn');
     if (logoHomeBtn) {
         logoHomeBtn.addEventListener('click', function() { goBack(); });
     }
 
-    var regionFilterBar = document.getElementById('regionFilterBar');
+    const regionFilterBar = document.getElementById('regionFilterBar');
     if (regionFilterBar) {
         regionFilterBar.addEventListener('click', function(e) {
-            var btn = e.target.closest('.filter-btn');
+            const btn = e.target.closest('.filter-btn');
             if (!btn) return;
 
             regionFilterBar.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
 
-            var targetRegion = btn.getAttribute('data-target');
-            var productCards = document.querySelectorAll('.product-item-card');
+            const targetRegion = btn.getAttribute('data-target');
+            const productCards = document.querySelectorAll('.product-item-card');
 
             productCards.forEach(function(card) {
-                var cardRegion = card.dataset.region;
+                const cardRegion = card.dataset.region;
                 if (targetRegion === 'all' || cardRegion === targetRegion) {
                     card.classList.remove('hidden');
                 } else {
@@ -255,21 +286,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    var homeLink = document.getElementById('homeLink');
+    const homeLink = document.getElementById('homeLink');
     if (homeLink) homeLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
 
-    var digitalCardsLink = document.getElementById('digitalCardsLink');
+    const digitalCardsLink = document.getElementById('digitalCardsLink');
     if (digitalCardsLink) digitalCardsLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
 
-    var backToMainBtn = document.getElementById('backToMainBtn');
+    const backToMainBtn = document.getElementById('backToMainBtn');
     if (backToMainBtn) backToMainBtn.addEventListener('click', goBack);
 
-    var categoriesBtn = document.getElementById('categoriesBtn');
+    const categoriesBtn = document.getElementById('categoriesBtn');
     if (categoriesBtn) {
         categoriesBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            var dropdown = document.getElementById('categoriesDropdown');
+            const dropdown = document.getElementById('categoriesDropdown');
             dropdown.classList.toggle('active');
             categoriesBtn.classList.toggle('active');
         });
@@ -285,30 +316,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.dropdown-wrapper')) {
-            var dropdown = document.getElementById('categoriesDropdown');
-            var btn = document.getElementById('categoriesBtn');
+            const dropdown = document.getElementById('categoriesDropdown');
+            const btn = document.getElementById('categoriesBtn');
             if (dropdown) dropdown.classList.remove('active');
             if (btn) btn.classList.remove('active');
         }
     });
 
     // أحداث المودالات العامة لتجنب التكرار
-    var purchaseModal = document.getElementById('purchaseModal');
-    var closePurchaseBtn = document.getElementById('closeModal');
+    const purchaseModal = document.getElementById('purchaseModal');
+    const closePurchaseBtn = document.getElementById('closeModal');
     if (closePurchaseBtn && purchaseModal) {
         closePurchaseBtn.addEventListener('click', function() { purchaseModal.classList.remove('active'); });
     }
 
-    var codeModal = document.getElementById('codeModal');
-    var closeCodeBtn = document.getElementById('closeCodeModal');
+    const codeModal = document.getElementById('codeModal');
+    const closeCodeBtn = document.getElementById('closeCodeModal');
     if (closeCodeBtn && codeModal) {
         closeCodeBtn.addEventListener('click', function() { codeModal.classList.remove('active'); });
     }
 
-    var copyCodeBtn = document.getElementById('copyCodeBtn');
+    const copyCodeBtn = document.getElementById('copyCodeBtn');
     if (copyCodeBtn) {
         copyCodeBtn.addEventListener('click', function() {
-            var codeText = document.getElementById('generatedCode').textContent;
+            const codeText = document.getElementById('generatedCode').textContent;
             navigator.clipboard.writeText(codeText).then(function() {
                 alert('📋 تم نسخ كود الشحن بنجاح!');
             });
@@ -317,20 +348,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // صائد ضغطات الكروت والدخول للسلة
     document.getElementById('mainCategories').addEventListener('click', function(e) {
-        var enterBtn = e.target.closest('.enter-btn[data-category]');
+        const enterBtn = e.target.closest('.enter-btn[data-category]');
         if (enterBtn) {
             selectCategory(enterBtn.dataset.category);
             return;
         }
         
-        var buyBtn = e.target.closest('.buy-btn[data-item]');
+        const buyBtn = e.target.closest('.buy-btn[data-item]');
         if (buyBtn) {
-            var item = JSON.parse(buyBtn.dataset.item);
+            const item = JSON.parse(buyBtn.dataset.item);
             addToCart(item);
             return;
         }
 
-        var categoryCard = e.target.closest('.category-card[data-category]');
+        const categoryCard = e.target.closest('.category-card[data-category]');
         if (categoryCard && !e.target.closest('button')) {
             selectCategory(categoryCard.dataset.category);
         }
@@ -340,8 +371,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             document.querySelectorAll('#filterTabs .filter-btn').forEach(function(b) { b.classList.remove('active'); });
             btn.classList.add('active');
-            var filter = btn.getAttribute('data-filter');
-            var si = document.getElementById('searchInput');
+            const filter = btn.getAttribute('data-filter');
+            const si = document.getElementById('searchInput');
             if (si) si.value = '';
             if (filter === 'all') {
                 showAllCategories();
@@ -351,50 +382,34 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    var searchInput = document.getElementById('searchInput');
+    const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('input', function(e) {
-            var query = e.target.value.toLowerCase().trim();
+            const query = e.target.value.toLowerCase().trim();
             if (query === '') { goBack(); return; }
 
-            var grid = document.getElementById('mainCategories');
-            var backContainer = document.getElementById('back-container');
-            if (!grid) return;
+            const grid = document.getElementById('mainCategories');
+            const backContainer = document.getElementById('back-container');
+            if (grid) grid.removeAttribute('style');
             grid.className = '';
             grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
             grid.innerHTML = '';
             if (backContainer) backContainer.style.display = 'block';
 
-            var found = false;
-            Object.keys(rawServerData.categories).forEach(function(key) {
-                var cat = rawServerData.categories[key];
-                if (cat.title.toLowerCase().includes(query)) {
+            let found = false;
+            grid.innerHTML = Object.entries(rawServerData.categories)
+                .filter(([key, cat]) => cat.title.toLowerCase().includes(query))
+                .map(([key, cat]) => {
                     found = true;
-                    var div = document.createElement('div');
-                    div.className = 'category-card';
-                    div.dataset.category = key;
-
-                    var img = document.createElement('img');
-                    img.src = cat.image;
-                    img.alt = cat.title;
-                    img.onerror = function() { this.src = 'image/logo.png'; };
-
-                    var h3 = document.createElement('h3');
-                    h3.textContent = cat.title;
-
-                    var p = document.createElement('p');
-                    p.textContent = cat.desc;
-
-                    var btn = document.createElement('button');
-                    btn.className = 'enter-btn';
-                    btn.textContent = 'دخول القسم 📂';
-                    btn.dataset.category = key;
-
-                    div.appendChild(img); div.appendChild(h3);
-                    div.appendChild(p); div.appendChild(btn);
-                    grid.appendChild(div);
-                }
-            });
+                    return `
+                        <div class="category-card" data-category="${key}">
+                            <img src="${cat.image}" alt="${cat.title}" onerror="this.src='image/logo.png'">
+                            <h3>${cat.title}</h3>
+                            <p>${cat.desc}</p>
+                            <button class="enter-btn" data-category="${key}">دخول القسم 📂</button>
+                        </div>
+                    `;
+                }).join('');
 
             if (!found) {
                 grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:40px;">❌ لا توجد أقسام مطابقة لبحثك...</p>';
@@ -403,7 +418,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // فتح السلة عبر زر الهيدر
-    var cartHeaderBtn = document.getElementById('cartHeaderBtn');
+    const cartHeaderBtn = document.getElementById('cartHeaderBtn');
     if (cartHeaderBtn && purchaseModal) {
         cartHeaderBtn.addEventListener('click', function() {
             updateCartUI();
@@ -412,11 +427,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // تغيير المحافظ ديناميكياً داخل المودال
-    var paymentSelect = document.getElementById('paymentMethodSelect');
-    var instructionsZone = document.getElementById('paymentInstructions');
+    const paymentSelect = document.getElementById('paymentMethodSelect');
+    const instructionsZone = document.getElementById('paymentInstructions');
     if (paymentSelect && instructionsZone) {
         paymentSelect.addEventListener('change', function(e) {
-            var method = e.target.value;
+            const method = e.target.value;
             if (method === 'jawwal_pay') {
                 instructionsZone.innerHTML = `
                     <p style="margin: 0 0 8px 0; color: #00f0ff; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p>
@@ -434,19 +449,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // إرسال طلب السلة الكامل بالكامل للـ Backend
-    var submitOrderBtn = document.getElementById('submitOrderBtn');
+    const submitOrderBtn = document.getElementById('submitOrderBtn');
     if (submitOrderBtn) {
         submitOrderBtn.addEventListener('click', async function() {
-            var email = document.getElementById('user-email').value.trim();
-            var paymentRef = document.getElementById('paymentRefInput').value.trim();
-            var gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
+            const email = document.getElementById('user-email').value.trim();
+            const paymentRef = document.getElementById('paymentRefInput').value.trim();
+            const gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
 
             if (!email) { alert('الرجاء إدخال إيميل مستلم الكود أولاً!'); return; }
             if (!paymentRef) { alert('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!'); return; }
             if (cart.length === 0) { alert('سلتك فارغة!'); return; }
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
-            var orderData = {
+            const orderData = {
                 cartItems: cart.map(item => ({ id: item.id, qty: item.qty })),
                 customerEmail: email,
                 customerName: "عميل المتجر", // قيمة افتراضية لأن النموذج لا يحتوي على حقل اسم
@@ -458,6 +473,22 @@ document.addEventListener('DOMContentLoaded', function() {
             submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
 
             try {
+                // إذا كان الخيار هو Stripe، نقوم بفتح نافذة الدفع الآمنة
+                if (gateway === 'stripe') {
+                    const res = await fetch('/api/create-payment-intent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cartItems: cart.map(i => ({id: i.id, qty: i.qty})), customerEmail: email })
+                    });
+                    const { clientSecret } = await res.json();
+                    
+                    // هنا يتم استدعاء Stripe Checkout (يتطلب إضافة مكتبة Stripe.js في الـ HTML)
+                    // للمثال، سنفترض إعادة التوجيه لصفحة دفع Stripe
+                    window.location.href = `/checkout.html?secret=${clientSecret}`;
+                    return;
+                }
+
+                // الطريقة اليدوية الحالية
                 const response = await fetch('/api/checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -483,13 +514,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    const clearBtn = document.getElementById('clearCartBtn'); 
+    if (clearBtn) {
+        clearBtn.onclick = window.clearCart;
+    }
+
 });
 
 // ======================================================
 // 🛒 سيستم السلة المحلية المستقلة النظيفة
 // ======================================================
 function addToCart(product) {
-    var existingItem = cart.find(item => item.id === product.id);
+    const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
         existingItem.qty += 1;
@@ -512,13 +549,13 @@ function addToCart(product) {
 // ======================================================
 function updateCartUI() {
     // تحديث العداد العلوي إن وجد
-    var badge = document.getElementById('cartCountBadge');
-    var totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+    const badge = document.getElementById('cartCountBadge');
+    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
     if (badge) badge.textContent = totalQty;
 
     // جلب منطقة السلة والمجموع
-    var listZone = document.getElementById('cartItemsList'); 
-    var totalZone = document.getElementById('cartTotalAmount');
+    const listZone = document.getElementById('cartItemsList'); 
+    const totalZone = document.getElementById('cartTotalAmount');
     
     if (!listZone) return;
     
@@ -531,12 +568,12 @@ function updateCartUI() {
 
     // تفريغ زون المنتجات قبل إعادة البناء لمنع التكرار
     listZone.innerHTML = '';
-    var totalCost = 0;
+    let totalCost = 0;
 
     cart.forEach((item, index) => {
         totalCost += (item.price * item.qty);
         
-        var row = document.createElement('div');
+        const row = document.createElement('div');
         row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(0,240,255,0.05); direction: rtl;";
         
         // ربط الدالة بـ window.removeFromCart صراحة لحل مشكلة عدم الاستجابة نهائياً
@@ -558,7 +595,7 @@ function updateCartUI() {
     // ربط أزرار الحذف ✅
     listZone.querySelectorAll('.remove-cart-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            var idx = parseInt(this.getAttribute('data-index'));
+            const idx = parseInt(this.getAttribute('data-index'));
             removeFromCart(idx);
         });
     });
@@ -591,96 +628,3 @@ function clearCart() {
 window.removeFromCart = removeFromCart;
 window.clearCart = clearCart;
 window.updateCartUI = updateCartUI;
-
-// ======================================================
-// ⚡ تفعيل الأحداث عند تحميل الصفحة
-// ======================================================
-document.addEventListener('DOMContentLoaded', function() {
-    var clearBtn = document.getElementById('clearCartBtn'); 
-    if (clearBtn) {
-        // ربط مباشر ونظيف لزر التفريغ لمنع التعارض
-        clearBtn.onclick = window.clearCart;
-    }
-    
-    // تشغيل تحديث السلة عند تحميل الصفحة لأول مرة
-    updateCartUI();
-});
-
-// ======================================================\r
-// 🚀 دالة إتمام الشراء المحدثة والمطابقة للسيرفر بالملي\r
-// ======================================================\r
-async function submitOrderToServer() {
-    // 1. التحقق من وجود عناصر في السلة
-    if (!cart || cart.length === 0) {
-        alert('سلتك فارغة حالياً! قم بإضافة باقات أو بطاقات أولاً.');
-        return;
-    }
-
-    // 2. طلب بيانات الزبون بشكل منبثق ومؤقت
-    const customerName = prompt('الرجاء إدخال اسمك الكريم لإتمام الطلب:');
-    if (!customerName) return;
-
-    const customerEmail = prompt('الرجاء إدخال بريدك الإلكتروني لاستلام الفاتورة:');
-    if (!customerEmail) {
-        alert('البريد الإلكتروني مطلوب لإرسال الفاتورة الرقمية!');
-        return;
-    }
-
-    // 3. حساب المجموع الإجمالي الفعلي بدقة
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0).toFixed(2);
-
-    // 4. تجهيز كائن البيانات المنسق والمطابق لراوت السيرفر (/api/checkout)
-    const orderData = {
-        customerName: customerName.trim(),
-        customerEmail: customerEmail.trim(),
-        cartItems: cart.map(item => ({
-            id: item.id,
-            qty: item.qty || 1
-        }))
-    };
-
-    try {
-        // تغيير مظهر الزر أثناء المعالجة لمنع تكرار الضغط والتأمين للـ Session
-        const btn = document.getElementById('checkoutSubmitBtn');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerText = 'جاري معالجة طلبك وتأمينه...';
-        }
-
-        // إرسال الطلب إلى المسار الصحيح والمعدل بواسطة الـ Agent
-        const response = await fetch('/api/checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orderData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert(`🎉 ${result.message}\nرقم طلبك في النظام هو: ${result.orderId || 'JOKR-OK'}`);
-            
-            // تفريغ السلة وتحديث الشاشة فوراً
-            cart = [];
-            if (typeof updateCartUI === 'function') updateCartUI();
-            if (typeof saveCart === 'function') saveCart();
-            
-            // إغلاق الموديل الخاص بالسلة
-            const purchaseModal = document.getElementById('purchaseModal');
-            if (purchaseModal) purchaseModal.classList.remove('active');
-        } else {
-            alert(`⚠️ خطأ من السيرفر: ${result.error || result.message}`);
-        }
-
-    } catch (error) {
-        console.error('Checkout Error:', error);
-        alert('حدث خطأ أثناء الاتصال بالسيرفر، يرجى المحاولة مرة أخرى.');
-    } finally {
-        const btn = document.getElementById('checkoutSubmitBtn');
-        if (btn) {
-            btn.disabled = false;
-            btn.innerText = '🚀 إتمام الطلب واستلام الفاتورة';
-        }
-    }
-}

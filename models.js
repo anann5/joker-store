@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
 
 // ======================================================
+// Schema المستخدم (لإدارة المحفظة والرصيد)
+// ======================================================
+const userSchema = new mongoose.Schema({
+    email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
+    balance:  { type: Number, default: 0 }, // الرصيد الحالي بالدولار
+    createdAt:{ type: Date, default: Date.now }
+});
+
+// ======================================================
 // Schema الكود الفردي (مضمّن داخل المنتج)
 // ======================================================
 const codeSchema = new mongoose.Schema({
@@ -30,8 +39,14 @@ const productSchema = new mongoose.Schema({
         default: 'global'
     },
     price:       { type: Number, required: true, min: 0 },
+    description: { type: String, default: 'لا يوجد وصف متاح حالياً لهذا المنتج.' },
     image:       { type: String, default: '' },
     codes:       { type: [codeSchema], default: [] },
+    isExternal:  { type: Boolean, default: false }, // هل المنتج يسحب من API خارجي؟
+    externalId:  { type: String, default: null },  // المعرف في موقع المزود
+    profitMargin:{ type: Number, default: 1.10 }, // هامش الربح (1.10 تعني 10%)
+    basePrice:   { type: Number, default: 0 },    // السعر الأصلي من المزود
+    currentProvider: { type: String, default: 'Local' }, // اسم المزود الحالي للأفضل سعر
     isActive:    { type: Boolean, default: true }, // إخفاء المنتج بدون حذفه
     createdAt:   { type: Date, default: Date.now },
     updatedAt:   { type: Date, default: Date.now }
@@ -82,6 +97,7 @@ const orderSchema = new mongoose.Schema({
     price:       { type: Number, required: true },
     buyerEmail:  { type: String, required: true },
     code:        { type: String, default: null }, // الكود المسلّم
+    costPrice:   { type: Number, default: 0 },    // سعر التكلفة لحظة الشراء
     status:      { 
         type: String, 
         enum: ['pending', 'completed', 'failed', 'refunded'],
@@ -89,6 +105,7 @@ const orderSchema = new mongoose.Schema({
     },
     paymentGateway: { type: String, default: 'manual' },
     paymentRef:     { type: String, default: null },
+    stripePaymentIntentId: { type: String, default: null }, // لتتبع الدفع الآلي
     createdAt:      { type: Date, default: Date.now },
     completedAt:    { type: Date, default: null }
 });
@@ -99,6 +116,8 @@ const orderSchema = new mongoose.Schema({
 const logSchema = new mongoose.Schema({
     action:    { type: String, required: true }, // نوع الحركة (تسجيل دخول، تعديل، حذف)
     details:   { type: String },                 // تفاصيل الحركة
+    targetId:  { type: String, default: null },  // معرف المنتج أو الطلب المرتبط
+    targetName:{ type: String, default: null },  // اسم المنتج المرتبط (للعرض السريع)
     ip:        { type: String },                 // عنوان الجهاز
     createdAt: { type: Date, default: Date.now }
 });
@@ -106,5 +125,6 @@ const logSchema = new mongoose.Schema({
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Order:   mongoose.model('Order',   orderSchema),
-    Log:     mongoose.model('Log',     logSchema)
+        Log:     mongoose.model('Log',     logSchema),
+        User:    mongoose.model('User',    userSchema)
 };

@@ -8,6 +8,9 @@
     "dev": "nodemon server.js",
     "test": "node --check server.js"
   },
+  "engines": {
+    "node": ">=20.0.0 <23.0.0"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -19,8 +22,11 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
-    "mongoose": "^9.6.3",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.7.1",
+    "node-cron": "^4.3.0",
     "nodemailer": "^8.0.11",
+    "stripe": "^22.2.1",
     "twilio": "^6.0.2"
   },
   "devDependencies": {
