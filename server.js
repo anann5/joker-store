@@ -12,34 +12,40 @@ const { syncInventoryInternal, cleanupOldLogsInternal } = require("./controllers
 
 const app = express();
 
+// 🔒 Force HTTPS
+app.use((req, res, next) => {
+    const secure = req.headers['x-forwarded-proto'] === 'https';
+    if (!secure) {
+        return res.redirect(`https://${req.get('Host')}${req.url}`);
+    }
+    next();
+});
+
 // 🛡️ Security Middlewares
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com", "https://www.google.com"],
-            styleSrcElem: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-            scriptSrcElem: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
-            scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrcAttr: ["'unsafe-inline'"],
+            scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
+            styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:", "http://localhost:5850"],
             connectSrc: ["'self'", "http://localhost:5850", "ws://localhost:5850", "http://127.0.0.1:*"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             objectSrc: ["'none'"],
-            upgradeInsecureRequests: [], // تعطيل الإجبار على HTTPS أثناء العمل محلياً
+            upgradeInsecureRequests: []
         },
     },
 }));
 
-// 🚦 Rate Limiting: حماية ضد الإغراق وهجمات التخمين
+// 🚦 Rate Limiting
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 دقيقة
-    max: 100, // حد أقصى 100 طلب من نفس الـ IP
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit to 100 requests per IP
     message: "عدد طلبات كبير جداً، يرجى المحاولة لاحقاً."
 });
 app.use("/api/", limiter);
 
+// Parse JSON
 app.use(express.json({ limit: "10kb" }));
 
 // Sanitize inputs
@@ -52,45 +58,53 @@ app.use((req, res, next) => {
             }
         }
     };
-    sanitize(req.body); sanitize(req.params); sanitize(req.query);
+    sanitize(req.body);
+    sanitize(req.params);
+    sanitize(req.query);
     next();
 });
 
 // Database Connection
 connectDB();
 
-// 📂 ملفات الواجهة (Static Files)
+// 📂 Static Files
 app.use(express.static(path.join(__dirname, 'public')));
-// السماح بالوصول للملفات الموجودة في المجلد الرئيسي أيضاً
 app.use(express.static(__dirname));
 
-// 🌐 توجيه المسارات الأساسية لضمان عدم ظهور "Cannot GET"
+// 🌐 Routes
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-
 app.get("/admin", (req, res) => {
     res.sendFile(path.join(__dirname, "admin.html"));
 });
-
-app.get("/login.html", (req, res) => { // Explicit route for login.html
+app.get("/login.html", (req, res) => {
     res.sendFile(path.join(__dirname, "login.html"));
 });
-
-app.get("/admin.html", (req, res) => { // Explicit route for admin.html
+app.get("/admin.html", (req, res) => {
     res.sendFile(path.join(__dirname, "admin.html"));
 });
-
 app.get("/login", (req, res) => {
     res.sendFile(path.join(__dirname, "login.html"));
 });
 
-// 🌐 Routes
+// API routes
 app.use("/api/admin", adminRoutes);
 app.use("/api", storeRoutes);
 
-// ⏳ أتمتة مراقبة الأسعار: تعمل كل 6 ساعات تلقائياً
-const AUTO_SYNC_INTERVAL = 6 * 60 * 60 * 1000; // 6 ساعات بالملي ثانية
+// Generic error handler
+app.use((err, req, res, next) => {
+    console.error(err);
+    const status = err.status || 500;
+    res.status(status).json({
+        success: false,
+        message: err.message || 'Internal Server Error',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+});
+
+// ⏳ Price monitoring (runs every 6 hours)
+const AUTO_SYNC_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
 setInterval(async () => {
     console.log("🔄 جاري البدء في مراقبة وتحديث الأسعار من المزودين...");
     const result = await syncInventoryInternal();
@@ -101,7 +115,7 @@ setInterval(async () => {
     }
 }, AUTO_SYNC_INTERVAL);
 
-// 🧹 تنظيف تلقائي للسجلات: يعمل مرة كل 24 ساعة لحذف السجلات الأقدم من شهر
+// 🧹 Cleanup logs (runs daily)
 const DAILY_INTERVAL = 24 * 60 * 60 * 1000;
 setInterval(async () => {
     console.log("🧹 جاري فحص وتنظيف السجلات القديمة...");
