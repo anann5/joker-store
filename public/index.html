@@ -228,89 +228,48 @@
     </div>
 </footer>
 
-<script src="script.js"></script>
+<!-- استخدام type="module" لتفعيل نظام الوحدات (ES6 Modules). -->
+<!-- الملف الرئيسي script.js هو نقطة الدخول الوحيدة التي تستورد باقي الوحدات. -->
+<script type="module" src="script.js"></script>
 
-<script>
-async function submitOrderToServer() {
-    // 1. التحقق من وجود عناصر في السلة
-    if (typeof cart === 'undefined' || cart.length === 0) {
-        alert('سلتك فارغة حالياً! قم بإضافة باقات أو بطاقات أولاً.');
-        return;
-    }
+<!-- ====================================================== -->
+<!-- 🔥 قوالب الواجهة الديناميكية (Dynamic UI Templates) -->
+<!-- ====================================================== -->
 
-    // 2. طلب بيانات الزبون
-    const customerName = prompt('الرجاء إدخال اسمك الكريم لإتمام الطلب:');
-    if (!customerName) return;
+<!-- قالب بطاقة القسم الرئيسي -->
+<template id="category-card-template">
+    <div class="category-card" data-category="">
+        <img src="" alt="" onerror="this.src='image/logo.png'">
+        <h3></h3>
+        <p></p>
+        <button class="enter-btn" data-category="">دخول القسم 📂</button>
+    </div>
+</template>
 
-    const customerEmail = prompt('الرجاء إدخال بريدك الإلكتروني لاستلام الفاتورة:');
-    if (!customerEmail) {
-        alert('البريد الإلكتروني مطلوب لإرسال الفاتورة!');
-        return;
-    }
-
-    // 3. حساب المجموع الإجمالي الفعلي من واقع سلتك
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0).toFixed(2);
-
-    // 4. تجهيز البيانات بالصيغة المطابقة تماماً لراوت السيرفر الأصلي
-    const orderData = {
-        customerName: customerName.trim(),
-        customerEmail: customerEmail.trim(),
-        cartItems: cart.map(item => ({
-            name: item.name,
-            price: item.price,
-            qty: item.qty || 1
-        })),
-        totalAmount: totalAmount
-    };
-
-    try {
-        const btn = document.getElementById('checkoutSubmitBtn');
-        btn.disabled = true;
-        btn.innerText = 'جاري معالجة طلبك وتأمينه...';
-
-        // 🔥 الربط المباشر مع الراوت الأصلي والمحمي في السيرفر الخاص بك
-        const response = await fetch('/api/checkout', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(orderData)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert(`🎉 ${result.message}`);
-            
-            // تفريغ السلة وتحديث الشاشة وإغلاق الموديل
-            cart = [];
-            if (typeof updateCartUI === 'function') updateCartUI();
-            if (typeof saveCart === 'function') saveCart();
-            if (typeof closeModal === 'function') closeModal();
-        } else {
-            alert(`⚠️ خطأ من السيرفر: ${result.error}`);
-        }
-
-    } catch (error) {
-        console.error('Checkout Error:', error);
-        alert('حدث خطأ أثناء الاتصال بالسيرفر، يرجى المحاولة مرة أخرى.');
-    } finally {
-        const btn = document.getElementById('checkoutSubmitBtn');
-        if (btn) {
-            btn.disabled = false;
-            btn.innerText = '🚀 إتمام الطلب واستلام الفاتورة';
-        }
-    }
-}
-
-// الرابط الآمن تلبيةً لشروط الحماية المتوافقة مع الـ CSP لمتصفحك
-document.addEventListener('DOMContentLoaded', () => {
-    const checkoutBtn = document.getElementById('checkoutSubmitBtn');
-    if (checkoutBtn) {
-        checkoutBtn.addEventListener('click', submitOrderToServer);
-    }
-});
-</script>
+<!-- قالب صفحة تفاصيل المنتج -->
+<template id="product-details-template">
+    <div class="product-detail-container">
+        <div class="detail-media">
+            <img src="" class="detail-img" onerror="this.src='image/logo.png'">
+        </div>
+        <div class="detail-info">
+            <h2 class="product-name"></h2>
+            <div class="detail-desc">
+                <p>✨ <b>وصف المنتج:</b> استلم كود شحن أصلي ومضمون 100%.</p>
+                <p>🌍 <b>المنطقة:</b> <span class="product-region"></span></p>
+                <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
+                <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
+            </div>
+            <div class="price-tag product-price" style="font-size: 2.5rem; margin-bottom:30px;"></div>
+            <button class="buy-btn" style="padding: 20px; font-size: 1.2rem;">
+                <i class="fas fa-shopping-cart"></i> إضافة للسلة وإتمام الشراء
+            </button>
+            <button class="back-to-main-btn" style="margin-top:20px; background:transparent; border:1px solid #333;">
+                ⬅️ العودة لقائمة البطاقات
+            </button>
+        </div>
+    </div>
+</template>
 
 </body>
 </html>

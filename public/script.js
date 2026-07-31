@@ -1,7 +1,10 @@
+import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer } from './ui.js';
+import { cart, addToCart } from './cart.js';
+
 // ======================================================
 //  البيانات الأساسية للأقسام
 // ======================================================
-const rawServerData = {
+export const rawServerData = {
     categories: {
         gaming_general: { title: "الالعاب", image: "image/games.png", desc: "بطاقات شحن لمختلف الألعاب" },
         steam:          { title: "ستيم", image: "image/steam.png", desc: "بطاقات Steam Wallet بالدولار" },
@@ -20,9 +23,8 @@ const rawServerData = {
     }
 };
 
-let currentCategoryKey = 'all'; // متغير عالمي لمتابعة القسم الحالي
-let currentSelectedProduct = null;
-let cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
+let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
+export const currentCategoryKey = () => _currentCategoryKey;
 
 // ======================================================
 // 🚀 تشغيل سلايدر العروض تلقائياً
@@ -100,40 +102,10 @@ function getRegionDetails(region) {
 }
 
 // ======================================================
-//  عرض الأقسام الرئيسية
-// ======================================================
-function showAllCategories() {
-    const grid = document.getElementById('mainCategories');
-    if (!grid) return;
-    
-    grid.className = ''; 
-    grid.removeAttribute('style'); // مسح كافة الستايلات البرمجية لضمان العودة لـ CSS الأصلي
-
-    const backContainer = document.getElementById('back-container');
-    if (backContainer) backContainer.style.display = 'none';
-    
-    const regionBar = document.getElementById('regionFilterBar');
-    if (regionBar) regionBar.style.display = 'none';
-
-    document.querySelectorAll('#filterTabs .filter-btn').forEach(b => b.classList.remove('active'));
-    const allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
-    if (allBtn) allBtn.classList.add('active');
-
-    grid.innerHTML = Object.entries(rawServerData.categories).map(([key, cat]) => `
-        <div class="category-card" data-category="${key}">
-            <img src="${cat.image}" alt="${cat.title}" onerror="this.src='image/logo.png'">
-            <h3>${cat.title}</h3>
-            <p>${cat.desc}</p>
-            <button class="enter-btn" data-category="${key}">دخول القسم 📂</button>
-        </div>
-    `).join('');
-}
-
-// ======================================================
 //  عرض المنتجات داخل القسم
 // ======================================================
-function selectCategory(categoryKey) {
-    currentCategoryKey = categoryKey; // تحديث القسم الحالي
+export function selectCategory(categoryKey) {
+    _currentCategoryKey = categoryKey; // تحديث القسم الحالي
     const grid = document.getElementById('mainCategories');
     const backContainer = document.getElementById('back-container');
     const regionBar = document.getElementById('regionFilterBar');
@@ -150,7 +122,13 @@ function selectCategory(categoryKey) {
         if (allBtn) allBtn.classList.add('active');
     }
 
-    grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">⏳ جاري جلب البطاقات...</p>';
+    // استخدام مؤشر تحميل مرئي أفضل
+    grid.innerHTML = `
+        <div class="loader-container" style="grid-column:1/-1; text-align:center; padding:60px 0; display:flex; justify-content:center; align-items:center; flex-direction:column; gap:15px;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--primary-neon);"></i>
+            <p style="color:#b9bbbe; margin-top:15px;">جاري جلب البطاقات...</p>
+        </div>
+    `;
 
     fetch('/api/products/' + categoryKey)
         .then(function(res) { return res.json(); })
@@ -187,55 +165,7 @@ function selectCategory(categoryKey) {
 }
 
 // ======================================================
-//  عرض تفاصيل المنتج (New View)
-// ======================================================
-function showProductDetails(item) {
-    const grid = document.getElementById('mainCategories');
-    const regionBar = document.getElementById('regionFilterBar');
-    if (regionBar) regionBar.style.display = 'none';
-
-    // تنظيف الكلاسات القديمة وإضافة كلاس وضع التفاصيل
-    grid.className = 'product-details-wrapper'; // تطبيق كلاس التفاصيل
-    grid.removeAttribute('style');
-
-    // تحويل البيانات لنص آمن لمنع مشاكل الـ HTML
-    const safeItem = encodeURIComponent(JSON.stringify(item));
-
-    grid.innerHTML = `
-        <div class="product-detail-container">
-            <div class="detail-media">
-                <img src="${item.image}" class="detail-img" onerror="this.src='image/logo.png'">
-            </div>
-            <div class="detail-info">
-                <h2>${item.name}</h2>
-                <div class="detail-desc">
-                    <p>✨ <b>وصف المنتج:</b> استلم كود شحن أصلي ومضمون 100%.</p>
-                    <p>🌍 <b>المنطقة:</b> ${item.region.toUpperCase()}</p>
-                    <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
-                    <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
-                </div>
-                <div class="price-tag" style="font-size: 2.5rem; margin-bottom:30px;">${item.price}$</div>
-                <button class="buy-btn" style="padding: 20px; font-size: 1.2rem;" onclick='handleAddToCart("${safeItem}")'>
-                    <i class="fas fa-shopping-cart"></i> إضافة للسلة وإتمام الشراء
-                </button>
-                <button class="back-to-main-btn" onclick="selectCategory('${currentCategoryKey}')" style="margin-top:20px; background:transparent; border:1px solid #333;">
-                    ⬅️ العودة لقائمة البطاقات
-                </button>
-            </div>
-        </div>
-    `;
-    window.scrollTo(0, 0);
-}
-
-// دالة وسيطة لفك تشفير البيانات وإضافتها للسلة
-function handleAddToCart(encodedItem) {
-    const item = JSON.parse(decodeURIComponent(encodedItem));
-    addToCart(item);
-}
-
-// ======================================================
 //  العودة للرئيسية
-
 // ======================================================
 function goBack() {
     const searchInput = document.getElementById('searchInput');
@@ -253,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.scrollTo(0, 0);
 
     showAllCategories();
+    initToastContainer(); // تهيئة حاوية الإشعارات
     initHeroSlider(); // تشغيل السلايدر
     updateTrustTicker(); // تحديث شريط الثقة
     
@@ -456,9 +387,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const paymentRef = document.getElementById('paymentRefInput').value.trim();
             const gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
 
-            if (!email) { alert('الرجاء إدخال إيميل مستلم الكود أولاً!'); return; }
-            if (!paymentRef) { alert('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!'); return; }
-            if (cart.length === 0) { alert('سلتك فارغة!'); return; }
+            if (!email) { showToast('الرجاء إدخال إيميل مستلم الكود أولاً!', 'error'); return; }
+            if (!paymentRef) { showToast('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!', 'error'); return; }
+            if (cart.length === 0) { showToast('سلتك فارغة!', 'error'); return; }
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
             const orderData = {
@@ -499,15 +430,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (result.success) {
                     purchaseModal.classList.remove('active');
-                    cart = [];
+                    cart.length = 0; // تفريغ المصفوفة
                     localStorage.removeItem('joker_cart');
                     updateCartUI();
-                    alert('🚀 تم استلام طلبك بنجاح! بمجرد تحقق الأدمن من التحويل، سيصلك كود الشحن فوراً على إيميلك.');
+                    showToast('🚀 تم استلام طلبك بنجاح! سيصلك الكود فور تأكيد الأدمن.', 'success');
                 } else {
-                    alert('❌ فشل إرسال الطلب: ' + (result.error || 'حدث خطأ غير متوقع'));
+                    showToast('❌ فشل إرسال الطلب: ' + (result.error || 'حدث خطأ غير متوقع'), 'error');
                 }
             } catch (err) {
-                alert('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.');
+                showToast('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.', 'error');
             } finally {
                 submitOrderBtn.disabled = false;
                 submitOrderBtn.textContent = '🚀 تأكيد التحويل وإرسال الطلب';
@@ -517,114 +448,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const clearBtn = document.getElementById('clearCartBtn'); 
     if (clearBtn) {
-        clearBtn.onclick = window.clearCart;
+        clearBtn.onclick = () => import('./cart.js').then(m => m.clearCart());
     }
 
 });
 
 // ======================================================
-// 🛒 سيستم السلة المحلية المستقلة النظيفة
+// 🍞 نظام الإشعارات المنبثقة (Toast Notifications)
 // ======================================================
-function addToCart(product) {
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-        existingItem.qty += 1;
-    } else {
-        cart.push({
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            qty: 1
-        });
-    }
-    
-    localStorage.setItem('joker_cart', JSON.stringify(cart));
-    updateCartUI();
-    alert(`📥 تم إضافة [${product.name}] إلى السلة بنجاح!`);
-}
-
-// ======================================================
-// 🛒 الدالة الأصلية لتحديث السلة وإصلاح الأيقونة الحمراء
-// ======================================================
-function updateCartUI() {
-    // تحديث العداد العلوي إن وجد
-    const badge = document.getElementById('cartCountBadge');
-    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-    if (badge) badge.textContent = totalQty;
-
-    // جلب منطقة السلة والمجموع
-    const listZone = document.getElementById('cartItemsList'); 
-    const totalZone = document.getElementById('cartTotalAmount');
-    
-    if (!listZone) return;
-    
-    // إذا كانت السلة فارغة
-    if (cart.length === 0) {
-        listZone.innerHTML = '<p style="color:#b9bbbe; text-align:center; padding:20px; font-size:0.9rem;">السلة فارغة حالياً 🛒</p>';
-        if (totalZone) totalZone.textContent = '0.00$';
-        return;
-    }
-
-    // تفريغ زون المنتجات قبل إعادة البناء لمنع التكرار
-    listZone.innerHTML = '';
-    let totalCost = 0;
-
-    cart.forEach((item, index) => {
-        totalCost += (item.price * item.qty);
-        
-        const row = document.createElement('div');
-        row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(0,240,255,0.05); direction: rtl;";
-        
-        // ربط الدالة بـ window.removeFromCart صراحة لحل مشكلة عدم الاستجابة نهائياً
-        row.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <i data-index="${index}" class="fas fa-trash-alt remove-cart-btn" style="color:#ff0055; cursor:pointer; font-size:1.2rem; padding: 5px;" title="حذف المنتج"></i>
-                <span style="color:#00f0ff; font-weight:bold;">${(item.price * item.qty).toFixed(2)}$</span>
-            </div>
-            
-            <div style="display: flex; align-items: center;">
-                <span style="color:#fff; font-size:0.95rem;">${item.name} <span style="color: #00f0ff; font-size: 0.85rem;">(${item.qty}x)</span></span>
-            </div>
-        `;
-        listZone.appendChild(row);
-    });
-
-    if (totalZone) totalZone.textContent = totalCost.toFixed(2) + "$";
-
-    // ربط أزرار الحذف ✅
-    listZone.querySelectorAll('.remove-cart-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const idx = parseInt(this.getAttribute('data-index'));
-            removeFromCart(idx);
-        });
-    });
-}
-
-// ======================================================
-// 🗑️ دالة الحذف الفردي المستقرة
-// ======================================================
-function removeFromCart(index) {
-    if (index > -1 && index < cart.length) {
-        cart.splice(index, 1); // حذف العنصر من المصفوفة بناءً على ترتيبه
-        localStorage.setItem('joker_cart', JSON.stringify(cart)); // حفظ التعديل في الكاش
-        updateCartUI(); // إعادة تحديث شكل السلة فوراً
-    }
-}
-
-// ======================================================
-// 🧼 دالة تفريغ السلة بالكامل (التي كانت ناقصة وتعطل الزر بسببها)
-// ======================================================
-function clearCart() {
-    if (cart.length === 0) return;
-    if (confirm('هل أنت متأكد من رغبتك في تفريغ السلة بالكامل؟')) {
-        cart = []; // مسح المصفوفة
-        localStorage.setItem('joker_cart', JSON.stringify(cart)); // تحديث الكاش
-        updateCartUI(); // إعادة تحديث الواجهة
-    }
-}
-
-// تصدير الدوال بالكامل لتكون معرّفة على مستوى المتصفح
-window.removeFromCart = removeFromCart;
-window.clearCart = clearCart;
-window.updateCartUI = updateCartUI;
