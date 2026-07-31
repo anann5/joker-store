@@ -47,3 +47,12 @@ exports.getStats = async (req, res) => {
         res.status(500).json({ success: false, error: 'فشل جلب الإحصائيات' });
     }
 };
+
+exports.getProviderBalances = async (req, res) => {
+    try {
+        const balances = await fetchProviderBalances(externalProviders);
+        res.json({ success: true, balances });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'فشل جلب أرصدة المزودين' });
+    }
+};

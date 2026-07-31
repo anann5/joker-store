@@ -6,9 +6,11 @@ const path = require("path");
 const helmet = require("helmet");
 const connectDB = require("./config/database");
 const adminRoutes = require("./routes/adminRoutes");
-const storeRoutes = require("./routes/storeRoutes");
+const storeRoutes = require("./routes/storeRoutes"); // Assuming this is already here
+const userRoutes = require("./routes/userRoutes"); // New import for user routes
 const rateLimit = require("express-rate-limit"); // يتطلب تثبيت: npm install express-rate-limit
-const { syncInventoryInternal, cleanupOldLogsInternal } = require("./controllers/adminController");
+const { syncInventoryInternal } = require("./controllers/productController"); // Corrected import
+const { cleanupOldLogsInternal } = require("./controllers/logController"); // Corrected import
 
 const app = express();
 
@@ -91,6 +93,7 @@ app.get("/login", (req, res) => {
 // API routes
 app.use("/api/admin", adminRoutes);
 app.use("/api", storeRoutes);
+app.use("/api", userRoutes); // New: Use user authentication routes
 
 // Generic error handler
 app.use((err, req, res, next) => {

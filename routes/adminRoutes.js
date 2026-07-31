@@ -33,6 +33,6 @@ router.get('/logs', logController.getLogs);
 router.get('/logs/export', logController.exportLogs);
 router.delete('/logs', logController.deleteAllLogs);
 router.delete('/logs/:logId', logController.deleteLog);
-// router.get('/balances', statsController.getProviderBalances); // هذه الدالة لم يتم نقلها بعد، يمكن إضافتها لـ statsController
+router.get('/balances', statsController.getProviderBalances); // Added this route
 
 module.exports = router;

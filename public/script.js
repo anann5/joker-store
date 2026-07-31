@@ -1,5 +1,6 @@
 import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer } from './ui.js';
 import { cart, addToCart, clearCart } from './cart.js';
+import { initAuth, getCurrentUser } from './auth.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام
@@ -102,10 +103,13 @@ function getRegionDetails(region) {
 }
 
 // ======================================================
-export const currentCategoryKey = () => _currentCategoryKey;
+//  دالة لمعرفة القسم الحالي
 //  عرض المنتجات داخل القسم
 // ======================================================
 export function selectCategory(categoryKey) {
+    // حفظ القسم الذي تمت زيارته في التخزين المحلي
+    localStorage.setItem('joker_lastCategory', categoryKey);
+
     _currentCategoryKey = categoryKey; // تحديث القسم الحالي
     const grid = document.getElementById('mainCategories');
     const backContainer = document.getElementById('back-container');
@@ -163,10 +167,15 @@ export function selectCategory(categoryKey) {
         }).catch(err => console.error("Error fetching products:", err));
 }
 
+export const currentCategoryKey = () => _currentCategoryKey;
+
 // ======================================================
 //  العودة للرئيسية
 // ======================================================
 function goBack() {
+    // حذف القسم المحفوظ عند العودة للصفحة الرئيسية
+    localStorage.removeItem('joker_lastCategory');
+
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.value = '';
     showAllCategories();
@@ -181,9 +190,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     window.scrollTo(0, 0);
 
-    showAllCategories();
+    // التحقق من وجود قسم محفوظ وعرضه مباشرة
+    const lastCategory = localStorage.getItem('joker_lastCategory');
+    if (lastCategory && rawServerData.categories[lastCategory]) {
+        selectCategory(lastCategory);
+    } else {
+        showAllCategories();
+    }
+
     initToastContainer(); // تهيئة حاوية الإشعارات
     initHeroSlider(); // تشغيل السلايدر
+    initAuth(); // <-- تهيئة نظام المصادقة الجديد
     updateTrustTicker(); // تحديث شريط الثقة
     
     updateCartUI(); // تحديث السلة فور فتح الصفحة
@@ -358,40 +375,50 @@ document.addEventListener('DOMContentLoaded', function() {
     const cartHeaderBtn = document.getElementById('cartHeaderBtn');
     if (cartHeaderBtn && purchaseModal) {
         cartHeaderBtn.addEventListener('click', function() {
+            // تحسين تجربة المستخدم: تعبئة الإيميل تلقائياً إذا كان مسجلاً دخوله
+            const loggedInUser = getCurrentUser();
+            const emailInput = document.getElementById('user-email');
+            if (loggedInUser && emailInput) {
+                emailInput.value = loggedInUser.email;
+            }
             updateCartUI();
             purchaseModal.classList.add('active'); 
         });
     }
 
     // تغيير المحافظ ديناميكياً داخل المودال
-    const paymentSelect = document.getElementById('paymentMethodSelect');
+    const paymentOptionsContainer = document.querySelector('.payment-options');
     const instructionsZone = document.getElementById('paymentInstructions');
-    if (paymentSelect && instructionsZone) {
-        paymentSelect.addEventListener('change', function(e) {
-            const method = e.target.value;
-            if (method === 'jawwal_pay') {
-                instructionsZone.innerHTML = `
-                    <p style="margin: 0 0 8px 0; color: #00f0ff; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p>
-                    <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">059XXXXXXX</span></p>
-                    <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>
-                `;
-            } else if (method === 'palpay') {
-                instructionsZone.innerHTML = `
-                    <p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p>
-                    <p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">9XXXXX</span></p>
-                    <p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>
-                `;
+
+    const updatePaymentInstructions = (method) => {
+        if (!instructionsZone) return;
+        if (method === 'jawwal_pay') {
+            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">059XXXXXXX</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>`;
+        } else if (method === 'palpay') {
+            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">9XXXXX</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>`;
+        }
+    };
+
+    if (paymentOptionsContainer) {
+        paymentOptionsContainer.addEventListener('change', (e) => {
+            if (e.target.name === 'payment_gateway') {
+                updatePaymentInstructions(e.target.value);
             }
         });
+        // عرض التعليمات الافتراضية عند التحميل
+        updatePaymentInstructions('jawwal_pay');
     }
 
     // إرسال طلب السلة الكامل بالكامل للـ Backend
     const submitOrderBtn = document.getElementById('submitOrderBtn');
     if (submitOrderBtn) {
+        // Ensure paymentMethodSelect and user-email are available
+        const paymentMethodSelect = document.getElementById('paymentMethodSelect');
+
         submitOrderBtn.addEventListener('click', async function() {
             const email = document.getElementById('user-email').value.trim();
             const paymentRef = document.getElementById('paymentRefInput').value.trim();
-            const gateway = paymentSelect ? paymentSelect.value : 'jawwal_pay';
+            const gateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
 
             if (!email) { showToast('الرجاء إدخال إيميل مستلم الكود أولاً!', 'error'); return; }
             if (!paymentRef) { showToast('الرجاء إدخال رقم العملية أو اسم المحوّل لتأكيد الدفع!', 'error'); return; }
@@ -410,11 +437,20 @@ document.addEventListener('DOMContentLoaded', function() {
             submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
 
             try {
+                // تجهيز الترويسة وإضافة توكن المستخدم إذا كان موجوداً
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                const token = localStorage.getItem('joker_token');
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
                 // إذا كان الخيار هو Stripe، نقوم بفتح نافذة الدفع الآمنة
                 if (gateway === 'stripe') {
                     const res = await fetch('/api/create-payment-intent', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: headers,
                         body: JSON.stringify({ cartItems: cart.map(i => ({id: i.id, qty: i.qty})), customerEmail: email })
                     });
                     const { clientSecret } = await res.json();
@@ -428,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // الطريقة اليدوية الحالية
                 const response = await fetch('/api/checkout', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: headers,
                     body: JSON.stringify(orderData)
                 });
 

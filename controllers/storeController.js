@@ -1,110 +1,66 @@
-const { Product, Order, User } = require('../models');
+const { Product, Order } = require('../models');
+const { v4: uuidv4 } = require('uuid');
 
-let stripe = null;
-if (process.env.STRIPE_SECRET_KEY) {
-    stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-} else {
-    console.warn("⚠️ تحذير: STRIPE_SECRET_KEY غير معرف في ملف .env. الدفع عبر Stripe لن يعمل.");
-}
-
-const { notifyAdminTelegram } = require('./helpers');
-
-function escapeHTML(str) {
-    if (!str) return '';
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;');
-}
-
-exports.getProducts = async (req, res) => {
+exports.getProductsByCategory = async (req, res) => {
     try {
-        const { category } = req.params;
-        let query = { isActive: true };
-        if (category && category !== 'all') {
-            query.$or = [{ category: category.toLowerCase() }, { "فئة": category.toLowerCase() }];
-        }
-        const products = await Product.find(query);
-        const formatted = products.map(p => ({
-            id: p._id,
-            name: String(p.productName || p["اسم المنتج"] || "منتج").trim(),
-            price: Number(p.price || p["سعر"] || 0),
-            available: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
-        }));
-        res.json(formatted);
+        const { categoryKey } = req.params;
+        const products = await Product.find({ category: categoryKey, isActive: true }).select('productName category region price image isExternal externalId profitMargin basePrice');
+        res.json(products);
     } catch (err) {
-        res.status(500).json([]);
+        res.status(500).json({ success: false, error: 'فشل جلب المنتجات' });
     }
 };
 
-exports.checkout = async (req, res) => {
-    try {
-        const { customerEmail, cartItems, paymentMethod } = req.body;
+exports.getLatestOrders = async (req, res) => {
+    // This is a placeholder for the /api/products/latest-orders route used in script.js
+    // In a real application, you would fetch actual latest completed orders.
+    res.json({ success: true, orders: [] });
+};
 
-        if (!customerEmail || !cartItems || cartItems.length === 0) {
-            return res.status(400).json({ success: false, message: 'بيانات الطلب غير مكتملة' });
+exports.createOrder = async (req, res) => {
+    try {
+        const { cartItems, customerEmail, paymentGateway, paymentRef } = req.body;
+
+        if (!cartItems || cartItems.length === 0) {
+            return res.status(400).json({ success: false, error: 'سلة المشتريات فارغة.' });
         }
 
-        // 1. حساب المبلغ الإجمالي والتحقق من المنتجات
-        let totalAmount = 0;
-        const itemsDetails = [];
-        
+        let total = 0;
+        const itemsForOrder = [];
+
         for (const item of cartItems) {
             const product = await Product.findById(item.id);
-            if (!product || !product.isActive) {
-                return res.status(404).json({ success: false, message: `المنتج ${item.name} غير متوفر حالياً` });
+            if (product) {
+                total += product.price * item.qty;
+                itemsForOrder.push({
+                    id: product._id,
+                    name: product.productName,
+                    qty: item.qty,
+                    price: product.price
+                });
             }
-            totalAmount += product.price;
-            itemsDetails.push({ id: product._id, name: product.productName, price: product.price });
         }
 
-        const orderId = 'JKR-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-
-        // 2. محاولة الخصم من المحفظة أولاً
-        const user = await User.findOne({ email: customerEmail.toLowerCase() });
-        
-        if (user && user.balance >= totalAmount) {
-            // خصم الرصيد من المحفظة
-            user.balance -= totalAmount;
-            await user.save();
-
-            // إنشاء الطلب كطلب مدفوع وجاهز للتنفيذ
-            const newOrder = new Order({
-                orderId,
-                productName: itemsDetails.map(i => i.name).join(', '),
-                items: itemsDetails,
-                price: totalAmount,
-                buyerEmail: customerEmail.toLowerCase(),
-                paymentGateway: 'wallet',
-                status: 'pending' // سيبقى pending ليقوم الأدمن بالموافقة النهائية (وتفعيل الأتمتة)
-            });
-
-            await newOrder.save();
-            await notifyAdminTelegram(orderId, totalAmount, customerEmail);
-
-            return res.json({ 
-                success: true, 
-                walletPaid: true,
-                message: `تم الدفع بنجاح من رصيد محفظتك. رصيدك المتبقي: ${user.balance.toFixed(2)}$` 
-            });
-        }
-
-        // 3. في حال عدم كفاية الرصيد (أو اختيار دفع يدوي)، ننشئ طلباً بحالة "معلق"
-        const manualOrder = new Order({
-            orderId,
-            productName: itemsDetails.map(i => i.name).join(', '),
-            items: itemsDetails,
-            price: totalAmount,
-            buyerEmail: customerEmail.toLowerCase(),
-            paymentGateway: paymentMethod || 'manual', // سيستخدم الطريقة المختارة (جوال بي، بال بي، الخ)
-            status: 'pending'
+        const newOrder = new Order({
+            orderId: uuidv4().split('-')[0].toUpperCase(), // رقم طلب عشوائي فريد
+            items: itemsForOrder,
+            price: total,
+            buyerEmail: customerEmail,
+            paymentGateway: paymentGateway,
+            paymentRef: paymentRef,
+            status: 'pending',
         });
 
-        await manualOrder.save();
-        
-        // إشعار للأدمن على تلجرام بوجود طلب جديد يحتاج مراجعة يدوية
-        await notifyAdminTelegram(orderId, totalAmount, customerEmail);
+        // ✨ الربط مع المستخدم المسجل دخوله
+        if (req.user && req.user.userId) {
+            newOrder.userId = req.user.userId;
+        }
 
-        res.json({ success: true, walletPaid: false, message: 'تم استلام طلبك بنجاح. يرجى إتمام التحويل وتزويدنا برقم العملية لتأكيد الطلب.' });
+        await newOrder.save();
+
+        res.status(201).json({ success: true, message: 'تم استلام طلبك بنجاح.' });
 
     } catch (err) {
-        res.status(500).json({ success: false, error: 'حدث خطأ أثناء معالجة الطلب: ' + err.message });
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء إنشاء الطلب.' });
     }
 };

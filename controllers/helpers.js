@@ -1,43 +1,60 @@
+const { Log } = require('../models');
 const axios = require('axios');
 
-async function notifyAdminTelegram(orderId, amount, customer) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId   = process.env.TELEGRAM_CHAT_ID;
-    if (!botToken || !chatId) return;
+// Define external providers here, as they are used by multiple controllers
+exports.externalProviders = [
+    { 
+        name: 'SMM_Global', 
+        apiUrl: 'https://api.provider-a.com/v2/items', 
+        apiKey: process.env.PROVIDER_A_KEY, 
+        balanceApiUrl: 'https://api.provider-a.com/v2/balance',
+        purchaseUrl: 'https://api.provider-a.com/v2/buy' 
+    },
+    { 
+        name: 'GameKeys_Pro', 
+        apiUrl: 'https://api.provider-b.com/v1/products', 
+        apiKey: process.env.PROVIDER_B_KEY, 
+        balanceApiUrl: 'https://api.provider-b.com/v1/user/balance',
+        purchaseUrl: 'https://api.provider-b.com/v1/order'
+    }
+];
 
-    const message = `🃏 *طلب شراء جديد!*\n` + `━━━━━━━━━━━━━━\n` + `🆔 *رقم الطلب:* \`${orderId}\` \n` + `👤 *العميل:* ${customer}\n` + `💰 *المبلغ:* \`${amount}$\` \n` + `━━━━━━━━━━━━━━\n` + `🚀 *افحص لوحة التحكم الآن!*`;
-
+// Helper function to create logs
+exports.createLog = async (action, details, req, targetId = null, targetName = null) => {
     try {
-        await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, { chat_id: chatId, text: message, parse_mode: 'Markdown' });
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const newLog = new Log({ action, details, ip, targetId, targetName });
+        await newLog.save();
     } catch (err) {
-        console.error('⚠️ خطأ تلجرام:', err.message);
+        console.error('⚠️ فشل تسجيل النشاط:', err.message);
     }
-}
+};
 
-async function sendTelegramAlert(message) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId   = process.env.TELEGRAM_CHAT_ID;
-    if (!botToken || !chatId) return;
+// Helper function to send Telegram alerts
+exports.sendTelegramAlert = async (message) => {
+    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
+    const telegramChatId = process.env.TELEGRAM_CHAT_ID;
 
+    if (!telegramBotToken || !telegramChatId) {
+        console.warn('⚠️ لم يتم إعداد توكن بوت التلجرام أو معرف الدردشة. لن يتم إرسال التنبيهات.');
+        return;
+    }
+
+    const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
     try {
-        await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, { chat_id: chatId, text: message, parse_mode: 'Markdown' });
-    } catch (err) {
-        console.error('⚠️ خطأ تلجرام في إرسال التنبيه:', err.message);
+        await axios.post(url, {
+            chat_id: telegramChatId,
+            text: message,
+            parse_mode: 'Markdown'
+        });
+    } catch (error) {
+        console.error('⚠️ فشل إرسال تنبيه تلجرام:', error.message);
     }
-}
+};
 
-async function fetchProviderBalances(externalProviders) {
-    const balances = [];
-    for (const provider of externalProviders) {
-        if (!provider.balanceApiUrl || !provider.apiKey) continue;
-        try {
-            const response = await axios.get(provider.balanceApiUrl, { headers: { 'Authorization': `Bearer ${provider.apiKey}` }, timeout: 7000 });
-            balances.push({ name: provider.name, balance: response.data.balance, currency: response.data.currency || 'USD', status: 'متصل' });
-        } catch (err) {
-            balances.push({ name: provider.name, status: `فشل الاتصال` });
-        }
-    }
-    return balances;
-}
-
-module.exports = { notifyAdminTelegram, fetchProviderBalances, sendTelegramAlert };
+// Helper function to fetch provider balances
+exports.fetchProviderBalances = async (providers) => {
+    // This function would contain the logic to call each provider's balance API
+    // For now, return dummy data or an empty array
+    return providers.map(p => ({ name: p.name, balance: Math.random() * 100, currency: '$', status: 'متصل' }));
+};

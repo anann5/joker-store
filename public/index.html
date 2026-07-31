@@ -79,6 +79,33 @@
             display: flex; align-items: center; justify-content: center;
         }
         .card.hidden { display: none !important; }
+
+        /* تنسيقات نافذة تسجيل الدخول */
+        .auth-container { background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 400px; width: 95%; padding: 30px; border-radius: 15px; position: relative; }
+        .auth-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
+        .auth-tab-btn { background: none; border: none; color: var(--text-muted); padding: 10px 15px; font-size: 1rem; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
+        .auth-tab-btn.active { color: var(--primary-neon); border-bottom-color: var(--primary-neon); }
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #b9bbbe; font-size: 0.9rem; }
+        .form-group input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; }
+        .auth-submit-btn { background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; }
+        #userAccountDropdown { display: none; position: absolute; top: 110%; right: 0; background: #1e272e; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); z-index: 100; overflow: hidden; }
+        #userAccountDropdown.active { display: block; }
+        .account-dropdown-item { padding: 12px 20px; color: #fff; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
+        .account-dropdown-item:hover { background: var(--primary-neon); color: #111; }
+
+        /* تنسيقات نافذة سجل الطلبات */
+        .order-history-container { background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 800px; width: 95%; padding: 30px; border-radius: 15px; position: relative; max-height: 80vh; display: flex; flex-direction: column; }
+        .order-history-container h3 { text-align: center; margin-bottom: 20px; color: var(--primary-neon); }
+        #orderHistoryList { overflow-y: auto; padding-right: 10px; }
+        .order-item { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
+        .order-details { text-align: right; }
+        .order-status { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
+        .status-completed { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
+        .status-pending { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+        .status-failed { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
 </style>
 </head>
 <body>
@@ -88,6 +115,18 @@
         <div class="logo-zone" id="logoHomeBtn" style="cursor: pointer;">
             <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
             <img src="image/logo.png" alt="Logo" class="header-image">
+        </div>
+
+        <div id="userAuthContainer" style="position: relative; margin-left: 20px;">
+            <button id="userAuthBtn" class="header-btn" style="background: none; border: 1px solid var(--primary-neon); color: var(--primary-neon); padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-user-circle"></i>
+                <span id="userStateText">تسجيل الدخول</span>
+            </button>
+            <div id="userAccountDropdown">
+                <div id="userEmailDisplay" class="account-dropdown-item" style="font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: default;"></div>
+                <div id="orderHistoryBtn" class="account-dropdown-item"><i class="fas fa-history"></i> سجل الطلبات</div>
+                <div id="logoutBtn" class="account-dropdown-item" style="color: #ff4757;"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</div>
+            </div>
         </div>
 
         <div class="cart-icon-container" id="cartHeaderBtn" style="position: relative; cursor: pointer; padding: 10px; font-size: 1.4rem; color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.4);">
@@ -168,9 +207,51 @@
     <div id="mainCategories"></div>
 </div>
 
+<div class="modal-overlay" id="authModal">
+    <div class="auth-container">
+        <button class="close-modal-btn" id="closeAuthModal">×</button>
+        <div class="auth-tabs">
+            <button class="auth-tab-btn active" data-form="loginForm">تسجيل الدخول</button>
+            <button class="auth-tab-btn" data-form="registerForm">إنشاء حساب جديد</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+            <h3 style="margin-bottom: 20px;">أهلاً بعودتك!</h3>
+            <div class="form-group">
+                <label for="loginEmail">البريد الإلكتروني</label>
+                <input type="email" id="loginEmail" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">كلمة المرور</label>
+                <input type="password" id="loginPassword" required>
+            </div>
+            <button type="submit" class="auth-submit-btn">تسجيل الدخول</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form">
+            <h3 style="margin-bottom: 20px;">انضم إلينا</h3>
+            <div class="form-group">
+                <label for="registerEmail">البريد الإلكتروني</label>
+                <input type="email" id="registerEmail" required>
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">كلمة المرور</label>
+                <input type="password" id="registerPassword" required minlength="6">
+            </div>
+            <button type="submit" class="auth-submit-btn">إنشاء حساب</button>
+        </form>
+    </div>
+</div>
+
 <div class="modal-overlay" id="purchaseModal">
     <div class="delivery-container" style="background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 500px; width: 95%;">
         <button class="close-modal-btn" id="closeModal">×</button>
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label for="user-email">البريد الإلكتروني لاستلام الكود</label>
+            <input type="email" id="user-email" placeholder="ادخل بريدك الإلكتروني" required>
+        </div>
         <h3 style="color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.5); margin-bottom: 20px;">
             <i class="fas fa-shopping-cart"></i> سلة المشتريات الخاصة بك
         </h3>
@@ -188,9 +269,36 @@
             <span id="cartTotalAmount" style="color: #00f0ff; font-size: 1.3rem;">0.00$</span>
         </div>
 
-        <button type="button" id="checkoutSubmitBtn" style="background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);">
-    🚀 إتمام الطلب واستلام الفاتورة
-</button>
+        <div class="form-group">
+            <label style="margin-bottom: 10px;">اختر طريقة الدفع</label>
+            <div class="payment-options">
+                <label class="payment-option-label">
+                    <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
+                    <div class="payment-option-content"><i class="fas fa-mobile-alt" style="color: #ff9f43;"></i> جوال بي</div>
+                </label>
+                <label class="payment-option-label">
+                    <input type="radio" name="payment_gateway" value="palpay">
+                    <div class="payment-option-content"><i class="fas fa-university" style="color: #0072ff;"></i> بال بي</div>
+                </label>
+            </div>
+        </div>
+
+        <div id="paymentInstructions" style="margin-bottom: 20px; padding: 15px; background: rgba(0,240,255,0.05); border-radius: 8px; border: 1px solid rgba(0,240,255,0.1);"></div>
+
+        <div class="form-group"><label for="paymentRefInput">رقم العملية / اسم المحوّل</label><input type="text" id="paymentRefInput" placeholder="ادخل رقم العملية أو اسم المحوّل" required></div>
+
+        <button type="button" id="submitOrderBtn" style="background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);">🚀 تأكيد التحويل وإرسال الطلب</button>
+    </div>
+</div>
+
+<!-- Order History Modal -->
+<div class="modal-overlay" id="orderHistoryModal">
+    <div class="order-history-container">
+        <button class="close-modal-btn" id="closeOrderHistoryModal">×</button>
+        <h3><i class="fas fa-history"></i> سجل طلباتك</h3>
+        <div id="orderHistoryList">
+            <!-- Orders will be rendered here by JavaScript -->
+        </div>
     </div>
 </div>
 
@@ -263,7 +371,25 @@
 <!-- قالب صفحة تفاصيل المنتج -->
 <template id="product-details-template">
     <div class="product-detail-container">
-        <!-- ... محتوى قالب تفاصيل المنتج ... -->
+        <div class="detail-media">
+            <img src="" class="detail-img" onerror="this.src='image/logo.png'">
+        </div>
+        <div class="detail-info">
+            <h2 class="product-name"></h2>
+            <div class="detail-desc">
+                <p>✨ <b>وصف المنتج:</b> استلم كود شحن أصلي ومضمون 100%.</p>
+                <p>🌍 <b>المنطقة:</b> <span class="product-region"></span></p>
+                <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
+                <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
+            </div>
+            <div class="price-tag product-price" style="font-size: 2.5rem; margin-bottom:30px;"></div>
+            <button class="buy-btn" style="padding: 20px; font-size: 1.2rem;">
+                <i class="fas fa-shopping-cart"></i> إضافة للسلة وإتمام الشراء
+            </button>
+            <button class="back-to-main-btn" style="margin-top:20px; background:transparent; border:1px solid #333;">
+                ⬅️ العودة لقائمة البطاقات
+            </button>
+        </div>
     </div>
 </template>
 

@@ -55,7 +55,13 @@ export function showProductDetails(item) {
     view.querySelector('.product-region').textContent = item.region.toUpperCase();
     view.querySelector('.product-price').textContent = `${item.price}$`;
     
-    view.querySelector('.buy-btn').onclick = () => addToCart(item);
+    // تحسين: عند الضغط على زر الشراء، أضف المنتج للسلة وافتح نافذة الشراء مباشرة
+    view.querySelector('.buy-btn').onclick = () => {
+        addToCart(item);
+        const purchaseModal = document.getElementById('purchaseModal');
+        if (purchaseModal) purchaseModal.classList.add('active');
+    };
+
     view.querySelector('.back-to-main-btn').onclick = () => selectCategory(currentCategoryKey());
 
     grid.innerHTML = ''; // تفريغ الشبكة
