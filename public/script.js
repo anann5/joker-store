@@ -1,5 +1,5 @@
 import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer } from './ui.js';
-import { cart, addToCart } from './cart.js';
+import { cart, clearCart } from './cart.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام
@@ -448,7 +448,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const clearBtn = document.getElementById('clearCartBtn'); 
     if (clearBtn) {
-        clearBtn.onclick = () => import('./cart.js').then(m => m.clearCart());
+        clearBtn.onclick = clearCart;
     }
 
 });
@@ -456,3 +456,4 @@ document.addEventListener('DOMContentLoaded', function() {
 // ======================================================
 // 🍞 نظام الإشعارات المنبثقة (Toast Notifications)
 // ======================================================
+// تم نقل هذا المنطق بالكامل إلى ui.js
