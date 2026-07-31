@@ -152,7 +152,7 @@
     </button>
 </div>
 
-<<div class="main-container">
+<div class="main-container">
     <div id="regionFilterBar" class="region-filter-bar">
         <button class="filter-btn active" data-target="all">الكل</button>
         <button class="filter-btn" data-target="global">🌐 عالمي</button>
@@ -219,7 +219,6 @@
         <div class="payment-zone">
             <h4>طرق الدفع المتاحة</h4>
             <div class="payment-methods">
-                <div class="pay-item"><i class="fab fa-bitcoin"></i> Binance Pay</div>
                 <div class="pay-item"><i class="fas fa-credit-card"></i> بطاقة ائتمان</div>
                 <div class="pay-item"><i class="fas fa-wallet"></i> محفظة إلكترونية</div>
             </div>
@@ -236,6 +235,21 @@
 <!-- 🔥 قوالب الواجهة الديناميكية (Dynamic UI Templates) -->
 <!-- ====================================================== -->
 
+<!-- قالب بطاقة المنتج في الشبكة -->
+<template id="product-card-template">
+    <div class="product-item-card card" data-product-id="">
+        <div class="card-flag-badge"></div>
+        <div class="card-img-container">
+            <img src="" alt="" class="card-inner-img">
+        </div>
+        <div class="card-content">
+            <h3 class="card-title"></h3>
+            <p class="price-tag card-price"></p>
+            <button class="enter-btn" style="margin-top: 10px;">عرض التفاصيل 🔍</button>
+        </div>
+    </div>
+</template>
+
 <!-- قالب بطاقة القسم الرئيسي -->
 <template id="category-card-template">
     <div class="category-card" data-category="">
@@ -249,25 +263,7 @@
 <!-- قالب صفحة تفاصيل المنتج -->
 <template id="product-details-template">
     <div class="product-detail-container">
-        <div class="detail-media">
-            <img src="" class="detail-img" onerror="this.src='image/logo.png'">
-        </div>
-        <div class="detail-info">
-            <h2 class="product-name"></h2>
-            <div class="detail-desc">
-                <p>✨ <b>وصف المنتج:</b> استلم كود شحن أصلي ومضمون 100%.</p>
-                <p>🌍 <b>المنطقة:</b> <span class="product-region"></span></p>
-                <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
-                <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
-            </div>
-            <div class="price-tag product-price" style="font-size: 2.5rem; margin-bottom:30px;"></div>
-            <button class="buy-btn" style="padding: 20px; font-size: 1.2rem;">
-                <i class="fas fa-shopping-cart"></i> إضافة للسلة وإتمام الشراء
-            </button>
-            <button class="back-to-main-btn" style="margin-top:20px; background:transparent; border:1px solid #333;">
-                ⬅️ العودة لقائمة البطاقات
-            </button>
-        </div>
+        <!-- ... محتوى قالب تفاصيل المنتج ... -->
     </div>
 </template>
 

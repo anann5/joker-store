@@ -1,5 +1,5 @@
 import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer } from './ui.js';
-import { cart, clearCart } from './cart.js';
+import { cart, addToCart, clearCart } from './cart.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام
@@ -24,7 +24,7 @@ export const rawServerData = {
 };
 
 let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
-export const currentCategoryKey = () => _currentCategoryKey;
+let productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
 
 // ======================================================
 // 🚀 تشغيل سلايدر العروض تلقائياً
@@ -102,6 +102,7 @@ function getRegionDetails(region) {
 }
 
 // ======================================================
+export const currentCategoryKey = () => _currentCategoryKey;
 //  عرض المنتجات داخل القسم
 // ======================================================
 export function selectCategory(categoryKey) {
@@ -134,28 +135,26 @@ export function selectCategory(categoryKey) {
         .then(function(res) { return res.json(); })
         .then(function(products) { 
             grid.innerHTML = '';
+            productCache.clear(); // تفريغ الكاش قبل ملئه من جديد
+            const template = document.getElementById('product-card-template');
 
             products.forEach(function(item) {
                 const detectedRegion = detectRegion(item);
                 const regionInfo = getRegionDetails(detectedRegion);
                 const clientItem = formatItem(item, categoryKey, detectedRegion);
 
-                                const cardHTML = `
-                    <div class="product-item-card card" data-region="${detectedRegion}" onclick='showProductDetails(${JSON.stringify(clientItem)})'>
-                        <div class="card-flag-badge ${regionInfo.cls}">
-                            ${regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`}
-                        </div>
-                        <div class="card-img-container">
-                            <img src="${clientItem.image}" alt="${clientItem.name}" class="card-inner-img">
-                        </div>
-                        <div class="card-content">
-                            <h3 class="card-title">${clientItem.name}</h3>
-                            <p class="price-tag card-price">${clientItem.price}$</p>
-                            <button class="enter-btn" style="margin-top: 10px;">عرض التفاصيل 🔍</button>
-                        </div>
-                    </div>
-                `;
-                grid.insertAdjacentHTML('beforeend', cardHTML);
+                productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش
+
+                const card = template.content.cloneNode(true);
+                const cardElement = card.querySelector('.product-item-card');
+                cardElement.dataset.productId = clientItem.id;
+                cardElement.dataset.region = detectedRegion;
+                card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+                card.querySelector('.card-inner-img').src = clientItem.image;
+                card.querySelector('.card-inner-img').alt = clientItem.name;
+                card.querySelector('.card-title').textContent = clientItem.name;
+                card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                grid.appendChild(card);
             });
             
             if (products.length === 0) {
@@ -272,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
         copyCodeBtn.addEventListener('click', function() {
             const codeText = document.getElementById('generatedCode').textContent;
             navigator.clipboard.writeText(codeText).then(function() {
-                alert('📋 تم نسخ كود الشحن بنجاح!');
+                showToast('📋 تم نسخ كود الشحن بنجاح!', 'success');
             });
         });
     }
@@ -295,6 +294,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const categoryCard = e.target.closest('.category-card[data-category]');
         if (categoryCard && !e.target.closest('button')) {
             selectCategory(categoryCard.dataset.category);
+            return;
+        }
+
+        const productCard = e.target.closest('.product-item-card[data-product-id]');
+        if (productCard) {
+            const product = productCache.get(productCard.dataset.productId);
+            if (product) showProductDetails(product);
         }
     });
 
