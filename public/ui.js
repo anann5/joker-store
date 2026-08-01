@@ -143,6 +143,10 @@ export function showProductDetails(product) {
     view.querySelector('.detail-img').alt = product.name;
     view.querySelector('.product-name').textContent = product.name;
     view.querySelector('.product-price').textContent = `${product.price}$`;
+    const regionSpan = view.querySelector('.product-region');
+    if (regionSpan) {
+        regionSpan.textContent = product.region;
+    }
     
     // إضافة منطق لزر "إضافة للسلة"
     const buyButton = view.querySelector('.buy-btn');

@@ -64,7 +64,7 @@ function detectRegion(item) {
 function formatItem(item, categoryKey, region) {
     return {
         id: item._id || item.id,
-        name: item.productName || item.name,
+        name: item.name, // الخادم يرسل الاسم المترجم جاهزاً في حقل 'name'
         price: (typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0).toFixed(2),
         region: region,
         image: item.image || 'image/' + categoryKey + '.png'
@@ -143,6 +143,7 @@ export function selectCategory(categoryKey) {
                 const cardElement = card.querySelector('.product-item-card');
                 cardElement.dataset.productId = clientItem.id;
                 cardElement.dataset.region = detectedRegion;
+                card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
                 card.querySelector('.card-inner-img').src = clientItem.image;
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;

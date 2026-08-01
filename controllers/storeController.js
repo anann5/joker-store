@@ -8,6 +8,7 @@ exports.getCategories = async (req, res) => {
     try {
         const lang = req.query.lang === 'en' ? 'en' : 'ar';
         const categories = await Category.find({ isActive: true }).sort({ order: 1 });
+        console.log('Raw categories from DB:', categories); // 🔍 أضف هذا السطر للمساعدة في التشخيص
 
         // إعادة تشكيل البيانات لتكون كائن key-value كما يتوقعه الفرونت اند
         const localizedCategories = {};
