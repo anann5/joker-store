@@ -1,29 +1,14 @@
 import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer } from './ui.js';
 import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
+import { initI18n, getCurrentLanguage } from './i18n.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام
 // ======================================================
-export const rawServerData = {
-    categories: {
-        gaming_general: { title: "الالعاب", image: "image/games.png", desc: "بطاقات شحن لمختلف الألعاب" },
-        steam:          { title: "ستيم", image: "image/steam.png", desc: "بطاقات Steam Wallet بالدولار" },
-        pubg:           { title: "شحن ببجي موبايل", image: "image/pubg.png", desc: "شدات ببجي الأصلية" },
-        fortnite:       { title: "شحن فورتنايت", image: "image/fortnite.png", desc: "V-Bucks فورتنايت" },
-        playstation:    { title: "بطاقات بلايستيشن", image: "image/playstation.png", desc: "PSN Gift Cards" },
-        xbox:           { title: "بطاقات إكس بوكس", image: "image/xbox.png", desc: "Xbox Gift Cards" },
-        microsoft_windows: { title: "مفاتيح ويندوز وأوفيس", image: "image/windows.png", desc: "مفاتيح أصلية مضمونة" },
-        adobe:          { title: "حسابات أدوبي المفعّلة", image: "image/adobe.png", desc: "Adobe Creative Cloud" },
-        antivirus:      { title: "برامج الحماية الرقمية", image: "image/antivirus.png", desc: "حماية شاملة لأجهزتك" },
-        vpn:            { title: "اشتراكات VPN العالمية", image: "image/vpn.png", desc: "تصفح آمن وخصوصية كاملة" },
-        google:         { title: "بطاقات جوجل بلاي", image: "image/google_play.png", desc: "Google Play Gift Cards" },
-        itunes:         { title: "بطاقات آيتونز وعروض آبل", image: "image/itunes.png", desc: "Apple Gift Cards" },
-        razer_gold:     { title: "بطاقات ريزر جولد", image: "image/razer.png", desc: "Razer Gold العالمية" },
-        amazon:         { title: "بطاقات تسوق أمازون", image: "image/amazon.png", desc: "Amazon Gift Cards" }
-    }
-};
+export let rawServerData = { categories: {} };
 
+let searchIndex = []; // 🚀 فهرس البحث السريع
 let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
 let productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
 
@@ -135,17 +120,22 @@ export function selectCategory(categoryKey) {
         </div>
     `;
 
-    fetch('/api/products/' + categoryKey)
+    fetch(`/api/products/${categoryKey}?lang=${getCurrentLanguage()}`)
         .then(function(res) { return res.json(); })
-        .then(function(products) { 
+        .then(function(data) { // 🔥 تصحيح: المتغير الآن هو 'data' الذي يحتوي على success و products
+            if (!data.success || !data.products) {
+                throw new Error(data.error || 'فشل في جلب البيانات');
+            }
+
             grid.innerHTML = '';
             productCache.clear(); // تفريغ الكاش قبل ملئه من جديد
             const template = document.getElementById('product-card-template');
 
-            products.forEach(function(item) {
+            data.products.forEach(function(item) { // 🔥 تصحيح: استخدام data.products بدلاً من products مباشرة
                 const detectedRegion = detectRegion(item);
                 const regionInfo = getRegionDetails(detectedRegion);
-                const clientItem = formatItem(item, categoryKey, detectedRegion);
+                // الخادم يرسل الاسم المترجم جاهزاً في حقل 'name'
+                const clientItem = formatItem({ ...item, name: item.name }, categoryKey, detectedRegion);
 
                 productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش
 
@@ -153,7 +143,6 @@ export function selectCategory(categoryKey) {
                 const cardElement = card.querySelector('.product-item-card');
                 cardElement.dataset.productId = clientItem.id;
                 cardElement.dataset.region = detectedRegion;
-                card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
                 card.querySelector('.card-inner-img').src = clientItem.image;
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;
@@ -161,7 +150,7 @@ export function selectCategory(categoryKey) {
                 grid.appendChild(card);
             });
             
-            if (products.length === 0) {
+            if (data.products.length === 0) {
                 grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">🚫 لا توجد بطاقات متاحة في هذا القسم حالياً.</p>';
             }
         }).catch(err => console.error("Error fetching products:", err));
@@ -181,29 +170,177 @@ function goBack() {
     showAllCategories();
 }
 
-//  تهيئة الأحداث عند تحميل الصفحة
-// ======================================================
-document.addEventListener('DOMContentLoaded', function() {
+/**
+ * جلب وعرض قسم "الأكثر مبيعاً" في الصفحة الرئيسية.
+ */
+async function renderBestSellingProducts() {
+    const container = document.getElementById('best-selling-container');
+    if (!container) return;
+
+    try {
+        const lang = getCurrentLanguage();
+        const res = await fetch(`/api/products/best-selling?lang=${lang}`);
+        const data = await res.json();
+
+        if (data.success && data.products.length > 0) {
+            const grid = container.querySelector('.products-grid');
+            grid.innerHTML = ''; // تفريغ المحتوى
+            const template = document.getElementById('product-card-template');
+
+            data.products.forEach(item => {
+                // بما أن اسم المنتج يأتي ككائن (ar, en)، نختار اللغة الصحيحة
+                const localizedName = item.productName[lang] || item.productName['ar'];
+                const detectedRegion = detectRegion(item);
+                const regionInfo = getRegionDetails(detectedRegion);
+                const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectedRegion);
+
+                productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش للوصول السريع
+
+                const card = template.content.cloneNode(true);
+                const cardElement = card.querySelector('.product-item-card');
+                cardElement.dataset.productId = clientItem.id;
+                cardElement.dataset.region = detectedRegion;
+                card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+                card.querySelector('.card-inner-img').src = clientItem.image;
+                card.querySelector('.card-inner-img').alt = clientItem.name;
+                card.querySelector('.card-title').textContent = clientItem.name;
+                card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                grid.appendChild(card);
+            });
+        }
+    } catch (error) {
+        console.error("Failed to render best-selling products:", error);
+    }
+}
+
+/**
+ * جلب وعرض قسم "أضيف حديثاً" في الصفحة الرئيسية.
+ */
+async function renderNewlyAddedProducts() {
+    const container = document.getElementById('newly-added-container');
+    if (!container) return;
+
+    try {
+        const lang = getCurrentLanguage();
+        const res = await fetch(`/api/products/newly-added?lang=${lang}`);
+        const data = await res.json();
+
+        if (data.success && data.products.length > 0) {
+            const grid = container.querySelector('.products-grid');
+            grid.innerHTML = ''; // تفريغ المحتوى
+            const template = document.getElementById('product-card-template');
+
+            data.products.forEach(item => {
+                const localizedName = item.productName[lang] || item.productName['ar'];
+                const detectedRegion = detectRegion(item);
+                const regionInfo = getRegionDetails(detectedRegion);
+                const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectedRegion);
+
+                productCache.set(clientItem.id, clientItem);
+
+                const card = template.content.cloneNode(true);
+                const cardElement = card.querySelector('.product-item-card');
+                cardElement.dataset.productId = clientItem.id;
+                cardElement.dataset.region = detectedRegion;
+                card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+                card.querySelector('.card-inner-img').src = clientItem.image;
+                card.querySelector('.card-inner-img').alt = clientItem.name;
+                card.querySelector('.card-title').textContent = clientItem.name;
+                card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                grid.appendChild(card);
+            });
+        }
+    } catch (error) {
+        console.error("Failed to render newly added products:", error);
+    }
+}
+
+/**
+ * يعيد تحميل البيانات الديناميكية ويعيد عرضها بناءً على اللغة الجديدة.
+ */
+async function reloadDynamicData() {
+    try {
+        const lang = getCurrentLanguage();
+        const res = await fetch(`/api/categories?lang=${lang}`);
+        const data = await res.json();
+        if (data.success) {
+            rawServerData.categories = data.categories;
+            // إعادة عرض القسم الحالي أو الأقسام الرئيسية
+            const lastCategory = localStorage.getItem('joker_lastCategory');
+            if (lastCategory && rawServerData.categories && rawServerData.categories[lastCategory]) {
+                selectCategory(lastCategory);
+            } else {
+                showAllCategories();
+            }
+        }
+    } catch (error) {
+        console.error("Failed to reload dynamic categories:", error);
+    }
+}
+/**
+ * يعالج حدث تغيير اللغة، ويقوم بجلب بيانات الأقسام وعرضها.
+ */
+async function handleLanguageChange(event) {
+    try {
+        const lang = event.detail.lang || getCurrentLanguage(); // الأولوية للغة الممررة في الحدث
+        const res = await fetch(`/api/categories?lang=${lang}`);
+        const data = await res.json();
+        if (data.success) {
+            rawServerData.categories = data.categories;
+            showAllCategories(); // عرض الأقسام الرئيسية بعد جلبها
+        }
+    } catch (error) {
+        console.error("Failed to reload dynamic categories:", error);
+    }
+}
+/**
+ * تهيئة التطبيق بالكامل: جلب البيانات الأساسية وربط الأحداث.
+ */
+async function initializeApp() {
     // 🔝 إجبار المتصفح على بدء الصفحة من الأعلى عند التحديث
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
     }
     window.scrollTo(0, 0);
+    
+    // 0. 🔥 خطوة حاسمة: ربط المستمع أولاً لضمان التقاط الحدث الأولي
+    window.addEventListener('languageChanged', handleLanguageChange);
 
-    // التحقق من وجود قسم محفوظ وعرضه مباشرة
-    const lastCategory = localStorage.getItem('joker_lastCategory');
-    if (lastCategory && rawServerData.categories[lastCategory]) {
-        selectCategory(lastCategory);
-    } else {
-        showAllCategories();
-    }
+    // 1. تهيئة نظام الترجمة أولاً. سيقوم هذا تلقائياً بتحديد اللغة الصحيحة،
+    // تحميل الترجمات، وإطلاق حدث 'languageChanged'.
+    initI18n(); 
 
+    // 2. المستمع لحدث 'languageChanged' سيتكفل بجلب الأقسام وعرضها.
+    // 3. باقي عمليات التهيئة التي لا تعتمد على اللغة.
     initToastContainer(); // تهيئة حاوية الإشعارات
     initHeroSlider(); // تشغيل السلايدر
-    initAuth(); // <-- تهيئة نظام المصادقة الجديد
+    renderNewlyAddedProducts(); // 🚀 عرض المنتجات المضافة حديثاً
+    renderBestSellingProducts(); // 🚀 عرض المنتجات الأكثر مبيعاً
+
+    // 🚀 جلب فهرس البحث في الخلفية لتحسين الأداء
+    (async () => {
+        try {
+            const res = await fetch('/api/products/search-index');
+            const data = await res.json();
+            if (data.success) {
+                searchIndex = data.products;
+                console.log(`✅ تم تحميل فهرس البحث بنجاح (${searchIndex.length} منتج).`);
+            }
+        } catch (error) {
+            console.error("Failed to fetch search index:", error);
+        }
+    })();
+
+    initAuth(); 
     updateTrustTicker(); // تحديث شريط الثقة
     
     updateCartUI(); // تحديث السلة فور فتح الصفحة
+
+    setupEventListeners();
+}
+
+function setupEventListeners() {
+    // ربط الأحداث بعد تحميل البيانات
 
     const logoHomeBtn = document.getElementById('logoHomeBtn');
     if (logoHomeBtn) {
@@ -336,40 +473,70 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    const searchInput = document.getElementById('searchInput');
-    if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            const query = e.target.value.toLowerCase().trim();
-            if (query === '') { goBack(); return; }
+    // --- نظام البحث الذكي الجديد مع الإكمال التلقائي ---
+    const setupAutocomplete = (inputId, resultsId) => {
+        const searchInput = document.getElementById(inputId);
+        const resultsContainer = document.getElementById(resultsId);
+        if (!searchInput || !resultsContainer) return;
 
-            const grid = document.getElementById('mainCategories');
-            const backContainer = document.getElementById('back-container');
-            if (grid) grid.removeAttribute('style');
-            grid.className = '';
-            grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:25px;';
-            grid.innerHTML = '';
-            if (backContainer) backContainer.style.display = 'block';
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            const query = e.target.value.trim();
 
-            let found = false;
-            grid.innerHTML = Object.entries(rawServerData.categories)
-                .filter(([key, cat]) => cat.title.toLowerCase().includes(query))
-                .map(([key, cat]) => {
-                    found = true;
-                    return `
-                        <div class="category-card" data-category="${key}">
-                            <img src="${cat.image}" alt="${cat.title}" onerror="this.src='image/logo.png'">
-                            <h3>${cat.title}</h3>
-                            <p>${cat.desc}</p>
-                            <button class="enter-btn" data-category="${key}">دخول القسم 📂</button>
-                        </div>
-                    `;
-                }).join('');
+            if (query.length < 2) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
 
-            if (!found) {
-                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:40px;">❌ لا توجد أقسام مطابقة لبحثك...</p>';
+            debounceTimer = setTimeout(async () => {
+                // --- ✨ التحسين: البحث محلياً بدلاً من إرسال طلب ---
+                const lang = getCurrentLanguage();
+                const lowerCaseQuery = query.toLowerCase();
+
+                const results = searchIndex.filter(product => {
+                    const productName = (product.productName[lang] || product.productName['ar'] || '').toLowerCase();
+                    return productName.includes(lowerCaseQuery);
+                }).slice(0, 10); // عرض أول 10 نتائج فقط
+                
+                resultsContainer.innerHTML = '';
+                if (results.length > 0) {
+                    results.forEach(product => {
+                        const item = document.createElement('div');
+                        item.className = 'autocomplete-item';
+                        item.innerHTML = `
+                            <img src="${product.image || 'image/logo.png'}" alt="${product.productName}">
+                            <div class="autocomplete-item-info">
+                                <h4>${product.productName[lang] || product.productName['ar']}</h4>
+                                <span>${rawServerData.categories[product.category]?.title || 'قسم غير معروف'}</span>
+                            </div>
+                            <span class="price">${product.price.toFixed(2)}$</span>
+                        `;
+                        item.onclick = () => {
+                            const clientItem = formatItem(product, product.category, detectRegion(product));
+                            showProductDetails(clientItem);
+                            resultsContainer.style.display = 'none';
+                            searchInput.value = '';
+                        };
+                        resultsContainer.appendChild(item);
+                    });
+                    resultsContainer.style.display = 'block';
+                } else {
+                    resultsContainer.style.display = 'none';
+                }
+            }, 300); // انتظار 300ms بعد توقف المستخدم عن الكتابة
+        });
+
+        // إخفاء النتائج عند الضغط خارج حقل البحث
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-container') && !e.target.closest('.search-container-mobile')) {
+                resultsContainer.style.display = 'none';
             }
         });
-    }
+    };
+
+    setupAutocomplete('searchInput', 'autocomplete-results');
+    setupAutocomplete('searchInputMobile', 'autocomplete-results-mobile');
 
     // فتح السلة عبر زر الهيدر
     const cartHeaderBtn = document.getElementById('cartHeaderBtn');
@@ -492,7 +659,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (clearBtn) {
         clearBtn.onclick = clearCart;
     }
+}
 
+//  تهيئة الأحداث عند تحميل الصفحة
+// ======================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // استدعاء دالة التهيئة الرئيسية التي أصبحت الآن تحتوي على كل المنطق اللازم بالترتيب الصحيح.
+    initializeApp(); 
 });
 
 // ======================================================

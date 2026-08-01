@@ -9,16 +9,17 @@ const adminRoutes = require("./routes/adminRoutes");
 const storeRoutes = require("./routes/storeRoutes"); // Assuming this is already here
 const userRoutes = require("./routes/userRoutes"); // New import for user routes
 const rateLimit = require("express-rate-limit"); // يتطلب تثبيت: npm install express-rate-limit
-const { syncInventoryInternal } = require("./controllers/productController"); // Corrected import
-const { cleanupOldLogsInternal } = require("./controllers/logController"); // Corrected import
+const { syncInventoryInternal, cleanupOldLogsInternal } = require("./controllers/adminController");
 
 const app = express();
 
 // 🔒 Force HTTPS
 app.use((req, res, next) => {
-    const secure = req.headers['x-forwarded-proto'] === 'https';
-    if (!secure) {
-        return res.redirect(`https://${req.get('Host')}${req.url}`);
+    // فقط في بيئة الإنتاج (Production)، قم بإجبار التحويل إلى HTTPS
+    if (process.env.NODE_ENV === 'production') {
+        if (req.headers['x-forwarded-proto'] !== 'https') {
+            return res.redirect('https://' + req.get('host') + req.url);
+        }
     }
     next();
 });
@@ -109,22 +110,30 @@ app.use((err, req, res, next) => {
 // ⏳ Price monitoring (runs every 6 hours)
 const AUTO_SYNC_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
 setInterval(async () => {
-    console.log("🔄 جاري البدء في مراقبة وتحديث الأسعار من المزودين...");
-    const result = await syncInventoryInternal();
-    if (result.success) {
-        console.log(`✅ تم تحديث ${result.count} منتج بناءً على الأسعار الجديدة لهوامش الربح.`);
-    } else {
-        console.error("⚠️ فشل التحديث التلقائي للأسعار:", result.error);
+    try {
+        console.log("🔄 جاري البدء في مراقبة وتحديث الأسعار من المزودين...");
+        const result = await syncInventoryInternal();
+        if (result.success) {
+            console.log(`✅ تم تحديث ${result.count} منتج بناءً على الأسعار الجديدة لهوامش الربح.`);
+        } else {
+            console.error("⚠️ فشل التحديث التلقائي للأسعار:", result.error);
+        }
+    } catch (error) {
+        console.error("❌ خطأ فادح في مهمة تحديث الأسعار:", error);
     }
 }, AUTO_SYNC_INTERVAL);
 
 // 🧹 Cleanup logs (runs daily)
 const DAILY_INTERVAL = 24 * 60 * 60 * 1000;
 setInterval(async () => {
-    console.log("🧹 جاري فحص وتنظيف السجلات القديمة...");
-    const result = await cleanupOldLogsInternal();
-    if (result.success && result.count > 0) {
-        console.log(`✅ تم حذف ${result.count} سجل قديم مر عليها أكثر من شهر.`);
+    try {
+        console.log("🧹 جاري فحص وتنظيف السجلات القديمة...");
+        const result = await cleanupOldLogsInternal();
+        if (result.success && result.count > 0) {
+            console.log(`✅ تم حذف ${result.count} سجل قديم مر عليها أكثر من شهر.`);
+        }
+    } catch (error) {
+        console.error("❌ خطأ فادح في مهمة تنظيف السجلات:", error);
     }
 }, DAILY_INTERVAL);
 

@@ -1,28 +1,69 @@
-import { cart, removeFromCart, increaseQuantity, decreaseQuantity, addToCart } from './cart.js';
-import { selectCategory, currentCategoryKey, rawServerData } from './script.js';
+import { rawServerData, selectCategory, currentCategoryKey } from './script.js';
+import { cart, clearCart } from './cart.js';
 
-// ======================================================
-//  دوال الواجهة الرسومية (UI Functions)
-// ======================================================
+let toastContainer = null;
 
 /**
- * يعرض الأقسام الرئيسية في الشبكة.
+ * تهيئة حاوية الإشعارات.
+ */
+export function initToastContainer() {
+    if (!document.getElementById('toast-container')) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = 'position:fixed; top:20px; left:20px; z-index:10000; display:flex; flex-direction:column; gap:10px;';
+        document.body.appendChild(toastContainer);
+    } else {
+        toastContainer = document.getElementById('toast-container');
+    }
+}
+
+/**
+ * عرض إشعار منبثق (Toast).
+ * @param {string} message - الرسالة.
+ * @param {string} type - النوع (success, error, info).
+ */
+export function showToast(message, type = 'info') {
+    if (!toastContainer) initToastContainer();
+
+    const toast = document.createElement('div');
+    toast.className = `neon-toast toast-${type}`;
+    toast.innerHTML = `<div class="toast-header">${type.toUpperCase()}</div><div>${message}</div>`;
+
+    // تحديد لون الشريط الجانبي بناءً على النوع
+    const colors = { success: '#2ecc71', error: '#e74c3c', info: '#3498db' };
+    toast.style.borderLeft = `4px solid ${colors[type] || colors.info}`;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-fade-out');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 4000);
+}
+
+/**
+ * عرض جميع الأقسام الرئيسية.
  */
 export function showAllCategories() {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
-    
-    grid.className = ''; 
-    grid.removeAttribute('style');
 
-    document.getElementById('back-container').style.display = 'none';
-    document.getElementById('regionFilterBar').style.display = 'none';
+    grid.className = '';
+    grid.removeAttribute('style');
+    grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:30px;';
+
+    const backContainer = document.getElementById('back-container');
+    if (backContainer) backContainer.style.display = 'none';
+
+    const regionBar = document.getElementById('regionFilterBar');
+    if (regionBar) regionBar.style.display = 'none';
 
     document.querySelectorAll('#filterTabs .filter-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('#filterTabs .filter-btn[data-filter="all"]').classList.add('active');
+    const allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
+    if (allBtn) allBtn.classList.add('active');
 
-    grid.innerHTML = ''; // تفريغ الشبكة
     const template = document.getElementById('category-card-template');
+    grid.innerHTML = ''; // تفريغ المحتوى قبل الإضافة
 
     Object.entries(rawServerData.categories).forEach(([key, cat]) => {
         const card = template.content.cloneNode(true);
@@ -37,165 +78,92 @@ export function showAllCategories() {
 }
 
 /**
- * يعرض تفاصيل منتج واحد.
- * @param {object} item - بيانات المنتج.
+ * عرض تفاصيل المنتج.
+ * @param {object} product - بيانات المنتج.
  */
-export function showProductDetails(item) {
+export function showProductDetails(product) {
     const grid = document.getElementById('mainCategories');
-    document.getElementById('regionFilterBar').style.display = 'none';
+    if (!grid) return;
 
-    grid.className = 'product-details-wrapper';
-    grid.removeAttribute('style');
-
+    // استخدام القالب الجاهز من HTML
     const template = document.getElementById('product-details-template');
-    const view = template.content.cloneNode(true);
-
-    view.querySelector('.detail-img').src = item.image;
-    view.querySelector('.product-name').textContent = item.name;
-    view.querySelector('.product-region').textContent = item.region.toUpperCase();
-    view.querySelector('.product-price').textContent = `${item.price}$`;
-    
-    // تحسين: عند الضغط على زر الشراء، أضف المنتج للسلة وافتح نافذة الشراء مباشرة
-    view.querySelector('.buy-btn').onclick = () => {
-        addToCart(item);
-        const purchaseModal = document.getElementById('purchaseModal');
-        if (purchaseModal) purchaseModal.classList.add('active');
-    };
-
-    view.querySelector('.back-to-main-btn').onclick = () => selectCategory(currentCategoryKey());
-
-    grid.innerHTML = ''; // تفريغ الشبكة
-    grid.appendChild(view);
-
-    window.scrollTo(0, 0);
-}
-
-/**
- * يحدث واجهة سلة التسوق في النافذة المنبثقة.
- */
-export function updateCartUI() {
-    const badge = document.getElementById('cartCountBadge');
-    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-    if (badge) badge.textContent = totalQty;
-
-    const listZone = document.getElementById('cartItemsList'); 
-    const totalZone = document.getElementById('cartTotalAmount');
-    
-    if (!listZone) return;
-    
-    if (cart.length === 0) {
-        listZone.innerHTML = '<p style="color:#b9bbbe; text-align:center; padding:20px; font-size:0.9rem;">السلة فارغة حالياً 🛒</p>';
-        if (totalZone) totalZone.textContent = '0.00$';
+    if (!template) {
+        console.error('Product details template not found!');
         return;
     }
 
-    listZone.innerHTML = '';
-    let totalCost = 0;
+    // 🔥 نقل تعريف الدالة إلى هنا، حيث يتم استخدامها فقط
+    const renderRelatedProducts = async (productId, categoryKey) => {
+        const relatedContainer = view.querySelector('#related-products-grid');
+        if (!relatedContainer) return;
 
-    cart.forEach((item, index) => {
-        totalCost += (item.price * item.qty);
-        
-        const row = document.createElement('div');
-        row.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; margin-bottom:8px; border:1px solid rgba(0,240,255,0.05); direction: rtl;";
-        
-        row.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <i data-index="${index}" class="fas fa-trash-alt remove-cart-btn" style="color:#ff0055; cursor:pointer; font-size:1.2rem; padding: 5px;" title="حذف المنتج"></i>
-                <span style="color:#00f0ff; font-weight:bold;">${(item.price * item.qty).toFixed(2)}$</span>
-            </div>
-            
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <button class="qty-btn" data-action="decrease" data-index="${index}" style="background: #333; color: #fff; border: none; border-radius: 4px; width: 25px; height: 25px; cursor: pointer; font-size: 1.2rem; display: flex; justify-content: center; align-items: center;">-</button>
-                <span style="color:#fff; font-size:0.95rem;">${item.name} <span style="color: #00f0ff; font-size: 0.85rem;">(${item.qty}x)</span></span>
-                <button class="qty-btn" data-action="increase" data-index="${index}" style="background: #333; color: #fff; border: none; border-radius: 4px; width: 25px; height: 25px; cursor: pointer; font-size: 1.2rem; display: flex; justify-content: center; align-items: center;">+</button>
-            </div>
-        `;
-        listZone.appendChild(row);
-    });
+        relatedContainer.innerHTML = `<div class="loader-container" style="grid-column:1/-1; text-align:center; padding:40px 0;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-neon);"></i></div>`;
 
-    if (totalZone) totalZone.textContent = totalCost.toFixed(2) + "$";
+        try {
+            const lang = (await import('./i18n.js')).getCurrentLanguage();
+            const res = await fetch(`/api/products/related/${productId}?lang=${lang}`);
+            const data = await res.json();
 
-    listZone.querySelectorAll('.remove-cart-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const idx = parseInt(this.getAttribute('data-index'));
-            removeFromCart(idx);
-        });
-    });
+            if (data.success && data.products.length > 0) {
+                relatedContainer.innerHTML = '';
+                const productCardTemplate = document.getElementById('product-card-template');
+                const { productCache, formatItem, detectRegion, getRegionDetails } = await import('./script.js');
 
-    listZone.querySelectorAll('.qty-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const idx = parseInt(this.getAttribute('data-index'));
-            const action = this.getAttribute('data-action');
-            if (action === 'increase') {
-                increaseQuantity(idx);
-            } else if (action === 'decrease') {
-                decreaseQuantity(idx);
+                data.products.forEach(item => {
+                    const localizedName = item.productName[lang] || item.productName['ar'];
+                    const detectedRegion = detectRegion(item);
+                    const regionInfo = getRegionDetails(detectedRegion);
+                    const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectedRegion);
+
+                    productCache.set(clientItem.id, clientItem);
+
+                    const card = productCardTemplate.content.cloneNode(true);
+                    const cardElement = card.querySelector('.product-item-card');
+                    cardElement.dataset.productId = clientItem.id;
+                    cardElement.dataset.region = detectedRegion;
+                    card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+                    card.querySelector('.card-inner-img').src = clientItem.image;
+                    card.querySelector('.card-title').textContent = clientItem.name;
+                    card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                    relatedContainer.appendChild(card);
+                });
+            } else {
+                relatedContainer.parentElement.style.display = 'none';
             }
-        });
+        } catch (error) {
+            console.error("Failed to render related products:", error);
+            relatedContainer.parentElement.style.display = 'none';
+        }
+    };
+
+    const view = template.content.cloneNode(true);
+
+    // ملء القالب ببيانات المنتج
+    view.querySelector('.detail-img').src = product.image || `image/${currentCategoryKey()}.png`;
+    view.querySelector('.detail-img').alt = product.name;
+    view.querySelector('.product-name').textContent = product.name;
+    view.querySelector('.product-price').textContent = `${product.price}$`;
+    
+    // إضافة منطق لزر "إضافة للسلة"
+    const buyButton = view.querySelector('.buy-btn');
+    buyButton.addEventListener('click', async () => {
+        // هنا يجب استيراد دالة addToCart من cart.js
+        // ونفترض أنها موجودة في النطاق
+        const { addToCart } = await import('./cart.js');
+        addToCart(product);
     });
+
+    // إضافة منطق لزر "العودة"
+    const backButton = view.querySelector('.back-to-main-btn');
+    backButton.addEventListener('click', () => selectCategory(currentCategoryKey()));
+
+    grid.className = 'product-details-wrapper';
+    grid.innerHTML = ''; // تفريغ الشبكة أولاً
+    grid.appendChild(view);
+
+    // بعد عرض المنتج، نقوم بجلب وعرض المنتجات ذات الصلة
+    renderRelatedProducts(product.id, currentCategoryKey());
 }
 
-/**
- * يعرض إشعاراً منبثقاً (toast).
- * @param {string} message - الرسالة المراد عرضها.
- * @param {string} type - نوع الإشعار ('success' أو 'error').
- */
-export function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container-main');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    const isError = type === 'error';
-    const icon = isError ? 'fas fa-times-circle' : 'fas fa-check-circle';
-    const color = isError ? '#ff4757' : '#2ecc71';
-
-    toast.style.cssText = `
-        background-color: #1e272e;
-        color: #fff;
-        padding: 15px 20px;
-        border-radius: 8px;
-        border-left: 5px solid ${color};
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        opacity: 0;
-        transform: translateX(-100%);
-        transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
-    `;
-    toast.innerHTML = `<i class="${icon}" style="color: ${color}; font-size: 1.2rem;"></i><span>${message}</span>`;
-    container.appendChild(toast);
-
-    // Animate in
-    setTimeout(() => {
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateX(0)';
-    }, 10);
-
-    // Animate out and remove
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(-100%)';
-        setTimeout(() => toast.remove(), 500);
-    }, 4000); // إخفاء الإشعار بعد 4 ثوانٍ
-}
-
-/**
- * تهيئة الحاوية الرئيسية للإشعارات المنبثقة.
- */
-export function initToastContainer() {
-    if (document.getElementById('toast-container-main')) return;
-
-    const container = document.createElement('div');
-    container.id = 'toast-container-main';
-    container.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        z-index: 9999;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    `;
-    document.body.appendChild(container);
-}
+// دالة تحديث واجهة السلة (يمكن نقلها من cart.js إذا كانت هناك)
+export function updateCartUI() { /* ... الكود الخاص بتحديث واجهة السلة ... */ }

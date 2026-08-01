@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html> <!-- سيتم التحكم باللغة والاتجاه عبر الجافاسكريبت -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -117,10 +117,17 @@
             <img src="image/logo.png" alt="Logo" class="header-image">
         </div>
 
+        <div class="header-controls">
+            <button id="lang-switcher" class="header-btn" title="Switch Language">
+                <i class="fas fa-globe"></i>
+                <span>EN</span>
+            </button>
+        </div>
+
         <div id="userAuthContainer" style="position: relative; margin-left: 20px;">
             <button id="userAuthBtn" class="header-btn" style="background: none; border: 1px solid var(--primary-neon); color: var(--primary-neon); padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-user-circle"></i>
-                <span id="userStateText">تسجيل الدخول</span>
+                <span id="userStateText" data-i18n-key="login_button">تسجيل الدخول</span>
             </button>
             <div id="userAccountDropdown">
                 <div id="userEmailDisplay" class="account-dropdown-item" style="font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: default;"></div>
@@ -135,10 +142,10 @@
         </div>
 
         <nav>
-            <a href="#" class="active" id="homeLink">الرئيسية</a>
+            <a href="#" class="active" id="homeLink" data-i18n-key="nav_home">الرئيسية</a>
             <div class="dropdown-wrapper">
-                <button class="dropdown-btn" id="categoriesBtn">
-                    <i class="fas fa-list"></i> الأقسام
+                <button class="dropdown-btn" id="categoriesBtn" data-i18n-key="nav_categories">
+                    <i class="fas fa-list"></i>الأقسام
                 </button>
                 <div class="dropdown-menu" id="categoriesDropdown">
                     <button class="dropdown-item" data-category="gaming_general"><i class="fas fa-gamepad"></i> الألعاب</button>
@@ -157,13 +164,21 @@
                     <button class="dropdown-item" data-category="amazon"><i class="fab fa-amazon"></i> أمازون</button>
                 </div>
             </div>
-            <a href="#" id="digitalCardsLink">البطاقات الرقمية</a>
+            <a href="#" id="digitalCardsLink" data-i18n-key="nav_digital_cards">البطاقات الرقمية</a>
         </nav>
 
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
+            <input type="text" id="searchInput" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
             <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
         </div>
+        <div id="autocomplete-results" style="position: absolute; top: 100%; right: 0; left: 0; background: rgba(15, 12, 27, 0.95); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 12px 12px; z-index: 999; backdrop-filter: blur(10px); max-height: 400px; overflow-y: auto; display: none;"></div>
+    </div>
+    <div class="search-container-mobile">
+        <div class="search-wrapper">
+            <input type="text" id="searchInputMobile" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
+            <button class="search-btn-mobile"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+        <div id="autocomplete-results-mobile" style="position: absolute; top: 100%; left: 0; right: 0; background: rgba(15, 12, 27, 0.95); border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 12px 12px; z-index: 999; backdrop-filter: blur(10px); max-height: 400px; overflow-y: auto; display: none;"></div>
     </div>
 </header>
 
@@ -186,8 +201,8 @@
 </div>
 
 <div id="back-container" style="text-align: center; margin: 20px 0;">
-    <button class="back-to-main-btn" id="backToMainBtn">
-        <i class="fas fa-arrow-right"></i> الرجوع للأقسام الرئيسية
+    <button class="back-to-main-btn" id="backToMainBtn" data-i18n-key="back_to_categories">
+        <i class="fas fa-arrow-right"></i>الرجوع للأقسام الرئيسية
     </button>
 </div>
 
@@ -249,11 +264,11 @@
     <div class="delivery-container" style="background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 500px; width: 95%;">
         <button class="close-modal-btn" id="closeModal">×</button>
         <div class="form-group" style="margin-bottom: 15px;">
-            <label for="user-email">البريد الإلكتروني لاستلام الكود</label>
-            <input type="email" id="user-email" placeholder="ادخل بريدك الإلكتروني" required>
+            <label for="user-email" data-i18n-key="email_label">البريد الإلكتروني لاستلام الكود</label>
+            <input type="email" id="user-email" data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
         </div>
-        <h3 style="color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.5); margin-bottom: 20px;">
-            <i class="fas fa-shopping-cart"></i> سلة المشتريات الخاصة بك
+        <h3 style="color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.5); margin-bottom: 20px;" data-i18n-key="cart_title">
+            <i class="fas fa-shopping-cart"></i>سلة المشتريات الخاصة بك
         </h3>
 
         <button id="clearCartBtn" style="background: none; border: 1px solid #ff0055; color: #ff0055; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; margin-bottom: 10px; float: left; transition: 0.2s;">
@@ -265,12 +280,12 @@
             </div>
 
         <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; direction: rtl; font-weight: bold;">
-            <span style="color: #b9bbbe;">المجموع الإجمالي:</span>
+            <span style="color: #b9bbbe;" data-i18n-key="total_label">المجموع الإجمالي:</span>
             <span id="cartTotalAmount" style="color: #00f0ff; font-size: 1.3rem;">0.00$</span>
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px;">اختر طريقة الدفع</label>
+            <label style="margin-bottom: 10px;" data-i18n-key="payment_method_label">اختر طريقة الدفع</label>
             <div class="payment-options">
                 <label class="payment-option-label">
                     <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
@@ -285,9 +300,9 @@
 
         <div id="paymentInstructions" style="margin-bottom: 20px; padding: 15px; background: rgba(0,240,255,0.05); border-radius: 8px; border: 1px solid rgba(0,240,255,0.1);"></div>
 
-        <div class="form-group"><label for="paymentRefInput">رقم العملية / اسم المحوّل</label><input type="text" id="paymentRefInput" placeholder="ادخل رقم العملية أو اسم المحوّل" required></div>
+        <div class="form-group"><label for="paymentRefInput" data-i18n-key="payment_ref_label">رقم العملية / اسم المحوّل</label><input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required></div>
 
-        <button type="button" id="submitOrderBtn" style="background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);">🚀 تأكيد التحويل وإرسال الطلب</button>
+        <button type="button" id="submitOrderBtn" data-i18n-key="submit_order_button" style="background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);">🚀 تأكيد التحويل وإرسال الطلب</button>
     </div>
 </div>
 
@@ -338,6 +353,7 @@
 <!-- استخدام type="module" لتفعيل نظام الوحدات (ES6 Modules). -->
 <!-- الملف الرئيسي script.js هو نقطة الدخول الوحيدة التي تستورد باقي الوحدات. -->
 <script type="module" src="script.js"></script>
+<script type="module" src="i18n.js"></script>
 
 <!-- ====================================================== -->
 <!-- 🔥 قوالب الواجهة الديناميكية (Dynamic UI Templates) -->
@@ -348,7 +364,7 @@
     <div class="product-item-card card" data-product-id="">
         <div class="card-flag-badge"></div>
         <div class="card-img-container">
-            <img src="" alt="" class="card-inner-img">
+            <img src="" alt="" class="card-inner-img" loading="lazy" width="200" height="160">
         </div>
         <div class="card-content">
             <h3 class="card-title"></h3>
@@ -361,7 +377,7 @@
 <!-- قالب بطاقة القسم الرئيسي -->
 <template id="category-card-template">
     <div class="category-card" data-category="">
-        <img src="" alt="" onerror="this.src='image/logo.png'">
+        <img src="" alt="" onerror="this.src='image/logo.png'" loading="lazy" width="200" height="135">
         <h3></h3>
         <p></p>
         <button class="enter-btn" data-category="">دخول القسم 📂</button>
@@ -372,7 +388,7 @@
 <template id="product-details-template">
     <div class="product-detail-container">
         <div class="detail-media">
-            <img src="" class="detail-img" onerror="this.src='image/logo.png'">
+            <img src="" class="detail-img" onerror="this.src='image/logo.png'" width="400" height="400">
         </div>
         <div class="detail-info">
             <h2 class="product-name"></h2>
@@ -389,6 +405,15 @@
             <button class="back-to-main-btn" style="margin-top:20px; background:transparent; border:1px solid #333;">
                 ⬅️ العودة لقائمة البطاقات
             </button>
+        </div>
+    </div>
+    <!-- قسم المنتجات ذات الصلة -->
+    <div class="related-products-section">
+        <div class="section-header">
+            <h2><i class="fas fa-random"></i> منتجات قد تعجبك أيضاً</h2>
+        </div>
+        <div class="products-grid" id="related-products-grid">
+            <!-- سيتم تعبئة المنتجات ذات الصلة هنا -->
         </div>
     </div>
 </template>

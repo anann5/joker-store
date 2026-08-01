@@ -1,6 +1,24 @@
 const mongoose = require('mongoose');
 
 // ======================================================
+// Schema الأقسام (Categories)
+// ======================================================
+const categorySchema = new mongoose.Schema({
+    key: { type: String, required: true, unique: true, trim: true },
+    title: {
+        ar: { type: String, required: true, trim: true },
+        en: { type: String, required: true, trim: true }
+    },
+    description: {
+        ar: { type: String, trim: true, default: '' },
+        en: { type: String, trim: true, default: '' }
+    },
+    image: { type: String, required: true },
+    isActive: { type: Boolean, default: true },
+    order: { type: Number, default: 0 } // للتحكم في ترتيب الظهور
+});
+
+// ======================================================
 // Schema المستخدم (لإدارة المحفظة والرصيد)
 // ======================================================
 const userSchema = new mongoose.Schema({
@@ -24,7 +42,10 @@ const codeSchema = new mongoose.Schema({
 // Schema المنتج الرئيسي
 // ======================================================
 const productSchema = new mongoose.Schema({
-    productName: { type: String, required: true, trim: true, maxlength: 100 },
+    productName: {
+        ar: { type: String, required: true, trim: true, maxlength: 100 },
+        en: { type: String, required: true, trim: true, maxlength: 100 }
+    },
     category:    { 
         type: String, 
         required: true,
@@ -39,7 +60,10 @@ const productSchema = new mongoose.Schema({
         default: 'global'
     },
     price:       { type: Number, required: true, min: 0 },
-    description: { type: String, default: 'لا يوجد وصف متاح حالياً لهذا المنتج.' },
+    description: {
+        ar: { type: String, default: 'لا يوجد وصف متاح حالياً لهذا المنتج.' },
+        en: { type: String, default: 'No description is available for this product at the moment.' }
+    },
     image:       { type: String, default: '' },
     codes:       { type: [codeSchema], default: [] },
     isExternal:  { type: Boolean, default: false }, // هل المنتج يسحب من API خارجي؟
@@ -124,6 +148,7 @@ const logSchema = new mongoose.Schema({
 
 module.exports = {
     Product: mongoose.model('Product', productSchema),
+    Category: mongoose.model('Category', categorySchema),
     Order:   mongoose.model('Order',   orderSchema),
         Log:     mongoose.model('Log',     logSchema),
         User:    mongoose.model('User',    userSchema)

@@ -1,0 +1,18 @@
+{
+    "site_title": "Joker Store | Digital Cards & Games",
+    "nav_home": "Home",
+    "nav_categories": "Categories",
+    "nav_digital_cards": "Digital Cards",
+    "search_placeholder": "Search for a bundle, credits, card, or category...",
+    "login_button": "Login",
+    "my_account_button": "My Account",
+    "cart_title": "Your Shopping Cart",
+    "total_label": "Total:",
+    "email_label": "Email to receive the code",
+    "email_placeholder": "Enter your email",
+    "payment_method_label": "Choose payment method",
+    "payment_ref_label": "Transaction ID / Sender Name",
+    "payment_ref_placeholder": "Enter Transaction ID or Sender Name",
+    "submit_order_button": "🚀 Confirm Transfer & Submit Order",
+    "back_to_categories": "Back to Main Categories"
+}
