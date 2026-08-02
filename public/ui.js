@@ -4,6 +4,35 @@ import { cart, clearCart } from './cart.js';
 let toastContainer = null;
 
 /**
+ * دالة لمشاركة المنتج على وسائل التواصل الاجتماعي.
+ * تستخدم Web Share API إذا كانت متاحة، أو توفر خياراً احتياطياً.
+ * @param {object} product - بيانات المنتج للمشاركة.
+ */
+export function shareProduct(product) {
+    const pageUrl = window.location.href; // مشاركة رابط الصفحة الحالية
+    const shareText = `شاهد هذا المنتج الرائع: ${product.name} في متجر Joker Store!`;
+
+    if (navigator.share) {
+        navigator.share({
+            title: product.name,
+            text: shareText,
+            url: pageUrl,
+        }).then(() => {
+            console.log('Product shared successfully');
+        }).catch((error) => {
+            console.error('Error sharing product:', error);
+        });
+    } else {
+        // خيار احتياطي للمتصفحات التي لا تدعم Web Share API
+        // يمكن إضافة المزيد من خيارات المشاركة هنا (تويتر، واتساب، إلخ)
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareText)}`;
+        const shareWindow = window.open(facebookUrl, '_blank', 'width=600,height=400');
+        if (shareWindow) shareWindow.focus();
+        else showToast('الرجاء تفعيل النوافذ المنبثقة لمشاركة المنتج.', 'info');
+    }
+}
+
+/**
  * تهيئة حاوية الإشعارات.
  */
 export function initToastContainer() {
@@ -156,6 +185,12 @@ export function showProductDetails(product) {
         const { addToCart } = await import('./cart.js');
         addToCart(product);
     });
+
+    // إضافة منطق لزر "مشاركة المنتج"
+    const shareButton = view.querySelector('.share-btn');
+    if (shareButton) {
+        shareButton.addEventListener('click', () => shareProduct(product));
+    }
 
     // إضافة منطق لزر "العودة"
     const backButton = view.querySelector('.back-to-main-btn');
