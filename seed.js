@@ -66,8 +66,8 @@ const sampleCategories = [
     {
         key: 'google',
         title: { ar: 'جوجل بلاي', en: 'Google Play' },
-        description: { ar: 'بطاقات جوجل بلاي', en: 'Google Play Cards' },
-        image: 'image/google.png',
+        description: { ar: 'بطاقات جوجل بلاي', en: 'Google Play Cards' }, // Changed description to match image
+        image: 'image/google_play.png', // 🔥 Changed from google.png to google_play.png
         isActive: true,
         order: 6
     },

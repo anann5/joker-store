@@ -145,7 +145,9 @@ export function selectCategory(categoryKey) {
                 cardElement.dataset.productId = clientItem.id;
                 cardElement.dataset.region = detectedRegion;
                 card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
-                card.querySelector('.card-inner-img').src = clientItem.image;
+                const imgElement = card.querySelector('.card-inner-img');
+                imgElement.src = clientItem.image;
+                imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;
                 card.querySelector('.card-price').textContent = `${clientItem.price}$`;
@@ -203,7 +205,9 @@ async function renderBestSellingProducts() {
                 cardElement.dataset.productId = clientItem.id;
                 cardElement.dataset.region = detectedRegion;
                 card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
-                card.querySelector('.card-inner-img').src = clientItem.image;
+                const imgElement = card.querySelector('.card-inner-img');
+                imgElement.src = clientItem.image;
+                imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;
                 card.querySelector('.card-price').textContent = `${clientItem.price}$`;
@@ -245,7 +249,9 @@ async function renderNewlyAddedProducts() {
                 cardElement.dataset.productId = clientItem.id;
                 cardElement.dataset.region = detectedRegion;
                 card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
-                card.querySelector('.card-inner-img').src = clientItem.image;
+                const imgElement = card.querySelector('.card-inner-img');
+                imgElement.src = clientItem.image;
+                imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;
                 card.querySelector('.card-price').textContent = `${clientItem.price}$`;

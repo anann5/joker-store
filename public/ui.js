@@ -4,6 +4,20 @@ import { cart, clearCart } from './cart.js';
 let toastContainer = null;
 
 /**
+script.js:329 ✅ تم تحميل فهرس البحث بنجاح (0 منتج).
+google.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
+pubg_600uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+pubg_1800uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+pubg_1800uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
+ui.js:21 Product shared successfully
+pubg_600uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+pubg_1800uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+google.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
+google.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
+?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
  * دالة لمشاركة المنتج على وسائل التواصل الاجتماعي.
  * تستخدم Web Share API إذا كانت متاحة، أو توفر خياراً احتياطياً.
  * @param {object} product - بيانات المنتج للمشاركة.
@@ -151,7 +165,9 @@ export function showProductDetails(product) {
                     cardElement.dataset.productId = clientItem.id;
                     cardElement.dataset.region = detectedRegion;
                     card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
-                    card.querySelector('.card-inner-img').src = clientItem.image;
+                    const imgElement = card.querySelector('.card-inner-img');
+                    imgElement.src = clientItem.image;
+                    imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                     card.querySelector('.card-title').textContent = clientItem.name;
                     card.querySelector('.card-price').textContent = `${clientItem.price}$`;
                     relatedContainer.appendChild(card);
@@ -168,7 +184,9 @@ export function showProductDetails(product) {
     const view = template.content.cloneNode(true);
 
     // ملء القالب ببيانات المنتج
-    view.querySelector('.detail-img').src = product.image || `image/${currentCategoryKey()}.png`;
+    const detailImgElement = view.querySelector('.detail-img');
+    detailImgElement.src = product.image || `image/${currentCategoryKey()}.png`;
+    detailImgElement.onerror = () => { detailImgElement.src = 'image/logo.png'; }; // Fallback image
     view.querySelector('.detail-img').alt = product.name;
     view.querySelector('.product-name').textContent = product.name;
     view.querySelector('.product-price').textContent = `${product.price}$`;
