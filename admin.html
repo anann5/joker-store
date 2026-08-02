@@ -89,7 +89,188 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- قسم إدارة المنتجات -->
+        <h2 style="margin: 30px 0 20px 0; padding-bottom: 10px; color: var(--primary-neon); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px;">
+            <i class="fas fa-box-open"></i> إدارة المنتجات
+            <button id="openAddProductModal" style="background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon)); color: #07070a; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-right: auto; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-plus"></i> منتج جديد
+            </button>
+        </h2>
+
+        <div class="admin-table-container" style="margin-bottom: 30px;">
+            <table id="productsTable" style="min-width: 1000px;">
+                <thead>
+                    <tr>
+                        <th>الاسم</th><th>الفئة</th><th>المنطقة</th><th>السعر</th><th>النوع</th><th>المزود</th><th>الحالة</th><th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="productsTableBody">
+                    <!-- سيتم تعبئتها عبر JS -->
+                </tbody>
+            </table>
+        </div>
     </main>
     <script src="admin.js"></script>
 </body>
 </html>
+
+<!-- Modal لإضافة / تعديل منتج -->
+<div class="modal-overlay" id="addProductModal" style="display: none;">
+    <div class="delivery-container" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+        <button class="close-modal-btn" id="closeAddProductModal">×</button>
+        <h2 id="addProductModalTitle" style="color: var(--primary-neon); margin-bottom: 25px; font-size: 1.5rem;">
+            <i class="fas fa-plus"></i> إضافة منتج جديد
+        </h2>
+        <form id="addProductForm">
+            <input type="hidden" id="productId">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- الاسم بالعربية -->
+                <div class="form-group">
+                    <label>اسم المنتج (عربي) *</label>
+                    <input type="text" id="pNameAr" required style="width: 100%;">
+                </div>
+                <!-- الاسم بالإنجليزية -->
+                <div class="form-group">
+                    <label>Product Name (English) *</label>
+                    <input type="text" id="pNameEn" required style="width: 100%;">
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- الفئة -->
+                <div class="form-group">
+                    <label>الفئة *</label>
+                    <select id="pCategory" required style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <option value="">اختر الفئة</option>
+                        <option value="gaming_general">ألعاب عامة</option>
+                        <option value="steam">ستيم</option>
+                        <option value="pubg">ببجي</option>
+                        <option value="fortnite">فورتنايت</option>
+                        <option value="playstation">بلايستيشن</option>
+                        <option value="xbox">إكس بوكس</option>
+                        <option value="microsoft_windows">مايكروسوفت/ويندوز</option>
+                        <option value="adobe">أدوبي</option>
+                        <option value="antivirus">مضاد فيروسات</option>
+                        <option value="vpn">VPN</option>
+                        <option value="google">Google Play</option>
+                        <option value="itunes">iTunes</option>
+                        <option value="razer_gold">ريزر جولد</option>
+                        <option value="amazon">أمازون</option>
+                    </select>
+                </div>
+                <!-- المنطقة -->
+                <div class="form-group">
+                    <label>المنطقة *</label>
+                    <select id="pRegion" style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <option value="global">عالمي</option>
+                        <option value="us">أمريكي</option>
+                        <option value="tr">تركي</option>
+                        <option value="eu">أوروبي</option>
+                        <option value="sa">سعودي</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- السعر -->
+                <div class="form-group">
+                    <label>السعر ($) *</label>
+                    <input type="number" id="pPrice" required min="0" step="0.01" style="width: 100%;">
+                </div>
+                <!-- هامش الربح -->
+                <div class="form-group">
+                    <label>هامش الربح (×) <span style="color: var(--text-muted); font-size: 0.85rem;">(افتراضي: 1.10 = 10%)</span></label>
+                    <input type="number" id="pMargin" min="1.0" step="0.01" value="1.10" style="width: 100%;">
+                </div>
+            </div>
+
+            <!-- نوع المنتج -->
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="pIsExternal" style="width: 18px; height: 18px;">
+                    منتج مرتبط بمزود خارجي (API)
+                </label>
+            </div>
+
+            <!-- إعدادات المنتج الخارجي -->
+            <div id="externalSettings" style="display: none; background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.2); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="color: var(--primary-neon); margin-bottom: 15px; font-size: 1rem;">
+                    <i class="fas fa-cog"></i> إعدادات المزود
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>معرف المزود (externalId)</label>
+                        <input type="text" id="pExternalId" placeholder="ID في مزود API">
+                    </div>
+                    <div class="form-group">
+                        <label>اسم المزود</label>
+                        <select id="pProvider" style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                            <option value="Local">محلي</option>
+                            <option value="SMM_Global">SMM Global</option>
+                            <option value="GameKeys_Pro">GameKeys Pro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>السعر الأساسي من المزود ($)</label>
+                    <input type="number" id="pBasePrice" min="0" step="0.01" placeholder="سعر التكلفة الأصلي">
+                </div>
+            </div>
+
+            <!-- إعدادات الاشتراك -->
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="pIsSubscription" style="width: 18px; height: 18px;">
+                    منتج اشتراك (Subscription)
+                </label>
+            </div>
+
+            <div id="subscriptionSettings" style="display: none; background: rgba(0, 242, 254, 0.05); border: 1px solid rgba(0, 242, 254, 0.2); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="color: var(--primary-neon); margin-bottom: 15px; font-size: 1rem;">
+                    <i class="fas fa-sync-alt"></i> إعدادات الاشتراك
+                </h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>نوع الاشتراك</label>
+                        <select id="pSubscriptionType" style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                            <option value="fixed">مدفوع مسبقاً (Fixed)</option>
+                            <option value="recurring">متجدد تلقائياً (Recurring)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>مدة الاشتراك</label>
+                        <select id="pSubscriptionDuration" style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;">
+                            <option value="30">30 يوم</option>
+                            <option value="60">60 يوم</option>
+                            <option value="90">90 يوم</option>
+                            <option value="180">6 أشهر</option>
+                            <option value="365">سنة كاملة</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- رفع صورة -->
+            <div class="form-group">
+                <label>رابط صورة المنتج (URL)</label>
+                <input type="text" id="pImage" placeholder="مثال: image/steam.png" style="width: 100%;">
+            </div>
+
+            <!-- الوصف -->
+            <div class="form-group">
+                <label>وصف المنتج (عربي)</label>
+                <textarea id="pDescAr" rows="2" style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Product Description (English)</label>
+                <textarea id="pDescEn" rows="2" style="width: 100%; padding: 12px; background: var(--card-bg); color: white; border: 1px solid var(--border-color); border-radius: 8px;"></textarea>
+            </div>
+
+            <button type="submit" id="submitProductBtn" style="background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon)); color: var(--bg-dark); border: none; padding: 14px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; font-size: 1.1rem; transition: all 0.3s;">
+                <i class="fas fa-save"></i> حفظ المنتج
+            </button>
+        </form>
+    </div>
+</div>

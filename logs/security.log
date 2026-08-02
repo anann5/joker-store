@@ -1,0 +1,2 @@
+{"timestamp":"2026-08-02T16:39:26.379Z","eventType":"UNAUTHORIZED_ACCESS","message":"محاولة الوصول المشربه بدون توكن","ip":"127.0.0.1","userAgent":"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.8894","userId":"anonymous","path":"/api/admin/dashboard"}
+{"timestamp":"2026-08-02T17:08:51.600Z","eventType":"INVALID_TOKEN","message":"محاولة استخدام توكن غير صالح أو منتهي الصلاحية","ip":"127.0.0.1","userAgent":"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.8894","userId":"anonymous","path":"/api/admin/inventory/stats"}

@@ -1,27 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const userAuthController = require('../controllers/userAuthController');
-const jwt = require('jsonwebtoken');
+const { verifyUserToken } = require('../middleware/authMiddleware');
+const { validate, loginSchema, registerSchema } = require('../middleware/validate');
+const rateLimit = require("express-rate-limit");
 
-// Middleware للتحقق من توكن المستخدم
-const verifyUserToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) return res.status(403).json({ success: false, message: "الوصول مرفوض." });
-
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) return res.status(401).json({ success: false, message: "جلسة غير صالحة." });
-        req.user = decoded; // إضافة بيانات المستخدم (userId, email) إلى الطلب
-        next();
-    });
-};
+// Rate limiter for authentication routes (prevent brute force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // max 10 attempts per IP
+    message: "عدد محاولات تسجيل الدخول كبير جداً، يرجى المحاولة لاحقاً."
+});
 
 // مسارات المصادقة العامة
-router.post('/users/register', userAuthController.register);
-router.post('/users/login', userAuthController.login);
+router.post('/users/register', authLimiter, validate(registerSchema), userAuthController.register);
+router.post('/users/login', authLimiter, validate(loginSchema), userAuthController.login);
 
 // مسارات محمية تتطلب تسجيل الدخول
 router.get('/users/orders', verifyUserToken, userAuthController.getOrderHistory);
+router.post('/users/logout', verifyUserToken, userAuthController.logout);
 
 module.exports = router;

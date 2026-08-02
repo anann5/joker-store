@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const storeController = require('../controllers/storeController');
-const { verifyUserTokenOptional } = require('../middleware/authMiddleware'); // استيراد ميدل وير جديد
+const { verifyUserTokenOptional } = require('../middleware/authMiddleware');
+const { validate, checkoutSchema } = require('../middleware/validate');
 
 // Route to get all categories
 router.get('/categories', storeController.getCategories);
@@ -13,7 +14,7 @@ router.get('/products/:categoryKey', storeController.getProductsByCategory);
 router.get('/products/latest-orders', storeController.getLatestOrders);
 
 // Route for creating a new order (checkout)
-router.post('/checkout', verifyUserTokenOptional, storeController.createOrder);
+router.post('/checkout', verifyUserTokenOptional, validate(checkoutSchema), storeController.createOrder);
 
 // Route for smart search (autocomplete)
 router.get('/search', storeController.searchAll);

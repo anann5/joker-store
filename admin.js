@@ -79,29 +79,91 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteAllBtn.onclick = deleteAllLogs;
     }
 
-    // منطق المودال اليدوي
+    // منطق مودال إضافة/تعديل منتج
     const addModal = document.getElementById('addProductModal');
-    const openBtn = document.getElementById('openAddModal');
-    const closeBtn = document.getElementById('closeAddModal');
+    const openBtn = document.getElementById('openAddProductModal');
+    const closeBtn = document.getElementById('closeAddProductModal');
     const addForm = document.getElementById('addProductForm');
 
-    if (openBtn) openBtn.onclick = () => addModal.classList.add('active');
-    if (closeBtn) closeBtn.onclick = () => addModal.classList.remove('active');
+    // تبديل إعدادات المزوّد والاشتراكات
+    const isExternalCheckbox = document.getElementById('pIsExternal');
+    const externalSettings = document.getElementById('externalSettings');
+    const isSubscriptionCheckbox = document.getElementById('pIsSubscription');
+    const subscriptionSettings = document.getElementById('subscriptionSettings');
+
+    if (isExternalCheckbox) {
+        isExternalCheckbox.onchange = () => {
+            externalSettings.style.display = isExternalCheckbox.checked ? 'block' : 'none';
+        };
+    }
+    if (isSubscriptionCheckbox) {
+        isSubscriptionCheckbox.onchange = () => {
+            subscriptionSettings.style.display = isSubscriptionCheckbox.checked ? 'block' : 'none';
+        };
+    }
+
+    if (openBtn) {
+        openBtn.onclick = (e) => {
+            e.preventDefault();
+            addModal.classList.add('active');
+            addModal.style.display = 'flex';
+            document.getElementById('addProductModalTitle').innerHTML = '<i class="fas fa-plus"></i> إضافة منتج جديد';
+            addForm.reset();
+            document.getElementById('productId').value = '';
+            isExternalCheckbox.checked = false;
+            externalSettings.style.display = 'none';
+            isSubscriptionCheckbox.checked = false;
+            subscriptionSettings.style.display = 'none';
+        };
+    }
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            addModal.classList.remove('active');
+            addModal.style.display = 'none';
+        };
+    }
 
     if (addForm) {
         addForm.onsubmit = async (e) => {
             e.preventDefault();
-            const codesRaw = document.getElementById('pCodes').value;
+            
+            const isExternal = isExternalCheckbox.checked;
+            const isSubscription = isSubscriptionCheckbox.checked;
+            const productId = document.getElementById('productId').value;
+
             const productData = {
-                productName: document.getElementById('pName').value,
+                productName: {
+                    ar: document.getElementById('pNameAr').value,
+                    en: document.getElementById('pNameEn').value
+                },
                 category: document.getElementById('pCategory').value,
-                price: parseFloat(document.getElementById('pPrice').value),
-                codes: codesRaw.split('\n').filter(c => c.trim() !== '').map(c => ({ value: c.trim() })),
-                region: 'global'
+                region: document.getElementById('pRegion').value,
+                price: parseFloat(document.getElementById('pPrice').value) || 0,
+                description: {
+                    ar: document.getElementById('pDescAr').value || 'لا يوجد وصف متاح حالياً لهذا المنتج.',
+                    en: document.getElementById('pDescEn').value || 'No description is available for this product at the moment.'
+                },
+                image: document.getElementById('pImage').value || '',
+                profitMargin: parseFloat(document.getElementById('pMargin').value) || 1.10,
+                isExternal: isExternal,
+                provider: document.getElementById('pProvider').value,
+                isSubscription: isSubscription,
+                subscriptionDuration: isSubscription ? document.getElementById('pSubscriptionDuration')?.value : null,
+                subscriptionType: isSubscription ? document.getElementById('pSubscriptionType')?.value : 'fixed'
             };
 
-            const res = await fetch('/api/admin/inventory/add', {
-                method: 'POST',
+            if (isExternal) {
+                productData.externalId = document.getElementById('pExternalId').value;
+                productData.basePrice = parseFloat(document.getElementById('pBasePrice').value) || 0;
+            }
+
+            const url = productId 
+                ? `/api/admin/inventory/${productId}`
+                : '/api/admin/inventory/create';
+            const method = productId ? 'PATCH' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${sessionStorage.getItem('admin_token')}`
@@ -110,14 +172,157 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const result = await res.json();
             if (result.success) {
-                alert('✅ تم إضافة المنتج والأكواد بنجاح!');
+                alert(productId ? '✅ تم تحديث المنتج بنجاح!' : '✅ تم إضافة المنتج بنجاح!');
                 addModal.classList.remove('active');
+                addModal.style.display = 'none';
                 addForm.reset();
-                fetchDashboardData();
+                isExternalCheckbox.checked = false;
+                externalSettings.style.display = 'none';
+                isSubscriptionCheckbox.checked = false;
+                subscriptionSettings.style.display = 'none';
+                fetchProducts();
+            } else {
+                alert('❌ ' + result.message);
             }
         };
     }
+
+    // جلب المنتجات عند تحميل الصفحة
+    fetchProducts();
 });
+
+// ======================================================
+//  إدارة المنتجات
+// ======================================================
+async function fetchProducts() {
+    try {
+        const res = await fetch('/api/admin/inventory', {
+            headers: { 'Authorization': `Bearer ${sessionStorage.getItem('admin_token')}` }
+        });
+        const products = await res.json();
+        allProducts = products;
+        renderProducts(products);
+    } catch (err) {
+        console.error('فشل جلب المنتجات:', err);
+    }
+}
+
+function renderProducts(products) {
+    const tbody = document.getElementById('productsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = products.map(product => {
+        const nameAr = product.productName?.ar || '';
+        const nameEn = product.productName?.en || '';
+        const availableCodes = product.codes ? product.codes.filter(c => c.status === 'available').length : 0;
+        const stockColor = product.isExternal ? '#9b59b6' : (availableCodes > 0 ? '#2ecc71' : '#e74c3c');
+        const stockText = product.isExternal ? '🔄 API' : (availableCodes > 0 ? `${availableCodes} متاح` : '🚫 نفد');
+        const productType = product.isSubscription ? 'اشتراك' : (product.isExternal ? 'خارجي' : 'محلي');
+        const typeColor = product.isSubscription ? '#ff9f43' : (product.isExternal ? '#9b59b6' : '#2ecc71');
+
+        return `
+            <tr>
+                <td>
+                    <div style="font-weight: 600;">${nameAr}</div>
+                    <div style="color: var(--text-muted); font-size: 0.8rem;">${nameEn}</div>
+                </td>
+                <td>${product.category}</td>
+                <td>${product.region}</td>
+                <td>${product.price.toFixed(2)}$</td>
+                <td><span style="color: ${typeColor}; font-weight: bold;">${productType}</span></td>
+                <td>${product.currentProvider || 'Local'}</td>
+                <td>
+                    <span style="color: ${stockColor}; font-size: 0.85rem;">${stockText}</span>
+                    <br>
+                    <span style="color: var(--text-muted); font-size: 0.75rem;">
+                        هامش: ×${product.profitMargin}
+                    </span>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                        <button onclick="editProduct('${product._id}')" style="padding: 4px 8px; font-size: 0.7rem;" class="btn-action" title="تعديل"><i class="fas fa-edit"></i></button>
+                        <button onclick="duplicateProduct('${product._id}')" style="padding: 4px 8px; font-size: 0.7rem;" class="btn-action" title="تكرار"><i class="fas fa-copy"></i></button>
+                        <button onclick="deleteProduct('${product._id}', '${nameAr}')" style="padding: 4px 8px; font-size: 0.7rem;" class="btn-action btn-reject" title="حذف"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function editProduct(productId) {
+    const product = allProducts.find(p => p._id === productId);
+    if (!product) return;
+
+    // Fill the form with product data
+    document.getElementById('productId').value = productId;
+    document.getElementById('pNameAr').value = product.productName?.ar || '';
+    document.getElementById('pNameEn').value = product.productName?.en || '';
+    document.getElementById('pCategory').value = product.category || '';
+    document.getElementById('pRegion').value = product.region || 'global';
+    document.getElementById('pPrice').value = product.price || '';
+    document.getElementById('pMargin').value = product.profitMargin || 1.10;
+    document.getElementById('pImage').value = product.image || '';
+    document.getElementById('pDescAr').value = product.description?.ar || '';
+    document.getElementById('pDescEn').value = product.description?.en || '';
+    document.getElementById('pProvider').value = product.currentProvider || 'Local';
+
+    document.getElementById('pIsExternal').checked = product.isExternal || false;
+    document.getElementById('externalSettings').style.display = product.isExternal ? 'block' : 'none';
+    document.getElementById('pExternalId').value = product.externalId || '';
+    document.getElementById('pBasePrice').value = product.basePrice || '';
+
+    if (product.isSubscription) {
+        document.getElementById('pIsSubscription').checked = true;
+        document.getElementById('subscriptionSettings').style.display = 'block';
+    }
+
+    document.getElementById('addProductModalTitle').innerHTML = '<i class="fas fa-edit"></i> تعديل المنتج';
+    document.getElementById('addProductModal').style.display = 'flex';
+    document.getElementById('addProductModal').classList.add('active');
+}
+
+async function duplicateProduct(productId) {
+    const newName = prompt('أدخل اسم المنتج الجديد (اتركه فارغاً للنسخ كما هو):');
+    if (newName !== null) {
+        try {
+            const res = await fetch(`/api/admin/inventory/${productId}/duplicate`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionStorage.getItem('admin_token')}`
+                },
+                body: JSON.stringify({ 
+                    newName: { ar: newName || undefined, en: newName || undefined } 
+                })
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) fetchProducts();
+        } catch (err) {
+            alert('❌ فشل تكرار المنتج');
+        }
+    }
+}
+
+async function deleteProduct(productId, productName) {
+    const action = confirm(`هل أنت متأكد من حذف المنتج: ${productName}؟\n\nسيتم إلغاء تفعيله. لإلغاء حذفه نهائياً استخدم "حذف دائم" في الإعدادات المتقدمة.`);
+    if (!action) return;
+
+    try {
+        const res = await fetch(`/api/admin/inventory/${productId}`, {
+            method: 'DELETE',
+            headers: { 
+                'Authorization': `Bearer ${sessionStorage.getItem('admin_token')}`
+            }
+        });
+        const data = await res.json();
+        alert(data.message);
+        if (data.success) fetchProducts();
+    } catch (err) {
+        alert('❌ فشل حذف المنتج');
+    }
+}
 
 async function fetchDashboardData() {
     try {

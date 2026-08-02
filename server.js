@@ -6,10 +6,11 @@ const path = require("path");
 const helmet = require("helmet");
 const connectDB = require("./config/database");
 const adminRoutes = require("./routes/adminRoutes");
-const storeRoutes = require("./routes/storeRoutes"); // Assuming this is already here
-const userRoutes = require("./routes/userRoutes"); // New import for user routes
-const rateLimit = require("express-rate-limit"); // يتطلب تثبيت: npm install express-rate-limit
+const storeRoutes = require("./routes/storeRoutes");
+const userRoutes = require("./routes/userRoutes");
+const rateLimit = require("express-rate-limit");
 const { syncInventoryInternal, cleanupOldLogsInternal } = require("./controllers/adminController");
+const { logSecurityEvent } = require("./middleware/securityLogger");
 
 const app = express();
 
@@ -18,29 +19,43 @@ app.use((req, res, next) => {
     // فقط في بيئة الإنتاج (Production)، قم بإجبار التحويل إلى HTTPS
     if (process.env.NODE_ENV === 'production') {
         if (req.headers['x-forwarded-proto'] !== 'https') {
-            return res.redirect('https://' + req.get('host') + req.url);
+            return res.redirect(301, 'https://' + req.get('host') + req.url);
         }
     }
     next();
 });
 
-// 🛡️ Security Middlewares
+// 🛡️ Security Middlewares - Helmet with enhanced CSP
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
-            styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com", "'unsafe-inline'"],
-            imgSrc: ["'self'", "data:", "https:", "http://localhost:5850"],
-            connectSrc: ["'self'", "http://localhost:5850", "ws://localhost:5850", "http://127.0.0.1:*"],
+            styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
+            imgSrc: ["'self'", "data:", "https:"],
+            connectSrc: ["'self'"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
             objectSrc: ["'none'"],
+            mediaSrc: ["'self'"],
+            frameSrc: ["'self'"],
+            frameAncestors: ["'self'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
             upgradeInsecureRequests: []
         },
     },
+    hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true
+    },
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    xssFilter: true,
+    noSniff: true,
+    frameguard: { action: 'deny' }
 }));
 
-// 🚦 Rate Limiting
+// 🚦 Rate Limiting - Global limiter
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit to 100 requests per IP
@@ -51,13 +66,20 @@ app.use("/api/", limiter);
 // Parse JSON
 app.use(express.json({ limit: "10kb" }));
 
-// Sanitize inputs
+// Sanitize inputs (prevent NoSQL injection)
 app.use((req, res, next) => {
     const sanitize = (obj) => {
         if (obj && typeof obj === "object") {
             for (const key in obj) {
                 if (key.startsWith("$") || key.includes(".")) delete obj[key];
                 else if (typeof obj[key] === "object") sanitize(obj[key]);
+                // Sanitize string values to prevent prototype pollution
+                else if (typeof obj[key] === "string") {
+                    // Remove potential prototype pollution attempts
+                    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+                        delete obj[key];
+                    }
+                }
             }
         }
     };
@@ -84,9 +106,7 @@ app.get("/admin", (req, res) => {
 app.get("/login.html", (req, res) => {
     res.sendFile(path.join(__dirname, "login.html"));
 });
-app.get("/admin.html", (req, res) => {
-    res.sendFile(path.join(__dirname, "admin.html"));
-});
+
 app.get("/login", (req, res) => {
     res.sendFile(path.join(__dirname, "login.html"));
 });
@@ -94,11 +114,26 @@ app.get("/login", (req, res) => {
 // API routes
 app.use("/api/admin", adminRoutes);
 app.use("/api", storeRoutes);
-app.use("/api", userRoutes); // New: Use user authentication routes
+app.use("/api", userRoutes);
+
+// Catch-all for undefined routes (Express 5 compatible)
+app.use((req, res) => {
+    logSecurityEvent('UNDEFINED_ROUTE', `Attempted access to undefined route: ${req.method} ${req.originalUrl}`, req);
+    res.status(404).json({
+        success: false,
+        message: 'الصفحة غير موجودة'
+    });
+});
 
 // Generic error handler
 app.use((err, req, res, next) => {
     console.error(err);
+    
+    // تسجيل الأخطاء الحرجة في السجل الأمني
+    if (err.status >= 500 || err.status === 401 || err.status === 403) {
+        logSecurityEvent('SERVER_ERROR', `${err.message || 'Internal Server Error'} - ${req.method} ${req.originalUrl}`, req);
+    }
+    
     const status = err.status || 500;
     res.status(status).json({
         success: false,
@@ -127,7 +162,7 @@ setInterval(async () => {
 const DAILY_INTERVAL = 24 * 60 * 60 * 1000;
 setInterval(async () => {
     try {
-        console.log("🧹 جاري فحص وتنظيف السجلات القديمة...");
+        console.log("🧹 جاري فحص وتنظيف السجلات القدبدة...");
         const result = await cleanupOldLogsInternal();
         if (result.success && result.count > 0) {
             console.log(`✅ تم حذف ${result.count} سجل قديم مر عليها أكثر من شهر.`);

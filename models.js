@@ -71,6 +71,10 @@ const productSchema = new mongoose.Schema({
     profitMargin:{ type: Number, default: 1.10 }, // هامش الربح (1.10 تعني 10%)
     basePrice:   { type: Number, default: 0 },    // السعر الأصلي من المزود
     currentProvider: { type: String, default: 'Local' }, // اسم المزود الحالي للأفضل سعر
+    isSubscription: { type: Boolean, default: false }, // منتج اشتراكي بدلاً من بيع فوري؟
+    subscriptionType: { type: String, enum: ['fixed', 'recurring'], default: 'fixed' }, // نوع الاشتراك
+    subscriptionDuration: { type: Number, default: null }, // مدة الاشتراك بالأيام
+    codeGenerationMethod: { type: String, enum: ['static', 'dynamic'], default: 'static' }, // ثابت أم توليدي
     isActive:    { type: Boolean, default: true }, // إخفاء المنتج بدون حذفه
     createdAt:   { type: Date, default: Date.now },
     updatedAt:   { type: Date, default: Date.now }

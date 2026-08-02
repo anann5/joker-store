@@ -1,112 +1,13 @@
-<!DOCTYPE html>
-<html> <!-- سيتم التحكم باللغة والاتجاه عبر الجافاسكريبت -->
+<!DOCTYPE html> 
+<html lang="ar" dir="rtl"> <!-- تم إضافة سمات اللغة والاتجاه الافتراضية -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Joker Store | بطاقات رقمية وألعاب</title>
-    <link rel="icon" type="image/png" href="image/logo.png">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css?v=3.0">
+<link rel="icon" type="image/png" href="image/logo.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="style.css?v=3.0">
 
-    <style>
-        .region-filter-bar {
-            display: flex;
-            /* 1. تم تعديلها إلى flex-start عشان يبدأ الترتيب من أول اليمين صح وما يختفي الكل وعالمي */
-            justify-content: flex-start; 
-            gap: 12px;
-            margin-bottom: 30px;
-            padding: 10px;
-            
-            /* 2. تأمين قفل العرض على مقاس الشاشة بالضبط */
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            direction: rtl; /* إجبار الاتجاه العربي لليمين */
-            
-            /* 3. تفعيل السحب الأفقي الذكي */
-            overflow-x: auto;
-            overflow-y: hidden;
-            white-space: nowrap;
-            -webkit-overflow-scrolling: touch;
-            
-            /* إخفاء شريط التمرير لمتصفح فايرفوكس */
-            scrollbar-width: none; 
-        }
-        
-        /* إخفاء شريط التمرير لمتصفحات كروم وسفاري (تلفونات) */
-        .region-filter-bar::-webkit-scrollbar { display: none; }
-
-        .filter-btn {
-            /* 🔥 السطر السحري: يمنع انكماش أو تشوه حجم الزر على الموبايل */
-            flex-shrink: 0; 
-            
-            background: #19142d; 
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: #ffffff;
-            padding: 10px 22px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .filter-btn:hover, .filter-btn.active {
-            border-color: #00ffcc;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
-            transform: translateY(-2px);
-        }
-
-        /* 4. الحاوية الخارجية الأب اللّي لافة شريط الفلاتر (تعديل السلكتور ليقفل العرض) */
-        .filter-container-wrap { 
-            max-width: 100% !important;
-            overflow: hidden !important; 
-            width: 100%;
-        }
-
-        .flag-img { width: 22px; height: 15px; border-radius: 2px; object-fit: cover; }
-        .global-icon { font-size: 1.2rem; line-height: 1; }
-
-        /* تنسيقات إضافية للكروت بداخل الأقسام ليظهر عليها العلم */
-        .card { position: relative; }
-        .card-badge {
-            position: absolute; top: 15px; left: 15px;
-            background: rgba(15, 12, 27, 0.8); padding: 6px 10px;
-            border-radius: 10px; backdrop-filter: blur(5px);
-            border: 1px solid rgba(255,255,255,0.1); z-index: 10;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .card.hidden { display: none !important; }
-
-        /* تنسيقات نافذة تسجيل الدخول */
-        .auth-container { background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 400px; width: 95%; padding: 30px; border-radius: 15px; position: relative; }
-        .auth-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px; }
-        .auth-tab-btn { background: none; border: none; color: var(--text-muted); padding: 10px 15px; font-size: 1rem; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
-        .auth-tab-btn.active { color: var(--primary-neon); border-bottom-color: var(--primary-neon); }
-        .auth-form { display: none; }
-        .auth-form.active { display: block; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; color: #b9bbbe; font-size: 0.9rem; }
-        .form-group input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; color: #fff; font-size: 1rem; }
-        .auth-submit-btn { background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; }
-        #userAccountDropdown { display: none; position: absolute; top: 110%; right: 0; background: #1e272e; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.4); z-index: 100; overflow: hidden; }
-        #userAccountDropdown.active { display: block; }
-        .account-dropdown-item { padding: 12px 20px; color: #fff; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
-        .account-dropdown-item:hover { background: var(--primary-neon); color: #111; }
-
-        /* تنسيقات نافذة سجل الطلبات */
-        .order-history-container { background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 800px; width: 95%; padding: 30px; border-radius: 15px; position: relative; max-height: 80vh; display: flex; flex-direction: column; }
-        .order-history-container h3 { text-align: center; margin-bottom: 20px; color: var(--primary-neon); }
-        #orderHistoryList { overflow-y: auto; padding-right: 10px; }
-        .order-item { background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 12px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; gap: 15px; }
-        .order-details { text-align: right; }
-        .order-status { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; white-space: nowrap; }
-        .status-completed { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-        .status-pending { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
-        .status-failed { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-</style>
 </head>
 <body>
 
@@ -136,9 +37,9 @@
             </div>
         </div>
 
-        <div class="cart-icon-container" id="cartHeaderBtn" style="position: relative; cursor: pointer; padding: 10px; font-size: 1.4rem; color: #00f0ff; text-shadow: 0 0 8px rgba(0,240,255,0.4);">
+        <div class="cart-icon-container" id="cartHeaderBtn">
             <i class="fas fa-shopping-cart"></i>
-            <span id="cartCountBadge" style="position: absolute; top: 0; right: 0; background: #ff0055; color: white; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 50%; box-shadow: 0 0 8px #ff0055;">0</span>
+            <span id="cartCountBadge" class="cart-count-badge">0</span>
         </div>
 
         <nav>
@@ -182,23 +83,7 @@
     </div>
 </header>
 
-<div class="filter-container" id="filterTabs">
-    <button class="filter-btn active" data-filter="all">الكل</button>
-    <button class="filter-btn" data-filter="gaming_general">الألعاب</button>
-    <button class="filter-btn" data-filter="steam">ستيم</button>
-    <button class="filter-btn" data-filter="pubg">ببجي</button>
-    <button class="filter-btn" data-filter="fortnite">فورتنايت</button>
-    <button class="filter-btn" data-filter="playstation">بلايستيشن</button>
-    <button class="filter-btn" data-filter="xbox">إكس بوكس</button>
-    <button class="filter-btn" data-filter="microsoft_windows">ويندوز</button>
-    <button class="filter-btn" data-filter="adobe">أدوبي</button>
-    <button class="filter-btn" data-filter="antivirus">الحماية</button>
-    <button class="filter-btn" data-filter="vpn">VPN</button>
-    <button class="filter-btn" data-filter="google">جوجل بلاي</button>
-    <button class="filter-btn" data-filter="itunes">آيتونز</button>
-    <button class="filter-btn" data-filter="razer_gold">ريزر جولد</button>
-    <button class="filter-btn" data-filter="amazon">أمازون</button>
-</div>
+<div class="filter-container" id="filterTabs"></div>
 
 <div id="back-container" style="text-align: center; margin: 20px 0;">
     <button class="back-to-main-btn" id="backToMainBtn" data-i18n-key="back_to_categories">
@@ -207,18 +92,7 @@
 </div>
 
 <div class="main-container">
-    <div id="regionFilterBar" class="region-filter-bar">
-        <button class="filter-btn active" data-target="all">الكل</button>
-        <button class="filter-btn" data-target="global">🌐 عالمي</button>
-        <button class="filter-btn" data-target="tr"><img src="image/flags/tr.png" class="flag-img" alt="TR"> تركي</button>
-        <button class="filter-btn" data-target="ae"><img src="image/flags/ae.png" class="flag-img" alt="AE"> إماراتي</button>
-        <button class="filter-btn" data-target="sa"><img src="image/flags/sa.png" class="flag-img" alt="SA"> سعودي</button>
-        <button class="filter-btn" data-target="vn"><img src="image/flags/vn.png" class="flag-img" alt="VN"> فيتنامي</button>
-        <button class="filter-btn" data-target="cn"><img src="image/flags/cn.png" class="flag-img" alt="CN"> صيني</button>
-        <button class="filter-btn" data-target="us"><img src="image/flags/us.png" class="flag-img" alt="US"> أمريكي</button>
-    </div>
-</div>
-
+    <div id="regionFilterBar" class="region-filter-bar"></div>
     <div id="mainCategories"></div>
 </div>
 
@@ -232,7 +106,7 @@
 
         <!-- Login Form -->
         <form id="loginForm" class="auth-form active">
-            <h3 style="margin-bottom: 20px;">أهلاً بعودتك!</h3>
+            <h3>أهلاً بعودتك!</h3>
             <div class="form-group">
                 <label for="loginEmail">البريد الإلكتروني</label>
                 <input type="email" id="loginEmail" required>
@@ -246,7 +120,7 @@
 
         <!-- Register Form -->
         <form id="registerForm" class="auth-form">
-            <h3 style="margin-bottom: 20px;">انضم إلينا</h3>
+            <h3>انضم إلينا</h3>
             <div class="form-group">
                 <label for="registerEmail">البريد الإلكتروني</label>
                 <input type="email" id="registerEmail" required>
@@ -261,31 +135,31 @@
 </div>
 
 <div class="modal-overlay" id="purchaseModal">
-    <div class="delivery-container" style="background: #0f0c1be0; backdrop-filter: blur(15px); border: 1px solid rgba(0, 240, 255, 0.3); box-shadow: 0 0 30px rgba(0, 240, 255, 0.2); max-width: 500px; width: 95%;">
+    <div class="delivery-container cart-modal">
         <button class="close-modal-btn" id="closeModal">×</button>
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label for="user-email" data-i18n-key="email_label">البريد الإلكتروني لاستلام الكود</label>
-            <input type="email" id="user-email" data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
+        <div class="cart-modal-header">
+            <h3><i class="fas fa-shopping-cart"></i> <span data-i18n-key="cart_title">سلة المشتريات الخاصة بك</span></h3>
         </div>
-        <h3 style="color: #00f0ff; text-shadow: 0 0 10px rgba(0,240,255,0.5); margin-bottom: 20px;" data-i18n-key="cart_title">
-            <i class="fas fa-shopping-cart"></i>سلة المشتريات الخاصة بك
-        </h3>
-
-        <button id="clearCartBtn" style="background: none; border: 1px solid #ff0055; color: #ff0055; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; margin-bottom: 10px; float: left; transition: 0.2s;">
-    <i class="fas fa-trash"></i> تفريغ السلة
-</button>
-<div style="clear: both;"></div>
-        
-        <div id="cartItemsList" style="max-height: 200px; overflow-y: auto; margin-bottom: 15px; direction: rtl;">
+        <div class="cart-modal-body">
+            <div class="form-group">
+                <label for="user-email" data-i18n-key="email_label">البريد الإلكتروني لاستلام الكود</label>
+                <input type="email" id="user-email" data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
             </div>
 
-        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px; margin-bottom: 25px; display: flex; justify-content: space-between; direction: rtl; font-weight: bold;">
-            <span style="color: #b9bbbe;" data-i18n-key="total_label">المجموع الإجمالي:</span>
-            <span id="cartTotalAmount" style="color: #00f0ff; font-size: 1.3rem;">0.00$</span>
+            <button id="clearCartBtn" class="clear-cart-btn">
+                <i class="fas fa-trash"></i> تفريغ السلة
+            </button>
+            
+            <div id="cartItemsList"></div>
+        </div>
+
+        <div class="cart-total-row">
+            <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
+            <span id="cartTotalAmount" class="cart-total-amount">0.00$</span>
         </div>
 
         <div class="form-group">
-            <label style="margin-bottom: 10px;" data-i18n-key="payment_method_label">اختر طريقة الدفع</label>
+            <label data-i18n-key="payment_method_label">اختر طريقة الدفع</label>
             <div class="payment-options">
                 <label class="payment-option-label">
                     <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
@@ -297,22 +171,29 @@
                 </label>
             </div>
         </div>
+        
+        <div id="paymentInstructions"></div>
 
-        <div id="paymentInstructions" style="margin-bottom: 20px; padding: 15px; background: rgba(0,240,255,0.05); border-radius: 8px; border: 1px solid rgba(0,240,255,0.1);"></div>
+        <div class="form-group">
+            <label for="paymentRefInput" data-i18n-key="payment_ref_label">رقم العملية / اسم المحوّل</label>
+            <input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required>
+        </div>
 
-        <div class="form-group"><label for="paymentRefInput" data-i18n-key="payment_ref_label">رقم العملية / اسم المحوّل</label><input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required></div>
-
-        <button type="button" id="submitOrderBtn" data-i18n-key="submit_order_button" style="background: linear-gradient(135deg, #00f0ff, #0072ff); color: #0b0c10; border: none; padding: 14px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);">🚀 تأكيد التحويل وإرسال الطلب</button>
+        <button type="button" id="submitOrderBtn" data-i18n-key="submit_order_button">🚀 تأكيد التحويل وإرسال الطلب</button>
     </div>
 </div>
 
 <!-- Order History Modal -->
 <div class="modal-overlay" id="orderHistoryModal">
-    <div class="order-history-container">
+    <div class="delivery-container cart-modal">
         <button class="close-modal-btn" id="closeOrderHistoryModal">×</button>
-        <h3><i class="fas fa-history"></i> سجل طلباتك</h3>
-        <div id="orderHistoryList">
-            <!-- Orders will be rendered here by JavaScript -->
+        <div class="cart-modal-header">
+            <h3><i class="fas fa-history"></i> سجل طلباتك</h3>
+        </div>
+        <div class="cart-modal-body">
+            <div id="orderHistoryList">
+                <!-- Orders will be rendered here by JavaScript -->
+            </div>
         </div>
     </div>
 </div>
@@ -321,12 +202,12 @@
     <div class="delivery-container">
         <button class="close-modal-btn" id="closeCodeModal">×</button>
         <h3>🎉 تم الشراء بنجاح!</h3>
-        <p id="modalProductTitle" style="color:#b9bbbe; margin-bottom:15px;"></p>
-        <div style="background:#1a1a2e; border:1px solid #ff9f43; border-radius:10px; padding:20px; margin:15px 0;">
-            <p style="color:#b9bbbe; font-size:0.85rem; margin-bottom:8px;">كود الشحن الخاص بك:</p>
-            <p id="generatedCode" style="color:#ff9f43; font-size:1.6rem; font-weight:900; letter-spacing:3px; word-break:break-all;"></p>
+        <p id="modalProductTitle"></p>
+        <div class="delivery-code-box">
+            <p class="delivery-code-label">كود الشحن الخاص بك:</p>
+            <p id="generatedCode" class="delivery-code"></p>
         </div>
-        <button id="copyCodeBtn" style="background:#ff9f43; color:#111; border:none; padding:12px 30px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1rem; width:100%;">
+        <button id="copyCodeBtn" class="copy-code-btn">
             <i class="fas fa-copy"></i> نسخ الكود
         </button>
     </div>

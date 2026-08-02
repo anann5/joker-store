@@ -24,9 +24,14 @@ router.use(authController.verifyAdminToken);
 
 router.get('/dashboard', statsController.getStats);
 router.get('/inventory', productController.getInventory);
+router.get('/inventory/stats', productController.getStockStats);
 router.post('/inventory/add', productController.addProductManual);
+router.post('/inventory/create', productController.createProduct);
 router.post('/inventory/sync', productController.syncExternalProducts);
 router.patch('/inventory/:productId/margin', productController.updateProductMargin);
+router.patch('/inventory/:productId', productController.updateProduct);
+router.post('/inventory/:productId/duplicate', productController.duplicateProduct);
+router.delete('/inventory/:productId', productController.deleteProduct);
 router.get('/orders', orderController.getOrders);
 router.post('/orders/:orderId/approve', orderController.approveOrder);
 router.get('/logs', logController.getLogs);

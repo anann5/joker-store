@@ -8,7 +8,19 @@ exports.getCategories = async (req, res) => {
     try {
         const lang = req.query.lang === 'en' ? 'en' : 'ar';
         const categories = await Category.find({ isActive: true }).sort({ order: 1 });
-        console.log('Raw categories from DB:', categories); // 🔍 أضف هذا السطر للمساعدة في التشخيص
+
+        // تحسين: التأكد من أن حقل title و description هو كائن قبل محاولة الوصول إلى lang أو ar
+        categories.forEach(cat => {
+            if (typeof cat.title !== 'object' || cat.title === null) {
+                // إذا لم يكن title كائناً، قم بتحويله إلى كائن مع قيمة افتراضية
+                cat.title = { ar: String(cat.title), en: String(cat.title) };
+            }
+            // التأكد من أن حقل description هو كائن
+            // إذا لم يكن description كائناً، قم بتحويله إلى كائن مع قيمة افتراضية
+            if (typeof cat.description !== 'object' || cat.description === null) {
+                cat.description = { ar: String(cat.description), en: String(cat.description) };
+            }
+        });
 
         // إعادة تشكيل البيانات لتكون كائن key-value كما يتوقعه الفرونت اند
         const localizedCategories = {};
@@ -30,8 +42,24 @@ exports.getProductsByCategory = async (req, res) => {
     try {
         const lang = req.query.lang === 'en' ? 'en' : 'ar'; // اللغة الافتراضية هي العربية
         const { categoryKey } = req.params;
+        
+        // Validate category key to prevent NoSQL injection
+        if (!categoryKey || typeof categoryKey !== 'string' || !/^[a-zA-Z0-9_]+$/.test(categoryKey)) {
+            return res.status(400).json({ success: false, error: 'مفتاح الفئة غير صالح' });
+        }
+        
         const products = await Product.find({ category: categoryKey, isActive: true });
-        // إرسال كائن المنتج كاملاً، والواجهة الأمامية ستقوم بالترجمة
+
+        // تحسين: التأكد من أن productName هو كائن قبل إرساله
+        products.forEach(product => {
+            if (typeof product.productName !== 'object' || product.productName === null) {
+                product.productName = { ar: String(product.productName), en: String(product.productName) };
+            }
+            // التأكد من أن حقل description (إذا وجد) هو كائن
+            if (product.description && (typeof product.description !== 'object' || product.description === null)) {
+                product.description = { ar: String(product.description), en: String(product.description) };
+            }
+        });
         res.json({ success: true, products: products });
     } catch (err) {
         res.status(500).json({ success: false, error: 'فشل في جلب المنتجات' });
@@ -40,8 +68,19 @@ exports.getProductsByCategory = async (req, res) => {
 
 exports.getLatestOrders = async (req, res) => {
     // This is a placeholder for the /api/products/latest-orders route used in script.js
-    // In a real application, you would fetch actual latest completed orders.
-    res.json({ success: true, orders: [] });
+    // 🚀 تنفيذ حقيقي: جلب آخر 5 طلبات مكتملة
+    try {
+        const latestOrders = await Order.find({ status: 'completed' })
+            .sort({ completedAt: -1 }) // الأحدث أولاً
+            .limit(5) // آخر 5 طلبات
+            .select('orderId items.name'); // فقط الحقول الضرورية
+
+        // تنسيق البيانات لتناسب العرض في شريط الثقة
+        const formattedOrders = latestOrders.map(order => ({ orderId: order.orderId, productName: order.items[0]?.name || 'منتج' }));
+        res.json({ success: true, orders: formattedOrders });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'فشل في جلب آخر الطلبات' });
+    }
 };
 
 /**
@@ -106,6 +145,12 @@ exports.getNewlyAddedProducts = async (req, res) => {
             .limit(limit)             // 2. أخذ العدد المحدد فقط
             .select('productName price category image region'); // 3. اختيار الحقول الضرورية فقط
 
+        newProducts.forEach(product => {
+            if (typeof product.productName !== 'object' || product.productName === null) {
+                product.productName = { ar: String(product.productName), en: String(product.productName) };
+            }
+        });
+
         // لا حاجة للترجمة هنا، الواجهة الأمامية ستتعامل مع كائن اللغة
         res.json({ success: true, products: newProducts });
 
@@ -124,6 +169,11 @@ exports.getRelatedProducts = async (req, res) => {
         const lang = req.query.lang === 'en' ? 'en' : 'ar';
         const limit = parseInt(req.query.limit) || 4; // جلب 4 منتجات كحد أقصى
 
+        // Validate productId format to prevent NoSQL injection
+        if (!productId || typeof productId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+            return res.status(400).json({ success: false, error: 'معرف المنتج غير صالح' });
+        }
+
         // 1. العثور على المنتج الأصلي لمعرفة قسمه
         const originalProduct = await Product.findById(productId).select('category');
         if (!originalProduct) {
@@ -138,7 +188,12 @@ exports.getRelatedProducts = async (req, res) => {
         })
         .limit(limit)
         .select('productName price category image region');
-
+        
+        relatedProducts.forEach(product => {
+            if (typeof product.productName !== 'object' || product.productName === null) {
+                product.productName = { ar: String(product.productName), en: String(product.productName) };
+            }
+        });
         res.json({ success: true, products: relatedProducts });
 
     } catch (err) {
@@ -155,7 +210,11 @@ exports.getSearchIndex = async (req, res) => {
         // جلب الحقول الضرورية للبحث فقط لتقليل حجم البيانات
         const products = await Product.find({ isActive: true })
             .select('productName price category image');
-        console.log('Products fetched for search index:', products); // 🔍 أضف هذا السطر للتشخيص
+        products.forEach(product => {
+            if (typeof product.productName !== 'object' || product.productName === null) {
+                product.productName = { ar: String(product.productName), en: String(product.productName) };
+            }
+        });
         res.json({ success: true, products });
     } catch (err) {
         res.status(500).json({ success: false, error: 'فشل في بناء فهرس البحث.' });
@@ -170,21 +229,36 @@ exports.createOrder = async (req, res) => {
             return res.status(400).json({ success: false, error: 'سلة المشتريات فارغة.' });
         }
 
-        let total = 0;
-        const itemsForOrder = [];
-
+        // Validate product IDs to prevent NoSQL injection
         for (const item of cartItems) {
-            const product = await Product.findById(item.id);
-            if (product) {
-                total += product.price * item.qty;
-                itemsForOrder.push({
+            if (!item.id || typeof item.id !== 'string' || !/^[a-fA-F0-9]{24}$/.test(item.id)) {
+                return res.status(400).json({ success: false, error: 'معرف منتج غير صالح في السلة.' });
+            }
+            if (item.qty < 1 || item.qty > 99) {
+                return res.status(400).json({ success: false, error: 'كمية غير صالحة.' });
+            }
+        }
+
+        let total = 0;
+        const itemsForOrder = []; // لتخزين تفاصيل المنتجات في الطلب
+
+        // 🚀 تحسين: جلب جميع المنتجات في استعلام واحد
+        const productIds = cartItems.map(item => item.id);
+        const productsInCart = await Product.find({ _id: { $in: productIds } });
+        const productMap = new Map(productsInCart.map(p => [p._id.toString(), p]));
+
+        cartItems.forEach(item => {
+            const product = productMap.get(item.id);
+            if (product && product.isActive) { // تأكد أن المنتج موجود ونشط
+                total += product.price * item.qty; // حساب الإجمالي
+                itemsForOrder.push({ // إضافة تفاصيل المنتج للطلب
                     id: product._id,
-                    name: product.productName,
+                    name: product.productName, // سيتم تخزين كائن اللغة هنا
                     qty: item.qty,
                     price: product.price
                 });
             }
-        }
+        });
 
         const newOrder = new Order({
             orderId: uuidv4().split('-')[0].toUpperCase(), // رقم طلب عشوائي فريد
@@ -218,6 +292,16 @@ exports.searchAll = async (req, res) => {
         const { q, lang = 'ar' } = req.query;
         if (!q || q.trim().length < 2) {
             return res.json({ success: true, products: [], categories: [] });
+        }
+
+        // Validate search parameters
+        if (typeof q !== 'string' || q.length > 100) {
+            return res.status(400).json({ success: false, error: 'استعلام بحث غير صالح' });
+        }
+        
+        // Only allow 'ar' or 'en' to prevent NoSQL injection through the search field
+        if (lang !== 'ar' && lang !== 'en') {
+            return res.status(400).json({ success: false, error: 'لغة غير صالحة' });
         }
 
         // البحث في حقل اللغة المحدد

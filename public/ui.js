@@ -4,20 +4,6 @@ import { cart, clearCart } from './cart.js';
 let toastContainer = null;
 
 /**
-script.js:329 ✅ تم تحميل فهرس البحث بنجاح (0 منتج).
-google.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
-pubg_600uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-pubg_1800uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-pubg_1800uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
-ui.js:21 Product shared successfully
-pubg_600uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-pubg_1800uc.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-google.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
-google.png:1  Failed to load resource: the server responded with a status of 404 (Not Found)
-?lang=ar:1 Executing inline event handler violates the following Content Security Policy directive 'script-src-attr 'none''. Either the 'unsafe-inline' keyword, a hash ('sha256-...'), or a nonce ('nonce-...') is required to enable inline execution. Note that hashes do not apply to event handlers, style attributes and javascript: navigations unless the 'unsafe-hashes' keyword is present. The action has been blocked.
  * دالة لمشاركة المنتج على وسائل التواصل الاجتماعي.
  * تستخدم Web Share API إذا كانت متاحة، أو توفر خياراً احتياطياً.
  * @param {object} product - بيانات المنتج للمشاركة.
