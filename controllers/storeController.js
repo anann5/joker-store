@@ -31,15 +31,8 @@ exports.getProductsByCategory = async (req, res) => {
         const lang = req.query.lang === 'en' ? 'en' : 'ar'; // اللغة الافتراضية هي العربية
         const { categoryKey } = req.params;
         const products = await Product.find({ category: categoryKey, isActive: true });
-
-        // إعادة تشكيل البيانات لإرسال الترجمة الصحيحة فقط
-        const localizedProducts = products.map(p => {
-            const productObject = p.toObject();
-            // اختيار الترجمة الصحيحة مع وجود لغة احتياطية
-            productObject.name = p.productName[lang] || p.productName.ar;
-            return productObject;
-        });
-        res.json({ success: true, products: localizedProducts });
+        // إرسال كائن المنتج كاملاً، والواجهة الأمامية ستقوم بالترجمة
+        res.json({ success: true, products: products });
     } catch (err) {
         res.status(500).json({ success: false, error: 'فشل في جلب المنتجات' });
     }

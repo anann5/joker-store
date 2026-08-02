@@ -134,8 +134,9 @@ export function selectCategory(categoryKey) {
             data.products.forEach(function(item) { // 🔥 تصحيح: استخدام data.products بدلاً من products مباشرة
                 const detectedRegion = detectRegion(item);
                 const regionInfo = getRegionDetails(detectedRegion);
-                // الخادم يرسل الاسم المترجم جاهزاً في حقل 'name'
-                const clientItem = formatItem({ ...item, name: item.name }, categoryKey, detectedRegion);
+                // الخادم يرسل productName ككائن، نقوم بالترجمة هنا
+                const localizedName = item.productName[getCurrentLanguage()] || item.productName['ar'];
+                const clientItem = formatItem({ ...item, name: localizedName }, categoryKey, detectedRegion);
 
                 productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش
 
