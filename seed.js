@@ -7,10 +7,13 @@ const { Product, Category } = require('./models'); // استيراد المود�
 // دالة الاتصال بقاعدة البيانات
 const connectDB = async () => {
     try {
-        await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
+        if (!process.env.MONGODB_URI) { // 🔥 تم التعديل هنا ليصبح MONGODB_URI
+            console.error('❌ خطأ: متغير البيئة MONGODB_URI غير محدد في ملف .env');
+            process.exit(1);
+        }
+
+        await mongoose.connect(process.env.MONGODB_URI);
+        
         console.log('✅ MongoDB Connected for seeding...');
     } catch (err) {
         console.error('❌ MongoDB connection error:', err.message);
