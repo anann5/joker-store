@@ -155,6 +155,7 @@ exports.getSearchIndex = async (req, res) => {
         // جلب الحقول الضرورية للبحث فقط لتقليل حجم البيانات
         const products = await Product.find({ isActive: true })
             .select('productName price category image');
+        console.log('Products fetched for search index:', products); // 🔍 أضف هذا السطر للتشخيص
         res.json({ success: true, products });
     } catch (err) {
         res.status(500).json({ success: false, error: 'فشل في بناء فهرس البحث.' });
