@@ -22,7 +22,7 @@ app.use((req, res, next) => {
     // فقط في بيئة الإنتاج (Production)، قم بإجبار التحويل إلى HTTPS
     if (process.env.NODE_ENV === 'production') {
         if (req.headers['x-forwarded-proto'] !== 'https') {
-            return res.redirect(301, 'https://' + req.get('host') + req.url);
+            return res.redirect(301, `https://${  req.get('host')  }${req.url}`);
         }
     }
     next();

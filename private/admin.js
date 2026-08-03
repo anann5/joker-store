@@ -229,7 +229,7 @@ async function deleteProduct(productId, productName) {
             alert('🗑️ تم حذف المنتج بنجاح');
             loadInventory();
         } else {
-            alert('❌ ' + (data.message || 'فشل الحذف'));
+            alert(`❌ ${  data.message || 'فشل الحذف'}`);
         }
     } catch (err) {
         alert('❌ فشل الاتصال بالسيرفر');
@@ -280,7 +280,7 @@ async function saveProductEdit() {
             closeModal(document.getElementById('editModal'));
             loadInventory();
         } else {
-            alert('❌ ' + (data.message || 'فشل التحديث'));
+            alert(`❌ ${  data.message || 'فشل التحديث'}`);
         }
     } catch (err) {
         alert('❌ فشل الاتصال بالسيرفر');

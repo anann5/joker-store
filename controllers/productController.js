@@ -320,8 +320,8 @@ exports.duplicateProduct = async (req, res) => {
 exports.getStockStats = async (req, res) => {
     try {
         const products = await Product.find({});
-        let totalProducts = products.length;
-        let activeProducts = products.filter(p => p.isActive).length;
+        const totalProducts = products.length;
+        const activeProducts = products.filter(p => p.isActive).length;
         let lowStockProducts = 0;
         let outOfStockProducts = 0;
         let subscriptionCount = 0;
@@ -394,7 +394,7 @@ exports.exportProductsCSV = async (req, res) => {
         });
 
         // Add BOM for Arabic support
-        const csvContent = '\uFEFF' + [header.join(','), ...rows].join('\n');
+        const csvContent = `\uFEFF${  [header.join(','), ...rows].join('\n')}`;
         
         await createLog('تصدير منتجات', `تم تصدير ${products.length} منتج بصيغة CSV`, req);
 
@@ -477,7 +477,7 @@ exports.importProductsCSV = async (req, res) => {
                 };
 
                 // Check if product already exists (by English name) to handle "update existing"
-                let existingProduct = await Product.findOne({
+                const existingProduct = await Product.findOne({
                     'productName.en': productData.productName.en,
                     category: productData.category
                 });
@@ -517,6 +517,6 @@ exports.importProductsCSV = async (req, res) => {
         
     } catch (err) {
         console.error('Import error:', err);
-        res.status(500).json({ success: false, error: 'فشل استيراد المنتجات: ' + err.message });
+        res.status(500).json({ success: false, error: `فشل استيراد المنتجات: ${  err.message}` });
     }
 };

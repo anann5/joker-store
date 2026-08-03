@@ -6,11 +6,11 @@ import { initI18n, getCurrentLanguage } from './i18n.js';
 // ======================================================
 //  البيانات الأساسية للأقسام
 // ======================================================
-export let rawServerData = { categories: {} };
+export const rawServerData = { categories: {} };
 
 let searchIndex = []; // 🚀 فهرس البحث السريع
 let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
-let productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
+const productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
 
 // ======================================================
 // 🚀 تشغيل سلايدر العروض تلقائياً
@@ -41,7 +41,7 @@ async function updateTrustTicker() {
             const tickerText = data.orders.map(o => 
                 `✨ تم تسليم طلب #${o.orderId.substring(0,8)} بنجاح (${o.productName}) .. `
             ).join(' ✅ ');
-            tickerZone.innerHTML = tickerText + " 🛡️ جميع الأكواد أصلية ومضمونة 100%";
+            tickerZone.innerHTML = `${tickerText  } 🛡️ جميع الأكواد أصلية ومضمونة 100%`;
         }
     } catch (e) {
         // في حال الفشل نترك النص الافتراضي الجميل الذي وضعناه
@@ -52,7 +52,7 @@ async function updateTrustTicker() {
 //  دوالمساعدة (Helper Functions)
 // ======================================================
 function detectRegion(item) {
-    const text = ((item.productName || item.name || "") + " " + (item._id || item.id || "")).toLowerCase();
+    const text = (`${item.productName || item.name || ""  } ${  item._id || item.id || ""}`).toLowerCase();
     if (text.includes('tr') || text.includes('تركي')) return 'tr';
     if (text.includes('ae') || text.includes('امارات')) return 'ae';
     if (text.includes('sa') || text.includes('سعودي')) return 'sa';
@@ -110,8 +110,9 @@ export function selectCategory(categoryKey) {
     grid.className = 'products-grid'; // تطبيق كلاس الشبكة للمنتجات
     grid.removeAttribute('style');
 
-    if (backContainer) backContainer.style.display = 'block';
+    if (backContainer) backContainer.classList.remove('hidden');
     if (regionBar) {
+        regionBar.classList.remove('hidden');
         regionBar.style.display = 'flex';
         regionBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
         const allBtn = regionBar.querySelector('[data-target="all"]');
@@ -120,9 +121,9 @@ export function selectCategory(categoryKey) {
 
     // استخدام مؤشر تحميل مرئي أفضل
     grid.innerHTML = `
-        <div class="loader-container" style="grid-column:1/-1; text-align:center; padding:60px 0; display:flex; justify-content:center; align-items:center; flex-direction:column; gap:15px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--primary-neon);"></i>
-            <p style="color:#b9bbbe; margin-top:15px;">جاري جلب البطاقات...</p>
+        <div class="loader-container">
+            <i class="fas fa-spinner fa-spin loader-icon"></i>
+            <p class="loader-text">جاري جلب البطاقات...</p>
         </div>
     `;
 
@@ -549,7 +550,7 @@ function setupEventListeners() {
             filterTabs.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const filter = btn.dataset.filter;
+            const {filter} = btn.dataset;
             const searchInput = document.getElementById('searchInput');
             if (searchInput) searchInput.value = '';
             filter === 'all' ? showAllCategories() : selectCategory(filter);
@@ -563,57 +564,100 @@ function setupEventListeners() {
         if (!searchInput || !resultsContainer) return;
 
         let debounceTimer;
+
+        const showResults = () => resultsContainer.classList.add('active');
+        const hideResults = () => {
+            resultsContainer.classList.remove('active');
+            resultsContainer.innerHTML = '';
+        };
+
+        const renderLoadingSkeleton = () => {
+            let html = '';
+            for (let i = 0; i < 5; i++) {
+                html += `
+                    <div class="autocomplete-skeleton">
+                        <div class="skeleton-img"></div>
+                        <div class="skeleton-text"></div>
+                    </div>
+                `;
+            }
+            resultsContainer.innerHTML = html;
+            showResults();
+        };
+
+        const renderResults = (results, lang, query) => {
+            resultsContainer.innerHTML = '';
+            if (results.length === 0) {
+                resultsContainer.innerHTML = `<div class="autocomplete-empty">لا توجد نتائج لبحثك "<strong>${query}</strong>"</div>`;
+                showResults();
+                return;
+            }
+
+            results.forEach(product => {
+                const imgSrc = product.image ? `image/${product.image}` : 'image/logo.png';
+                const name = product.productName[lang] || product.productName['ar'] || '';
+                const categoryTitle = rawServerData.categories[product.category]?.title || 'قسم غير معروف';
+
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.innerHTML = `
+                    <img src="${imgSrc}" alt="${name}" loading="lazy">
+                    <div class="autocomplete-item-info">
+                        <h4>${name}</h4>
+                        <span>${categoryTitle}</span>
+                    </div>
+                    <span class="price">$${product.price.toFixed(2)}</span>
+                `;
+                item.addEventListener('click', () => {
+                    const clientItem = formatItem(product, product.category, detectRegion(product));
+                    showProductDetails(clientItem);
+                    hideResults();
+                    searchInput.value = '';
+                });
+                resultsContainer.appendChild(item);
+            });
+            showResults();
+        };
+
         searchInput.addEventListener('input', (e) => {
             clearTimeout(debounceTimer);
             const query = e.target.value.trim();
 
             if (query.length < 2) {
-                resultsContainer.style.display = 'none';
+                hideResults();
                 return;
             }
 
-            debounceTimer = setTimeout(async () => {
-                // --- ✨ التحسين: البحث محلياً بدلاً من إرسال طلب ---
+            // إظهار skeleton loading بينما البحث
+            renderLoadingSkeleton();
+
+            debounceTimer = setTimeout(() => {
                 const lang = getCurrentLanguage();
                 const lowerCaseQuery = query.toLowerCase();
 
+                // --- ✨ بحث موحد باللغة العربية والإنجليزية ---
                 const results = searchIndex.filter(product => {
-                    const productName = (product.productName[lang] || product.productName['ar'] || '').toLowerCase();
-                    return productName.includes(lowerCaseQuery);
+                    const nameAr = (product.productName.ar || '').toLowerCase();
+                    const nameEn = (product.productName.en || '').toLowerCase();
+                    const category = (product.category || '').toLowerCase();
+                    return nameAr.includes(lowerCaseQuery) || nameEn.includes(lowerCaseQuery) || category.includes(lowerCaseQuery);
                 }).slice(0, 10); // عرض أول 10 نتائج فقط
-                
-                resultsContainer.innerHTML = '';
-                if (results.length > 0) {
-                    results.forEach(product => {
-                        const item = document.createElement('div');
-                        item.className = 'autocomplete-item';
-                        item.innerHTML = `
-                            <img src="${product.image || 'image/logo.png'}" alt="${product.productName}">
-                            <div class="autocomplete-item-info">
-                                <h4>${product.productName[lang] || product.productName['ar']}</h4>
-                                <span>${rawServerData.categories[product.category]?.title || 'قسم غير معروف'}</span>
-                            </div>
-                            <span class="price">${product.price.toFixed(2)}$</span>
-                        `;
-                        item.onclick = () => {
-                            const clientItem = formatItem(product, product.category, detectRegion(product));
-                            showProductDetails(clientItem);
-                            resultsContainer.style.display = 'none';
-                            searchInput.value = '';
-                        };
-                        resultsContainer.appendChild(item);
-                    });
-                    resultsContainer.style.display = 'block';
-                } else {
-                    resultsContainer.style.display = 'none';
-                }
+
+                renderResults(results, lang, query);
             }, 300); // انتظار 300ms بعد توقف المستخدم عن الكتابة
         });
 
         // إخفاء النتائج عند الضغط خارج حقل البحث
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-container') && !e.target.closest('.search-container-mobile')) {
-                resultsContainer.style.display = 'none';
+                hideResults();
+            }
+        });
+
+        // إخفاء النتائج عند الضغط على Escape
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideResults();
             }
         });
     };
@@ -727,7 +771,7 @@ function setupEventListeners() {
                     updateCartUI();
                     showToast('🚀 تم استلام طلبك بنجاح! سيصلك الكود فور تأكيد الأدمن.', 'success');
                 } else {
-                    showToast('❌ فشل إرسال الطلب: ' + (result.error || 'حدث خطأ غير متوقع'), 'error');
+                    showToast(`❌ فشل إرسال الطلب: ${  result.error || 'حدث خطأ غير متوقع'}`, 'error');
                 }
             } catch (err) {
                 showToast('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.', 'error');

@@ -83,7 +83,7 @@ export function initI18n() {
     document.getElementById('lang-switcher').addEventListener('click', () => {
         const newLang = currentLang === 'ar' ? 'en' : 'ar';
         // إعادة تحميل الصفحة مع اللغة الجديدة في الرابط
-        window.location.href = window.location.pathname + `?lang=${newLang}`;
+        window.location.href = `${window.location.pathname  }?lang=${newLang}`;
     });
 }
 

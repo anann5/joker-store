@@ -76,7 +76,7 @@ exports.approveOrder = async (req, res) => {
 
                 await createLog('إرجاع رصيد آلي', `فشل طلب #${order.orderId} وتم إرجاع ${order.price}$ لحساب ${order.buyerEmail}`, req);
                 
-                const extendedAlert = failureAlert + `\n💰 *الإجراء الآلي:* تم تحويل \`${order.price}$\` إلى محفظة الزبون.`;
+                const extendedAlert = `${failureAlert  }\n💰 *الإجراء الآلي:* تم تحويل \`${order.price}$\` إلى محفظة الزبون.`;
                 await sendTelegramAlert(extendedAlert);
 
                 return res.status(502).json({ 
@@ -99,6 +99,6 @@ exports.approveOrder = async (req, res) => {
 
     } catch (err) {
         console.error('Approval Error:', err.message);
-        res.status(500).json({ success: false, error: 'فشل تنفيذ الطلب: ' + err.message });
+        res.status(500).json({ success: false, error: `فشل تنفيذ الطلب: ${  err.message}` });
     }
 };
