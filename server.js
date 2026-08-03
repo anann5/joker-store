@@ -4,13 +4,16 @@ dotenv.config();
 const express = require("express");
 const path = require("path");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 const connectDB = require("./config/database");
 const adminRoutes = require("./routes/adminRoutes");
 const storeRoutes = require("./routes/storeRoutes");
 const userRoutes = require("./routes/userRoutes");
 const rateLimit = require("express-rate-limit");
 const { syncInventoryInternal, cleanupOldLogsInternal } = require("./controllers/adminController");
+const { verifyAdminToken } = require("./controllers/authController");
 const { logSecurityEvent } = require("./middleware/securityLogger");
+const jwt = require("jsonwebtoken");
 
 const app = express();
 
@@ -31,7 +34,7 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             scriptSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
-            styleSrc: ["'self'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com", "https://www.gstatic.com"],
             imgSrc: ["'self'", "data:", "https:"],
             connectSrc: ["'self'"],
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
@@ -66,6 +69,9 @@ app.use("/api/", limiter);
 // Parse JSON
 app.use(express.json({ limit: "10kb" }));
 
+// Cookie parser
+app.use(cookieParser());
+
 // Sanitize inputs (prevent NoSQL injection)
 app.use((req, res, next) => {
     const sanitize = (obj) => {
@@ -92,23 +98,43 @@ app.use((req, res, next) => {
 // Database Connection
 connectDB();
 
-// 📂 Static Files
+// 📂 Static Files — ONLY 'public' folder is exposed publicly
+// private/ (containing admin.html, admin.js) is NOT exposed — only served via protected /admin route
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(__dirname));
 
 // 🌐 Routes
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-app.get("/admin", (req, res) => {
-    res.sendFile(path.join(__dirname, "admin.html"));
+// 🔒 Middleware للصفحة الكاملة — توجيه متصفح غير الموثّقين
+const authenticateAdminPage = (req, res, next) => {
+    const token = req.cookies['admin_token'];
+    if (!token) {
+        return res.redirect('/login.html');
+    }
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.redirect('/login.html');
+        }
+        req.admin = decoded;
+        next();
+    });
+};
+
+app.get("/admin", authenticateAdminPage, (req, res) => {
+    res.sendFile(path.join(__dirname, "private", "admin.html"));
 });
+
+app.get("/admin.js", verifyAdminToken, (req, res) => {
+    res.sendFile(path.join(__dirname, "private", "admin.js"));
+});
+
 app.get("/login.html", (req, res) => {
-    res.sendFile(path.join(__dirname, "login.html"));
+    res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
 app.get("/login", (req, res) => {
-    res.sendFile(path.join(__dirname, "login.html"));
+    res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
 // API routes

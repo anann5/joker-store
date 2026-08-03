@@ -25,6 +25,8 @@ router.use(authController.verifyAdminToken);
 router.get('/dashboard', statsController.getStats);
 router.get('/inventory', productController.getInventory);
 router.get('/inventory/stats', productController.getStockStats);
+router.get('/inventory/export', productController.exportProductsCSV);
+router.post('/inventory/import', productController.importProductsCSV);
 router.post('/inventory/add', productController.addProductManual);
 router.post('/inventory/create', productController.createProduct);
 router.post('/inventory/sync', productController.syncExternalProducts);

@@ -10,8 +10,7 @@ const MAX_FAILED_ATTEMPTS = 5;
 
 // Middleware للتحقق من التوكن
 exports.verifyAdminToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = req.cookies['admin_token'] || (req.headers['authorization'] && req.headers['authorization'].split(' ')[1]);
 
     if (!token) {
         logSecurityEvent('UNAUTHORIZED_ACCESS', 'محاولة الوصول المشربه بدون توكن', req);

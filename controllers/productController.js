@@ -353,3 +353,170 @@ exports.getStockStats = async (req, res) => {
         res.status(500).json({ success: false, error: 'فشل جلب إحصاءات المخزون.' });
     }
 };
+
+/**
+ * تصدير جميع المنتجات بصيغة CSV
+ */
+exports.exportProductsCSV = async (req, res) => {
+    try {
+        const products = await Product.find({}).lean();
+        
+        // Create CSV content
+        const header = [
+            'الاسم عربي', 'Name English', 'الفئة', 'المنطقة', 'السعر', 
+            'هامش الربح', 'السعر الأساسي', 'نوع المنتج', 'نوع الاشتراك',
+            'مدة الاشتراك (أيام)', 'المزود', 'معرف المزود', 'رابط الصورة',
+            'الوصف عربي', 'Description English', 'الحالة'
+        ];
+
+        const rows = products.map(product => {
+            const codes = product.codes || [];
+            const availableCodes = codes.filter(c => c.status === 'available').length;
+            
+            return [
+                product.productName?.ar || '',
+                product.productName?.en || '',
+                product.category || '',
+                product.region || '',
+                product.price.toFixed(2),
+                product.profitMargin?.toString() || '1.10',
+                product.basePrice?.toString() || '0',
+                product.isSubscription ? 'اشتراك' : (product.isExternal ? 'خارجي' : 'محلي'),
+                product.subscriptionType || '',
+                product.subscriptionDuration?.toString() || '',
+                product.currentProvider || 'Local',
+                product.externalId || '',
+                product.image || '',
+                product.description?.ar || '',
+                product.description?.en || '',
+                product.isActive ? 'نشط' : 'غير نشط'
+            ].join(',');
+        });
+
+        // Add BOM for Arabic support
+        const csvContent = '\uFEFF' + [header.join(','), ...rows].join('\n');
+        
+        await createLog('تصدير منتجات', `تم تصدير ${products.length} منتج بصيغة CSV`, req);
+
+        res.header('Content-Type', 'text/csv;charset=utf-8');
+        res.header('Content-Disposition', `attachment; filename=joker_products_${new Date().toISOString().split('T')[0]}.csv`);
+        res.send(csvContent);
+        
+    } catch (err) {
+        console.error('Export error:', err);
+        res.status(500).json({ success: false, error: 'فشل تصدير المنتجات.' });
+    }
+};
+
+/**
+ * استيراد منتجات من CSV
+ */
+exports.importProductsCSV = async (req, res) => {
+    try {
+        const { csvData } = req.body;
+        
+        if (!csvData || !csvData.trim()) {
+            return res.status(400).json({ success: false, message: 'البيانات المرسلة فارغة.' });
+        }
+
+        const lines = csvData.trim().split('\n');
+        const results = { success: 0, errors: 0, errorDetails: [] };
+        
+        // Parse CSV more accurately (handling Arabic commas/quotes)
+        const parseCSVLine = (line) => {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '\"' && (line[i+1] === '\"')) {
+                    current += '\"';
+                    i++;
+                } else if (char === '\"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result;
+        };
+
+        // Skip header row
+        for (let i = 1; i < lines.length; i++) {
+            try {
+                const fields = parseCSVLine(lines[i]);
+                
+                // Map CSV fields to product schema
+                const productData = {
+                    productName: {
+                        ar: fields[0]?.trim() || 'منتج جديد',
+                        en: fields[1]?.trim() || 'New Product'
+                    },
+                    category: fields[2]?.trim() || 'gaming_general',
+                    region: fields[3]?.trim() || 'global',
+                    price: parseFloat(fields[4]) || 0,
+                    profitMargin: parseFloat(fields[5]) || 1.10,
+                    basePrice: parseFloat(fields[6]) || 0,
+                    isSubscription: fields[7]?.trim() === 'اشتراك' || fields[7]?.trim() === 'subscription',
+                    subscriptionType: fields[8]?.trim() === 'recurring' ? 'recurring' : 'fixed',
+                    subscriptionDuration: fields[9] && parseInt(fields[9]) ? parseInt(fields[9]) : null,
+                    currentProvider: fields[10]?.trim() || 'Local',
+                    externalId: fields[11]?.trim() || undefined,
+                    image: fields[12]?.trim() || '',
+                    description: {
+                        ar: fields[13]?.trim() || 'لا يوجد وصف متاح حالياً لهذا المنتج.',
+                        en: fields[14]?.trim() || 'No description is available for this product at the moment.'
+                    },
+                    isActive: fields[15]?.trim() !== 'غير نشط',
+                    isExternal: fields[15]?.trim() === 'خارجي' || fields[7]?.trim() === 'خارجي'
+                };
+
+                // Check if product already exists (by English name) to handle "update existing"
+                let existingProduct = await Product.findOne({
+                    'productName.en': productData.productName.en,
+                    category: productData.category
+                });
+
+                if (existingProduct) {
+                    // Update existing product
+                    Object.assign(existingProduct, productData);
+                    existingProduct.updatedAt = new Date();
+                    await existingProduct.save();
+                } else {
+                    // Create new product
+                    const newProduct = new Product(productData);
+                    await newProduct.save();
+                }
+                
+                results.success++;
+                
+            } catch (err) {
+                results.errors++;
+                results.errorDetails.push(`الصف ${i + 1}: ${err.message}`);
+            }
+        }
+
+        await createLog('استيراد منتجات', `تم استيراد ${results.success} منتج من CSV (${results.errors} أخطاء)`, req);
+
+        const message = results.errors > 0 
+            ? `تم استيراد ${results.success} منتج بنجاح، مع ${results.errors} خطأ.`
+            : `✅ تم استيراد ${results.success} منتج بنجاح!`;
+            
+        res.json({ 
+            success: true, 
+            message: message,
+            successCount: results.success,
+            errorCount: results.errors,
+            errors: results.errorDetails
+        });
+        
+    } catch (err) {
+        console.error('Import error:', err);
+        res.status(500).json({ success: false, error: 'فشل استيراد المنتجات: ' + err.message });
+    }
+};

@@ -1,0 +1,18 @@
+{
+    "site_title": "Joker Store | بطاقات رقمية وألعاب",
+    "nav_home": "الرئيسية",
+    "nav_categories": "الأقسام",
+    "nav_digital_cards": "البطاقات الرقمية",
+    "search_placeholder": "ابحث عن باقة، شدات، بطاقة أو قسم...",
+    "login_button": "تسجيل الدخول",
+    "my_account_button": "حسابي",
+    "cart_title": "سلة المشتريات الخاصة بك",
+    "total_label": "المجموع الإجمالي:",
+    "email_label": "البريد الإلكتروني لاستلام الكود",
+    "email_placeholder": "ادخل بريدك الإلكتروني",
+    "payment_method_label": "اختر طريقة الدفع",
+    "payment_ref_label": "رقم العملية / اسم المحوّل",
+    "payment_ref_placeholder": "ادخل رقم العملية أو اسم المحوّل",
+    "submit_order_button": "🚀 تأكيد التحويل وإرسال الطلب",
+    "back_to_categories": "الرجوع للأقسام الرئيسية"
+}
