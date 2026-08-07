@@ -31,7 +31,10 @@ npm test -- --runInBand
    - Build Command: `npm install`
    - Start Command: `node server.js`
 4. أضف المتغيرات البيئية المطلوبة مثل `MONGODB_URI`, `JWT_SECRET`, `ADMIN_PASSWORD_HASH` و `NODE_ENV=production`.
-5. استخدم ملف [render.yaml](render.yaml) كإعداد جاهز.
+5. تأكد من أن Render يمرر رؤوس `X-Forwarded-Proto` و `X-Forwarded-For`.
+   - التطبيق الآن يستخدم `app.set('trust proxy', 1)` في `app.js`.
+   - هذا يحل خطأ `express-rate-limit` المتعلق بـ `X-Forwarded-For`.
+6. استخدم ملف [render.yaml](render.yaml) كإعداد جاهز.
 
 ## النشر باستخدام Docker
 ```bash
