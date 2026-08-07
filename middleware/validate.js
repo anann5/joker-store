@@ -8,8 +8,8 @@ exports.validate = (schema) => {
     return (req, res, next) => {
         const options = {
             abortEarly: false, // إرجاع جميع الأخطاء، وليس الأولى فقط
-            allowUnknown: true, // تجاهل الحقول غير المتوقعة
-            stripUnknown: true, // إزالة الحقول غير المتوقعة
+            allowUnknown: false,
+            stripUnknown: false
         };
 
         const { error, value } = schema.validate(req.body, options);
@@ -18,7 +18,7 @@ exports.validate = (schema) => {
             const message = error.details.map(el => el.message).join(', ');
             return res.status(400).json({
                 success: false,
-                message: 'بيانات غير صالحة: ' + message
+                message: `بيانات غير صالحة: ${  message}`
             });
         }
         
@@ -83,9 +83,10 @@ exports.registerSchema = Joi.object({
 exports.checkoutSchema = Joi.object({
     cartItems: Joi.array()
         .items(Joi.object({
-            id: Joi.string().required(),
-            qty: Joi.number().integer().min(1).required()
+            id: Joi.string().pattern(/^[a-fA-F0-9]{24}$/).required(),
+            qty: Joi.number().integer().min(1).max(99).required()
         }))
+        .unique('id')
         .min(1)
         .required()
         .messages({
@@ -124,4 +125,22 @@ exports.checkoutSchema = Joi.object({
 exports.productImageSchema = Joi.object({
     productId: Joi.string().required(),
     image: Joi.string().required()
+});
+
+exports.contactSchema = Joi.object({
+    name: Joi.string().trim().min(2).max(80).required().messages({
+        'string.empty': 'الاسم مطلوب',
+        'string.min': 'الاسم يجب أن يكون حرفين على الأقل',
+        'any.required': 'الاسم مطلوب'
+    }),
+    email: Joi.string().trim().email().required().messages({
+        'string.empty': 'البريد الإلكتروني مطلوب',
+        'string.email': 'البريد الإلكتروني غير صالح',
+        'any.required': 'البريد الإلكتروني مطلوب'
+    }),
+    message: Joi.string().trim().min(10).max(1000).required().messages({
+        'string.empty': 'الرسالة مطلوبة',
+        'string.min': 'الرسالة يجب أن تكون 10 أحرف على الأقل',
+        'any.required': 'الرسالة مطلوبة'
+    })
 });

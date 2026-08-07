@@ -563,9 +563,80 @@
             .controls { flex-direction: column; align-items: flex-start; }
             header h1 { font-size: 1.5rem; }
         }
-    </style>
+    }
+
+    /* Loading Overlay */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: var(--bg-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+    }
+
+    .loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .loading-content {
+        text-align: center;
+    }
+
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 3px solid rgba(162, 0, 255, 0.2);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .gradient-text {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .loading-subtitle {
+        color: var(--text-color);
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+</style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">
+                <span class="gradient-text">JOKER STORE</span>
+                <div class="loading-subtitle">جاري تحميل لوحة التحكم...</div>
+            </div>
+        </div>
+    </div>
     <div class="container">
         <!-- Header -->
         <header>
@@ -588,11 +659,12 @@
             <div class="controls">
                 <h2 class="section-title">المخزون الحالي بالمتجر</h2>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> تحديث القائمة</button>
-                    <span class="toggle-switch">
-                        <input type="checkbox" id="soundToggle" checked>
-                        <span class="slider"></span>
-                    </span>
+                <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> تحديث القائمة</button>
+                <button class="btn btn-approve" id="addManualBtn"><i class="fas fa-plus"></i> إضافة منتج يدوي</button>
+                <span class="toggle-switch">
+                    <input type="checkbox" id="soundToggle" checked>
+                    <span class="slider"></span>
+                </span>
                     <span id="soundIcon" class="fas fa-volume-up" style="color: var(--accent);"></span>
                 </div>
             </div>
@@ -661,9 +733,97 @@
         </div>
     </div>
 
+    <!-- Modal لإضافة منتج يدوي مع كودات -->
+    <div class="modal-overlay" id="addManualModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeAddManualModalBtn">×</button>
+            <h3 class="modal-title"><i class="fas fa-plus-circle"></i> إضافة منتج يدوي</h3>
+
+            <!-- معلومات المنتج -->
+            <div class="form-group">
+                <label>اسم المنتج بالعربية</label>
+                <input type="text" id="manualProductNameAr" class="form-control" placeholder="مثال: بطاقة ستيم 10$">
+            </div>
+            <div class="form-group">
+                <label>اسم المنتج بالإنجليزية</label>
+                <input type="text" id="manualProductNameEn" class="form-control" placeholder="مثال: Steam Card $10">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الفئة</label>
+                    <input type="text" id="manualCategory" class="form-control" placeholder="مثال: steam">
+                </div>
+                <div class="form-group">
+                    <label>السعر (دولار)</label>
+                    <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="10.00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>هامش الربح (×)</label>
+                <input type="number" id="manualProfitMargin" step="0.01" class="form-control" value="1.15">
+            </div>
+
+            <!-- رفع كودات -->
+            <div class="form-group">
+                <label>الكودات (كل كود على سطر جديد)</label>
+                <textarea id="manualCodesTextarea" class="form-control" rows="6" placeholder="XXXX-XXXX-XXXX
+YYYY-YYYY-YYYY
+ZZZZ-ZZZZ-ZZZZ"></textarea>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">أو استخدم زرّ الرفع أدناه</small>
+            </div>
+
+            <div class="form-group">
+                <label>أو حمّل ملف CSV (كل كود في العمود الأول)</label>
+                <input type="file" id="manualCodesFile" accept=".csv,.txt,.json" class="form-control">
+            </div>
+
+            <!-- عداد الكودات -->
+            <div class="form-group" id="codeCountInfo" style="display: none;">
+                <div class="badge badge-accent">تم اكتشاف <strong id="codeCountValue">0</strong> كود</div>
+            </div>
+
+            <!-- زر الإرسال -->
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAddManualBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveAddManualBtn" style="min-width: 140px;">
+                    <span id="saveBtnText"><i class="fas fa-save"></i> حفظ المنتج</span>
+                    <span id="saveBtnLoading" class="hidden"><i class="fas fa-spinner fa-pulse"></i> جاري الحفظ...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 1000;"></div>
 
-    <script src="admin.js"></script>
+    <script>
+        (function() {
+            const overlay = document.getElementById('loadingOverlay');
+            const script = document.createElement('script');
+            script.src = '/admin.js';
+
+            script.onload = function() {
+                if (overlay && !overlay.classList.contains('hidden')) {
+                    overlay.classList.add('hidden');
+                    setTimeout(function() {
+                        if (overlay.parentNode) {
+                            overlay.parentNode.removeChild(overlay);
+                        }
+                    }, 600);
+                }
+            };
+
+            script.onerror = function() {
+                console.error('Failed to load admin.js');
+                if (overlay) {
+                    overlay.innerHTML = '<div class="loading-text"><span style="color:var(--danger)">خطأ في تحميل الواجهة</span></div>';
+                }
+            };
+
+            document.body.appendChild(script);
+        })();
+    </script>
 </body>
 </html>

@@ -5,7 +5,6 @@ const { logSecurityEvent } = require('../middleware/securityLogger');
 
 // Track failed login attempts
 const failedAttempts = new Map();
-const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
 
@@ -39,7 +38,7 @@ exports.register = async (req, res) => {
 
         const newUser = new User({
             email: email.toLowerCase(),
-            password: hashedPassword,
+            passwordHash: hashedPassword,
             balance: 0
         });
 
@@ -81,7 +80,7 @@ exports.login = async (req, res) => {
             });
         }
 
-        const user = await User.findOne({ email: email.toLowerCase() });
+        const user = await User.findOne({ email: email.toLowerCase() }).select('+passwordHash');
 
         if (!user) {
             // Increment failed attempts
@@ -92,7 +91,7 @@ exports.login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await bcrypt.compare(password, user.passwordHash);
         if (!isMatch) {
             // Increment failed attempts
             attempts.count++;
@@ -149,7 +148,7 @@ exports.logout = async (req, res) => {
     try {
         logSecurityEvent('USER_LOGOUT', `تسجيل خروج: ${req.user?.email || 'مجهول'}`, req);
         res.json({ success: true, message: 'تم تسجيل الخروج بنجاح.' });
-    } catch (err) {
+    } catch (_err) {
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء تسجيل الخروج.' });
     }
 };

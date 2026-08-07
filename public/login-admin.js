@@ -11,16 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const res = await fetch('/api/admin/login', {
                     method: 'POST',
+                    credentials: 'include', // ✅ إرسال واستقبال الـ cookies تلقائياً
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password })
                 });
                 const data = await res.json();
 
                 if (data.success) {
-                    // ملاحظة أمان: HttpOnly لا يعمل عبر document.cookie (يتجاهله المتصفح).
-                    // الحماية الحالية: SameSite=Lax يمنع CSRF، و HTTPS في الإنتاج يحمي النقل.
-                    // بالنسخة المحسّنة، يتم ضبط HttpOnly على مستوى الخادم.
-                    document.cookie = `admin_token=${data.token}; path=/; SameSite=Lax; max-age=${12 * 3600}`;
+                    // relies on the server-set HttpOnly cookie for authentication
                     window.location.href = '/admin';
                 } else {
                     errorMsg.textContent = data.message;

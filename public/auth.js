@@ -1,6 +1,14 @@
 import { showToast } from './ui.js';
+import { logout } from './logout.js';
 
 let currentUser = null;
+
+function setAuthButtonLabel(label) {
+    const userStateText = document.getElementById('userStateText');
+    if (userStateText) {
+        userStateText.textContent = label;
+    }
+}
 
 /**
  * تهيئة نظام المصادقة
@@ -18,32 +26,24 @@ export function initAuth() {
 
     // فحوصات دفاعية للتأكد من وجود جميع العناصر الضرورية
     if (!authModal) {
-        console.error("Error: Element with ID 'authModal' not found. Authentication modal is missing.");
         return; // توقف عن التهيئة إذا كان العنصر الحرج مفقوداً
     }
     if (!userAuthBtn) {
-        console.error("Error: Element with ID 'userAuthBtn' not found. User authentication button is missing.");
         // يمكن الاستمرار هنا، لكن المستخدم لن يتمكن من فتح النافذة المنبثقة عبر الزر
     }
     if (!closeAuthModal) {
-        console.error("Error: Element with ID 'closeAuthModal' not found. Close button for auth modal is missing.");
         // يمكن الاستمرار، لكن المستخدم لن يتمكن من إغلاق النافذة بسهولة
     }
     if (!loginForm) {
-        console.error("Error: Element with ID 'loginForm' not found. Login form is missing.");
     }
     if (!registerForm) {
-        console.error("Error: Element with ID 'registerForm' not found. Register form is missing.");
     }
     if (!logoutBtn) {
-        console.error("Error: Element with ID 'logoutBtn' not found. Logout button is missing.");
         // هذا أقل أهمية للتهيئة الأولية، لكن تسجيل الخروج لن يعمل
     }
     if (!orderHistoryBtn) {
-        console.error("Error: Element with ID 'orderHistoryBtn' not found. Order history button is missing.");
     }
     if (!closeOrderHistoryModal) {
-        console.error("Error: Element with ID 'closeOrderHistoryModal' not found. Close button for order history modal is missing.");
     }
 
 
@@ -116,7 +116,7 @@ async function showOrderHistory() {
                 handleLogout(); // تسجيل الخروج إذا كانت الجلسة منتهية
             }
         }
-    } catch (err) {
+    } catch (_err) {
         listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ حدث خطأ في الاتصال بالخادم.</div>`;
     }
 }
@@ -196,7 +196,7 @@ async function handleLogin(e) {
         } else {
             showToast(`❌ ${data.message}`, 'error');
         }
-    } catch (err) {
+    } catch (_err) {
         showToast('❌ حدث خطأ في الاتصال بالخادم.', 'error');
     } finally {
         btn.disabled = false;
@@ -232,7 +232,7 @@ async function handleRegister(e) {
         } else {
             showToast(`❌ ${data.message}`, 'error');
         }
-    } catch (err) {
+    } catch (_err) {
         showToast('❌ حدث خطأ في الاتصال بالخادم.', 'error');
     } finally {
         btn.disabled = false;
@@ -250,15 +250,21 @@ function checkLoginState() {
             // فك تشفير التوكن محلياً للحصول على بيانات المستخدم
             const payload = JSON.parse(atob(token.split('.')[1]));
             currentUser = { email: payload.email };
-            document.getElementById('userStateText').textContent = 'حسابي';
-            document.getElementById('userEmailDisplay').textContent = currentUser.email;
-        } catch (e) {
+            setAuthButtonLabel('حسابي');
+            const userEmailDisplay = document.getElementById('userEmailDisplay');
+            if (userEmailDisplay) {
+                userEmailDisplay.textContent = currentUser.email;
+            }
+        } catch (_) {
             logout(); // التوكن غير صالح
         }
     } else {
         currentUser = null;
-        document.getElementById('userStateText').textContent = 'تسجيل الدخول';
-        document.getElementById('userAccountDropdown').classList.remove('active');
+        setAuthButtonLabel('تسجيل الدخول');
+        const userAccountDropdown = document.getElementById('userAccountDropdown');
+        if (userAccountDropdown) {
+            userAccountDropdown.classList.remove('active');
+        }
     }
 }
 

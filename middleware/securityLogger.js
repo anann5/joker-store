@@ -31,7 +31,7 @@ exports.logSecurityEvent = (eventType, message, req) => {
         }
         
         const logFile = path.join(logDir, 'security.log');
-        const logLine = JSON.stringify(logEntry) + '\n';
+        const logLine = `${JSON.stringify(logEntry)  }\n`;
         fs.appendFileSync(logFile, logLine);
         
         // أيضًا إرسال تنبيه للأدمن عبر تلغرام في حالات الطارئة

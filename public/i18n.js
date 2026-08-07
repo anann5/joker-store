@@ -24,7 +24,6 @@ async function setLanguage(lang) {
         // تعديل: جلب الملفات من المجلد الرئيسي مباشرة
         const response = await fetch(`${lang}.json`);
         if (!response.ok) {
-            console.error(`Could not load translation file for: ${lang}`);
             return;
         }
         currentTranslations = await response.json();
@@ -47,7 +46,7 @@ async function setLanguage(lang) {
         window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: lang } }));
 
     } catch (error) {
-        console.error('Error loading or applying translations:', error);
+        // Errors are handled gracefully by not translating.
     }
 }
 

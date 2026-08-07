@@ -1,104 +1,155 @@
-const { Product, Order, User } = require('../models');
+const { Product, Order } = require('../models');
 const { createLog, sendTelegramAlert, externalProviders } = require('./helpers');
 const axios = require('axios');
 
-exports.getOrders = async (req, res) => {
+const PROVIDER_RETRY_COUNT = 3;
+const PROVIDER_TIMEOUT_MS = 15000;
+
+function getItemProductId(item) {
+    return item.productId || item.id;
+}
+
+function extractProviderCodes(data, expectedQuantity) {
+    const rawCodes = Array.isArray(data?.codes)
+        ? data.codes
+        : Array.isArray(data?.items)
+            ? data.items.map(item => item.code || item.pin)
+            : [data?.code || data?.pin];
+    const codes = rawCodes.filter(code => typeof code === 'string' && code.trim());
+
+    if (codes.length !== expectedQuantity) {
+        throw new Error('المزود لم يرسل العدد المطلوب من الأكواد');
+    }
+
+    return codes;
+}
+
+async function buyExternalCodes(product, quantity) {
+    const provider = externalProviders.find(candidate => candidate.name === product.currentProvider);
+    if (!provider?.purchaseUrl || !provider.apiKey || !product.externalId) {
+        throw new Error('إعداد شراء المنتج الخارجي غير مكتمل');
+    }
+
+    let lastError;
+    for (let attempt = 1; attempt <= PROVIDER_RETRY_COUNT; attempt += 1) {
+        try {
+            // eslint-disable-next-line no-await-in-loop
+            const response = await axios.post(provider.purchaseUrl, {
+                api_key: provider.apiKey,
+                product_id: product.externalId,
+                amount: quantity
+            }, { timeout: PROVIDER_TIMEOUT_MS });
+
+            return {
+                codes: extractProviderCodes(response.data, quantity),
+                costPrice: Number(response.data?.costPrice ?? response.data?.cost ?? product.basePrice * quantity) || 0
+            };
+        } catch (err) {
+            lastError = err;
+            const isClientFailure = err.response?.status >= 400 && err.response?.status < 500;
+            if (isClientFailure || attempt === PROVIDER_RETRY_COUNT) {
+                break;
+            }
+        }
+    }
+
+    throw lastError || new Error('فشل شراء الأكواد من المزود');
+}
+
+exports.getOrders = async (_req, res) => {
     try {
         const orders = await Order.find().sort({ createdAt: -1 });
-        res.json(orders);
-    } catch (err) {
-        res.status(500).json({ error: 'فشل جلب الطلبات' });
+        res.json({ success: true, orders });
+    } catch (_err) {
+        res.status(500).json({ success: false, message: 'فشل جلب الطلبات' });
     }
 };
 
 exports.approveOrder = async (req, res) => {
+    let order;
+
     try {
-        const order = await Order.findOne({ orderId: req.params.orderId });
-        if (!order) return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
-        if (order.status !== 'pending') return res.status(400).json({ success: false, message: 'الطلب معالج مسبقاً' });
+        order = await Order.findOneAndUpdate(
+            { orderId: req.params.orderId, status: 'pending' },
+            { $set: { status: 'processing' } },
+            { new: true }
+        );
 
-        const itemData = order.items[0];
-        const product = await Product.findById(itemData.id);
-        let deliveredCode = '';
+        if (!order) {
+            const existingOrder = await Order.findOne({ orderId: req.params.orderId }).select('status');
+            if (!existingOrder) {
+                return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+            }
+            return res.status(409).json({ success: false, message: 'الطلب معالج مسبقاً' });
+        }
 
-        if (product.isExternal) {
-            const provider = externalProviders.find(p => p.name === product.currentProvider);
-            let attempts = 0;
-            const maxAttempts = 3;
-            let lastError = null;
+        const allDeliveredCodes = [];
+        let totalCost = 0;
 
-            while (attempts < maxAttempts) {
-                attempts++;
-                try {
-                    const response = await axios.post(provider.purchaseUrl, {
-                        api_key: provider.apiKey,
-                        product_id: product.externalId,
-                        amount: 1
-                    }, { timeout: 15000 });
-
-                    deliveredCode = response.data.code || response.data.pin;
-                    if (deliveredCode) break;
-                    else throw new Error("المزود لم يرسل كوداً");
-
-                } catch (err) {
-                    lastError = err;
-                    if (err.response && err.response.status >= 400 && err.response.status < 500) break;
-                    if (attempts < maxAttempts) await new Promise(resolve => setTimeout(resolve, 3000));
-                }
+        for (const item of order.items) {
+            const productId = getItemProductId(item);
+            // eslint-disable-next-line no-await-in-loop
+            const product = await Product.findById(productId);
+            if (!product || !product.isActive) {
+                throw new Error('أحد منتجات الطلب لم يعد متاحاً');
             }
 
-            if (!deliveredCode) {
-                let errorType = 'فشل الاتصال بالمزود';
-                let details = lastError?.message || 'رد غير معروف';
+            item.fulfilmentStatus = 'processing';
+            const deliveredCodes = [];
+            let itemCost = 0;
 
-                if (lastError?.response) {
-                    const { status, data } = lastError.response;
-                    if (status === 402 || (data && (data.low_balance || data.error === 'insufficient_balance'))) {
-                        errorType = '❌ رصيد غير كافٍ';
-                        details = 'رصيدك لدى المزود لا يغطي تكلفة المنتج.';
-                    } else if (status === 401) {
-                        errorType = '🔑 خطأ في مفتاح API';
-                    } else if (status === 404) {
-                        errorType = '📦 المنتج غير متوفر';
-                    }
+            if (item.fulfilmentType === 'external' || product.isExternal) {
+                // eslint-disable-next-line no-await-in-loop
+                const purchase = await buyExternalCodes(product, item.qty);
+                deliveredCodes.push(...purchase.codes);
+                itemCost = purchase.costPrice;
+            } else {
+                for (let claimed = 0; claimed < item.qty; claimed += 1) {
+                    // eslint-disable-next-line no-await-in-loop
+                    const code = await Product.claimCodeAtomic(product._id, order.orderId, order.buyerEmail);
+                    deliveredCodes.push(code);
                 }
-
-                const failureAlert = `🚨 *فشل شراء كود آلياً!*\n🆔 *الطلب:* \`#${order.orderId}\`\n📦 *المنتج:* ${product.productName}\n🏢 *المزود:* ${provider.name}\n⚠️ *الخطأ:* ${errorType}\n📝 *التفاصيل:* ${details}\n🛠 *الإجراء:* يرجى التدخل اليدوي.`;
-                
-                order.status = 'failed';
-                await order.save();
-
-                let user = await User.findOne({ email: order.buyerEmail.toLowerCase() });
-                if (!user) user = new User({ email: order.buyerEmail.toLowerCase(), balance: 0 });
-                
-                user.balance += order.price;
-                await user.save();
-
-                await createLog('إرجاع رصيد آلي', `فشل طلب #${order.orderId} وتم إرجاع ${order.price}$ لحساب ${order.buyerEmail}`, req);
-                
-                const extendedAlert = `${failureAlert  }\n💰 *الإجراء الآلي:* تم تحويل \`${order.price}$\` إلى محفظة الزبون.`;
-                await sendTelegramAlert(extendedAlert);
-
-                return res.status(502).json({ 
-                    success: false, 
-                    message: `فشل الشراء من المزود. تم إرجاع المبلغ (${order.price}$) لرصيد الزبون.` 
-                });
+                itemCost = (Number(product.basePrice) || 0) * item.qty;
             }
-        } else {
-            deliveredCode = await Product.claimCodeAtomic(product._id, order.orderId, order.buyerEmail);
+
+            item.deliveredCodes = deliveredCodes;
+            item.costPrice = itemCost;
+            item.fulfilmentStatus = 'completed';
+            item.fulfilledAt = new Date();
+            allDeliveredCodes.push(...deliveredCodes);
+            totalCost += itemCost;
         }
 
         order.status = 'completed';
-        order.costPrice = product.basePrice || 0;
-        order.code = deliveredCode;
+        order.deliveredCodes = allDeliveredCodes;
+        order.code = allDeliveredCodes.length === 1 ? allDeliveredCodes[0] : null;
+        order.costPrice = totalCost;
         order.completedAt = new Date();
         await order.save();
-        await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, product._id, product.productName);
 
-        res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });
-
+        await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
+        return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });
     } catch (err) {
         console.error('Approval Error:', err.message);
-        res.status(500).json({ success: false, error: `فشل تنفيذ الطلب: ${  err.message}` });
+
+        if (order) {
+            order.status = 'failed';
+            order.failedAt = new Date();
+            order.items.forEach(item => {
+                if (item.fulfilmentStatus === 'processing') {
+                    item.fulfilmentStatus = 'failed';
+                }
+            });
+            await order.save();
+            await createLog('فشل تنفيذ طلب', `يتطلب الطلب #${order.orderId} تدخلاً يدوياً.`, req);
+            await sendTelegramAlert(`🚨 فشل تنفيذ الطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
+        }
+
+        return res.status(502).json({
+            success: false,
+            message: 'تعذر تنفيذ الطلب تلقائياً. تم تحويله للمراجعة اليدوية.'
+        });
     }
 };
+
+exports.buyExternalCodes = buyExternalCodes;

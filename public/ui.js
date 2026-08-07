@@ -56,7 +56,12 @@ export function showToast(message, type = 'info') {
 
     const toast = document.createElement('div');
     toast.className = `neon-toast toast-${type}`;
-    toast.innerHTML = `<div class="toast-header">${type.toUpperCase()}</div><div>${message}</div>`;
+    const header = document.createElement('div');
+    header.className = 'toast-header';
+    header.textContent = type.toUpperCase();
+    const body = document.createElement('div');
+    body.textContent = message;
+    toast.append(header, body);
 
     // تحديد لون الشريط الجانبي بناءً على النوع
     const colors = { success: '#2ecc71', error: '#e74c3c', info: '#3498db' };

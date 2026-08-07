@@ -6,7 +6,7 @@ exports.getInventory = async (req, res) => {
     try {
         const products = await Product.find({ isActive: true }).select('productName category region price codes updatedAt isExternal externalId profitMargin basePrice currentProvider');
         res.json(products);
-    } catch (err) {
+    } catch (_err) {
         res.status(500).json({ error: 'فشل جلب المخزون' });
     }
 };
@@ -28,10 +28,12 @@ const syncInventoryInternal = async () => {
         for (const provider of externalProviders) {
             if (!provider.apiUrl || !provider.apiKey) continue;
 
+            // eslint-disable-next-line no-await-in-loop
             const response = await axios.get(provider.apiUrl, { headers: { 'Authorization': `Bearer ${provider.apiKey}` } });
             const externalItems = response.data.items || [];
 
             for (const item of externalItems) {
+                // eslint-disable-next-line no-await-in-loop
                 const localProduct = await Product.findOne({ externalId: item.id, isExternal: true });
                 if (localProduct) {
                     const oldBasePrice = localProduct.basePrice;
@@ -40,11 +42,13 @@ const syncInventoryInternal = async () => {
                     localProduct.price = parseFloat((newBasePrice * localProduct.profitMargin).toFixed(2));
                     localProduct.updatedAt = new Date();
                     localProduct.currentProvider = provider.name;
+                    // eslint-disable-next-line no-await-in-loop
                     await localProduct.save();
                     updatedCount++;
 
                     if (oldBasePrice > 0 && (newBasePrice > oldBasePrice * 1.2)) {
                         const priceAlert = `🚨 *تنبيه: ارتفاع سعر عند المزود!*\n📦 *المنتج:* ${localProduct.productName}\n🏢 *المزود:* ${provider.name}\n📉 *السعر القديم:* \`${oldBasePrice}$\`\n📈 *السعر الجديد:* \`${newBasePrice}$\`\n💰 *سعرك الجديد:* \`${localProduct.price}$\``;
+                        // eslint-disable-next-line no-await-in-loop
                         await sendTelegramAlert(priceAlert);
                     }
                 }
@@ -55,6 +59,7 @@ const syncInventoryInternal = async () => {
         for (const p of balances) {
             if (p.status === 'متصل' && p.balance < 10) {
                 const balanceAlert = `💸 *تنبيه: رصيد منخفض لدى المزود!*\n🏢 *المزود:* ${p.name}\n💰 *الرصيد الحالي:* \`${p.balance} ${p.currency}\`\n🚀 *يرجى شحن حسابك.*`;
+                // eslint-disable-next-line no-await-in-loop
                 await sendTelegramAlert(balanceAlert);
             }
         }
@@ -182,6 +187,117 @@ exports.createProduct = async (req, res) => {
     } catch (err) {
         console.error('Create product error:', err);
         res.status(500).json({ success: false, error: 'فشل إنشاء المنتج.' });
+    }
+};
+
+/**
+ * إنشاء منتج مع كودات يدوي — يدعم رفع ملف CSV أو إرسال كودات كمصفوفة
+ * @route POST /api/admin/inventory/add-manual
+ * @body { productName:{ar,en}, category, price, manualCodes:[string] }
+ * @body [optional] file CSV عبر multipart/form-data
+ */
+exports.createProductWithManualCodes = async (req, res) => {
+    try {
+        const {
+            productName,
+            category,
+            region = 'global',
+            price = 0,
+            description,
+            image = '',
+            isExternal = false,
+            externalId,
+            profitMargin = 1.10,
+            basePrice = 0,
+            provider = 'Local',
+            isSubscription = false,
+            subscriptionType = 'fixed',
+            subscriptionDuration = null,
+            manualCodes = [],
+        } = req.body;
+
+        // ✅ التحقق من الاسم المطلوب (ar + en)
+        if (!productName || !productName.ar || !productName.en) {
+            return res.status(400).json({
+                success: false,
+                message: 'اسم المنتج مطلوب بالعربية والإنجليزية.'
+            });
+        }
+
+        // ✅ معالجة الكودات اليدوية
+        const codes = [];
+        if (Array.isArray(manualCodes) && manualCodes.length > 0) {
+            const seenCodes = new Set();
+            for (const code of manualCodes) {
+                const trimmed = String(code).trim();
+                if (trimmed && !seenCodes.has(trimmed)) {
+                    seenCodes.add(trimmed);
+                    codes.push({ value: trimmed, status: 'available' });
+                }
+            }
+        }
+
+        const productData = {
+            productName,
+            category,
+            region,
+            price: parseFloat(price) || 0,
+            description: description || {
+                ar: 'لا يوجد وصف متاح حالياً لهذا المنتج.',
+                en: 'No description is available for this product at the moment.'
+            },
+            image,
+            codes,
+            isExternal,
+            profitMargin: parseFloat(profitMargin) || 1.10,
+            basePrice: basePrice || 0,
+            currentProvider: provider || 'Local',
+            isSubscription,
+            subscriptionType,
+            subscriptionDuration
+        };
+
+        if (isExternal && externalId) {
+            productData.externalId = externalId;
+        }
+
+        const newProduct = new Product(productData);
+        await newProduct.save();
+
+        await createLog(
+            'إنشاء منتج يدوي',
+            `تم إنشاء منتج يدوي جديد: ${productName.ar || productName.en} بـ ${codes.length} كود`,
+            req,
+            newProduct._id,
+            productName.ar || productName.en
+        );
+
+        res.status(201).json({
+            success: true,
+            message: `✅ تم إنشاء المنتج بنجاح! (${codes.length} كود مضافة)`,
+            product: {
+                _id: newProduct._id,
+                productName: newProduct.productName,
+                category: newProduct.category,
+                price: newProduct.price,
+                codesCount: codes.length,
+                isExternal: newProduct.isExternal,
+                isSubscription: newProduct.isSubscription
+            }
+        });
+
+    } catch (err) {
+        console.error('Create product with manual codes error:', err);
+        if (err.code === 11000) {
+            return res.status(409).json({
+                success: false,
+                message: 'هذا الكود مستخدم مسبقًا. يرجى استخدام كودات فريدة.'
+            });
+        }
+        res.status(500).json({
+            success: false,
+            error: 'فشل إنشاء المنتج. يرجى المحاولة لاحقًا.'
+        });
     }
 };
 
@@ -349,7 +465,7 @@ exports.getStockStats = async (req, res) => {
                 externalCount
             }
         });
-    } catch (err) {
+    } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب إحصاءات المخزون.' });
     }
 };
@@ -370,8 +486,6 @@ exports.exportProductsCSV = async (req, res) => {
         ];
 
         const rows = products.map(product => {
-            const codes = product.codes || [];
-            const availableCodes = codes.filter(c => c.status === 'available').length;
             
             return [
                 product.productName?.ar || '',
@@ -430,10 +544,10 @@ exports.importProductsCSV = async (req, res) => {
             
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
-                if (char === '\"' && (line[i+1] === '\"')) {
-                    current += '\"';
+                if (char === '"' && (line[i+1] === '"')) {
+                    current += '"';
                     i++;
-                } else if (char === '\"') {
+                } else if (char === '"') {
                     inQuotes = !inQuotes;
                 } else if (char === ',' && !inQuotes) {
                     result.push(current);
@@ -477,6 +591,7 @@ exports.importProductsCSV = async (req, res) => {
                 };
 
                 // Check if product already exists (by English name) to handle "update existing"
+                // eslint-disable-next-line no-await-in-loop
                 const existingProduct = await Product.findOne({
                     'productName.en': productData.productName.en,
                     category: productData.category
@@ -486,10 +601,12 @@ exports.importProductsCSV = async (req, res) => {
                     // Update existing product
                     Object.assign(existingProduct, productData);
                     existingProduct.updatedAt = new Date();
+                    // eslint-disable-next-line no-await-in-loop
                     await existingProduct.save();
                 } else {
                     // Create new product
                     const newProduct = new Product(productData);
+                    // eslint-disable-next-line no-await-in-loop
                     await newProduct.save();
                 }
                 

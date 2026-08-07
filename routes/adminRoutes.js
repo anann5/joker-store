@@ -29,6 +29,7 @@ router.get('/inventory/export', productController.exportProductsCSV);
 router.post('/inventory/import', productController.importProductsCSV);
 router.post('/inventory/add', productController.addProductManual);
 router.post('/inventory/create', productController.createProduct);
+router.post('/inventory/add-manual', productController.createProductWithManualCodes);
 router.post('/inventory/sync', productController.syncExternalProducts);
 router.patch('/inventory/:productId/margin', productController.updateProductMargin);
 router.patch('/inventory/:productId', productController.updateProduct);

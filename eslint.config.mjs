@@ -90,6 +90,7 @@ export default [
         Promise: 'readonly',
         logout: 'readonly',
         showProductDetails: 'readonly',
+        showProductDetails: 'readonly',
         formatItem: 'readonly',
         detectRegion: 'readonly',
         getCurrentLanguage: 'readonly',
