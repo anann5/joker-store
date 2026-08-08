@@ -86,7 +86,7 @@ app.get('/', (req, res) => {
 });
 
 const authenticateAdminPage = (req, res, next) => {
-    const token = req.cookies['admin_token'];
+    const token = req.headers['authorization']?.split(' ')[1] || req.cookies['admin_token'];
     if (!token) return res.redirect('/login.html');
     authController.verifyAdminToken(req, res, next);
 };
