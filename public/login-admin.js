@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (data.success) {
-                    // relies on the server-set HttpOnly cookie for authentication
+                    sessionStorage.setItem('admin_token', data.token);
                     window.location.href = '/admin';
                 } else {
                     errorMsg.textContent = data.message;

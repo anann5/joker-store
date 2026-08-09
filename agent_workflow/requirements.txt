@@ -1,0 +1,1 @@
+# Minimal requirements for local demo (no external LLM required)

@@ -800,9 +800,16 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
 
     <script>
         (function() {
+            const token = sessionStorage.getItem('admin_token');
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
             const overlay = document.getElementById('loadingOverlay');
             const script = document.createElement('script');
             script.src = '/admin.js';
+            script.setAttribute('data-token', token);
 
             script.onload = function() {
                 if (overlay && !overlay.classList.contains('hidden')) {
