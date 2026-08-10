@@ -37,7 +37,7 @@ exports.logSecurityEvent = (eventType, message, req) => {
         // أيضًا إرسال تنبيه للأدمن عبر تلغرام في حالات الطارئة
         const criticalEvents = ['FAILED_LOGIN', 'SUSPICIOUS_ACTIVITY', 'RATE_LIMIT_EXCEEDED'];
         if (criticalEvents.includes(eventType) && process.env.TELEGRAM_BOT_TOKEN) {
-            const { sendTelegramAlert } = require('./helpers');
+            const { sendTelegramAlert } = require('../controllers/helpers');
             sendTelegramAlert(`🛡️ *حدث أمني* ${eventType}\n📍 *${message}*\n🌐 IP: \`${ip}\``);
         }
         

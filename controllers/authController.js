@@ -17,18 +17,20 @@ const getClientFingerprint = (req) => {
 };
 
 // Middleware للتحقق من التوكن
-exports.verifyAdminToken = (req, res, next) => {
+exports.verifyAdminToken = (req, res, next, redirectPath) => {
     const token = (req.headers['authorization'] && req.headers['authorization'].split(' ')[1]) ||
                   req.cookies['admin_token'];
 
     if (!token) {
         logSecurityEvent('UNAUTHORIZED_ACCESS', 'محاولة الوصول بدون توكن', req);
+        if (redirectPath) return res.redirect(redirectPath);
         return res.status(403).json({ success: false, message: "يجب تسجيل الدخول أولاً" });
     }
 
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
             logSecurityEvent('INVALID_TOKEN', 'استخدام توكن غير صالح أو منتهي الصلاحية', req);
+            if (redirectPath) return res.redirect(redirectPath);
             return res.status(401).json({ success: false, message: "جلسة منتهية، يرجى إعادة تسجيل الدخول" });
         }
 
@@ -36,6 +38,7 @@ exports.verifyAdminToken = (req, res, next) => {
         const session = adminSessions.get(decoded.jti || token);
         if (!session || session.fingerprint !== fingerprint) {
             logSecurityEvent('SESSION_MISMATCH', 'محاولة استخدام جلسة غير متطابقة', req);
+            if (redirectPath) return res.redirect(redirectPath);
             return res.status(401).json({ success: false, message: "جلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى" });
         }
 
@@ -76,8 +79,9 @@ exports.login = async (req, res) => {
             adminSessions.set(sessionId, { fingerprint, issuedAt: Date.now() });
 
             // ✅ تحسين أمني: إرسال الـ HttpOnly Cookie
-            // في التطوير (localhost/127.0.0.1) → secure = false، sameSite = 'none'
+            // في التطوير (localhost/127.0.0.1) → secure = false، sameSite = 'lax'
             // في الإنتاج (https) → secure = true، sameSite = 'lax'
+            // ملاحظة: 'sameSite=none' مرفوض من المتصفحات بدون 'secure'، لذا نعتمد 'lax' دائماً.
             const isLocalhost = req.hostname === 'localhost' ||
                                 req.hostname === '127.0.0.1' ||
                                 req.headers['x-forwarded-host']?.includes('localhost') ||
@@ -88,7 +92,7 @@ exports.login = async (req, res) => {
             res.cookie('admin_token', token, {
                 httpOnly: true,
                 secure: !isLocalhost,
-                sameSite: isLocalhost ? 'none' : 'lax',
+                sameSite: 'lax',
                 maxAge: 12 * 60 * 60 * 1000,
                 path: '/',
                 overwrite: true
@@ -130,13 +134,23 @@ exports.logout = (req, res) => {
             if (decoded?.jti) {
                 adminSessions.delete(decoded.jti);
             }
-        } catch (error) {
+        } catch (_error) {
             // ignore malformed token
         }
     }
 
-    res.clearCookie('admin_token', { path: '/' });
-    res.clearCookie('csrf_token', { path: '/' });
+    const isLocalhost = req.hostname === 'localhost' ||
+                        req.hostname === '127.0.0.1' ||
+                        req.headers['x-forwarded-host']?.includes('localhost') ||
+                        req.headers['x-forwarded-host']?.includes('127.0.0.1');
+
+    res.clearCookie('admin_token', {
+        path: '/',
+        httpOnly: true,
+        secure: !isLocalhost,
+        sameSite: 'lax'
+    });
+    res.clearCookie('csrf_token', { path: '/', secure: !isLocalhost, sameSite: 'lax' });
     logSecurityEvent('ADMIN_LOGOUT', 'تسجيل خروج الأدمن', req);
     res.json({ success: true, message: 'تم تسجيل الخروج بنجاح' });
 };

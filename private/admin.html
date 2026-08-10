@@ -96,7 +96,7 @@
         /* ===== Tabs & Nav ===== */
         .nav-tabs {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             margin-bottom: 25px;
             border-bottom: 2px solid rgba(255, 255, 255, 0.05);
             padding-bottom: 8px;
@@ -107,7 +107,7 @@
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: var(--text-color);
-            padding: 10px 22px;
+            padding: 10px 18px;
             border-radius: 10px;
             cursor: pointer;
             font-family: 'Cairo', sans-serif;
@@ -115,8 +115,8 @@
             transition: all 0.3s;
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
+            gap: 6px;
+            font-size: 0.85rem;
         }
 
         .tab-btn.active {
@@ -124,6 +124,122 @@
             border-color: var(--primary);
             color: #fff;
             box-shadow: 0 0 20px rgba(162, 0, 255, 0.4);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: rgba(162, 0, 255, 0.1);
+            border-color: rgba(162, 0, 255, 0.3);
+        }
+
+        /* ===== Dashboard Stats ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: rgba(31, 40, 51, 0.8);
+            border: 1px solid rgba(162, 0, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(162, 0, 255, 0.2);
+        }
+
+        .stat-card .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .stat-card.stat-revenue { border-color: rgba(0, 242, 254, 0.3); }
+        .stat-card.stat-revenue .stat-value { color: var(--primary-neon); }
+        .stat-card.stat-orders { border-color: rgba(162, 0, 255, 0.3); }
+        .stat-card.stat-orders .stat-value { color: var(--primary); }
+        .stat-card.stat-pending { border-color: rgba(255, 170, 0, 0.3); }
+        .stat-card.stat-pending .stat-value { color: var(--warning); }
+        .stat-card.stat-profit { border-color: rgba(0, 255, 204, 0.3); }
+        .stat-card.stat-profit .stat-value { color: var(--success); }
+        .stat-card.stat-today { border-color: rgba(255, 159, 67, 0.3); }
+        .stat-card.stat-today .stat-value { color: var(--accent-orange); }
+        .stat-card.stat-provider { border-color: rgba(69, 243, 255, 0.3); }
+        .stat-card.stat-provider .stat-value { color: var(--accent); font-size: 1.2rem; }
+
+        /* ===== Recent Orders on Dashboard ===== */
+        .recent-orders-scroll {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .recent-orders-scroll::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .recent-orders-scroll::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+        }
+
+        .recent-orders-scroll::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .mini-order-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .mini-order-row:hover {
+            background: rgba(162, 0, 255, 0.06);
+        }
+
+        .mini-order-row .order-email {
+            color: var(--accent);
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .mini-order-row .order-amount {
+            color: var(--primary-neon);
+            font-weight: 700;
+            margin: 0 15px;
+        }
+
+        .mini-order-row .order-date {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .mini-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
         }
 
         /* ===== Cards & Tables ===== */
@@ -137,7 +253,7 @@
             margin-bottom: 25px;
         }
 
-        .controls {
+        .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -165,9 +281,10 @@
             cursor: pointer;
             font-family: 'Cairo', sans-serif;
             transition: all 0.25s;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 7px;
+            text-decoration: none;
         }
 
         .btn:hover {
@@ -205,6 +322,11 @@
 
         .btn-approve:hover {
             box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
+        }
+
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 0.8rem;
         }
 
         table {
@@ -624,6 +746,124 @@
         font-size: 0.9rem;
         opacity: 0.7;
     }
+
+    /* Toast Notification */
+    .admin-toast {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: rgba(31, 40, 51, 0.95);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(162, 0, 255, 0.3);
+        border-radius: 12px;
+        padding: 16px 24px;
+        color: #fff;
+        font-family: 'Cairo', sans-serif;
+        font-size: 0.9rem;
+        z-index: 99999;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.4s;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+    }
+
+    .admin-toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .admin-toast.toast-success { border-color: var(--success); }
+    .admin-toast.toast-error { border-color: var(--danger); }
+    .admin-toast.toast-warning { border-color: var(--warning); }
+
+    /* Logs viewer */
+    .log-entry {
+        padding: 8px 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        font-size: 0.82rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .log-entry:hover { background: rgba(162,0,255,0.04); }
+
+    .log-action {
+        color: var(--primary-neon);
+        font-weight: 600;
+        min-width: 90px;
+    }
+
+    .log-details {
+        flex: 1;
+        color: var(--text-muted);
+    }
+
+    .log-time {
+        color: rgba(255,255,255,0.3);
+        font-size: 0.75rem;
+        min-width: 70px;
+        text-align: left;
+    }
+
+    /* New order notification badge */
+    .notif-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: var(--danger);
+        color: #fff;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 0.7rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    .tab-btn-wrapper {
+        position: relative;
+    }
+
+    /* Quick filter for orders */
+    .order-filter-bar {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+
+    .filter-chip {
+        padding: 5px 14px;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-family: 'Cairo', sans-serif;
+        transition: all 0.2s;
+    }
+
+    .filter-chip.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+    }
+
+    /* New order highlight animation */
+    @keyframes newOrderFlash {
+        0% { background: rgba(0, 242, 254, 0.2); }
+        100% { background: transparent; }
+    }
+
+    .new-order-row {
+        animation: newOrderFlash 2s ease-out;
+    }
+
 </style>
 </head>
 <body>
@@ -644,68 +884,196 @@
             <div class="admin-meta">
                 <span><i class="fas fa-shield-alt"></i> خاص بالإدارة فقط</span>
                 <span id="currentDate"></span>
+                <span style="color: var(--accent); font-size: 0.8rem;" id="socketStatus"><i class="fas fa-circle" style="color: var(--warning);"></i> متصل</span>
                 <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
             </div>
         </header>
 
         <!-- Navigation Tabs -->
         <div class="nav-tabs">
-            <button class="tab-btn active" id="inventoryTabBtn"><i class="fas fa-boxes"></i> إدارة المخزون</button>
-            <button class="tab-btn" id="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i> الطلبات والفواتير</button>
+            <button class="tab-btn active" id="dashboardTabBtn"><i class="fas fa-chart-pie"></i> لوحة الإحصائيات</button>
+            <button class="tab-btn" id="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i> الطلبات</button>
+            <button class="tab-btn" id="inventoryTabBtn"><i class="fas fa-boxes"></i> المخزون</button>
+            <button class="tab-btn" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
+            <button class="tab-btn" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
         </div>
 
-        <!-- Inventory Section -->
-        <section id="inventorySection" class="card">
-            <div class="controls">
-                <h2 class="section-title">المخزون الحالي بالمتجر</h2>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> تحديث القائمة</button>
-                <button class="btn btn-approve" id="addManualBtn"><i class="fas fa-plus"></i> إضافة منتج يدوي</button>
-                <span class="toggle-switch">
-                    <input type="checkbox" id="soundToggle" checked>
-                    <span class="slider"></span>
-                </span>
-                    <span id="soundIcon" class="fas fa-volume-up" style="color: var(--accent);"></span>
+        <!-- Dashboard Section -->
+        <section id="dashboardSection">
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card stat-revenue">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-value" id="statRevenue">$0</div>
+                    <div class="stat-label">إجمالي المبيعات</div>
+                </div>
+                <div class="stat-card stat-profit">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value" id="statProfit">$0</div>
+                    <div class="stat-label">إجمالي الأرباح</div>
+                </div>
+                <div class="stat-card stat-orders">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value" id="statCompleted">0</div>
+                    <div class="stat-label">طلبات مكتملة</div>
+                </div>
+                <div class="stat-card stat-pending">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-value" id="statPending">0</div>
+                    <div class="stat-label">طلبات معلقة</div>
+                </div>
+                <div class="stat-card stat-today">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value" id="statTodaySales">$0</div>
+                    <div class="stat-label">مبيعات اليوم</div>
+                </div>
+                <div class="stat-card stat-today">
+                    <div class="stat-icon">🆕</div>
+                    <div class="stat-value" id="statTodayOrders">0</div>
+                    <div class="stat-label">طلبات اليوم</div>
                 </div>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>اسم المنتج</th>
-                        <th>الفئة</th>
-                        <th>المنطقة</th>
-                        <th>السعر</th>
-                        <th>الحالة</th>
-                        <th>العمليات</th>
-                    </tr>
-                </thead>
-                <tbody id="inventoryList">
-                    <tr><td colspan="6" class="loading-cell">جاري تحميل المنتجات...</td></tr>
-                </tbody>
-            </table>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">آخر الطلبات</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshDashboardBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div class="recent-orders-scroll" id="recentOrdersList">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري تحميل البيانات...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory Section -->
+        <section id="inventorySection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">المخزون الحالي بالمتجر</h2>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" id="exportCsvBtn"><i class="fas fa-download"></i> تصدير CSV</button>
+                        <button class="btn btn-secondary btn-sm" id="importCsvBtn"><i class="fas fa-upload"></i> استيراد CSV</button>
+                        <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                        <button class="btn btn-approve" id="addManualBtn"><i class="fas fa-plus"></i> إضافة منتج</button>
+                        <span class="toggle-switch">
+                            <input type="checkbox" id="soundToggle" checked>
+                            <span class="slider"></span>
+                        </span>
+                        <span id="soundIcon" class="fas fa-volume-up" style="color: var(--accent);"></span>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>اسم المنتج</th>
+                            <th>الفئة</th>
+                            <th>المنطقة</th>
+                            <th>السعر</th>
+                            <th>المخزون</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList">
+                        <tr><td colspan="6" class="loading-cell">جاري تحميل المنتجات...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Orders Section -->
-        <section id="ordersSection" class="card hidden">
-            <div class="controls">
-                <h2 class="section-title">سجل عمليات وفواتير الزبائن</h2>
-                <button class="btn btn-secondary" id="refreshOrdersBtn"><i class="fas fa-redo"></i> تحديث الطلبات</button>
+        <section id="ordersSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">سجل عمليات وفواتير الزبائن</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshOrdersBtn"><i class="fas fa-redo"></i> تحديث</button>
+                </div>
+                <div class="order-filter-bar" id="orderFilterBar">
+                    <button class="filter-chip active" data-status="all">الكل</button>
+                    <button class="filter-chip" data-status="pending">معلق</button>
+                    <button class="filter-chip" data-status="processing">قيد التنفيذ</button>
+                    <button class="filter-chip" data-status="completed">مكتمل</button>
+                    <button class="filter-chip" data-status="failed">فشل</button>
+                    <button class="filter-chip" data-status="refunded">مرفوض</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>رقم الطلب</th>
+                            <th>الزبون</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>المنتجات</th>
+                            <th>المبلغ</th>
+                            <th>الحالة</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersList">
+                        <tr><td colspan="7" class="loading-cell">جاري جلب الفواتير...</td></tr>
+                    </tbody>
+                </table>
             </div>
-            <table>
-                <thead>
-                    <tr>
-                        <th>الزبون</th>
-                        <th>البريد الإلكتروني</th>
-                        <th>المنتجات المشحونة</th>
-                        <th>إجمالي المبلغ</th>
-                        <th>الحالة</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersList">
-                    <tr><td colspan="5" class="loading-cell">جاري جلب الفواتير من النظام...</td></tr>
-                </tbody>
-            </table>
         </section>
+
+        <!-- Categories Section -->
+        <section id="categoriesSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">إدارة الأقسام</h2>
+                    <button class="btn btn-approve" id="addCategoryBtn"><i class="fas fa-plus"></i> إضافة قسم</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المفتاح</th>
+                            <th>الاسم (عربي)</th>
+                            <th>الاسم (إنجليزي)</th>
+                            <th>الترتيب</th>
+                            <th>الحالة</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoryList">
+                        <tr><td colspan="6" class="loading-cell">جاري تحميل الأقسام...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Logs Section -->
+        <section id="logsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">سجل النشاطات</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-secondary btn-sm" id="refreshLogsBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                        <button class="btn btn-secondary btn-sm" id="exportLogsBtn"><i class="fas fa-download"></i> تصدير</button>
+                        <button class="btn btn-reject btn-sm" id="clearLogsBtn"><i class="fas fa-trash"></i> مسح الكل</button>
+                    </div>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;" id="logsContainer">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري تحميل السجلات...</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Import CSV Modal -->
+    <div class="modal-overlay" id="importCsvModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeImportCsvBtn">&times;</button>
+            <h3 class="modal-title"><i class="fas fa-upload"></i> استيراد منتجات من CSV</h3>
+            <div class="form-group">
+                <label>اختر ملف CSV</label>
+                <input type="file" id="csvFileInput" accept=".csv" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>أو لصق محتوى CSV هنا</label>
+                <textarea id="csvTextInput" class="form-control" rows="8" placeholder="الاسم عربي,Name English,الفئة,المنطقة,السعر,هامش الربح,السعر الأساسي,نوع المنتج,نوع الاشتراك,مدة الاشتراك,المزود,معرف المزود,رابط الصورة,الوصف عربي,Description English,الحالة"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelImportCsvBtn">إلغاء</button>
+                <button class="btn btn-primary" id="confirmImportCsvBtn"><i class="fas fa-upload"></i> استيراد</button>
+            </div>
+        </div>
     </div>
 
     <!-- Modal لتعديل المنتج -->
@@ -722,9 +1090,27 @@
                 <label>السعر (دولار)</label>
                 <input type="number" id="editPrice" step="0.01" class="form-control">
             </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>التقييم (0 - 5)</label>
+                    <input type="number" id="editRating" step="0.1" min="0" max="5" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label>عدد التقييمات</label>
+                    <input type="number" id="editReviewsCount" step="1" min="0" class="form-control" value="0">
+                </div>
+            </div>
             <div class="form-group">
                 <label>هامش الربح (×)</label>
                 <input type="number" id="editMargin" step="0.01" class="form-control" value="1.15">
+            </div>
+            <div class="form-group">
+                <label>صورة المنتج</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img id="editImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;display:none;">
+                    <input type="file" id="editProductImage" accept="image/*" class="form-control">
+                </div>
+                <input type="text" id="editImageUrl" class="form-control" placeholder="https://... أو /uploads/xxx.png" style="margin-top:6px;">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelEditBtn">إلغاء</button>
@@ -752,7 +1138,23 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>الفئة</label>
-                    <input type="text" id="manualCategory" class="form-control" placeholder="مثال: steam">
+                    <input type="text" id="manualCategory" list="categoryList" class="form-control" placeholder="مثال: steam">
+                    <datalist id="categoryList">
+                        <option value="gaming_general"></option>
+                        <option value="pubg"></option>
+                        <option value="fortnite"></option>
+                        <option value="playstation"></option>
+                        <option value="xbox"></option>
+                        <option value="microsoft_windows"></option>
+                        <option value="adobe"></option>
+                        <option value="antivirus"></option>
+                        <option value="vpn"></option>
+                        <option value="google"></option>
+                        <option value="itunes"></option>
+                        <option value="razer_gold"></option>
+                        <option value="amazon"></option>
+                        <option value="steam"></option>
+                    </datalist>
                 </div>
                 <div class="form-group">
                     <label>السعر (دولار)</label>
@@ -763,6 +1165,13 @@
             <div class="form-group">
                 <label>هامش الربح (×)</label>
                 <input type="number" id="manualProfitMargin" step="0.01" class="form-control" value="1.15">
+            </div>
+
+            <div class="form-group">
+                <label>صورة المنتج (اختياري)</label>
+                <input type="file" id="manualProductImage" accept="image/*" class="form-control">
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">أو ألصق رابط صورة مباشرة</small>
+                <input type="text" id="manualProductImageUrl" class="form-control" placeholder="https://... أو /uploads/xxx.png" style="margin-top: 6px;">
             </div>
 
             <!-- رفع كودات -->
@@ -795,9 +1204,64 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
         </div>
     </div>
 
+    <!-- Modal لإضافة/تعديل قسم -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeCategoryModalBtn">&times;</button>
+            <h3 class="modal-title" id="categoryModalTitle"><i class="fas fa-tag"></i> إضافة قسم جديد</h3>
+            <input type="hidden" id="categoryId">
+            <div class="form-group">
+                <label>المفتاح (Key)</label>
+                <input type="text" id="categoryKey" class="form-control" placeholder="مثال: steam_cards">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الاسم بالعربية</label>
+                    <input type="text" id="categoryTitleAr" class="form-control" placeholder="مثال: بطاقات ستيم">
+                </div>
+                <div class="form-group">
+                    <label>الاسم بالإنجليزية</label>
+                    <input type="text" id="categoryTitleEn" class="form-control" placeholder="مثال: Steam Cards">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الوصف بالعربية</label>
+                    <textarea id="categoryDescAr" class="form-control" rows="2" placeholder="وصف القسم بالعربية"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>الوصف بالإنجليزية</label>
+                    <textarea id="categoryDescEn" class="form-control" rows="2" placeholder="Description in English"></textarea>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الصورة</label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <img id="categoryImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;display:none;">
+                        <input type="file" id="categoryImageFile" accept="image/*" class="form-control">
+                    </div>
+                    <input type="text" id="categoryImage" class="form-control" placeholder="image/steam.png أو رابط صورة" style="margin-top:6px;">
+                </div>
+                <div class="form-group">
+                    <label>الترتيب</label>
+                    <input type="number" id="categoryOrder" class="form-control" value="0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelCategoryBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveCategoryBtn"><i class="fas fa-save"></i> حفظ القسم</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Toast -->
+    <div id="adminToast" class="admin-toast"></div>
+
     <!-- Toast Container -->
     <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 1000;"></div>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         (function() {
             const overlay = document.getElementById('loadingOverlay');

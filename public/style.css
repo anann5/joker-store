@@ -1688,20 +1688,40 @@ footer {
    🛡️ شريط الثقة (Trust Ticker)
    =================================================== */
 .trust-ticker {
-    background: rgba(0, 242, 254, 0.05);
-    border: 1px solid rgba(0, 242, 254, 0.1);
-    padding: 10px;
+    background: rgba(15, 12, 27, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+    padding: 14px 12px;
     margin-bottom: 25px;
-    border-radius: 10px;
+    border-radius: 14px;
     overflow: hidden;
     white-space: nowrap;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    position: relative;
+}
+
+.trust-ticker::before {
+    content: "⚡";
+    position: absolute;
+    inset-inline-start: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    font-size: 1.2rem;
+    color: var(--primary-neon);
 }
 
 .ticker-content {
     display: inline-block;
     animation: tickerMove 20s linear infinite;
-    color: var(--text-muted);
-    font-size: 0.9rem;
+    color: #e8fbff;
+    font-size: 1.02rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-shadow: 0 0 10px rgba(0, 242, 254, 0.45);
+    padding-inline-start: 30px;
 }
 
 @keyframes tickerMove {
@@ -1939,4 +1959,244 @@ footer {
     background-size: 200% 100%;
     border-radius: 4px;
     animation: shimmer 1.2s infinite linear;
+}
+
+/* ===================================================
+   🎯 الأقسام المحسّنة (Pro Store Sections)
+   =================================================== */
+.hero-cta {
+    margin-top: 18px;
+    padding: 12px 28px !important;
+    font-size: 1.05rem !important;
+}
+
+.slide-content h2 { font-size: 2.2rem; color: #fff; margin-bottom: 10px; }
+.slide-content p { font-size: 1.1rem; color: var(--text-muted); max-width: 520px; margin: 0 auto; }
+
+/* شريط الإحصائيات */
+.stats-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 30px;
+    padding: 22px 16px;
+    background: linear-gradient(90deg, rgba(0, 242, 254, 0.06), rgba(255, 159, 67, 0.06), rgba(0, 242, 254, 0.06));
+    border: 1px solid rgba(0, 242, 254, 0.12);
+    border-radius: 18px;
+}
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 170px;
+    padding: 8px 20px;
+    border-radius: 12px;
+    background: rgba(15, 12, 27, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.stat-item > i { font-size: 2rem; color: var(--primary-neon); }
+.stat-number { font-size: 1.8rem; font-weight: 900; color: #fff; }
+.stat-suffix { font-size: 1.1rem; color: var(--primary-neon); font-weight: bold; }
+.stat-item p { margin: 2px 0 0; color: var(--text-muted); font-size: 0.85rem; }
+
+/* الأقسام المعلوماتية */
+.info-section { margin: 40px 0; }
+.section-title {
+    text-align: center;
+    font-size: 1.7rem;
+    color: #fff;
+    margin-bottom: 26px;
+}
+.section-title i { color: var(--primary-neon); margin-inline-end: 8px; }
+
+/* كيف نعمل */
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 22px;
+}
+.step-card {
+    position: relative;
+    background: rgba(15, 12, 27, 0.85);
+    border: 1px solid rgba(0, 242, 254, 0.15);
+    border-radius: 20px;
+    padding: 34px 24px 26px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.step-card:hover { transform: translateY(-5px); border-color: var(--primary-neon); box-shadow: 0 12px 30px rgba(0, 242, 254, 0.12); }
+.step-num {
+    position: absolute;
+    top: -14px;
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
+    width: 30px; height: 30px;
+    background: linear-gradient(135deg, #ff9f43, #ff6b35);
+    color: #0f0c1b;
+    font-weight: 900;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 14px rgba(255, 159, 67, 0.5);
+}
+.step-card > i { font-size: 2.2rem; color: var(--primary-neon); margin-bottom: 14px; }
+.step-card h3 { color: #fff; margin-bottom: 8px; font-size: 1.15rem; }
+.step-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.7; margin: 0; }
+
+/* الضمانات */
+.guarantee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 18px;
+}
+.guarantee-card {
+    background: rgba(15, 12, 27, 0.8);
+    border: 1px solid rgba(46, 204, 113, 0.2);
+    border-radius: 16px;
+    padding: 22px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.guarantee-card:hover { transform: translateY(-4px); border-color: #2ecc71; box-shadow: 0 10px 26px rgba(46, 204, 113, 0.12); }
+.guarantee-card i { font-size: 2rem; color: #2ecc71; margin-bottom: 12px; }
+.guarantee-card h3 { color: #fff; font-size: 1.05rem; margin-bottom: 8px; }
+.guarantee-card p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin: 0; }
+
+/* آراء العملاء */
+.testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+.testimonial-card {
+    background: rgba(15, 12, 27, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 18px;
+    padding: 24px;
+    text-align: center;
+}
+.testimonial-card .stars { color: #ffc107; font-size: 1.1rem; letter-spacing: 3px; margin-bottom: 12px; text-shadow: 0 0 12px rgba(255, 193, 7, 0.4); }
+.testimonial-card p { color: #c9cbd1; font-size: 0.95rem; line-height: 1.8; }
+.testimonial-author { margin-top: 14px; color: var(--primary-neon); font-weight: bold; }
+
+/* روابط التواصل */
+.footer-social {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.social-link {
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    transition: all 0.3s ease;
+}
+.social-link:hover { transform: translateY(-3px); }
+.social-whatsapp:hover { background: #25D366; border-color: #25D366; box-shadow: 0 0 16px rgba(37, 211, 102, 0.4); }
+.social-telegram:hover { background: #229ED9; border-color: #229ED9; box-shadow: 0 0 16px rgba(34, 158, 217, 0.4); }
+.social-instagram:hover { background: radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); border-color: #d6249f; box-shadow: 0 0 16px rgba(214, 36, 159, 0.4); }
+.social-tiktok:hover { background: #010101; border-color: #25F4EE; box-shadow: 0 0 16px rgba(37, 244, 238, 0.4); }
+
+/* زر واتساب العائم */
+.whatsapp-float {
+    position: fixed;
+    bottom: 24px;
+    inset-inline-end: 24px;
+    z-index: 9999;
+    width: 58px; height: 58px;
+    border-radius: 50%;
+    background: #25D366;
+    color: #fff;
+    font-size: 2rem;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 6px 24px rgba(37, 211, 102, 0.45);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    animation: whatsappPulse 2s infinite;
+}
+.whatsapp-float:hover { transform: scale(1.1); color: #fff; }
+@keyframes whatsappPulse {
+    0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.5); }
+    70% { box-shadow: 0 0 0 16px rgba(37, 211, 102, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+
+/* زر الأمنيات على البطاقات */
+.wishlist-btn {
+    position: absolute;
+    top: 12px;
+    inset-inline-end: 12px;
+    z-index: 5;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(10, 8, 20, 0.75);
+    color: #b9bbbe;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.25s ease;
+    padding: 0;
+}
+.wishlist-btn:hover { color: #ff4757; border-color: #ff4757; transform: scale(1.1); }
+.wishlist-btn.active { color: #ff4757; border-color: #ff4757; background: rgba(255, 71, 87, 0.12); }
+.wishlist-btn.active i { font-weight: 900; }
+
+/* التقييم بالنجوم */
+.card-rating, .detail-rating {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+.detail-rating { justify-content: flex-start; }
+.rating-stars { color: #ffc107; font-size: 0.95rem; letter-spacing: 2px; }
+.rating-stars .empty { color: #3a3a4a; }
+.rating-count { color: var(--text-muted); font-size: 0.8rem; }
+
+.detail-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.detail-wishlist { position: static; width: 40px; height: 40px; font-size: 1.05rem; }
+
+/* نتائج تتبع الطلب */
+.track-result-card {
+    background: rgba(15, 12, 27, 0.9);
+    border: 1px solid rgba(0, 242, 254, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.track-result-card .track-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.track-result-card .track-id { font-weight: bold; color: #fff; }
+.track-code-box { background: #1a1a2e; border: 1px solid #ff9f43; border-radius: 8px; padding: 10px; margin-top: 10px; font-size: 0.9rem; }
+.track-code-box .track-code { color: #ff9f43; letter-spacing: 1px; font-weight: bold; user-select: all; display: block; word-break: break-all; }
+.status-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: bold; }
+.status-badge.completed { background: rgba(46, 204, 113, 0.15); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.4); }
+.status-badge.pending { background: rgba(255, 159, 67, 0.15); color: #ff9f43; border: 1px solid rgba(255, 159, 67, 0.4); }
+.status-badge.failed { background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.4); }
+
+#wishlistGrid .product-item-card { padding: 16px; }
+#wishlistGrid .card-inner-img { max-width: 120px; }
+
+/* إخفاء الأقسام الإضافية عند التصفح داخل قسم/منتج */
+#homeSections.hidden { display: none; }
+
+/* ===== تجاوب الأقسام المحسّنة ===== */
+@media (max-width: 768px) {
+    .slide-content h2 { font-size: 1.6rem; }
+    .slide-content p { font-size: 0.95rem; }
+    .hero-section { height: 300px; }
+    .stat-item { min-width: 130px; padding: 6px 12px; }
+    .stat-number { font-size: 1.4rem; }
+    .section-title { font-size: 1.4rem; }
+    .whatsapp-float { width: 50px; height: 50px; font-size: 1.6rem; bottom: 16px; inset-inline-end: 16px; }
 }

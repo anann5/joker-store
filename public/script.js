@@ -43,7 +43,7 @@ async function updateTrustTicker() {
             ).join(' ✅ ');
             tickerZone.innerHTML = `${tickerText  } 🛡️ جميع الأكواد أصلية ومضمونة 100%`;
         }
-    } catch (e) {
+    } catch (_e) {
         // في حال الفشل نترك النص الافتراضي الجميل الذي وضعناه
     }
 }
@@ -73,8 +73,239 @@ function formatItem(item, categoryKey, region) {
         name: item.name, // الخادم يرسل الاسم المترجم جاهزاً في حقل 'name'
         price: (typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0).toFixed(2),
         region: region,
-        image: imageUrl || `image/${categoryKey}.png`
+        image: imageUrl || `image/${categoryKey}.png`,
+        rating: typeof item.rating === 'number' ? item.rating : 0,
+        reviewsCount: typeof item.reviewsCount === 'number' ? item.reviewsCount : 0
     };
+}
+
+// ======================================================
+//  ⭐ تقييمات المنتجات
+// ======================================================
+export function renderRatingStars(rating = 0, reviewsCount = 0) {
+    const rounded = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
+    if (rounded <= 0) return '';
+    const filled = '★'.repeat(rounded);
+    const empty = '★'.repeat(5 - rounded);
+    const count = Number(reviewsCount) > 0
+        ? `<span class="rating-count">(${Number(reviewsCount)})</span>`
+        : '';
+    return `<span class="rating-stars">${filled}<span class="empty">${empty}</span></span>${count}`;
+}
+
+// ======================================================
+//  ❤️ قائمة الأمنيات (Wishlist — localStorage)
+// ======================================================
+const WISHLIST_KEY = 'joker_wishlist';
+
+function getWishlist() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(WISHLIST_KEY));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (_e) {
+        return [];
+    }
+}
+
+function saveWishlist(ids) {
+    localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids));
+}
+
+function toggleWishlist(id) {
+    let ids = getWishlist();
+    const added = !ids.includes(id);
+    ids = added ? [...ids, id] : ids.filter(x => x !== id);
+    saveWishlist(ids);
+    syncWishlistButtons();
+    return added;
+}
+
+export function syncWishlistButtons() {
+    const ids = getWishlist();
+    document.querySelectorAll('[data-wishlist-btn]').forEach(btn => {
+        const id = btn.dataset.productId;
+        if (!id) return;
+        const active = ids.includes(id);
+        btn.classList.toggle('active', active);
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = active ? 'fas fa-heart' : 'far fa-heart';
+    });
+}
+
+async function showWishlist() {
+    const modal = document.getElementById('wishlistModal');
+    const container = document.getElementById('wishlistGrid');
+    if (!modal || !container) return;
+    modal.classList.add('active');
+    const ids = getWishlist();
+
+    if (ids.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:30px;">💔 قائمة الأمنيات فارغة حالياً.</p>';
+        return;
+    }
+
+    container.innerHTML = '<p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:30px;"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</p>';
+
+    try {
+        const res = await fetch('/api/products/search-index');
+        const data = await res.json();
+        const lang = getCurrentLanguage();
+        const template = document.getElementById('product-card-template');
+        container.innerHTML = '';
+
+        const wished = data.products.filter(p => ids.includes(String(p._id || p.id)));
+        if (wished.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:30px;">💔 قائمة الأمنيات فارغة حالياً.</p>';
+            return;
+        }
+
+        wished.forEach(item => {
+            const localizedName = item.productName[lang] || item.productName['ar'];
+            const detectedRegion = detectRegion(item);
+            const regionInfo = getRegionDetails(detectedRegion);
+            const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectedRegion);
+
+            const card = template.content.cloneNode(true);
+            const cardElement = card.querySelector('.product-item-card');
+            cardElement.dataset.productId = clientItem.id;
+            cardElement.dataset.region = detectedRegion;
+            card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+            const img = card.querySelector('.card-inner-img');
+            img.src = clientItem.image;
+            img.onerror = () => { img.src = 'image/logo.png'; };
+            card.querySelector('.card-title').textContent = clientItem.name;
+            card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+            card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
+            card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+            container.appendChild(card);
+        });
+        syncWishlistButtons();
+    } catch (_e) {
+        container.innerHTML = '<p style="color:#e74c3c; text-align:center; grid-column:1/-1; padding:30px;">❌ فشل تحميل قائمة الأمنيات.</p>';
+    }
+}
+
+// ======================================================
+//  ⚙️ إعدادات الموقع (أرقام الدفع، روابط التواصل، الإحصائيات)
+// ======================================================
+let siteConfig = null;
+
+async function fetchSiteConfig() {
+    try {
+        const res = await fetch('/api/site-config');
+        const data = await res.json();
+        if (data.success) siteConfig = data.config;
+    } catch (_e) {
+        siteConfig = null;
+    }
+}
+
+function applySiteConfig() {
+    if (!siteConfig) return;
+
+    const social = siteConfig.social || {};
+    if (social.whatsapp) {
+        const waBtn = document.getElementById('whatsappFloatBtn');
+        if (waBtn) {
+            waBtn.href = `https://wa.me/${String(social.whatsapp).replace(/[^0-9]/g, '')}`;
+            waBtn.style.display = 'flex';
+        }
+    }
+    const socialMap = { footerWhatsapp: 'whatsapp', footerTelegram: 'telegram', footerInstagram: 'instagram', footerTiktok: 'tiktok' };
+    for (const [id, key] of Object.entries(socialMap)) {
+        const link = document.getElementById(id);
+        const value = social[key];
+        if (!link || !value) continue;
+        if (key === 'whatsapp') {
+            link.href = `https://wa.me/${String(value).replace(/[^0-9]/g, '')}`;
+        } else {
+            link.href = /^https?:\/\//.test(value) ? value : `https://${value}`;
+        }
+        link.style.display = 'flex';
+    }
+
+    const stats = siteConfig.stats || {};
+    const statMap = { statCustomers: stats.customers, statOrders: stats.orders, statDelivery: stats.deliveryMinutes, statSupport: stats.supportHours };
+    for (const [id, target] of Object.entries(statMap)) {
+        const el = document.getElementById(id);
+        if (el && typeof target === 'number' && target > 0) {
+            animateCounter(el, target);
+        }
+    }
+}
+
+function animateCounter(el, target) {
+    const duration = 1200;
+    const start = performance.now();
+    const step = now => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(target * eased).toLocaleString('en-US');
+        if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+}
+
+// ======================================================
+//  🔍 تتبع الطلب
+// ======================================================
+async function handleTrackOrder() {
+    const emailInput = document.getElementById('trackEmailInput');
+    const orderIdInput = document.getElementById('trackOrderIdInput');
+    const results = document.getElementById('trackOrderResults');
+    if (!emailInput || !results) return;
+
+    const email = emailInput.value.trim();
+    const orderId = orderIdInput.value.trim();
+    if (!email) { showToast('أدخل بريدك الإلكتروني أولاً.', 'error'); return; }
+
+    results.innerHTML = '<p style="text-align:center; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> جاري البحث...</p>';
+
+    try {
+        const res = await fetch('/api/track-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, orderId })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+            results.innerHTML = `<p style="color:#e74c3c; text-align:center;">❌ ${data.error || 'فشل التتبع، حاول مرة أخرى.'}</p>`;
+            return;
+        }
+        if (data.orders.length === 0) {
+            results.innerHTML = '<p style="color:var(--text-muted); text-align:center;">🔍 لا توجد طلبات مطابقة.</p>';
+            return;
+        }
+
+        const lang = getCurrentLanguage();
+        const statusMap = {
+            completed: { text: 'مكتمل', cls: 'completed' },
+            pending: { text: 'قيد المراجعة', cls: 'pending' },
+            failed: { text: 'فشل', cls: 'failed' }
+        };
+
+        results.innerHTML = data.orders.map(order => {
+            const st = statusMap[order.status] || { text: order.status, cls: '' };
+            const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+            const items = order.items.map(i => i.name[lang] || i.name.ar).join('، ');
+            const codesHtml = order.codes && order.codes.length
+                ? `<div class="track-code-box"><span>كود الشحن:</span><span class="track-code">${order.codes.join('<br>')}</span></div>`
+                : '';
+            return `
+                <div class="track-result-card">
+                    <div class="track-head">
+                        <span class="track-id">#${order.orderId}</span>
+                        <span class="status-badge ${st.cls}">${st.text}</span>
+                    </div>
+                    <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${order.price.toFixed(2)}$</b></div>
+                    ${codesHtml}
+                </div>`;
+        }).join('');
+    } catch (_e) {
+        results.innerHTML = '<p style="color:#e74c3c; text-align:center;">❌ حدث خطأ في الاتصال بالخادم.</p>';
+    }
 }
 
 // ======================================================
@@ -105,7 +336,10 @@ export function selectCategory(categoryKey) {
     const grid = document.getElementById('mainCategories');
     const backContainer = document.getElementById('back-container');
     const regionBar = document.getElementById('regionFilterBar');
-    
+    const homeSections = document.getElementById('homeSections');
+
+    if (homeSections) homeSections.classList.add('hidden');
+
     if (!grid) return;
     grid.className = 'products-grid'; // تطبيق كلاس الشبكة للمنتجات
     grid.removeAttribute('style');
@@ -158,6 +392,8 @@ export function selectCategory(categoryKey) {
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;
                 card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
+                card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
                 grid.appendChild(card);
             });
             
@@ -277,6 +513,8 @@ function renderProductCards(products, containerId) {
         card.querySelector('.card-inner-img').alt = clientItem.name;
         card.querySelector('.card-title').textContent = clientItem.name;
         card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+        card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
+        card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
         grid.appendChild(card);
     });
 }
@@ -329,30 +567,6 @@ async function renderNewlyAddedProducts() {
     }
 }
 
-/**
- * يعيد تحميل البيانات الديناميكية ويعيد عرضها بناءً على اللغة الجديدة.
- */
-async function reloadDynamicData() {
-    try {
-        const lang = getCurrentLanguage();
-        const res = await fetch(`/api/categories?lang=${lang}`);
-        const data = await res.json();
-        if (data.success) {
-            rawServerData.categories = data.categories;
-            // إعادة عرض القسم الحالي أو الأقسام الرئيسية
-            const lastCategory = localStorage.getItem('joker_lastCategory');
-            if (lastCategory && rawServerData.categories && rawServerData.categories[lastCategory]) {
-                selectCategory(lastCategory);
-            } else {
-                showAllCategories();
-            }
-            renderCategoryFilterButtons(); // إعادة عرض أزرار الأقسام
-            renderRegionFilterButtons();   // إعادة عرض أزرار المناطق
-        }
-    } catch (error) {
-        console.error("Failed to reload dynamic categories:", error);
-    }
-}
 /**
  * يعالج حدث تغيير اللغة، ويقوم بجلب بيانات الأقسام وعرضها.
  */
@@ -413,10 +627,15 @@ async function initializeApp() {
 
     initAuth(); 
     updateTrustTicker(); // تحديث شريط الثقة
+
+    // ⚙️ جلب إعدادات الموقع (أرقام الدفع، السوشيال، الإحصائيات) قبل ربط الأحداث
+    await fetchSiteConfig();
+    applySiteConfig();
     
     updateCartUI(); // تحديث السلة فور فتح الصفحة
 
     setupEventListeners();
+    syncWishlistButtons(); // تفعيل أزرار الأمنيات بعد أول عرض
 }
 
 function setupEventListeners() {
@@ -514,6 +733,8 @@ function setupEventListeners() {
 
     // صائد ضغطات الكروت والدخول للسلة
     document.getElementById('mainCategories').addEventListener('click', function(e) {
+        if (e.target.closest('[data-wishlist-btn]')) return; // لا تفتح التفاصيل عند ضغط زر الأمنيات
+        
         const enterBtn = e.target.closest('.enter-btn[data-category]');
         if (enterBtn) {
             selectCategory(enterBtn.dataset.category);
@@ -686,10 +907,13 @@ function setupEventListeners() {
 
     const updatePaymentInstructions = (method) => {
         if (!instructionsZone) return;
+        const payment = siteConfig?.payment || {};
+        const jawwal = payment.jawwalNumber || '059XXXXXXX';
+        const palpay = payment.palpayNumber || '9XXXXX';
         if (method === 'jawwal_pay') {
-            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">059XXXXXXX</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>`;
+            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${jawwal}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>`;
         } else if (method === 'palpay') {
-            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">9XXXXX</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>`;
+            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${palpay}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>`;
         }
     };
 
@@ -706,9 +930,6 @@ function setupEventListeners() {
     // إرسال طلب السلة الكامل بالكامل للـ Backend
     const submitOrderBtn = document.getElementById('submitOrderBtn');
     if (submitOrderBtn) {
-        // Ensure paymentMethodSelect and user-email are available
-        const paymentMethodSelect = document.getElementById('paymentMethodSelect');
-
         submitOrderBtn.addEventListener('click', async function() {
             const email = document.getElementById('user-email').value.trim();
             const paymentRef = document.getElementById('paymentRefInput').value.trim();
@@ -773,7 +994,7 @@ function setupEventListeners() {
                 } else {
                     showToast(`❌ فشل إرسال الطلب: ${  result.error || 'حدث خطأ غير متوقع'}`, 'error');
                 }
-            } catch (err) {
+            } catch (_err) {
                 showToast('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.', 'error');
             } finally {
                 submitOrderBtn.disabled = false;
@@ -785,6 +1006,73 @@ function setupEventListeners() {
     const clearBtn = document.getElementById('clearCartBtn'); 
     if (clearBtn) {
         clearBtn.onclick = clearCart;
+    }
+
+    // زر الـ Hero — العودة للرئيسية والتمرير للأقسام
+    document.addEventListener('click', function(e) {
+        const cta = e.target.closest('[data-hero-cta]');
+        if (!cta) return;
+        goBack();
+        const target = document.getElementById('mainCategories');
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // أزرار الأمنيات (تفويض)
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-wishlist-btn]');
+        if (!btn) return;
+        e.preventDefault();
+        const id = btn.dataset.productId;
+        if (!id) return;
+        const added = toggleWishlist(id);
+        showToast(added ? '❤️ أُضيف إلى قائمة الأمنيات' : 'تمت الإزالة من قائمة الأمنيات', added ? 'success' : 'info');
+    });
+
+    // فتح/إغلاق نافذة تتبع الطلب
+    const trackFooterBtn = document.getElementById('trackOrderFooterBtn');
+    const trackModal = document.getElementById('trackOrderModal');
+    const closeTrackBtn = document.getElementById('closeTrackOrderModal');
+    if (trackFooterBtn && trackModal) {
+        trackFooterBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('trackEmailInput').value = '';
+            document.getElementById('trackOrderIdInput').value = '';
+            document.getElementById('trackOrderResults').innerHTML = '';
+            trackModal.classList.add('active');
+        });
+    }
+    if (closeTrackBtn && trackModal) {
+        closeTrackBtn.addEventListener('click', function() { trackModal.classList.remove('active'); });
+    }
+    const trackOrderBtn = document.getElementById('trackOrderBtn');
+    if (trackOrderBtn) {
+        trackOrderBtn.addEventListener('click', handleTrackOrder);
+    }
+
+    // فتح/إغلاق نافذة قائمة الأمنيات
+    const wishlistFooterBtn = document.getElementById('wishlistFooterBtn');
+    const wishlistModal = document.getElementById('wishlistModal');
+    const closeWishlistBtn = document.getElementById('closeWishlistModal');
+    if (wishlistFooterBtn && wishlistModal) {
+        wishlistFooterBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showWishlist();
+        });
+    }
+    if (closeWishlistBtn && wishlistModal) {
+        closeWishlistBtn.addEventListener('click', function() { wishlistModal.classList.remove('active'); });
+    }
+
+    // إغلاق نافذة الأمنيات عند ضغط زر تفاصيل منتج بداخلها (التفويض يعمل تلقائياً)
+    if (wishlistModal) {
+        wishlistModal.addEventListener('click', function(e) {
+            if (e.target === wishlistModal) wishlistModal.classList.remove('active');
+        });
+    }
+    if (trackModal) {
+        trackModal.addEventListener('click', function(e) {
+            if (e.target === trackModal) trackModal.classList.remove('active');
+        });
     }
 }
 

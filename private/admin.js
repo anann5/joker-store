@@ -1,20 +1,66 @@
 // ======================================================
-//  منطق لوحة تحكم جوكر ستور (private - مقفل بالتوكين)
-//  يعتمد على cookies (admin_token) + sessionStorage fallback
+//  منطق لوحة تحكم جوكر ستور (متكامل)
+//  Dashboard, المخزون, الطلبات, الأقسام, السجلات
 // ======================================================
-
-function getAdminToken() {
-    // Admin auth relies on the HttpOnly cookie set by the server.
-    // The browser sends it automatically on requests, so the client does not need to read it.
-    return null;
-}
 
 let isSoundEnabled = true;
 let adminCsrfToken = null;
+const _allOrdersCache = [];
+//  WebSocket Connection — إشعارات فورية
+// ======================================================
+function connectWebSocket() {
+    const statusEl = document.getElementById('socketStatus');
+    if (!statusEl) return;
+    if (typeof window.io === 'undefined') {
+        statusEl.innerHTML = '<i class="fas fa-circle" style="color: var(--text-muted);"></i> غير متاح';
+        return;
+    }
+
+    const socket = window.io(window.location.origin, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 3000
+    });
+
+    socket.on('connect', () => {
+        statusEl.innerHTML = '<i class="fas fa-circle" style="color: var(--success);"></i> مباشر';
+    });
+
+    socket.on('new_order', (data) => {
+        showAdminToast(`🆕 طلب جديد #${data.orderId} — ${data.buyerEmail || ''} ($${(data.price || 0).toFixed(2)})`, 'success');
+        playNotificationSound();
+        loadDashboard();
+        loadRecentOrders();
+    });
+
+    socket.on('order_approved', () => {
+        showAdminToast(`✅ تم اعتماد الطلب`, 'success');
+    });
+
+    socket.on('disconnect', () => {
+        statusEl.innerHTML = '<i class="fas fa-circle" style="color: var(--danger);"></i> غير متصل';
+    });
+
+    socket.on('connect_error', () => {
+        statusEl.innerHTML = '<i class="fas fa-circle" style="color: var(--warning);"></i> خطأ';
+    });
+}
+
+function playNotificationSound() {
+    if (!isSoundEnabled) return;
+    try {
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+        audio.volume = 0.5;
+        audio.play();
+    } catch (_) {}
+}
+
+// ======================================================
+//  CSRF Token
+// ======================================================
 
 async function ensureAdminCsrfToken() {
     if (adminCsrfToken) return adminCsrfToken;
-
     try {
         const res = await fetch('/api/csrf-token', { credentials: 'include' });
         const data = await res.json();
@@ -22,10 +68,7 @@ async function ensureAdminCsrfToken() {
             adminCsrfToken = data.csrfToken;
             return adminCsrfToken;
         }
-    } catch (_err) {
-        // Ignore and rely on server rejection if token is missing
-    }
-
+    } catch (_err) {}
     return null;
 }
 
@@ -37,130 +80,236 @@ function buildJsonHeaders(extraHeaders = {}) {
     };
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    // 🔒 التحقق من التوكين — إذا غير موجود، العودة لصفحة الدخول
-    const token = getAdminToken();
-    if (!token) {
-        window.location.href = '/login.html';
-        return;
+// رفع صورة ملف (إن وُجد) وإرجاع رابطها، وإلا إرجاع الرابط النصي الاحتياطي
+async function uploadImageIfAny(fileInput, fallbackUrl = '') {
+    const file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) return (fallbackUrl || '').trim();
+    const csrfToken = await ensureAdminCsrfToken();
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await fetch('/api/admin/upload', {
+        method: 'POST', credentials: 'include',
+        headers: { 'X-CSRF-Token': csrfToken || '' },
+        body: formData
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'فشل رفع الصورة');
+    return data.url;
+}
+
+// ======================================================
+//  Admin Toast Notification
+// ======================================================
+
+function showAdminToast(message, type = 'info') {
+    const toast = document.getElementById('adminToast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.className = 'admin-toast';
+    toast.classList.add('show');
+    if (type === 'success') toast.classList.add('toast-success');
+    else if (type === 'error') toast.classList.add('toast-error');
+    else if (type === 'warning') toast.classList.add('toast-warning');
+    clearTimeout(toast._hideTimer);
+    toast._hideTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+// ======================================================
+//  التهيئة الرئيسية
+// ======================================================
+
+const initAdmin = async () => {
+    // === Logout: يُربط أولاً قبل أي طلب شبكة حتى يعمل الزر دائماً ===
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            // إرسال طلب الخروج للسيرفر دون انتظار الرد حتى لا يتجمد الزر
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon('/api/admin/logout');
+            } else {
+                fetch('/api/admin/logout', { method: 'POST', credentials: 'include', keepalive: true }).catch(() => {});
+            }
+            document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            window.location.href = '/login.html';
+        });
     }
 
-    // تعيين التاريخ اللّحظي
-    const now = new Date();
-    document.getElementById('currentDate').textContent = now.toLocaleString('ar-EG', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    // تحقق من الجلسة (مع مهلة قصيرة حتى لا تتجمد الواجهة لو كان السيرفر بطيئاً)
+    try {
+        const authCheck = await Promise.race([
+            fetch('/api/admin/dashboard', { credentials: 'include', method: 'GET' }),
+            new Promise(resolve => setTimeout(() => resolve({ timedOut: true }), 5000))
+        ]);
+        if (authCheck && !authCheck.timedOut && !authCheck.ok) { window.location.href = '/login.html'; return; }
+    } catch (_err) { /* نكمل ربط الواجهة حتى لو تعطل فحص الجلسة */ }
 
-    // إعداد تبديل الصوت
+    connectWebSocket();
+
+    // التاريخ
+    const now = new Date();
+    const dateEl = document.getElementById('currentDate');
+    if (dateEl) {
+        dateEl.textContent = now.toLocaleString('ar-EG', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    // الصوت
     const soundToggle = document.getElementById('soundToggle');
     if (soundToggle) {
         soundToggle.checked = isSoundEnabled;
-
         soundToggle.onchange = () => {
             isSoundEnabled = soundToggle.checked;
             updateSoundIcon();
         };
     }
 
-    // إعداد أزرار التحكم
+    // === Tab switching ===
+    const tabs = [
+        { btn: 'dashboardTabBtn', section: 'dashboardSection' },
+        { btn: 'inventoryTabBtn', section: 'inventorySection' },
+        { btn: 'ordersTabBtn', section: 'ordersSection' },
+        { btn: 'categoriesTabBtn', section: 'categoriesSection' },
+        { btn: 'logsTabBtn', section: 'logsSection' }
+    ];
+
+    tabs.forEach(({ btn: btnId, section: sectionId }) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+            tabs.forEach(t => {
+                const tb = document.getElementById(t.btn);
+                const ts = document.getElementById(t.section);
+                if (tb) tb.classList.remove('active');
+                if (ts) ts.classList.add('hidden');
+            });
+            btn.classList.add('active');
+            const section = document.getElementById(sectionId);
+            if (section) section.classList.remove('hidden');
+
+            // Load data on tab switch
+            if (sectionId === 'dashboardSection') loadDashboard();
+            else if (sectionId === 'inventorySection') loadInventory();
+            else if (sectionId === 'ordersSection') loadRecentOrders();
+            else if (sectionId === 'categoriesSection') loadCategories();
+            else if (sectionId === 'logsSection') loadLogs();
+        });
+    });
+
+    // === Dashboard ===
+    const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
+    if (refreshDashboardBtn) refreshDashboardBtn.addEventListener('click', loadDashboard);
+
+    // === Inventory buttons ===
     const refreshBtn = document.getElementById('refreshBtn');
-    const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const inventoryTabBtn = document.getElementById('inventoryTabBtn');
-    const ordersTabBtn = document.getElementById('ordersTabBtn');
-
     if (refreshBtn) refreshBtn.addEventListener('click', loadInventory);
-    if (refreshOrdersBtn) refreshOrdersBtn.addEventListener('click', loadRecentOrders);
-    if (logoutBtn) {
-        logoutBtn.onclick = () => {
-            document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
-            window.location.href = '/login.html';
-        };
-    }
 
-    if (inventoryTabBtn) {
-        inventoryTabBtn.onclick = () => switchTab('inventory');
-    }
-    if (ordersTabBtn) {
-        ordersTabBtn.onclick = () => switchTab('orders');
-    }
-
-    // تحميل البيانات الأولية
-    loadInventory();
-
-    // التحديث التلقائي كل 30 ثانية
-    setInterval(loadInventory, 30000);
-
-    // === إضافة منتج يدوي مع كودات ===
     const addManualBtn = document.getElementById('addManualBtn');
-    if (addManualBtn) {
-        addManualBtn.addEventListener('click', openAddManualModal);
-    }
+    if (addManualBtn) addManualBtn.addEventListener('click', openAddManualModal);
 
-    const closeModalBtn = document.getElementById('closeAddManualModalBtn');
-    const cancelBtn = document.getElementById('cancelAddManualBtn');
-    const saveBtn = document.getElementById('saveAddManualBtn');
+    const closeAddModalBtn = document.getElementById('closeAddManualModalBtn');
+    const cancelAddBtn = document.getElementById('cancelAddManualBtn');
+    const saveAddBtn = document.getElementById('saveAddManualBtn');
+    if (closeAddModalBtn) closeAddModalBtn.addEventListener('click', closeAddManualModal);
+    if (cancelAddBtn) cancelAddBtn.addEventListener('click', closeAddManualModal);
+    if (saveAddBtn) saveAddBtn.addEventListener('click', saveManualProduct);
 
-    if (closeModalBtn) closeModalBtn.addEventListener('click', closeAddManualModal);
-    if (cancelBtn) cancelBtn.addEventListener('click', closeAddManualModal);
-    if (saveBtn) saveBtn.addEventListener('click', saveManualProduct);
-
-    const textarea = document.getElementById('manualCodesTextarea');
-    if (textarea) {
-        textarea.addEventListener('input', function() {
+    // Manual codes textarea
+    const codesTextarea = document.getElementById('manualCodesTextarea');
+    if (codesTextarea) {
+        codesTextarea.addEventListener('input', function() {
             const lines = this.value.trim().split('\n').filter(l => l.trim());
-            document.getElementById('codeCountValue').textContent = lines.length;
-            document.getElementById('codeCountInfo').style.display = lines.length > 0 ? 'block' : 'none';
+            const countEl = document.getElementById('codeCountValue');
+            const infoEl = document.getElementById('codeCountInfo');
+            if (countEl) countEl.textContent = lines.length;
+            if (infoEl) infoEl.style.display = lines.length > 0 ? 'block' : 'none';
         });
     }
 
-    const fileInput = document.getElementById('manualCodesFile');
-    if (fileInput) {
-        fileInput.addEventListener('change', loadManualCodes);
+    const codesFileInput = document.getElementById('manualCodesFile');
+    if (codesFileInput) codesFileInput.addEventListener('change', loadManualCodes);
+
+    const addManualModal = document.getElementById('addManualModal');
+    if (addManualModal) {
+        addManualModal.addEventListener('click', (e) => { if (e.target === addManualModal) closeAddManualModal(); });
     }
 
-    const modal = document.getElementById('addManualModal');
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeAddManualModal();
+    // Edit modal
+    const saveEditBtn = document.getElementById('saveEditBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const closeEditBtn = document.getElementById('closeModalBtn');
+    if (saveEditBtn) saveEditBtn.onclick = saveProductEdit;
+    if (cancelEditBtn) cancelEditBtn.onclick = () => closeModal(document.getElementById('editModal'));
+    if (closeEditBtn) closeEditBtn.onclick = () => closeModal(document.getElementById('editModal'));
+
+    // Export CSV
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    if (exportCsvBtn) exportCsvBtn.addEventListener('click', () => { window.location.href = '/api/admin/inventory/export'; });
+
+    // Import CSV
+    const importCsvBtn = document.getElementById('importCsvBtn');
+    const importCsvModal = document.getElementById('importCsvModal');
+    const closeImportCsv = document.getElementById('closeImportCsvBtn');
+    const cancelImportCsv = document.getElementById('cancelImportCsvBtn');
+    const confirmImportCsv = document.getElementById('confirmImportCsvBtn');
+
+    if (importCsvBtn) importCsvBtn.addEventListener('click', () => openModal(importCsvModal));
+    if (closeImportCsv) closeImportCsv.addEventListener('click', () => closeModal(importCsvModal));
+    if (cancelImportCsv) cancelImportCsv.addEventListener('click', () => closeModal(importCsvModal));
+    if (confirmImportCsv) confirmImportCsv.addEventListener('click', importCsvData);
+
+    // === Orders ===
+    const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
+    if (refreshOrdersBtn) refreshOrdersBtn.addEventListener('click', loadRecentOrders);
+
+    // Order filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            filterOrders(chip.dataset.status);
         });
-    }
-});
+    });
+
+    // === Categories ===
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    if (addCategoryBtn) addCategoryBtn.addEventListener('click', openAddCategoryModal);
+
+    const closeCategoryModal = document.getElementById('closeCategoryModalBtn');
+    const cancelCategory = document.getElementById('cancelCategoryBtn');
+    const saveCategory = document.getElementById('saveCategoryBtn');
+    if (closeCategoryModal) closeCategoryModal.addEventListener('click', () => closeModal(document.getElementById('categoryModal')));
+    if (cancelCategory) cancelCategory.addEventListener('click', () => closeModal(document.getElementById('categoryModal')));
+    if (saveCategory) saveCategory.addEventListener('click', saveCategoryHandler);
+
+    // === Logs ===
+    const refreshLogs = document.getElementById('refreshLogsBtn');
+    const exportLogs = document.getElementById('exportLogsBtn');
+    const clearLogs = document.getElementById('clearLogsBtn');
+    if (refreshLogs) refreshLogs.addEventListener('click', loadLogs);
+    if (exportLogs) exportLogs.addEventListener('click', () => { window.location.href = '/api/admin/logs/export'; });
+    if (clearLogs) clearLogs.addEventListener('click', clearAllLogs);
+
+    // === Load initial data ===
+    loadDashboard();
+    setInterval(loadDashboard, 60000);
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdmin);
+} else {
+    initAdmin();
+}
 
 // ======================================================
-//  دوال التوحيد
+//  مُساعدات عامة
 // ======================================================
 
 function updateSoundIcon() {
     const icon = document.getElementById('soundIcon');
     if (!icon) return;
     icon.className = isSoundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
-}
-
-function switchTab(target) {
-    const inventorySection = document.getElementById('inventorySection');
-    const ordersSection = document.getElementById('ordersSection');
-    const inventoryTabBtn = document.getElementById('inventoryTabBtn');
-    const ordersTabBtn = document.getElementById('ordersTabBtn');
-
-    if (target === 'inventory') {
-        inventorySection.classList.remove('hidden');
-        ordersSection.classList.add('hidden');
-        inventoryTabBtn.classList.add('active');
-        ordersTabBtn.classList.remove('active');
-        loadInventory();
-    } else {
-        inventorySection.classList.add('hidden');
-        ordersSection.classList.remove('hidden');
-        inventoryTabBtn.classList.remove('active');
-        ordersTabBtn.classList.add('active');
-        loadRecentOrders();
-    }
 }
 
 function openModal(modal) {
@@ -176,6 +325,83 @@ function closeModal(modal) {
 }
 
 // ======================================================
+//  DASHBOARD — لوحة الإحصائيات
+// ======================================================
+
+async function loadDashboard() {
+    try {
+        const res = await fetch('/api/admin/dashboard', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+
+        if (data.success) {
+            const s = data.stats;
+            document.getElementById('statRevenue').textContent = `$${(s.revenue || 0).toFixed(2)}`;
+            document.getElementById('statProfit').textContent = `$${(s.totalProfit || 0).toFixed(2)}`;
+            document.getElementById('statCompleted').textContent = s.completedOrders || 0;
+            document.getElementById('statPending').textContent = s.pendingOrders || 0;
+            document.getElementById('statTodaySales').textContent = `$${(s.salesToday || 0).toFixed(2)}`;
+            document.getElementById('statTodayOrders').textContent = s.completedOrdersToday || 0;
+
+            // Provider balances
+            if (s.providerBalances && s.providerBalances.length > 0) {
+                const statsGrid = document.getElementById('statsGrid');
+                s.providerBalances.forEach(p => {
+                    const existingProvider = document.getElementById(`provider-${p.name.replace(/\s/g, '')}`);
+                    if (existingProvider) {
+                        existingProvider.querySelector('.stat-value').textContent = `${p.balance.toFixed(2)} ${p.currency}`;
+                    } else if (!document.getElementById(`provider-${p.name.replace(/\s/g, '')}`)) {
+                        const card = document.createElement('div');
+                        card.className = 'stat-card stat-provider';
+                        card.id = `provider-${p.name.replace(/\s/g, '')}`;
+                        card.innerHTML = `
+                            <div class="stat-icon">🏢</div>
+                            <div class="stat-value">${p.balance.toFixed(2)} ${p.currency}</div>
+                            <div class="stat-label">${p.name}</div>
+                        `;
+                        statsGrid.appendChild(card);
+                    }
+                });
+            }
+        }
+
+        // Recent orders
+        loadRecentOrdersMini();
+
+    } catch (_err) {
+        showAdminToast('❌ فشل تحميل الإحصائيات', 'error');
+    }
+}
+
+async function loadRecentOrdersMini() {
+    const container = document.getElementById('recentOrdersList');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/admin/orders', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) return;
+
+        const orders = (data.orders || []).slice(0, 15);
+        if (orders.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد طلبات بعد</div>';
+            return;
+        }
+
+        container.innerHTML = orders.map(order => `
+            <div class="mini-order-row">
+                <span style="color:var(--primary);font-weight:700;min-width:80px;">#${order.orderId}</span>
+                <span class="order-email">${order.buyerEmail || '—'}</span>
+                <span class="order-amount">$${(order.price || 0).toFixed(2)}</span>
+                <span class="mini-badge ${order.status === 'completed' ? 'badge-success' : order.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${order.status === 'completed' ? 'مكتمل' : order.status === 'pending' ? 'معلق' : order.status === 'refunded' ? 'مرفوض' : 'فشل'}</span>
+                <span class="order-date">${new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+            </div>
+        `).join('');
+    } catch (_) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">فشل تحميل الطلبات</div>';
+    }
+}
+
+// ======================================================
 //  إدارة المخزون
 // ======================================================
 
@@ -183,14 +409,10 @@ async function loadInventory() {
     const tbody = document.getElementById('inventoryList');
     if (!tbody) return;
 
-    // إظهار المؤشّر أثناء التحميل
     tbody.innerHTML = `<tr><td colspan="6" class="loading-cell"><span class="spinner"></span> جاري تحميل المنتجات...</td></tr>`;
 
     try {
-        const res = await fetch('/api/admin/inventory', {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const res = await fetch('/api/admin/inventory', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
 
         if (!res.ok || !data.success) {
@@ -233,45 +455,48 @@ async function loadInventory() {
                 </tr>
             `;
         }).join('');
-
     } catch (_err) {
         tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
     }
 }
 
 // eslint-disable-next-line no-unused-vars
+function fillEditProductForm(product) {
+    document.getElementById('editId').value = product._id;
+    document.getElementById('editName').value = product.productName?.en || product.productName;
+    document.getElementById('editPrice').value = product.price || '';
+    document.getElementById('editMargin').value = product.profitMargin || 1.15;
+    const ratingInput = document.getElementById('editRating');
+    if (ratingInput) ratingInput.value = product.rating || 0;
+    const reviewsInput = document.getElementById('editReviewsCount');
+    if (reviewsInput) reviewsInput.value = product.reviewsCount || 0;
+    const imageUrl = product.image || '';
+    document.getElementById('editImageUrl').value = imageUrl;
+    const preview = document.getElementById('editImagePreview');
+    if (preview) {
+        preview.src = imageUrl;
+        preview.style.display = imageUrl ? 'inline-block' : 'none';
+    }
+    const imageFile = document.getElementById('editProductImage');
+    if (imageFile) imageFile.value = '';
+    openModal(document.getElementById('editModal'));
+}
+
 async function editProduct(productId) {
-    // جلب بيانات المنتج من API
     try {
-        const res = await fetch(`/api/admin/inventory/${productId}`, {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const res = await fetch(`/api/admin/inventory/${productId}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
 
         if (!data.success && !data._id) {
-            // API لا تدعم جلب واحد — جرّب التحميل المنتجات وابحث
-            const allProducts = await fetch('/api/admin/inventory', {
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            }).then(r => r.json());
+            const allData = await fetch('/api/admin/inventory', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json());
+            const allProducts = Array.isArray(allData) ? allData : (allData.products || []);
             const product = allProducts.find(p => p._id === productId);
             if (!product) return alert('❌ لم يتم العثور على المنتج');
-
-            document.getElementById('editId').value = productId;
-            document.getElementById('editName').value = product.productName?.en || product.productName;
-            document.getElementById('editPrice').value = product.price || '';
-            document.getElementById('editMargin').value = product.profitMargin || 1.15;
-            openModal(document.getElementById('editModal'));
+            fillEditProductForm(product);
             return;
         }
 
-        const product = data;
-        document.getElementById('editId').value = productId;
-        document.getElementById('editName').value = product.productName?.en || product.productName;
-        document.getElementById('editPrice').value = product.price || '';
-        document.getElementById('editMargin').value = product.profitMargin || 1.15;
-        openModal(document.getElementById('editModal'));
+        fillEditProductForm(data);
 
     } catch (_err) {
         alert('❌ فشل تحميل بيانات المنتج');
@@ -285,65 +510,55 @@ async function deleteProduct(productId, productName) {
     try {
         const csrfToken = await ensureAdminCsrfToken();
         const res = await fetch(`/api/admin/inventory/${productId}`, {
-            method: 'DELETE',
-            credentials: 'include',
+            method: 'DELETE', credentials: 'include',
             headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
         });
         const data = await res.json();
         if (data.success) {
-            alert('🗑️ تم حذف المنتج بنجاح');
+            showAdminToast('🗑️ تم حذف المنتج بنجاح', 'success');
             loadInventory();
         } else {
-            alert(`❌ ${  data.message || 'فشل الحذف'}`);
+            alert(`❌ ${data.message || 'فشل الحذف'}`);
         }
     } catch (_err) {
         alert('❌ فشل الاتصال بالسيرفر');
     }
 }
 
-// ======================================================
-//  حفظ التعديل
-// ======================================================
-
-document.addEventListener('DOMContentLoaded', () => {
-    const saveBtn = document.getElementById('saveEditBtn');
-    const cancelBtn = document.getElementById('cancelEditBtn');
-    const closeBtn = document.getElementById('closeModalBtn');
-
-    if (saveBtn) {
-        saveBtn.onclick = saveProductEdit;
-    }
-    if (cancelBtn) {
-        cancelBtn.onclick = () => closeModal(document.getElementById('editModal'));
-    }
-    if (closeBtn) {
-        closeBtn.onclick = () => closeModal(document.getElementById('editModal'));
-    }
-});
-
 async function saveProductEdit() {
     const productId = document.getElementById('editId').value;
     const price = parseFloat(document.getElementById('editPrice').value);
     const margin = parseFloat(document.getElementById('editMargin').value);
+    const ratingInput = document.getElementById('editRating');
+    const reviewsInput = document.getElementById('editReviewsCount');
 
     try {
+        const image = await uploadImageIfAny(
+            document.getElementById('editProductImage'),
+            (document.getElementById('editImageUrl') || {}).value || ''
+        );
+        const payload = { price, profitMargin: margin, image };
+        if (ratingInput) {
+            const rating = parseFloat(ratingInput.value);
+            payload.rating = Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : 0;
+        }
+        if (reviewsInput) {
+            const reviews = parseInt(reviewsInput.value, 10);
+            payload.reviewsCount = Number.isFinite(reviews) ? Math.max(0, reviews) : 0;
+        }
         const csrfToken = await ensureAdminCsrfToken();
         const res = await fetch(`/api/admin/inventory/${productId}`, {
-            method: 'PATCH',
-            credentials: 'include',
+            method: 'PATCH', credentials: 'include',
             headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
-            body: JSON.stringify({
-                price: price,
-                profitMargin: margin
-            })
+            body: JSON.stringify(payload)
         });
         const data = await res.json();
         if (data.success) {
-            alert('✅ تم تحديث المنتج بنجاح');
+            showAdminToast('✅ تم تحديث المنتج بنجاح', 'success');
             closeModal(document.getElementById('editModal'));
             loadInventory();
         } else {
-            alert(`❌ ${  data.message || 'فشل التحديث'}`);
+            alert(`❌ ${data.message || 'فشل التحديث'}`);
         }
     } catch (_err) {
         alert('❌ فشل الاتصال بالسيرفر');
@@ -354,140 +569,217 @@ async function saveProductEdit() {
 //  إدارة الطلبات
 // ======================================================
 
+let _ordersFilter = 'all';
+
 async function loadRecentOrders() {
     const tbody = document.getElementById('ordersList');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="5" class="loading-cell"><span class="spinner"></span> جاري جلب الفواتير...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> جاري جلب الفواتير...</td></tr>`;
 
     try {
-        const res = await fetch('/api/admin/orders', {
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const res = await fetch('/api/admin/orders', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
 
         if (!data.success) {
-            tbody.innerHTML = `<tr><td colspan="5" class="error-cell">❌ فشل تحميل الطلبات.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل تحميل الطلبات.</td></tr>`;
             return;
         }
 
-        const orders = data.orders || [];
-        if (orders.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="loading-cell">لا توجد طلبات حالياً.</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = orders.map(order => {
-            const customerName = order.customerName || order.buyerEmail?.split('@')[0] || 'زبون';
-            const email = order.buyerEmail || order.email || '—';
-            const items = order.items ? order.items.map(i => `${i.name || i.id} (${i.quantity || 1})`).join('، ') : (order.productName || '—');
-            const total = order.totalAmount || order.price || 0;
-            const status = order.status || 'pending';
-            const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : 'badge-danger');
-            const statusText = status === 'completed' ? 'مكتمل' : (status === 'pending' ? 'معلّق' : 'رفض');
-
-            return `
-                <tr>
-                    <td class="customer-name-cell">${customerName}</td>
-                    <td class="customer-email-cell">${email}</td>
-                    <td>${items}</td>
-                    <td class="price-cell">$${total.toFixed(2)}</td>
-                    <td><span class="badge ${statusBadge}">${statusText}</span></td>
-                </tr>
-            `;
-        }).join('');
+        _allOrdersCache = data.orders || [];
+        renderOrders(_allOrdersCache);
 
     } catch (_err) {
-        tbody.innerHTML = `<tr><td colspan="5" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
     }
 }
 
-// ======================================================
-//  منطق إضافي — يدعمه المتحكم الرئيسي admin.js
-// ======================================================
+function filterOrders(status) {
+    _ordersFilter = status;
+    const filtered = status === 'all' ? _allOrdersCache : _allOrdersCache.filter(o => o.status === status);
+    renderOrders(filtered);
+}
 
-// هذه الدوال يتم استدعاؤها من admin.js الرئيسي إذا كان محملًا
-// لكن بما أننا نستخدم private/admin.js، جميع الوظائف هنا
+function renderOrders(orders) {
+    const tbody = document.getElementById('ordersList');
+    if (!tbody) return;
+
+    if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">لا توجد طلبات بهذه الحالة.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = orders.map(order => {
+        const customerName = order.buyerEmail?.split('@')[0] || 'زبون';
+        const email = order.buyerEmail || order.email || '—';
+        const items = order.items && order.items.length > 0
+            ? order.items.map(i => {
+                const itemName = (i.name && typeof i.name === 'object')
+                    ? (i.name.ar || i.name.en || '')
+                    : (i.name || i.id || '');
+                const qty = i.qty ?? i.quantity ?? 1;
+                return `${itemName} (×${qty})`;
+            }).join('، ')
+            : (order.productName || '—');
+        const total = order.price || order.totalAmount || 0;
+        const status = order.status || 'pending';
+        const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : status === 'refunded' ? 'badge-danger' : 'badge-danger');
+        const statusText = status === 'completed' ? 'مكتمل' : (status === 'pending' ? 'معلّق' : (status === 'refunded' ? 'مرفوض' : (status === 'processing' ? 'قيد التنفيذ' : 'فشل')));
+        const actionButtons = status === 'pending'
+            ? `<button class="btn btn-approve btn-sm" onclick="approveOrder('${order.orderId}')"><i class="fas fa-check"></i> اعتماد</button>
+               <button class="btn btn-reject btn-sm" onclick="rejectOrder('${order.orderId}')" style="margin-right:4px;"><i class="fas fa-times"></i> رفض</button>`
+            : (status === 'completed' && order.deliveredCodes && order.deliveredCodes.length > 0
+                ? `<button class="btn btn-secondary btn-sm" onclick="showCodes('${order.orderId}')"><i class="fas fa-eye"></i> الأكواد</button>`
+                : '—');
+
+        return `
+            <tr>
+                <td style="color:var(--primary);font-weight:700;">#${order.orderId}</td>
+                <td class="customer-name-cell">${customerName}</td>
+                <td class="customer-email-cell">${email}</td>
+                <td>${items}</td>
+                <td class="price-cell">$${Number(total).toFixed(2)}</td>
+                <td><span class="badge ${statusBadge}">${statusText}</span></td>
+                <td><div class="action-btns-group">${actionButtons}</div></td>
+            </tr>
+        `;
+    }).join('');
+}
+
 // eslint-disable-next-line no-unused-vars
-function showOrderNotification(order) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = 'neon-toast';
-    toast.innerHTML = `
-        <div class="toast-header">
-            <span><i class="fas fa-shopping-bag"></i> طلب جديد وصل!</span>
-        </div>
-        <div class="toast-order-id">الطلب: <span class="toast-highlight">#${order.orderId || order._id || 'N/A'}</span></div>
-        <div class="toast-customer">المشتري: ${order.buyerEmail || order.email || '—'}</div>
-        <div class="toast-value">🎯 القيمة: $${order.price || order.totalAmount || 0}</div>
-    `;
-
-    container.appendChild(toast);
-
-    if (isSoundEnabled) {
-        const alertSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-        alertSound.volume = 0.5;
-        alertSound.play().catch(() => {
-            // User interaction required for audio to play
+async function approveOrder(orderId) {
+    if (!confirm(`هل أنت متأكد من اعتماد الطلب #${orderId}؟`)) return;
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch(`/api/admin/orders/${orderId}/approve`, {
+            method: 'POST', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
         });
-    }
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message || 'تم اعتماد الطلب بنجاح'}`, 'success');
+            loadRecentOrders();
+            loadDashboard();
+            loadInventory();
+        } else {
+            showAdminToast(`❌ ${data.message || 'فشل اعتماد الطلب'}`, 'error');
+        }
+    } catch (_err) { showAdminToast('❌ فشل الاتصال بالسيرفر', 'error'); }
+}
 
-    setTimeout(() => {
-        toast.classList.add('toast-fade-out');
-        setTimeout(() => toast.remove(), 500);
-    }, 8000);
+// eslint-disable-next-line no-unused-vars
+async function rejectOrder(orderId) {
+    if (!confirm(`هل أنت متأكد من رفض الطلب #${orderId}؟`)) return;
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch(`/api/admin/orders/${orderId}/reject`, {
+            method: 'POST', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message || 'تم رفض الطلب بنجاح'}`, 'success');
+            loadRecentOrders();
+            loadDashboard();
+        } else {
+            showAdminToast(`❌ ${data.message || 'فشل رفض الطلب'}`, 'error');
+        }
+    } catch (_err) { showAdminToast('❌ فشل الاتصال بالسيرفر', 'error'); }
+}
+
+function showCodes(orderId) {
+    const order = _allOrdersCache.find(o => o.orderId === orderId);
+    if (!order || !order.deliveredCodes || order.deliveredCodes.length === 0) {
+        showAdminToast('❌ لا توجد أكواد مسلمة', 'warning');
+        return;
+    }
+    const codesStr = order.deliveredCodes.join('\n');
+    const textarea = document.createElement('textarea');
+    textarea.value = codesStr;
+    textarea.style.width = '100%';
+    textarea.style.height = '200px';
+    textarea.style.background = '#1a1a2e';
+    textarea.style.color = '#ff9f43';
+    textarea.style.border = '1px solid rgba(255,159,67,0.3)';
+    textarea.style.borderRadius = '8px';
+    textarea.style.padding = '10px';
+    textarea.style.direction = 'ltr';
+    textarea.readOnly = true;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width:500px;">
+            <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            <h3 class="modal-title"><i class="fas fa-key"></i> أكواد الطلب #${orderId}</h3>
+            <div style="margin-bottom:15px;">
+                <span class="badge badge-success">📧 ${order.buyerEmail}</span>
+            </div>
+        </div>
+    `;
+    modal.querySelector('.modal-content').appendChild(textarea);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-primary';
+    copyBtn.style.marginTop = '10px';
+    copyBtn.innerHTML = '<i class="fas fa-copy"></i> نسخ الكل';
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(codesStr).then(() => {
+            showAdminToast('📋 تم نسخ الأكواد', 'success');
+        });
+    };
+    modal.querySelector('.modal-content').appendChild(copyBtn);
+
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 }
 
 // ======================================================
-//  إضافة منتج يدوي مع كودات (UI + API)
+//  إضافة منتج يدوي مع كودات
 // ======================================================
 
 function openAddManualModal() {
     const modal = document.getElementById('addManualModal');
-    if (modal) {
-        modal.classList.add('active');
-        document.getElementById('manualProductNameAr').value = '';
-        document.getElementById('manualProductNameEn').value = '';
-        document.getElementById('manualCategory').value = '';
-        document.getElementById('manualPrice').value = '';
-        document.getElementById('manualCodesTextarea').value = '';
-        document.getElementById('manualCodesFile').value = '';
-        document.getElementById('codeCountInfo').style.display = 'none';
-        document.getElementById('codeCountValue').textContent = '0';
-        document.getElementById('saveBtnText').classList.remove('hidden');
-        document.getElementById('saveBtnLoading').classList.add('hidden');
-        document.getElementById('saveAddManualBtn').disabled = false;
-    }
+    if (!modal) return;
+    modal.classList.add('active');
+    document.getElementById('manualProductNameAr').value = '';
+    document.getElementById('manualProductNameEn').value = '';
+    document.getElementById('manualCategory').value = '';
+    document.getElementById('manualPrice').value = '';
+    document.getElementById('manualProfitMargin').value = '1.15';
+    document.getElementById('manualCodesTextarea').value = '';
+    document.getElementById('manualCodesFile').value = '';
+    const manualImageInput = document.getElementById('manualProductImage');
+    const manualImageUrl = document.getElementById('manualProductImageUrl');
+    if (manualImageInput) manualImageInput.value = '';
+    if (manualImageUrl) manualImageUrl.value = '';
+    document.getElementById('codeCountInfo').style.display = 'none';
+    document.getElementById('codeCountValue').textContent = '0';
+    const saveBtnText = document.getElementById('saveBtnText');
+    const saveBtnLoading = document.getElementById('saveBtnLoading');
+    const saveAddBtn = document.getElementById('saveAddManualBtn');
+    if (saveBtnText) saveBtnText.classList.remove('hidden');
+    if (saveBtnLoading) saveBtnLoading.classList.add('hidden');
+    if (saveAddBtn) saveAddBtn.disabled = false;
 }
 
 function closeAddManualModal() {
     const modal = document.getElementById('addManualModal');
-    if (modal) {
-        modal.classList.remove('active');
-    }
+    if (modal) modal.classList.remove('active');
 }
 
 function parseCodesFromText(text) {
-    return text
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
+    return text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 }
 
 function parseCodesFromCSV(text) {
     const lines = text.trim().split('\n');
     const codes = [];
     for (const line of lines) {
-        // eslint-disable-next-line prefer-destructuring
-        const firstCell = line.split(',')[0]?.trim();
-        const firstTab = line.split('\t')[0]?.trim();
-        const code = firstCell || firstTab;
-        if (code && code.toUpperCase() !== 'CODE') {
-            codes.push(code);
-        }
+        const [firstCellRaw] = line.split(',');
+        const [firstTabRaw] = line.split('\t');
+        const code = (firstCellRaw || '').trim() || (firstTabRaw || '').trim();
+        if (code && code.toUpperCase() !== 'CODE') codes.push(code);
     }
     return codes;
 }
@@ -495,18 +787,13 @@ function parseCodesFromCSV(text) {
 async function loadManualCodes() {
     const fileInput = document.getElementById('manualCodesFile');
     const textarea = document.getElementById('manualCodesTextarea');
-    const file = fileInput.files[0];
-
+    const [file] = fileInput.files;
     let codes = [];
 
     if (file) {
         const text = await file.text();
-        if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) {
-            codes = parseCodesFromCSV(text);
-        } else if (file.name.endsWith('.json')) {
-            const json = JSON.parse(text);
-            codes = Array.isArray(json) ? json : (json.codes || []);
-        }
+        if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) codes = parseCodesFromCSV(text);
+        else if (file.name.endsWith('.json')) { const json = JSON.parse(text); codes = Array.isArray(json) ? json : (json.codes || []); }
         textarea.value = codes.join('\n');
     } else {
         codes = parseCodesFromText(textarea.value);
@@ -525,13 +812,13 @@ async function saveManualProduct() {
     const profitMargin = parseFloat(document.getElementById('manualProfitMargin').value) || 1.15;
 
     if (!productNameAr || !productNameEn || !category) {
-        alert('❌ يرجى ملء جميع الحقول المطلوبة.');
+        showAdminToast('❌ يرجى ملء جميع الحقول المطلوبة', 'error');
         return;
     }
 
     const codes = await loadManualCodes();
     if (codes.length === 0) {
-        alert('❌ لا يوجد كودات لإضافتها. يرجى إدخال كودات يدوي أو رفع ملف.');
+        showAdminToast('❌ لا يوجد كودات لإضافتها', 'error');
         return;
     }
 
@@ -540,30 +827,22 @@ async function saveManualProduct() {
     document.getElementById('saveAddManualBtn').disabled = true;
 
     try {
+        const image = await uploadImageIfAny(
+            document.getElementById('manualProductImage'),
+            (document.getElementById('manualProductImageUrl') || {}).value || ''
+        );
         const csrfToken = await ensureAdminCsrfToken();
         const res = await fetch('/api/admin/inventory/add-manual', {
-            method: 'POST',
-            credentials: 'include',
+            method: 'POST', credentials: 'include',
             headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
-            body: JSON.stringify({
-                productName: { ar: productNameAr, en: productNameEn },
-                category,
-                price,
-                profitMargin,
-                manualCodes: codes
-            })
+            body: JSON.stringify({ productName: { ar: productNameAr, en: productNameEn }, category, price, profitMargin, manualCodes: codes, image })
         });
-
         const data = await res.json();
 
         if (data.success) {
-            const btn = document.getElementById('saveAddManualBtn');
-            btn.innerHTML = '<i class="fas fa-check"></i> تم الحفظ!';
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-save"></i> حفظ المنتج';
-                closeAddManualModal();
-                loadInventory();
-            }, 1200);
+            showAdminToast(`✅ ${data.message || 'تم إنشاء المنتج'}`, 'success');
+            closeAddManualModal();
+            loadInventory();
         } else {
             throw new Error(data.message || 'فشل إنشاء المنتج');
         }
@@ -571,6 +850,265 @@ async function saveManualProduct() {
         document.getElementById('saveBtnText').classList.remove('hidden');
         document.getElementById('saveBtnLoading').classList.add('hidden');
         document.getElementById('saveAddManualBtn').disabled = false;
-        alert(`❌ ${  err.message || 'حدث خطأ غير متوقع'}`);
+        showAdminToast(`❌ ${err.message || 'حدث خطأ'}`, 'error');
+    }
+}
+
+// ======================================================
+//  CSV Import
+// ======================================================
+
+async function importCsvData() {
+    const fileInput = document.getElementById('csvFileInput');
+    const textInput = document.getElementById('csvTextInput');
+    let csvData = textInput.value.trim();
+
+    if (fileInput.files.length > 0) {
+        csvData = await fileInput.files[0].text();
+    }
+
+    if (!csvData) {
+        showAdminToast('❌ يرجى اختيار ملف أو لصق بيانات CSV', 'error');
+        return;
+    }
+
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/inventory/import', {
+            method: 'POST', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+            body: JSON.stringify({ csvData })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message}`, 'success');
+            closeModal(document.getElementById('importCsvModal'));
+            loadInventory();
+        } else {
+            showAdminToast(`❌ ${data.message}`, 'error');
+        }
+    } catch (_) {
+        showAdminToast('❌ فشل استيراد البيانات', 'error');
+    }
+}
+
+// ======================================================
+//  إدارة الأقسام (Categories)
+// ======================================================
+
+async function loadCategories() {
+    const tbody = document.getElementById('categoryList');
+    if (!tbody) return;
+
+    tbody.innerHTML = `<tr><td colspan="6" class="loading-cell"><span class="spinner"></span> جاري تحميل الأقسام...</td></tr>`;
+
+    try {
+        const res = await fetch('/api/admin/categories', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) {
+            tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل تحميل الأقسام</td></tr>`;
+            return;
+        }
+
+        const categories = data.categories || [];
+        tbody.innerHTML = '';
+
+        if (categories.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">لا توجد أقسام بعد</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = categories.map(cat => `
+            <tr>
+                <td><span class="badge badge-accent">${cat.key}</span></td>
+                <td>${cat.title?.ar || '—'}</td>
+                <td>${cat.title?.en || '—'}</td>
+                <td>${cat.order || 0}</td>
+                <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'نشط' : 'غير نشط'}</span></td>
+                <td>
+                    <div class="action-btns-group">
+                        <button class="action-icon btn-edit" onclick="editCategory('${cat._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
+                        <button class="action-icon btn-delete" onclick="deleteCategory('${cat._id}', '${cat.title?.ar || ''}')" title="حذف"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (_err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+    }
+}
+
+function openAddCategoryModal() {
+    document.getElementById('categoryModalTitle').innerHTML = '<i class="fas fa-tag"></i> إضافة قسم جديد';
+    document.getElementById('categoryId').value = '';
+    document.getElementById('categoryKey').value = '';
+    document.getElementById('categoryTitleAr').value = '';
+    document.getElementById('categoryTitleEn').value = '';
+    document.getElementById('categoryDescAr').value = '';
+    document.getElementById('categoryDescEn').value = '';
+    document.getElementById('categoryImage').value = '';
+    const categoryImageFile = document.getElementById('categoryImageFile');
+    if (categoryImageFile) categoryImageFile.value = '';
+    const categoryImagePreview = document.getElementById('categoryImagePreview');
+    if (categoryImagePreview) categoryImagePreview.style.display = 'none';
+    document.getElementById('categoryOrder').value = '0';
+    openModal(document.getElementById('categoryModal'));
+}
+
+async function saveCategoryHandler() {
+    const categoryId = document.getElementById('categoryId').value;
+    const key = document.getElementById('categoryKey').value.trim();
+    const titleAr = document.getElementById('categoryTitleAr').value.trim();
+    const titleEn = document.getElementById('categoryTitleEn').value.trim();
+    const descriptionAr = document.getElementById('categoryDescAr').value.trim();
+    const descriptionEn = document.getElementById('categoryDescEn').value.trim();
+    let image = document.getElementById('categoryImage').value.trim();
+    const order = parseInt(document.getElementById('categoryOrder').value) || 0;
+
+    if (!key || !titleAr || !titleEn) {
+        showAdminToast('❌ المفتاح والعنوان مطلوبان', 'error');
+        return;
+    }
+
+    try {
+        image = await uploadImageIfAny(document.getElementById('categoryImageFile'), image);
+        const csrfToken = await ensureAdminCsrfToken();
+        let res;
+
+        if (categoryId) {
+            // Update
+            res = await fetch(`/api/admin/categories/${categoryId}`, {
+                method: 'PATCH', credentials: 'include',
+                headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+                body: JSON.stringify({ key, titleAr, titleEn, descriptionAr, descriptionEn, image, order })
+            });
+        } else {
+            // Create
+            res = await fetch('/api/admin/categories', {
+                method: 'POST', credentials: 'include',
+                headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+                body: JSON.stringify({ key, titleAr, titleEn, descriptionAr, descriptionEn, image, order })
+            });
+        }
+
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message}`, 'success');
+            closeModal(document.getElementById('categoryModal'));
+            loadCategories();
+        } else {
+            showAdminToast(`❌ ${data.message}`, 'error');
+        }
+    } catch (_) {
+        showAdminToast('❌ فشل حفظ القسم', 'error');
+    }
+}
+
+// eslint-disable-next-line no-unused-vars
+async function editCategory(categoryId) {
+    try {
+        const res = await fetch('/api/admin/categories', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        const categories = data.categories || [];
+        const cat = categories.find(c => c._id === categoryId);
+        if (!cat) { showAdminToast('❌ القسم غير موجود', 'error'); return; }
+
+        document.getElementById('categoryModalTitle').innerHTML = '<i class="fas fa-edit"></i> تعديل القسم';
+        document.getElementById('categoryId').value = cat._id;
+        document.getElementById('categoryKey').value = cat.key || '';
+        document.getElementById('categoryTitleAr').value = cat.title?.ar || '';
+        document.getElementById('categoryTitleEn').value = cat.title?.en || '';
+        document.getElementById('categoryDescAr').value = cat.description?.ar || '';
+        document.getElementById('categoryDescEn').value = cat.description?.en || '';
+        document.getElementById('categoryImage').value = cat.image || '';
+        const categoryImagePreview = document.getElementById('categoryImagePreview');
+        if (categoryImagePreview) {
+            categoryImagePreview.src = cat.image || '';
+            categoryImagePreview.style.display = cat.image ? 'inline-block' : 'none';
+        }
+        const categoryImageFile = document.getElementById('categoryImageFile');
+        if (categoryImageFile) categoryImageFile.value = '';
+        document.getElementById('categoryOrder').value = cat.order || 0;
+        openModal(document.getElementById('categoryModal'));
+    } catch (_) {
+        showAdminToast('❌ فشل تحميل بيانات القسم', 'error');
+    }
+}
+
+// eslint-disable-next-line no-unused-vars
+async function deleteCategory(categoryId, name) {
+    if (!confirm(`هل أنت متأكد من حذف القسم: ${name}؟`)) return;
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch(`/api/admin/categories/${categoryId}`, {
+            method: 'DELETE', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast('🗑️ تم حذف القسم', 'success');
+            loadCategories();
+        } else {
+            showAdminToast(`❌ ${data.message}`, 'error');
+        }
+    } catch (_) {
+        showAdminToast('❌ فشل حذف القسم', 'error');
+    }
+}
+
+// ======================================================
+//  السجلات (Logs)
+// ======================================================
+
+async function loadLogs() {
+    const container = document.getElementById('logsContainer');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);"><span class="spinner"></span> جاري تحميل السجلات...</div>';
+
+    try {
+        const res = await fetch('/api/admin/logs', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success || !data.logs) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد سجلات</div>';
+            return;
+        }
+
+        const logs = data.logs;
+        if (logs.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد سجلات</div>';
+            return;
+        }
+
+        container.innerHTML = logs.map(log => `
+            <div class="log-entry">
+                <span class="log-action">${log.action}</span>
+                <span class="log-details">${log.details || ''} ${log.targetName ? `— ${log.targetName}` : ''}</span>
+                <span class="log-time">${new Date(log.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+            </div>
+        `).join('');
+    } catch (_) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">فشل تحميل السجلات</div>';
+    }
+}
+
+async function clearAllLogs() {
+    if (!confirm('هل أنت متأكد من مسح جميع السجلات؟')) return;
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/logs', {
+            method: 'DELETE', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast('🗑️ تم مسح السجلات', 'success');
+            loadLogs();
+        } else {
+            showAdminToast('❌ فشل مسح السجلات', 'error');
+        }
+    } catch (_) {
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
     }
 }

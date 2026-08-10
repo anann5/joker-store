@@ -13,6 +13,12 @@ router.get('/products/search-index', storeController.getSearchIndex);
 // Route for latest orders (used by updateTrustTicker in script.js)
 router.get('/products/latest-orders', storeController.getLatestOrders);
 
+// Route for site-wide config (payment numbers, social links, stats)
+router.get('/site-config', storeController.getSiteConfig);
+
+// Route for guest order tracking by email
+router.post('/track-order', storeController.trackOrder);
+
 // Route to get best-selling products
 router.get('/products/best-selling', storeController.getBestSellingProducts);
 

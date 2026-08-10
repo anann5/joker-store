@@ -2,12 +2,20 @@ const { Product } = require('../models');
 const { createLog, sendTelegramAlert, fetchProviderBalances, externalProviders } = require('./helpers');
 const axios = require('axios');
 
+const ALLOWED_CATEGORIES = ['gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
+    'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
+    'itunes', 'razer_gold', 'amazon', 'steam'];
+
+function validateCategory(category) {
+    return typeof category === 'string' && ALLOWED_CATEGORIES.includes(category);
+}
+
 exports.getInventory = async (req, res) => {
     try {
         const products = await Product.find({ isActive: true }).select('productName category region price codes updatedAt isExternal externalId profitMargin basePrice currentProvider');
-        res.json(products);
+        res.json({ success: true, products });
     } catch (_err) {
-        res.status(500).json({ error: 'فشل جلب المخزون' });
+        res.status(500).json({ success: false, error: 'فشل جلب المخزون' });
     }
 };
 
@@ -19,6 +27,22 @@ exports.addProductManual = async (req, res) => {
         res.json({ success: true, message: 'تم إضافة المنتج يدوياً' });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
+    }
+};
+
+exports.getProduct = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        if (!productId || typeof productId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+            return res.status(400).json({ success: false, message: 'معرف المنتج غير صالح' });
+        }
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'المنتج غير موجود.' });
+        }
+        res.json({ success: true, ...product.toObject() });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب المنتج.' });
     }
 };
 
@@ -137,6 +161,9 @@ exports.createProduct = async (req, res) => {
         if (!productName || !productName.ar || !productName.en) {
             return res.status(400).json({ success: false, message: 'اسم المنتج مطلوب بالعربية والإنجليزية.' });
         }
+        if (!validateCategory(category)) {
+            return res.status(400).json({ success: false, message: 'الفئة المحددة غير صالحة.' });
+        }
 
         const productData = {
             productName,
@@ -221,6 +248,14 @@ exports.createProductWithManualCodes = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'اسم المنتج مطلوب بالعربية والإنجليزية.'
+            });
+        }
+
+        // ✅ التحقق من الفئة
+        if (!validateCategory(category)) {
+            return res.status(400).json({
+                success: false,
+                message: 'الفئة المحددة غير صالحة.'
             });
         }
 
@@ -318,7 +353,7 @@ exports.updateProduct = async (req, res) => {
         const allowedFields = ['productName', 'category', 'region', 'price', 'description', 'image', 
                                'isExternal', 'externalId', 'profitMargin', 'basePrice', 
                                'currentProvider', 'isActive', 'isSubscription', 'subscriptionType', 
-                               'subscriptionDuration'];
+                               'subscriptionDuration', 'rating', 'reviewsCount'];
 
         allowedFields.forEach(field => {
             if (updates[field] !== undefined) {

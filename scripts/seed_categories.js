@@ -38,6 +38,7 @@ async function seedCategories() {
                     isActive: true
                 }
             };
+            // eslint-disable-next-line no-await-in-loop
             const result = await Category.updateOne(filter, update, { upsert: true });
             if (result.upsertedId) {
                 console.log(`   -> Added '${cat.en}' category`);

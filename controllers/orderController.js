@@ -65,6 +65,29 @@ exports.getOrders = async (_req, res) => {
     }
 };
 
+exports.rejectOrder = async (req, res) => {
+    try {
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+        }
+        if (order.status !== 'pending') {
+            return res.status(409).json({ success: false, message: 'الطلب معالج مسبقاً' });
+        }
+
+        order.status = 'refunded';
+        order.failedAt = new Date();
+        await order.save();
+
+        await createLog('رفض طلب', `تم رفض الطلب #${order.orderId}`, req, null, order.productName);
+        await sendTelegramAlert(`⛔ تم رفض الطلب #${order.orderId}.`);
+        return res.json({ success: true, message: 'تم رفض الطلب بنجاح' });
+    } catch (err) {
+        console.error('Reject Error:', err.message);
+        return res.status(500).json({ success: false, message: 'فشل رفض الطلب' });
+    }
+};
+
 exports.approveOrder = async (req, res) => {
     let order;
 
@@ -128,6 +151,16 @@ exports.approveOrder = async (req, res) => {
         await order.save();
 
         await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
+
+        // Emit WebSocket event for approved order
+        const io = req.app?.get('io');
+        if (io) {
+            io.emit('order_approved', {
+                orderId: order.orderId,
+                buyerEmail: order.buyerEmail
+            });
+        }
+
         return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });
     } catch (err) {
         console.error('Approval Error:', err.message);

@@ -1,5 +1,4 @@
-import { rawServerData, selectCategory, currentCategoryKey } from './script.js';
-import { cart, clearCart } from './cart.js';
+import { rawServerData, selectCategory, currentCategoryKey, renderRatingStars, syncWishlistButtons } from './script.js';
 
 let toastContainer = null;
 
@@ -82,6 +81,9 @@ export function showAllCategories() {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
 
+    const homeSections = document.getElementById('homeSections');
+    if (homeSections) homeSections.classList.remove('hidden');
+
     grid.className = '';
     grid.removeAttribute('style');
     grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:30px;';
@@ -119,6 +121,9 @@ export function showProductDetails(product) {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
 
+    const homeSections = document.getElementById('homeSections');
+    if (homeSections) homeSections.classList.add('hidden');
+
     // استخدام القالب الجاهز من HTML
     const template = document.getElementById('product-details-template');
     if (!template) {
@@ -127,7 +132,7 @@ export function showProductDetails(product) {
     }
 
     // 🔥 نقل تعريف الدالة إلى هنا، حيث يتم استخدامها فقط
-    const renderRelatedProducts = async (productId, categoryKey) => {
+    const renderRelatedProducts = async (productId) => {
         const relatedContainer = view.querySelector('#related-products-grid');
         if (!relatedContainer) return;
 
@@ -161,8 +166,11 @@ export function showProductDetails(product) {
                     imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                     card.querySelector('.card-title').textContent = clientItem.name;
                     card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                    card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
+                    card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
                     relatedContainer.appendChild(card);
                 });
+                syncWishlistButtons();
             } else {
                 relatedContainer.parentElement.style.display = 'none';
             }
@@ -181,6 +189,16 @@ export function showProductDetails(product) {
     view.querySelector('.detail-img').alt = product.name;
     view.querySelector('.product-name').textContent = product.name;
     view.querySelector('.product-price').textContent = `${product.price}$`;
+    const ratingZone = view.querySelector('[data-rating]');
+    if (ratingZone) {
+        ratingZone.innerHTML = renderRatingStars(product.rating, product.reviewsCount);
+    }
+    const wishlistBtn = view.querySelector('[data-wishlist-btn]');
+    if (wishlistBtn) {
+        wishlistBtn.dataset.productId = product.id;
+        wishlistBtn.classList.toggle('active', (JSON.parse(localStorage.getItem('joker_wishlist') || '[]') || []).includes(String(product.id)));
+        if (wishlistBtn.classList.contains('active')) wishlistBtn.querySelector('i').className = 'fas fa-heart';
+    }
     const regionSpan = view.querySelector('.product-region');
     if (regionSpan) {
         regionSpan.textContent = product.region;
@@ -210,7 +228,7 @@ export function showProductDetails(product) {
     grid.appendChild(view);
 
     // بعد عرض المنتج، نقوم بجلب وعرض المنتجات ذات الصلة
-    renderRelatedProducts(product.id, currentCategoryKey());
+    renderRelatedProducts(product.id);
 }
 
 // دالة تحديث واجهة السلة (يمكن نقلها من cart.js إذا كانت هناك)

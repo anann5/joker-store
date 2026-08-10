@@ -26,10 +26,10 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com', 'https://cdn.socket.io'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'"],
+            connectSrc: ["'self'", 'https://cdn.socket.io', 'wss://*', 'ws://*'],
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
@@ -88,7 +88,7 @@ app.get('/', (req, res) => {
 const authenticateAdminPage = (req, res, next) => {
     const token = req.headers['authorization']?.split(' ')[1] || req.cookies['admin_token'];
     if (!token) return res.redirect('/login.html');
-    authController.verifyAdminToken(req, res, next);
+    authController.verifyAdminToken(req, res, next, '/login.html');
 };
 
 app.get('/admin', authenticateAdminPage, (req, res) => {
@@ -96,6 +96,7 @@ app.get('/admin', authenticateAdminPage, (req, res) => {
 });
 
 app.get('/admin.js', verifyAdminToken, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(__dirname, 'private', 'admin.js'));
 });
 
@@ -105,6 +106,10 @@ app.get('/login.html', (req, res) => {
 
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/favicon.ico', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'image', 'logo.png'));
 });
 
 app.get('/health', (req, res) => {

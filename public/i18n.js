@@ -45,7 +45,7 @@ async function setLanguage(lang) {
         // إعادة تحميل المحتوى الديناميكي
         window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: lang } }));
 
-    } catch (error) {
+    } catch (_error) {
         // Errors are handled gracefully by not translating.
     }
 }

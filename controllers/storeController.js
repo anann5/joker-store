@@ -1,5 +1,6 @@
 const { Product, Order, Category } = require('../models');
 const { v4: uuidv4 } = require('uuid');
+const siteSettings = require('../config/siteSettings');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
@@ -32,7 +33,9 @@ function toPublicProduct(product) {
         image: source.image || '',
         isSubscription: Boolean(source.isSubscription),
         subscriptionType: source.subscriptionType,
-        subscriptionDuration: source.subscriptionDuration
+        subscriptionDuration: source.subscriptionDuration,
+        rating: Number(source.rating) || 0,
+        reviewsCount: Number(source.reviewsCount) || 0
     };
 }
 
@@ -95,13 +98,84 @@ exports.getLatestOrders = async (_req, res) => {
             .limit(5)
             .select('orderId items.name');
 
-        const orders = latestOrders.map(order => ({
-            orderId: order.orderId,
-            productName: order.items[0]?.name || getLocalizedValue('منتج')
-        }));
+        const orders = latestOrders.map(order => {
+            const firstName = order.items[0]?.name;
+            const productName = firstName && typeof firstName === 'object'
+                ? String(firstName.ar || firstName.en || '')
+                : String(firstName || '');
+            return {
+                orderId: order.orderId,
+                productName: productName || getLocalizedValue('منتج').ar
+            };
+        });
         res.json({ success: true, orders });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل في جلب آخر الطلبات' });
+    }
+};
+
+/**
+ * جلب الإعدادات العامة للمتجر (أرقام الدفع، روابط التواصل، الإحصائيات).
+ */
+exports.getSiteConfig = (_req, res) => {
+    res.json({
+        success: true,
+        config: {
+            payment: {
+                jawwalNumber: siteSettings.payment.jawwalNumber,
+                palpayNumber: siteSettings.payment.palpayNumber
+            },
+            social: siteSettings.social,
+            stats: siteSettings.stats
+        }
+    });
+};
+
+/**
+ * تتبع طلبات المشتري عبر البريد الإلكتروني (للواجهة دون الحاجة لتسجيل دخول).
+ */
+exports.trackOrder = async (req, res) => {
+    try {
+        const { email, orderId } = req.body || {};
+        if (!email || typeof email !== 'string' || email.trim().length > 200) {
+            return res.status(400).json({ success: false, error: 'البريد الإلكتروني مطلوب' });
+        }
+
+        const query = { buyerEmail: email.trim().toLowerCase() };
+        if (orderId && typeof orderId === 'string' && orderId.trim()) {
+            if (orderId.trim().length > 40) {
+                return res.status(400).json({ success: false, error: 'رقم الطلب غير صالح' });
+            }
+            query.orderId = orderId.trim().toUpperCase();
+        }
+
+        const orders = await Order.find(query)
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .select('orderId status price items.createdAt code deliveredCodes completedAt');
+
+        const safeOrders = orders.map(order => {
+            const items = (order.items || []).map(item => ({
+                name: getLocalizedValue(item.name),
+                qty: item.qty
+            }));
+            const codes = order.status === 'completed'
+                ? (order.deliveredCodes?.length ? order.deliveredCodes : (order.code ? [order.code] : []))
+                : [];
+            return {
+                orderId: order.orderId,
+                status: order.status,
+                price: order.price,
+                createdAt: order.createdAt,
+                completedAt: order.completedAt || null,
+                items,
+                codes
+            };
+        });
+
+        res.json({ success: true, orders: safeOrders });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل تتبع الطلب، حاول مرة أخرى' });
     }
 };
 
@@ -290,6 +364,19 @@ exports.createOrder = async (req, res) => {
         });
 
         await newOrder.save();
+
+        // Emit real-time notification via WebSocket
+        const io = req.app?.get('io');
+        if (io) {
+            io.emit('new_order', {
+                orderId: newOrder.orderId,
+                buyerEmail: newOrder.buyerEmail,
+                price: newOrder.price,
+                items: itemsForOrder.map(i => i.name?.ar || ''),
+                createdAt: newOrder.createdAt
+            });
+        }
+
         res.status(201).json({ success: true, message: 'تم استلام طلبك بنجاح.', orderId });
     } catch (err) {
         console.error('Order creation error:', err);

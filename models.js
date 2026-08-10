@@ -78,6 +78,8 @@ const productSchema = new mongoose.Schema({
     subscriptionType: { type: String, enum: ['fixed', 'recurring'], default: 'fixed' },
     subscriptionDuration: { type: Number, default: null },
     codeGenerationMethod: { type: String, enum: ['static', 'dynamic'], default: 'static' },
+    rating: { type: Number, default: 0, min: 0, max: 5 },
+    reviewsCount: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
@@ -108,7 +110,7 @@ productSchema.statics.claimCodeAtomic = async function(productId, orderId, buyer
     );
 
     if (!updatedProduct?.codes?.length) {
-        throw new Error('نفذت الكمية أو حدث خطأ أثناء الحجز');
+        throw new Error('نفدت الكمية أو حدث خطأ أثناء الحجز');
     }
 
     return updatedProduct.codes[0].value;

@@ -98,6 +98,7 @@ async function restoreProducts() {
 
         let updateCount = 0;
         for (const p of productsToRestore) {
+            // eslint-disable-next-line no-await-in-loop
             const result = await Product.updateOne(p.filter, { $set: p.doc }, { upsert: true });
             if (result.upsertedId) {
                 console.log(`   -> Added '${p.doc.productName.en}'`);
