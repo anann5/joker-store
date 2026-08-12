@@ -63,6 +63,7 @@ const productSchema = new mongoose.Schema({
         default: 'global'
     },
     price: { type: Number, required: true, min: 0 },
+    priceCurrency: { type: String, default: 'USD' },
     description: {
         ar: { type: String, default: 'لا يوجد وصف متاح حالياً لهذا المنتج.' },
         en: { type: String, default: 'No description is available for this product at the moment.' }
@@ -72,7 +73,11 @@ const productSchema = new mongoose.Schema({
     isExternal: { type: Boolean, default: false },
     externalId: { type: String, default: null },
     profitMargin: { type: Number, default: 1.10 },
+    profitMarginOverride: { type: Boolean, default: false },
     basePrice: { type: Number, default: 0 },
+    lastProviderPrice: { type: Number, default: 0 },
+    providerCurrency: { type: String, default: null },
+    lastPriceSyncAt: { type: Date, default: null },
     currentProvider: { type: String, default: 'Local' },
     isSubscription: { type: Boolean, default: false },
     subscriptionType: { type: String, enum: ['fixed', 'recurring'], default: 'fixed' },
@@ -170,10 +175,27 @@ const logSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+// ======================================================
+// Schema حالة مزامنة المزودين (Provider Sync State)
+// ======================================================
+const providerSyncStateSchema = new mongoose.Schema({
+    provider: { type: String, required: true, unique: true },
+    lastSyncAt: { type: Date, default: null },
+    status: { type: String, default: 'never' },
+    fetched: { type: Number, default: 0 },
+    created: { type: Number, default: 0 },
+    updated: { type: Number, default: 0 },
+    errors: { type: Number, default: 0 },
+    lastError: { type: String, default: null },
+    ratesSource: { type: String, default: null },
+    storeCurrency: { type: String, default: 'USD' }
+});
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Category: mongoose.model('Category', categorySchema),
     Order: mongoose.model('Order', orderSchema),
     Log: mongoose.model('Log', logSchema),
-    User: mongoose.model('User', userSchema)
+    User: mongoose.model('User', userSchema),
+    ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema)
 };

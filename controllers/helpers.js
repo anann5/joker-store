@@ -1,23 +1,17 @@
 const { Log } = require('../models');
 const axios = require('axios');
+const registry = require('../providers/registry');
+const adapter = require('../providers/adapter');
 
-// Define external providers here, as they are used by multiple controllers
-exports.externalProviders = [
-    { 
-        name: 'SMM_Global', 
-        apiUrl: 'https://api.provider-a.com/v2/items', 
-        apiKey: process.env.PROVIDER_A_KEY, 
-        balanceApiUrl: 'https://api.provider-a.com/v2/balance',
-        purchaseUrl: 'https://api.provider-a.com/v2/buy' 
-    },
-    { 
-        name: 'GameKeys_Pro', 
-        apiUrl: 'https://api.provider-b.com/v1/products', 
-        apiKey: process.env.PROVIDER_B_KEY, 
-        balanceApiUrl: 'https://api.provider-b.com/v1/user/balance',
-        purchaseUrl: 'https://api.provider-b.com/v1/order'
-    }
-];
+// المزودون الخارجيون (صيغة توافقية للكنترولرات القديمة)
+// يُبنى من سجل المزودين في providers/registry.js (قابل للضبط من .env)
+exports.externalProviders = registry.getProviders().map(provider => ({
+    name: provider.name,
+    apiUrl: provider.itemsUrl,
+    apiKey: provider.apiKey,
+    balanceApiUrl: provider.balanceUrl,
+    purchaseUrl: provider.purchaseUrl
+}));
 
 // Helper function to create logs
 exports.createLog = async (action, details, req, targetId = null, targetName = null) => {
@@ -52,9 +46,8 @@ exports.sendTelegramAlert = async (message) => {
     }
 };
 
-// Helper function to fetch provider balances
+// Helper function to fetch provider balances (حقيقية عبر واجهات المزودين)
 exports.fetchProviderBalances = async (providers) => {
-    // This function would contain the logic to call each provider's balance API
-    // For now, return dummy data or an empty array
-    return providers.map(p => ({ name: p.name, balance: Math.random() * 100, currency: '$', status: 'متصل' }));
+    const results = await Promise.all(providers.map(provider => adapter.fetchBalance(provider)));
+    return results;
 };

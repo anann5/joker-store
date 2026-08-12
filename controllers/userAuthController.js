@@ -3,10 +3,30 @@ const jwt = require('jsonwebtoken');
 const { User, Order } = require('../models');
 const { logSecurityEvent } = require('../middleware/securityLogger');
 
+// مفتاح توقيع منفصل لتوكنات المستخدمين (يُنصح بأن يختلف عن مفتاح الأدمن)
+const getUserSecret = () => process.env.JWT_USER_SECRET || process.env.JWT_SECRET;
+
 // Track failed login attempts
 const failedAttempts = new Map();
 const MAX_FAILED_ATTEMPTS = 5;
 const ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
+
+// Periodic cleanup of failed-attempt counters
+setInterval(() => {
+    const now = Date.now();
+    failedAttempts.forEach((attempt, key) => {
+        if (now - attempt.firstAttempt > ATTEMPT_WINDOW) {
+            failedAttempts.delete(key);
+        }
+    });
+}, 60 * 60 * 1000).unref();
+
+const isLocalhostRequest = (req) => {
+    return req.hostname === 'localhost' ||
+        req.hostname === '127.0.0.1' ||
+        req.headers['x-forwarded-host']?.includes('localhost') ||
+        req.headers['x-forwarded-host']?.includes('127.0.0.1');
+};
 
 /**
  * تسجيل مستخدم جديد
@@ -104,17 +124,27 @@ exports.login = async (req, res) => {
         // Reset failed attempts on successful login
         failedAttempts.delete(attemptKey);
 
+        // توكن صالح لمدة أسبوع، مُوقّع بمفتاح مستخدم منفصل
         const token = jwt.sign(
             { userId: user._id, email: user.email },
-            process.env.JWT_SECRET,
-            { expiresIn: '7d' } // توكن صالح لمدة أسبوع
+            getUserSecret(),
+            { expiresIn: '7d' }
         );
+
+        // أمان: التوكن يُحفظ في HttpOnly cookie فقط ولا يُمرَّر للجافاسكريبت
+        // (يمنع سرقته عبر XSS من localStorage/document.cookie)
+        res.cookie('user_token', token, {
+            httpOnly: true,
+            secure: !isLocalhostRequest(req),
+            sameSite: 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: '/'
+        });
 
         logSecurityEvent('SUCCESSFUL_LOGIN', `تسجيل دخول ناجح: ${email}`, req);
 
         res.json({
             success: true,
-            token,
             user: { email: user.email, balance: user.balance }
         });
 
@@ -125,14 +155,37 @@ exports.login = async (req, res) => {
 };
 
 /**
+ * جلب بيانات المستخدم الحالي (للتحقق من حالة الجلسة عبر الكوكي)
+ */
+exports.getMe = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('email balance');
+        if (!user) {
+            return res.status(401).json({ success: false, message: 'المستخدم غير موجود.' });
+        }
+        res.json({ success: true, user: { email: user.email, balance: user.balance } });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'حدث خطأ أثناء جلب بيانات المستخدم.' });
+    }
+};
+
+/**
  * جلب سجل طلبات المستخدم
  */
 exports.getOrderHistory = async (req, res) => {
     try {
         // تحديث: البحث باستخدام معرّف المستخدم بدلاً من البريد الإلكتروني
         // هذا يضمن أن المستخدم يرى طلباته فقط، حتى لو تغير بريده الإلكتروني مستقبلاً.
-        const orders = await Order.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-        res.json({ success: true, orders });
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+        const skip = (page - 1) * limit;
+
+        const query = { userId: req.user.userId };
+        const [orders, total] = await Promise.all([
+            Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Order.countDocuments(query)
+        ]);
+        res.json({ success: true, orders, total, page, limit });
     } catch (err) {
         console.error('Error fetching order history:', err);
         res.status(500).json({ success: false, error: 'فشل جلب سجل الطلبات.' });
@@ -140,13 +193,17 @@ exports.getOrderHistory = async (req, res) => {
 };
 
 /**
- * تسجيل الخروج (إلغاء التوكن)
- * ملاحظة: JWT لا يمكن إلغاؤها إلا إذا استخدمنا قائمة سوداء (blacklist).
- * للبساطة، نطلب من العميل حذف التوكن المحلي.
+ * تسجيل الخروج (إبطال الجلسة في المتصفح بمسح الكوكي)
  */
 exports.logout = async (req, res) => {
     try {
         logSecurityEvent('USER_LOGOUT', `تسجيل خروج: ${req.user?.email || 'مجهول'}`, req);
+        res.clearCookie('user_token', {
+            path: '/',
+            httpOnly: true,
+            secure: !isLocalhostRequest(req),
+            sameSite: 'lax'
+        });
         res.json({ success: true, message: 'تم تسجيل الخروج بنجاح.' });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء تسجيل الخروج.' });

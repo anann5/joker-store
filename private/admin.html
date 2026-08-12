@@ -903,12 +903,12 @@
             <div class="stats-grid" id="statsGrid">
                 <div class="stat-card stat-revenue">
                     <div class="stat-icon">💰</div>
-                    <div class="stat-value" id="statRevenue">$0</div>
+                    <div class="stat-value" id="statRevenue">0 ₪</div>
                     <div class="stat-label">إجمالي المبيعات</div>
                 </div>
                 <div class="stat-card stat-profit">
                     <div class="stat-icon">📈</div>
-                    <div class="stat-value" id="statProfit">$0</div>
+                    <div class="stat-value" id="statProfit">0 ₪</div>
                     <div class="stat-label">إجمالي الأرباح</div>
                 </div>
                 <div class="stat-card stat-orders">
@@ -923,13 +923,26 @@
                 </div>
                 <div class="stat-card stat-today">
                     <div class="stat-icon">📊</div>
-                    <div class="stat-value" id="statTodaySales">$0</div>
+                    <div class="stat-value" id="statTodaySales">0 ₪</div>
                     <div class="stat-label">مبيعات اليوم</div>
                 </div>
                 <div class="stat-card stat-today">
                     <div class="stat-icon">🆕</div>
                     <div class="stat-value" id="statTodayOrders">0</div>
                     <div class="stat-label">طلبات اليوم</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-server"></i> المزودون والمزامنة (B2B)</h2>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button class="btn btn-approve btn-sm" id="providerSyncBtn"><i class="fas fa-sync-alt"></i> مزامنة الآن</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshRatesBtn"><i class="fas fa-coins"></i> تحديث أسعار الصرف</button>
+                    </div>
+                </div>
+                <div id="providersStatusList">
+                    <div style="text-align:center; padding:20px; color:var(--text-muted);">جاري تحميل حالة المزودين...</div>
                 </div>
             </div>
 
@@ -1128,11 +1141,11 @@
             <!-- معلومات المنتج -->
             <div class="form-group">
                 <label>اسم المنتج بالعربية</label>
-                <input type="text" id="manualProductNameAr" class="form-control" placeholder="مثال: بطاقة ستيم 10$">
+                <input type="text" id="manualProductNameAr" class="form-control" placeholder="مثال: بطاقة ستيم 10₪">
             </div>
             <div class="form-group">
                 <label>اسم المنتج بالإنجليزية</label>
-                <input type="text" id="manualProductNameEn" class="form-control" placeholder="مثال: Steam Card $10">
+                <input type="text" id="manualProductNameEn" class="form-control" placeholder="مثال: Steam Card ₪10">
             </div>
 
             <div class="form-row">
@@ -1261,33 +1274,7 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
     <!-- Toast Container -->
     <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 1000;"></div>
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script>
-        (function() {
-            const overlay = document.getElementById('loadingOverlay');
-            const script = document.createElement('script');
-            script.src = '/admin.js';
-
-            script.onload = function() {
-                if (overlay && !overlay.classList.contains('hidden')) {
-                    overlay.classList.add('hidden');
-                    setTimeout(function() {
-                        if (overlay.parentNode) {
-                            overlay.parentNode.removeChild(overlay);
-                        }
-                    }, 600);
-                }
-            };
-
-            script.onerror = function() {
-                console.error('Failed to load admin.js');
-                if (overlay) {
-                    overlay.innerHTML = '<div class="loading-text"><span style="color:var(--danger)">خطأ في تحميل الواجهة</span></div>';
-                }
-            };
-
-            document.body.appendChild(script);
-        })();
-    </script>
+    <script src="/socket.io/socket.io.min.js"></script>
+    <script src="/admin-boot.js"></script>
 </body>
 </html>

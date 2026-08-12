@@ -1,6 +1,19 @@
 import { rawServerData, selectCategory, currentCategoryKey, renderRatingStars, syncWishlistButtons } from './script.js';
+import { formatPrice } from './currency.js';
 
 let toastContainer = null;
+
+/**
+ * تهريب القيم لإدراجها بأمان في HTML (منع XSS).
+ */
+export function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 /**
  * دالة لمشاركة المنتج على وسائل التواصل الاجتماعي.
@@ -165,7 +178,7 @@ export function showProductDetails(product) {
                     imgElement.src = clientItem.image;
                     imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                     card.querySelector('.card-title').textContent = clientItem.name;
-                    card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                    card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
                     card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
                     card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
                     relatedContainer.appendChild(card);
@@ -188,7 +201,7 @@ export function showProductDetails(product) {
     detailImgElement.onerror = () => { detailImgElement.src = 'image/logo.png'; }; // Fallback image
     view.querySelector('.detail-img').alt = product.name;
     view.querySelector('.product-name').textContent = product.name;
-    view.querySelector('.product-price').textContent = `${product.price}$`;
+    view.querySelector('.product-price').textContent = formatPrice(product.price);
     const ratingZone = view.querySelector('[data-rating]');
     if (ratingZone) {
         ratingZone.innerHTML = renderRatingStars(product.rating, product.reviewsCount);
@@ -231,5 +244,60 @@ export function showProductDetails(product) {
     renderRelatedProducts(product.id);
 }
 
-// دالة تحديث واجهة السلة (يمكن نقلها من cart.js إذا كانت هناك)
-export function updateCartUI() { /* ... الكود الخاص بتحديث واجهة السلة ... */ }
+// تحديث واجهة السلة: العدّاد + قائمة العناصر + المجموع الإجمالي
+export function updateCartUI() {
+    const items = JSON.parse(localStorage.getItem('joker_cart') || '[]');
+    const badge = document.getElementById('cartCountBadge');
+    const list = document.getElementById('cartItemsList');
+    const totalEl = document.getElementById('cartTotalAmount');
+
+    const totalQty = items.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
+    if (badge) {
+        badge.textContent = String(totalQty);
+        badge.classList.toggle('has-items', totalQty > 0);
+    }
+
+    if (list) {
+        if (items.length === 0) {
+            list.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 20px 0;">سلتك فارغة حالياً 🛒</p>`;
+        } else {
+            list.innerHTML = items.map((item, index) => `
+                <div class="cart-item">
+                    <div class="cart-item-details">
+                        <span class="cart-item-name">${escapeHtml(item.name)}</span>
+                        <span class="cart-item-price">${formatPrice(item.price)}</span>
+                    </div>
+                    <button type="button" class="cart-qty-btn" data-cart-dec="${index}" aria-label="إنقاص الكمية">−</button>
+                    <input type="text" class="cart-item-qty" value="${Number(item.qty) || 1}" readonly>
+                    <button type="button" class="cart-qty-btn" data-cart-inc="${index}" aria-label="زيادة الكمية">+</button>
+                    <button type="button" class="cart-item-remove" data-cart-remove="${index}" aria-label="حذف من السلة">×</button>
+                </div>`).join('');
+        }
+    }
+
+    const total = items.reduce((sum, item) => sum + (Number(item.price || 0) * (Number(item.qty) || 1)), 0);
+    if (totalEl) totalEl.textContent = formatPrice(total);
+
+    bindCartListEvents(list);
+}
+
+// ربط أزرار الكمية والحذف داخل قائمة السلة (تفويض، مع منع التكرار)
+let _cartListBound = false;
+function bindCartListEvents(list) {
+    if (!list || _cartListBound) return;
+    _cartListBound = true;
+    list.addEventListener('click', async (e) => {
+        const incBtn = e.target.closest('[data-cart-inc]');
+        const decBtn = e.target.closest('[data-cart-dec]');
+        const rmBtn = e.target.closest('[data-cart-remove]');
+        if (!incBtn && !decBtn && !rmBtn) return;
+
+        const { increaseQuantity, decreaseQuantity, removeFromCart } = await import('./cart.js');
+        const index = incBtn ? Number(incBtn.dataset.cartInc)
+                     : decBtn ? Number(decBtn.dataset.cartDec)
+                     : Number(rmBtn.dataset.cartRemove);
+        if (incBtn) increaseQuantity(index);
+        else if (decBtn) decreaseQuantity(index);
+        else removeFromCart(index);
+    });
+}

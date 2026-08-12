@@ -18,6 +18,9 @@ router.post('/users/login', authLimiter, validate(loginSchema), userAuthControll
 
 // مسارات محمية تتطلب تسجيل الدخول
 router.get('/users/orders', verifyUserToken, userAuthController.getOrderHistory);
-router.post('/users/logout', verifyUserToken, userAuthController.logout);
+router.get('/users/me', verifyUserToken, userAuthController.getMe);
+
+// تسجيل الخروج: يمسح الكوكي ولا يتطلب توكن صالحاً (حتى مع توكن منتهي)
+router.post('/users/logout', userAuthController.logout);
 
 module.exports = router;

@@ -13,6 +13,11 @@ module.exports = {
         jawwalNumber: process.env.JAWWAL_PAY_NUMBER || '059XXXXXXX',
         palpayNumber: process.env.PALPAY_NUMBER || '9XXXXX'
     },
+    currency: {
+        // عملة المتجر (رمز العملة + رمز العرض) — تُعرض للواجهة لعرض الأسعار
+        code: (process.env.STORE_CURRENCY || 'ILS').toUpperCase(),
+        symbol: process.env.STORE_CURRENCY_SYMBOL || '₪'
+    },
     social: {
         // روابط التواصل — ضع القيم الحقيقية في .env
         whatsapp: process.env.WHATSAPP_NUMBER || '',

@@ -12,8 +12,8 @@ const connectDB = async () => {
         // فحص جاهزية المتغيرات الأساسية لإبلاغ المطور
         const services = {
             "حماية الأدمن": !!process.env.ADMIN_PASSWORD_HASH,
-            "إشعارات تلجرام": !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID),
-            "خدمة البريد (Resend)": !!process.env.RESEND_API_KEY
+            "توقيع الجلسات": !!process.env.JWT_SECRET,
+            "إشعارات تلجرام": !!(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
         };
         
         console.log('🛡️ حالة الخدمات الأساسية:');

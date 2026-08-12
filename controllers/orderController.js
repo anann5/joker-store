@@ -1,65 +1,59 @@
 const { Product, Order } = require('../models');
-const { createLog, sendTelegramAlert, externalProviders } = require('./helpers');
-const axios = require('axios');
+const { createLog, sendTelegramAlert } = require('./helpers');
+const registry = require('../providers/registry');
+const adapter = require('../providers/adapter');
 
 const PROVIDER_RETRY_COUNT = 3;
-const PROVIDER_TIMEOUT_MS = 15000;
 
 function getItemProductId(item) {
     return item.productId || item.id;
 }
 
-function extractProviderCodes(data, expectedQuantity) {
-    const rawCodes = Array.isArray(data?.codes)
-        ? data.codes
-        : Array.isArray(data?.items)
-            ? data.items.map(item => item.code || item.pin)
-            : [data?.code || data?.pin];
-    const codes = rawCodes.filter(code => typeof code === 'string' && code.trim());
-
-    if (codes.length !== expectedQuantity) {
-        throw new Error('المزود لم يرسل العدد المطلوب من الأكواد');
-    }
-
-    return codes;
-}
-
+/**
+ * شراء أكواد خارجية من المزود عبر طبقة providers/adapter
+ */
 async function buyExternalCodes(product, quantity) {
-    const provider = externalProviders.find(candidate => candidate.name === product.currentProvider);
+    const provider = registry.getProvider(product.currentProvider);
     if (!provider?.purchaseUrl || !provider.apiKey || !product.externalId) {
         throw new Error('إعداد شراء المنتج الخارجي غير مكتمل');
     }
 
-    let lastError;
-    for (let attempt = 1; attempt <= PROVIDER_RETRY_COUNT; attempt += 1) {
-        try {
-            // eslint-disable-next-line no-await-in-loop
-            const response = await axios.post(provider.purchaseUrl, {
-                api_key: provider.apiKey,
-                product_id: product.externalId,
-                amount: quantity
-            }, { timeout: PROVIDER_TIMEOUT_MS });
-
-            return {
-                codes: extractProviderCodes(response.data, quantity),
-                costPrice: Number(response.data?.costPrice ?? response.data?.cost ?? product.basePrice * quantity) || 0
-            };
-        } catch (err) {
-            lastError = err;
-            const isClientFailure = err.response?.status >= 400 && err.response?.status < 500;
-            if (isClientFailure || attempt === PROVIDER_RETRY_COUNT) {
-                break;
+    const lastError = await (async () => {
+        for (let attempt = 1; attempt <= PROVIDER_RETRY_COUNT; attempt += 1) {
+            try {
+                // eslint-disable-next-line no-await-in-loop
+                return await adapter.purchaseItem(provider, {
+                    externalId: product.externalId,
+                    quantity,
+                    basePrice: product.basePrice
+                });
+            } catch (err) {
+                const isClientFailure = err.response?.status >= 400 && err.response?.status < 500;
+                if (isClientFailure || attempt === PROVIDER_RETRY_COUNT) {
+                    return err;
+                }
             }
         }
-    }
+        return new Error('فشل شراء الأكواد من المزود');
+    })();
 
-    throw lastError || new Error('فشل شراء الأكواد من المزود');
+    if (lastError instanceof Error) {
+        throw lastError;
+    }
+    return lastError;
 }
 
-exports.getOrders = async (_req, res) => {
+exports.getOrders = async (req, res) => {
     try {
-        const orders = await Order.find().sort({ createdAt: -1 });
-        res.json({ success: true, orders });
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+        const skip = (page - 1) * limit;
+
+        const [orders, total] = await Promise.all([
+            Order.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Order.countDocuments()
+        ]);
+        res.json({ success: true, orders, total, page, limit });
     } catch (_err) {
         res.status(500).json({ success: false, message: 'فشل جلب الطلبات' });
     }
@@ -152,10 +146,10 @@ exports.approveOrder = async (req, res) => {
 
         await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
 
-        // Emit WebSocket event for approved order
+        // Emit WebSocket event to authenticated admin sockets only
         const io = req.app?.get('io');
         if (io) {
-            io.emit('order_approved', {
+            io.to('admins').emit('order_approved', {
                 orderId: order.orderId,
                 buyerEmail: order.buyerEmail
             });

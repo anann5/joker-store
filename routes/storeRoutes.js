@@ -3,6 +3,21 @@ const router = express.Router();
 const storeController = require('../controllers/storeController');
 const { verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, checkoutSchema } = require('../middleware/validate');
+const rateLimit = require('express-rate-limit');
+
+// ليميتر خاص بإنشاء الطلبات (منع إغراق قاعدة البيانات بطلبات وهمية)
+const checkoutLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 8,
+    message: 'عدد الطلبات كبير جداً، يرجى المحاولة لاحقاً.'
+});
+
+// ليميتر خاص بتتبع الطلبات (منع سحب البيانات بالتكرار)
+const trackOrderLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: 'محاولات كثيرة، يرجى الانتظار قليلاً.'
+});
 
 // Route to get all categories
 router.get('/categories', storeController.getCategories);
@@ -17,7 +32,7 @@ router.get('/products/latest-orders', storeController.getLatestOrders);
 router.get('/site-config', storeController.getSiteConfig);
 
 // Route for guest order tracking by email
-router.post('/track-order', storeController.trackOrder);
+router.post('/track-order', trackOrderLimiter, storeController.trackOrder);
 
 // Route to get best-selling products
 router.get('/products/best-selling', storeController.getBestSellingProducts);
@@ -32,7 +47,7 @@ router.get('/products/related/:productId', storeController.getRelatedProducts);
 router.get('/products/:categoryKey', storeController.getProductsByCategory);
 
 // Route for creating a new order (checkout)
-router.post('/checkout', verifyUserTokenOptional, validate(checkoutSchema), storeController.createOrder);
+router.post('/checkout', checkoutLimiter, verifyUserTokenOptional, validate(checkoutSchema), storeController.createOrder);
 
 // Route for smart search (autocomplete)
 router.get('/search', storeController.searchAll);

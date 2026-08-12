@@ -9,12 +9,80 @@ const adminFailedAttempts = new Map();
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
 const adminSessions = new Map();
+const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours (matches JWT expiry)
+
+const computeFingerprint = (ip, userAgent) => {
+    return crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex');
+};
 
 const getClientFingerprint = (req) => {
     const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
-    return crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex');
+    return computeFingerprint(ip, userAgent);
 };
+
+/**
+ * Verify an admin JWT against the in-memory server session + client fingerprint.
+ * Returns the decoded payload or null when invalid/expired/mismatched.
+ */
+const verifyAdminSession = (token, ip, userAgent) => {
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const fingerprint = computeFingerprint(ip, userAgent);
+        const session = adminSessions.get(decoded.jti || token);
+        if (!session || session.fingerprint !== fingerprint) {
+            return null;
+        }
+        return decoded;
+    } catch (_err) {
+        return null;
+    }
+};
+
+/**
+ * Socket.IO middleware: authenticate an admin socket using the HttpOnly cookie.
+ * On success the socket joins the 'admins' room.
+ */
+exports.verifyAdminSocket = (socket, next) => {
+    const cookieHeader = socket.handshake.headers.cookie || '';
+    const cookies = {};
+    cookieHeader.split(';').forEach(part => {
+        const idx = part.indexOf('=');
+        if (idx > -1) {
+            cookies[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+        }
+    });
+
+    const token = cookies['admin_token'];
+    if (!token) return next(new Error('unauthorized'));
+
+    const decoded = verifyAdminSession(
+        token,
+        socket.handshake.headers['x-forwarded-for'] || socket.handshake.address || 'unknown',
+        socket.handshake.headers['user-agent'] || 'unknown'
+    );
+    if (!decoded) return next(new Error('unauthorized'));
+
+    socket.admin = decoded;
+    socket.join('admins');
+    next();
+};
+
+// Periodic cleanup of expired sessions / stale failed-attempt counters
+// to prevent unbounded in-memory growth.
+setInterval(() => {
+    const now = Date.now();
+    adminSessions.forEach((session, key) => {
+        if (!session.issuedAt || now - session.issuedAt > SESSION_TTL_MS) {
+            adminSessions.delete(key);
+        }
+    });
+    adminFailedAttempts.forEach((attempt, key) => {
+        if (attempt.lockedUntil && now > attempt.lockedUntil + LOCKOUT_DURATION) {
+            adminFailedAttempts.delete(key);
+        }
+    });
+}, 60 * 60 * 1000).unref();
 
 // Middleware للتحقق من التوكن
 exports.verifyAdminToken = (req, res, next, redirectPath) => {
@@ -27,24 +95,19 @@ exports.verifyAdminToken = (req, res, next, redirectPath) => {
         return res.status(403).json({ success: false, message: "يجب تسجيل الدخول أولاً" });
     }
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            logSecurityEvent('INVALID_TOKEN', 'استخدام توكن غير صالح أو منتهي الصلاحية', req);
-            if (redirectPath) return res.redirect(redirectPath);
-            return res.status(401).json({ success: false, message: "جلسة منتهية، يرجى إعادة تسجيل الدخول" });
-        }
+    const decoded = verifyAdminSession(
+        token,
+        req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+        req.headers['user-agent'] || 'unknown'
+    );
+    if (!decoded) {
+        logSecurityEvent('INVALID_TOKEN', 'استخدام توكن غير صالح أو منتهي الصلاحية أو جلسة غير متطابقة', req);
+        if (redirectPath) return res.redirect(redirectPath);
+        return res.status(401).json({ success: false, message: "جلسة منتهية، يرجى إعادة تسجيل الدخول" });
+    }
 
-        const fingerprint = getClientFingerprint(req);
-        const session = adminSessions.get(decoded.jti || token);
-        if (!session || session.fingerprint !== fingerprint) {
-            logSecurityEvent('SESSION_MISMATCH', 'محاولة استخدام جلسة غير متطابقة', req);
-            if (redirectPath) return res.redirect(redirectPath);
-            return res.status(401).json({ success: false, message: "جلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى" });
-        }
-
-        req.admin = decoded;
-        next();
-    });
+    req.admin = decoded;
+    next();
 };
 
 // دالة تسجيل دخول الأدمن
@@ -108,7 +171,8 @@ exports.login = async (req, res) => {
 
             logSecurityEvent('ADMIN_LOGIN_SUCCESS', 'نجح تسجيل دخول الأدمن', req);
 
-            res.json({ success: true, token, message: "تم تسجيل الدخول بنجاح" });
+            // لا يُعاد التوكن صريحاً في الاستجابة؛ المتصفح يحمله في HttpOnly cookie فقط
+            res.json({ success: true, message: "تم تسجيل الدخول بنجاح" });
         } else {
             // Increment failed attempts
             attempts.count++;

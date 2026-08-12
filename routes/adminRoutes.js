@@ -10,6 +10,7 @@ const logController = require('../controllers/logController');
 const statsController = require('../controllers/statsController');
 const categoryController = require('../controllers/categoryController');
 const uploadController = require('../controllers/uploadController');
+const providerController = require('../controllers/providerController');
 const upload = require('../middleware/upload');
 
 // تعريف ليميتر بسيط خاص بمسارات الأدمن لحمايتها
@@ -59,5 +60,11 @@ router.get('/logs/export', logController.exportLogs);
 router.delete('/logs', logController.deleteAllLogs);
 router.delete('/logs/:logId', logController.deleteLog);
 router.get('/balances', statsController.getProviderBalances); // Added this route
+
+// المزودون والمزامنة (B2B) وأسعار الصرف
+router.get('/providers/status', providerController.getProviderStatus);
+router.post('/providers/sync', providerController.syncNow);
+router.post('/currency/rates/refresh', providerController.refreshRates);
+router.get('/providers/config', providerController.getProvidersConfig);
 
 module.exports = router;

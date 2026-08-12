@@ -1,10 +1,22 @@
 const { Product } = require('../models');
-const { createLog, sendTelegramAlert, fetchProviderBalances, externalProviders } = require('./helpers');
-const axios = require('axios');
+const { createLog } = require('./helpers');
+const providerSync = require('../providers/sync');
+const currency = require('../providers/currency');
 
 const ALLOWED_CATEGORIES = ['gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
     'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
     'itunes', 'razer_gold', 'amazon', 'steam'];
+
+// الحقول المسموح بإنشائها يدوياً فقط (whitelist) — يمنع Mass Assignment
+// من تمرير حقول النظام مثل _id / createdAt / updatedAt عبر req.body
+const MANUAL_ADD_FIELDS = [
+    'productName', 'category', 'region', 'price', 'priceCurrency',
+    'description', 'image', 'codes', 'isExternal', 'externalId',
+    'profitMargin', 'profitMarginOverride', 'basePrice', 'lastProviderPrice',
+    'providerCurrency', 'currentProvider', 'isSubscription',
+    'subscriptionType', 'subscriptionDuration', 'codeGenerationMethod',
+    'isActive'
+];
 
 function validateCategory(category) {
     return typeof category === 'string' && ALLOWED_CATEGORIES.includes(category);
@@ -21,7 +33,14 @@ exports.getInventory = async (req, res) => {
 
 exports.addProductManual = async (req, res) => {
     try {
-        const newProduct = new Product(req.body);
+        const productData = {};
+        MANUAL_ADD_FIELDS.forEach(field => {
+            if (req.body[field] !== undefined) {
+                productData[field] = req.body[field];
+            }
+        });
+
+        const newProduct = new Product(productData);
         await newProduct.save();
         await createLog('إضافة منتج', `تم إضافة منتج يدوي: ${newProduct.productName}`, req, newProduct._id, newProduct.productName);
         res.json({ success: true, message: 'تم إضافة المنتج يدوياً' });
@@ -46,61 +65,21 @@ exports.getProduct = async (req, res) => {
     }
 };
 
-const syncInventoryInternal = async () => {
-    try {
-        let updatedCount = 0;
-        for (const provider of externalProviders) {
-            if (!provider.apiUrl || !provider.apiKey) continue;
-
-            // eslint-disable-next-line no-await-in-loop
-            const response = await axios.get(provider.apiUrl, { headers: { 'Authorization': `Bearer ${provider.apiKey}` } });
-            const externalItems = response.data.items || [];
-
-            for (const item of externalItems) {
-                // eslint-disable-next-line no-await-in-loop
-                const localProduct = await Product.findOne({ externalId: item.id, isExternal: true });
-                if (localProduct) {
-                    const oldBasePrice = localProduct.basePrice;
-                    const newBasePrice = parseFloat(item.price);
-                    localProduct.basePrice = newBasePrice;
-                    localProduct.price = parseFloat((newBasePrice * localProduct.profitMargin).toFixed(2));
-                    localProduct.updatedAt = new Date();
-                    localProduct.currentProvider = provider.name;
-                    // eslint-disable-next-line no-await-in-loop
-                    await localProduct.save();
-                    updatedCount++;
-
-                    if (oldBasePrice > 0 && (newBasePrice > oldBasePrice * 1.2)) {
-                        const priceAlert = `🚨 *تنبيه: ارتفاع سعر عند المزود!*\n📦 *المنتج:* ${localProduct.productName}\n🏢 *المزود:* ${provider.name}\n📉 *السعر القديم:* \`${oldBasePrice}$\`\n📈 *السعر الجديد:* \`${newBasePrice}$\`\n💰 *سعرك الجديد:* \`${localProduct.price}$\``;
-                        // eslint-disable-next-line no-await-in-loop
-                        await sendTelegramAlert(priceAlert);
-                    }
-                }
-            }
-        }
-
-        const balances = await fetchProviderBalances(externalProviders);
-        for (const p of balances) {
-            if (p.status === 'متصل' && p.balance < 10) {
-                const balanceAlert = `💸 *تنبيه: رصيد منخفض لدى المزود!*\n🏢 *المزود:* ${p.name}\n💰 *الرصيد الحالي:* \`${p.balance} ${p.currency}\`\n🚀 *يرجى شحن حسابك.*`;
-                // eslint-disable-next-line no-await-in-loop
-                await sendTelegramAlert(balanceAlert);
-            }
-        }
-        return { success: true, count: updatedCount };
-    } catch (err) {
-        console.error('Sync Error:', err.message);
-        return { success: false, error: err.message };
-    }
-};
+// المزامنة الدورية/اليدوية مع المزودين — مفوّضة إلى providers/sync
+const syncInventoryInternal = async () => providerSync.syncInventoryInternal();
 
 exports.syncInventoryInternal = syncInventoryInternal;
 
 exports.syncExternalProducts = async (req, res) => {
-    const result = await syncInventoryInternal();
-    if (result.success) {
-        await createLog('مزامنة يدوية', `تم تحديث ${result.count} منتج عبر المزامنة`, req);
-        res.json({ success: true, message: `✅ تمت المزامنة بنجاح. تم تحديث ${result.count} منتجاً.` });
+    const result = await providerSync.syncCatalog();
+    if (result.success || result.providers.length > 0) {
+        const count = result.totalCreated + result.totalUpdated;
+        await createLog('مزامنة يدوية', `تم تحديث ${count} منتج عبر المزامنة`, req);
+        res.json({
+            success: true,
+            message: `✅ تمت المزامنة بنجاح. تم تحديث ${count} منتجاً.`,
+            ...result
+        });
     } else {
         res.status(500).json({ success: false, error: 'فشل مزامنة المنتجات الخارجية' });
     }
@@ -121,6 +100,7 @@ exports.updateProductMargin = async (req, res) => {
 
         const oldMargin = product.profitMargin;
         product.profitMargin = margin;
+        product.profitMarginOverride = true;
         
         if (product.isExternal && product.basePrice > 0) {
             product.price = parseFloat((product.basePrice * product.profitMargin).toFixed(2));
@@ -170,6 +150,7 @@ exports.createProduct = async (req, res) => {
             category,
             region: region || 'global',
             price: parseFloat(price) || 0,
+            priceCurrency: currency.STORE_CURRENCY,
             description: description || {
                 ar: 'لا يوجد وصف متاح حالياً لهذا المنتج.',
                 en: 'No description is available for this product at the moment.'
@@ -177,6 +158,7 @@ exports.createProduct = async (req, res) => {
             image: image || '',
             isExternal: isExternal || false,
             profitMargin: parseFloat(profitMargin) || 1.10,
+            profitMarginOverride: Boolean(profitMargin && parseFloat(profitMargin) >= 1),
             basePrice: basePrice || 0,
             currentProvider: provider || 'Local',
             isSubscription: isSubscription || false,
@@ -277,6 +259,7 @@ exports.createProductWithManualCodes = async (req, res) => {
             category,
             region,
             price: parseFloat(price) || 0,
+            priceCurrency: currency.STORE_CURRENCY,
             description: description || {
                 ar: 'لا يوجد وصف متاح حالياً لهذا المنتج.',
                 en: 'No description is available for this product at the moment.'
@@ -285,6 +268,7 @@ exports.createProductWithManualCodes = async (req, res) => {
             codes,
             isExternal,
             profitMargin: parseFloat(profitMargin) || 1.10,
+            profitMarginOverride: Boolean(profitMargin && parseFloat(profitMargin) >= 1),
             basePrice: basePrice || 0,
             currentProvider: provider || 'Local',
             isSubscription,
@@ -360,6 +344,16 @@ exports.updateProduct = async (req, res) => {
                 product[field] = updates[field];
             }
         });
+
+        // ضبط الهامش يدوياً يقفل التجاوز التلقائي من المزامنة
+        if (updates.profitMargin !== undefined) {
+            product.profitMarginOverride = true;
+        }
+
+        // أي تعديل يدوي على السعر يُعتبر بعملة المتجر الحالية
+        if (updates.price !== undefined || updates.basePrice !== undefined) {
+            product.priceCurrency = currency.STORE_CURRENCY;
+        }
 
         // Recalculate price if basePrice or margin changed
         if (product.isExternal && product.basePrice > 0) {
@@ -506,6 +500,21 @@ exports.getStockStats = async (req, res) => {
 };
 
 /**
+ * تهريب حقل CSV بشكل آمن + منع Formula Injection
+ * (البادئات = + - @ قد تُنفَّذ كصيغ داخل Excel/LibreOffice)
+ */
+function csvEscape(value) {
+    let str = String(value ?? '');
+    if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`;
+    }
+    if (/[",\n\r]/.test(str)) {
+        str = `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+}
+
+/**
  * تصدير جميع المنتجات بصيغة CSV
  */
 exports.exportProductsCSV = async (req, res) => {
@@ -523,22 +532,22 @@ exports.exportProductsCSV = async (req, res) => {
         const rows = products.map(product => {
             
             return [
-                product.productName?.ar || '',
-                product.productName?.en || '',
-                product.category || '',
-                product.region || '',
-                product.price.toFixed(2),
-                product.profitMargin?.toString() || '1.10',
-                product.basePrice?.toString() || '0',
-                product.isSubscription ? 'اشتراك' : (product.isExternal ? 'خارجي' : 'محلي'),
-                product.subscriptionType || '',
-                product.subscriptionDuration?.toString() || '',
-                product.currentProvider || 'Local',
-                product.externalId || '',
-                product.image || '',
-                product.description?.ar || '',
-                product.description?.en || '',
-                product.isActive ? 'نشط' : 'غير نشط'
+                csvEscape(product.productName?.ar || ''),
+                csvEscape(product.productName?.en || ''),
+                csvEscape(product.category || ''),
+                csvEscape(product.region || ''),
+                csvEscape(product.price.toFixed(2)),
+                csvEscape(product.profitMargin?.toString() || '1.10'),
+                csvEscape(product.basePrice?.toString() || '0'),
+                csvEscape(product.isSubscription ? 'اشتراك' : (product.isExternal ? 'خارجي' : 'محلي')),
+                csvEscape(product.subscriptionType || ''),
+                csvEscape(product.subscriptionDuration?.toString() || ''),
+                csvEscape(product.currentProvider || 'Local'),
+                csvEscape(product.externalId || ''),
+                csvEscape(product.image || ''),
+                csvEscape(product.description?.ar || ''),
+                csvEscape(product.description?.en || ''),
+                csvEscape(product.isActive ? 'نشط' : 'غير نشط')
             ].join(',');
         });
 
@@ -609,6 +618,7 @@ exports.importProductsCSV = async (req, res) => {
                     category: fields[2]?.trim() || 'gaming_general',
                     region: fields[3]?.trim() || 'global',
                     price: parseFloat(fields[4]) || 0,
+                    priceCurrency: currency.STORE_CURRENCY,
                     profitMargin: parseFloat(fields[5]) || 1.10,
                     basePrice: parseFloat(fields[6]) || 0,
                     isSubscription: fields[7]?.trim() === 'اشتراك' || fields[7]?.trim() === 'subscription',

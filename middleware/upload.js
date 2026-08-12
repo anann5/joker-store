@@ -9,7 +9,8 @@ if (!fs.existsSync(UPLOAD_DIR)) {
     fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
 
-const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+// SVG مستبعد عمداً: قد يحتوي سكربتات قابلة للتنفيذ.
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, UPLOAD_DIR),
@@ -25,7 +26,7 @@ const fileFilter = (req, file, cb) => {
     if (ALLOWED_EXTENSIONS.includes(ext) && (file.mimetype || '').startsWith('image/')) {
         return cb(null, true);
     }
-    cb(new Error('نوع الملف غير مدعوم. يرجى رفع صورة فقط (jpg, png, gif, webp, svg)'));
+    cb(new Error('نوع الملف غير مدعوم. يرجى رفع صورة فقط (jpg, png, gif, webp)'));
 };
 
 const upload = multer({

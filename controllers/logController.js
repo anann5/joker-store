@@ -3,8 +3,15 @@ const { createLog } = require('./helpers');
 
 exports.getLogs = async (req, res) => {
     try {
-        const logs = await Log.find().sort({ createdAt: -1 }).limit(50);
-        res.json({ success: true, logs });
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+        const skip = (page - 1) * limit;
+
+        const [logs, total] = await Promise.all([
+            Log.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Log.countDocuments()
+        ]);
+        res.json({ success: true, logs, total, page, limit });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب السجلات' });
     }
@@ -32,7 +39,8 @@ exports.deleteAllLogs = async (req, res) => {
 
 exports.exportLogs = async (req, res) => {
     try {
-        const logs = await Log.find().sort({ createdAt: -1 });
+        // حد أقصى للحماية من الاستعلامات الضخمة
+        const logs = await Log.find().sort({ createdAt: -1 }).limit(10000);
         res.json({ success: true, logs });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب السجلات للتصدير' });

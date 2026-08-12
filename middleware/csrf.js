@@ -5,6 +5,14 @@ const CSRF_HEADER_NAME = 'x-csrf-token';
 const TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 const csrfTokens = new Map();
 
+// Periodic cleanup of expired CSRF tokens to prevent unbounded memory growth.
+setInterval(() => {
+    const now = Date.now();
+    csrfTokens.forEach((expiresAt, token) => {
+        if (expiresAt <= now) csrfTokens.delete(token);
+    });
+}, 60 * 60 * 1000).unref();
+
 function issueToken(req, res) {
     const token = crypto.randomBytes(24).toString('hex');
     const cookieOptions = {
@@ -33,6 +41,7 @@ function validate(req, res, next) {
     const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
 
     if (!token || !cookieToken || token !== cookieToken) {
+        if (token) csrfTokens.delete(token);
         return res.status(403).json({ success: false, message: 'CSRF token missing or invalid' });
     }
 

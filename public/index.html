@@ -1,5 +1,5 @@
-<!DOCTYPE html> 
-<html lang="ar" dir="rtl"> <!-- تم إضافة سمات اللغة والاتجاه الافتراضية -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,23 +18,33 @@
         "name": "Joker Store",
         "description": "متجر بطاقات رقمية وألعاب — أكواد أصلية مضمونة وتوصيل فوري.",
         "paymentAccepted": ["Jawwal Pay", "PalPay"],
-        "currenciesAccepted": "USD",
-        "priceRange": "$$"
+        "currenciesAccepted": "ILS",
+        "priceRange": "₪₪"
     }
     </script>
-<link rel="icon" type="image/png" href="image/logo.png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link rel="stylesheet" href="style.css?v=3.0">
-
+    <link rel="icon" type="image/png" href="image/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link rel="stylesheet" href="style.css?v=4.0">
 </head>
 <body>
 
+<!-- ====================================================
+     الهيدر — Neon Arcade Premium
+==================================================== -->
 <header>
     <div class="header-container">
-        <div class="logo-zone" id="logoHomeBtn" style="cursor: pointer;">
+
+        <div class="logo-zone" id="logoHomeBtn" title="العودة للرئيسية">
             <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
             <img src="image/logo.png" alt="Logo" class="header-image">
         </div>
+
+        <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="فتح القائمة" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
 
         <div class="header-controls">
             <button id="lang-switcher" class="header-btn" title="Switch Language">
@@ -43,19 +53,19 @@
             </button>
         </div>
 
-        <div id="userAuthContainer" style="position: relative; margin-left: 20px;">
-            <button id="userAuthBtn" class="header-btn" style="background: none; border: 1px solid var(--primary-neon); color: var(--primary-neon); padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+        <div id="userAuthContainer" class="user-auth-zone">
+            <button id="userAuthBtn" class="header-btn auth-zone-btn">
                 <i class="fas fa-user-circle"></i>
                 <span id="userStateText" data-i18n-key="login_button">تسجيل الدخول</span>
             </button>
             <div id="userAccountDropdown">
-                <div id="userEmailDisplay" class="account-dropdown-item" style="font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); cursor: default;"></div>
+                <div id="userEmailDisplay" class="account-dropdown-item account-email-item"></div>
                 <div id="orderHistoryBtn" class="account-dropdown-item"><i class="fas fa-history"></i> سجل الطلبات</div>
-                <div id="logoutBtn" class="account-dropdown-item" style="color: #ff4757;"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</div>
+                <div id="logoutBtn" class="account-dropdown-item account-logout"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</div>
             </div>
         </div>
 
-        <div class="cart-icon-container" id="cartHeaderBtn">
+        <div class="cart-icon-container" id="cartHeaderBtn" title="سلة المشتريات">
             <i class="fas fa-shopping-cart"></i>
             <span id="cartCountBadge" class="cart-count-badge">0</span>
         </div>
@@ -86,142 +96,220 @@
             <a href="#" id="digitalCardsLink" data-i18n-key="nav_digital_cards">البطاقات الرقمية</a>
         </nav>
 
-        <div class="search-container">
-            <input type="text" id="searchInput" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
-            <button class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        <div class="search-zone">
+            <div class="search-container">
+                <input type="text" id="searchInput" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
+                <button class="search-btn" aria-label="بحث"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+            <div class="autocomplete-results" id="autocomplete-results"></div>
         </div>
-        <div class="autocomplete-results" id="autocomplete-results"></div>
     </div>
+
     <div class="search-container-mobile">
         <div class="search-wrapper">
             <input type="text" id="searchInputMobile" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
-            <button class="search-btn-mobile"><i class="fa-solid fa-magnifying-glass"></i></button>
+            <button class="search-btn-mobile" aria-label="بحث"><i class="fa-solid fa-magnifying-glass"></i></button>
         </div>
         <div class="autocomplete-results" id="autocomplete-results-mobile"></div>
     </div>
 </header>
 
-<!-- ===== Hero Slider ===== -->
-<div class="hero-section">
-    <div class="slide active" style="background: linear-gradient(135deg, rgba(20,10,35,0.92) 20%, rgba(0,242,254,0.25) 100%);">
-        <div class="slide-content">
-            <h2 data-i18n-key="hero_slide1_title">أكواد أصلية تُسلَّم فوراً</h2>
-            <p data-i18n-key="hero_slide1_sub">اشحن حسابك خلال دقائق بأمان تام وبضمان Joker Store.</p>
-            <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-store"></i> <span data-i18n-key="hero_cta_browse">تسوق الآن</span></button>
+<!-- ====================================================
+     المحتوى الرئيسي
+==================================================== -->
+<div class="page-shell">
+
+    <!-- ===== Hero Slider ===== -->
+    <div class="hero-section">
+        <div class="slide active">
+            <div class="slide-content">
+                <span class="slide-tag"><i class="fas fa-bolt"></i> توصيل فوري</span>
+                <h2 data-i18n-key="hero_slide1_title">أكواد أصلية تُسلَّم فوراً</h2>
+                <p data-i18n-key="hero_slide1_sub">اشحن حسابك خلال دقائق بأمان تام وبضمان Joker Store.</p>
+                <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-store"></i> <span data-i18n-key="hero_cta_browse">تسوق الآن</span></button>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <span class="slide-tag"><i class="fas fa-fire"></i> عروض يومية</span>
+                <h2 data-i18n-key="hero_slide2_title">أفضل الأسعار والعروض</h2>
+                <p data-i18n-key="hero_slide2_sub">باقات وشدات وأكواد لجميع المنصات بأسعار تنافسية.</p>
+                <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-fire"></i> <span data-i18n-key="hero_cta_discover">اكتشف الباقات</span></button>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <span class="slide-tag"><i class="fas fa-shield-alt"></i> ضمان كامل</span>
+                <h2 data-i18n-key="hero_slide3_title">ضمان استرجاع كامل</h2>
+                <p data-i18n-key="hero_slide3_sub">مشكلة مع الكود؟ نستبدله أو نعيد لك المبلغ فوراً.</p>
+                <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-shield-alt"></i> <span data-i18n-key="hero_cta_safe">اشحن بأمان</span></button>
+            </div>
         </div>
     </div>
-    <div class="slide" style="background: linear-gradient(135deg, rgba(20,10,35,0.92) 20%, rgba(255,159,67,0.25) 100%);">
-        <div class="slide-content">
-            <h2 data-i18n-key="hero_slide2_title">أفضل الأسعار والعروض</h2>
-            <p data-i18n-key="hero_slide2_sub">باقات وشدات وأكواد لجميع المنصات بأسعار تنافسية.</p>
-            <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-fire"></i> <span data-i18n-key="hero_cta_discover">اكتشف الباقات</span></button>
-        </div>
-    </div>
-    <div class="slide" style="background: linear-gradient(135deg, rgba(20,10,35,0.92) 20%, rgba(46,204,113,0.25) 100%);">
-        <div class="slide-content">
-            <h2 data-i18n-key="hero_slide3_title">ضمان استرجاع كامل</h2>
-            <p data-i18n-key="hero_slide3_sub">مشكلة مع الكود؟ نستبدله أو نعيد لك المبلغ فوراً.</p>
-            <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-shield-alt"></i> <span data-i18n-key="hero_cta_safe">اشحن بأمان</span></button>
-        </div>
-    </div>
-</div>
 
-<!-- ===== Trust Ticker ===== -->
-<div class="trust-ticker">
-    <div class="ticker-content">🛡️ جميع الأكواد أصلية ومضمونة 100% .. ⚡ توصيل فوري خلال دقائق .. 💬 دعم متواصل على مدار الساعة</div>
-</div>
-
-<!-- ===== Stats Strip ===== -->
-<div class="stats-strip">
-    <div class="stat-item">
-        <i class="fas fa-users"></i>
-        <div><span class="stat-number" id="statCustomers">2500</span><span class="stat-suffix">+</span><p data-i18n-key="stat_customers_label">عميل سعيد</p></div>
-    </div>
-    <div class="stat-item">
-        <i class="fas fa-box"></i>
-        <div><span class="stat-number" id="statOrders">8500</span><span class="stat-suffix">+</span><p data-i18n-key="stat_orders_label">طلب ناجح</p></div>
-    </div>
-    <div class="stat-item">
-        <i class="fas fa-bolt"></i>
-        <div><span class="stat-number" id="statDelivery">10</span><span class="stat-suffix"> <span data-i18n-key="stat_delivery_unit">دقائق</span></span><p data-i18n-key="stat_delivery_label">متوسط التوصيل</p></div>
-    </div>
-    <div class="stat-item">
-        <i class="fas fa-headset"></i>
-        <div><span class="stat-number" id="statSupport">24</span><span class="stat-suffix">/7</span><p data-i18n-key="stat_support_label">دعم متواصل</p></div>
-    </div>
-</div>
-
-<div class="filter-container" id="filterTabs"></div>
-
-<div id="back-container" style="text-align: center; margin: 20px 0;">
-    <button class="back-to-main-btn" id="backToMainBtn" data-i18n-key="back_to_categories">
-        <i class="fas fa-arrow-right"></i>الرجوع للأقسام الرئيسية
-    </button>
-</div>
-
-<div class="main-container">
-    <div id="regionFilterBar" class="region-filter-bar"></div>
-    <div id="mainCategories"></div>
-</div>
-
-<!-- ===== Home Extra Sections (تظهر في الصفحة الرئيسية فقط) ===== -->
-<div id="homeSections">
-    <section class="info-section" id="howItWorks">
-        <h2 class="section-title"><i class="fas fa-rocket"></i> <span data-i18n-key="how_title">كيف أطلب؟ 3 خطوات فقط</span></h2>
-        <div class="steps-grid">
-            <div class="step-card">
-                <div class="step-num">1</div>
-                <i class="fas fa-mouse-pointer"></i>
-                <h3 data-i18n-key="step1_title">اختر المنتج</h3>
-                <p data-i18n-key="step1_desc">تصفح الأقسام واختر الباقة أو الكود المناسب لك.</p>
+    <!-- ===== عرض اليوم + عدّاد تنازلي ===== -->
+    <section class="offer-banner" aria-label="عرض اليوم">
+        <div class="offer-banner-bg"></div>
+        <div class="offer-banner-content">
+            <div class="offer-banner-text">
+                <span class="offer-kicker"><i class="fas fa-bolt"></i> عرض اليوم</span>
+                <h2 class="offer-title">خصومات على أكواد الشحن <span class="offer-title-emoji">🎮</span></h2>
+                <p class="offer-sub">اشحن قبل انتهاء العرض بأفضل الأسعار — والتوصيل فوري خلال دقائق.</p>
             </div>
-            <div class="step-card">
-                <div class="step-num">2</div>
-                <i class="fas fa-wallet"></i>
-                <h3 data-i18n-key="step2_title">حوّل وأرسل</h3>
-                <p data-i18n-key="step2_desc">حوّل المبلغ على جوال بي أو بال بي واكتب رقم العملية.</p>
+            <div class="offer-timer-wrap">
+                <div class="countdown-timer" id="dailyCountdown" aria-label="الوقت المتبقي حتى نهاية عرض اليوم">
+                    <div class="countdown-block">
+                        <span class="countdown-value" data-timer="hours">00</span>
+                        <span class="countdown-label">ساعة</span>
+                    </div>
+                    <span class="countdown-sep">:</span>
+                    <div class="countdown-block">
+                        <span class="countdown-value" data-timer="minutes">00</span>
+                        <span class="countdown-label">دقيقة</span>
+                    </div>
+                    <span class="countdown-sep">:</span>
+                    <div class="countdown-block">
+                        <span class="countdown-value" data-timer="seconds">00</span>
+                        <span class="countdown-label">ثانية</span>
+                    </div>
+                </div>
+                <p class="countdown-hint"><i class="fas fa-clock"></i> يتبقى على نهاية عرض اليوم</p>
             </div>
-            <div class="step-card">
-                <div class="step-num">3</div>
-                <i class="fas fa-envelope-open-text"></i>
-                <h3 data-i18n-key="step3_title">استلم كودك</h3>
-                <p data-i18n-key="step3_desc">يصلك الكود على بريدك فور تأكيد التحويل.</p>
-            </div>
+            <button type="button" class="offer-cta" data-offer-cta="browse"><i class="fas fa-gift"></i> اطلب عرض اليوم</button>
         </div>
     </section>
 
-    <section class="info-section" id="guarantee">
-        <h2 class="section-title"><i class="fas fa-shield-alt"></i> <span data-i18n-key="guarantee_title">لماذا تثق بنا؟</span></h2>
-        <div class="guarantee-grid">
-            <div class="guarantee-card"><i class="fas fa-shield-alt"></i><h3 data-i18n-key="guarantee1_title">ضمان أصالة 100%</h3><p data-i18n-key="guarantee1_desc">جميع الأكواد أصلية ومضمونة من مصادر موثوقة.</p></div>
-            <div class="guarantee-card"><i class="fas fa-undo-alt"></i><h3 data-i18n-key="guarantee2_title">ضمان الاسترجاع</h3><p data-i18n-key="guarantee2_desc">إذا لم يعمل الكود نستبدله أو نعيد لك المبلغ بالكامل.</p></div>
-            <div class="guarantee-card"><i class="fas fa-headset"></i><h3 data-i18n-key="guarantee3_title">دعم مباشر</h3><p data-i18n-key="guarantee3_desc">فريقنا جاهز لمساعدتك في أي وقت على مدار الساعة.</p></div>
-            <div class="guarantee-card"><i class="fas fa-lock"></i><h3 data-i18n-key="guarantee4_title">تعامل آمن</h3><p data-i18n-key="guarantee4_desc">طلباتك محمية وبياناتك في أمان تام.</p></div>
-        </div>
-    </section>
+    <!-- ===== Trust Ticker ===== -->
+    <div class="trust-ticker">
+        <div class="ticker-content">🛡️ جميع الأكواد أصلية ومضمونة 100% .. ⚡ توصيل فوري خلال دقائق .. 💬 دعم متواصل على مدار الساعة</div>
+    </div>
 
-    <section class="info-section" id="testimonials">
-        <h2 class="section-title"><i class="fas fa-comments"></i> <span data-i18n-key="testimonials_title">ماذا يقول عملاؤنا؟</span></h2>
-        <div class="testimonials-grid">
-            <div class="testimonial-card">
-                <div class="stars" aria-label="5 من 5">★★★★★</div>
-                <p>"طلبت كود ببجي ووصلني خلال 10 دقائق. تعامل محترم جداً."</p>
-                <div class="testimonial-author">— أحمد</div>
-            </div>
-            <div class="testimonial-card">
-                <div class="stars" aria-label="5 من 5">★★★★★</div>
-                <p>"أفضل متجر أتعامل معه، أكواد أصلية وضمان حقيقي."</p>
-                <div class="testimonial-author">— محمد</div>
-            </div>
-            <div class="testimonial-card">
-                <div class="stars" aria-label="5 من 5">★★★★★</div>
-                <p>"خدمة سريعة ودعم ممتاز، رحت وأكيد بطلب منهم مجدداً."</p>
-                <div class="testimonial-author">— ريم</div>
-            </div>
+    <!-- ===== Stats Strip ===== -->
+    <div class="stats-strip">
+        <div class="stat-item">
+            <i class="fas fa-users"></i>
+            <div><span class="stat-number" id="statCustomers">2500</span><span class="stat-suffix">+</span><p data-i18n-key="stat_customers_label">عميل سعيد</p></div>
         </div>
-    </section>
-</div>
+        <div class="stat-item">
+            <i class="fas fa-box"></i>
+            <div><span class="stat-number" id="statOrders">8500</span><span class="stat-suffix">+</span><p data-i18n-key="stat_orders_label">طلب ناجح</p></div>
+        </div>
+        <div class="stat-item">
+            <i class="fas fa-bolt"></i>
+            <div><span class="stat-number" id="statDelivery">10</span><span class="stat-suffix"> <span data-i18n-key="stat_delivery_unit">دقائق</span></span><p data-i18n-key="stat_delivery_label">متوسط التوصيل</p></div>
+        </div>
+        <div class="stat-item">
+            <i class="fas fa-headset"></i>
+            <div><span class="stat-number" id="statSupport">24</span><span class="stat-suffix">/7</span><p data-i18n-key="stat_support_label">دعم متواصل</p></div>
+        </div>
+    </div>
 
+    <!-- ===== فلترة الأقسام ===== -->
+    <div class="filter-container" id="filterTabs"></div>
+
+    <div id="back-container">
+        <button class="back-to-main-btn" id="backToMainBtn" data-i18n-key="back_to_categories">
+            <i class="fas fa-arrow-right"></i>الرجوع للأقسام الرئيسية
+        </button>
+    </div>
+
+    <!-- ===== منطقة الأقسام والمنتجات ===== -->
+    <div class="main-container">
+        <div id="regionFilterBar" class="region-filter-bar"></div>
+        <div id="mainCategories"></div>
+    </div>
+
+    <!-- ===== أقسام الصفحة الرئيسية فقط ===== -->
+    <div id="homeSections">
+
+        <!-- الأكثر مبيعاً -->
+        <section class="info-section auto-section">
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-fire"></i> الأكثر مبيعاً 🔥</h2>
+                <p class="section-kicker">الباقات الأكثر طلباً من عملائنا هذا الأسبوع</p>
+            </div>
+            <div id="best-selling-container" class="auto-products-zone">
+                <div class="products-grid auto-products-grid"></div>
+            </div>
+        </section>
+
+        <!-- وصل حديثاً -->
+        <section class="info-section auto-section">
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-sparkles"></i> وصل حديثاً ✨</h2>
+                <p class="section-kicker">آخر ما أضفناه إلى المتجر</p>
+            </div>
+            <div id="newly-added-container" class="auto-products-zone">
+                <div class="products-grid auto-products-grid"></div>
+            </div>
+        </section>
+
+        <!-- كيف أطلب؟ -->
+        <section class="info-section" id="howItWorks">
+            <h2 class="section-title"><i class="fas fa-rocket"></i> <span data-i18n-key="how_title">كيف أطلب؟ 3 خطوات فقط</span></h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <i class="fas fa-mouse-pointer"></i>
+                    <h3 data-i18n-key="step1_title">اختر المنتج</h3>
+                    <p data-i18n-key="step1_desc">تصفح الأقسام واختر الباقة أو الكود المناسب لك.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <i class="fas fa-wallet"></i>
+                    <h3 data-i18n-key="step2_title">حوّل وأرسل</h3>
+                    <p data-i18n-key="step2_desc">حوّل المبلغ على جوال بي أو بال بي واكتب رقم العملية.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <i class="fas fa-envelope-open-text"></i>
+                    <h3 data-i18n-key="step3_title">استلم كودك</h3>
+                    <p data-i18n-key="step3_desc">يصلك الكود على بريدك فور تأكيد التحويل.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- لماذا تثق بنا؟ -->
+        <section class="info-section" id="guarantee">
+            <h2 class="section-title"><i class="fas fa-shield-alt"></i> <span data-i18n-key="guarantee_title">لماذا تثق بنا؟</span></h2>
+            <div class="guarantee-grid">
+                <div class="guarantee-card"><i class="fas fa-shield-alt"></i><h3 data-i18n-key="guarantee1_title">ضمان أصالة 100%</h3><p data-i18n-key="guarantee1_desc">جميع الأكواد أصلية ومضمونة من مصادر موثوقة.</p></div>
+                <div class="guarantee-card"><i class="fas fa-undo-alt"></i><h3 data-i18n-key="guarantee2_title">ضمان الاسترجاع</h3><p data-i18n-key="guarantee2_desc">إذا لم يعمل الكود نستبدله أو نعيد لك المبلغ بالكامل.</p></div>
+                <div class="guarantee-card"><i class="fas fa-headset"></i><h3 data-i18n-key="guarantee3_title">دعم مباشر</h3><p data-i18n-key="guarantee3_desc">فريقنا جاهز لمساعدتك في أي وقت على مدار الساعة.</p></div>
+                <div class="guarantee-card"><i class="fas fa-lock"></i><h3 data-i18n-key="guarantee4_title">تعامل آمن</h3><p data-i18n-key="guarantee4_desc">طلباتك محمية وبياناتك في أمان تام.</p></div>
+            </div>
+        </section>
+
+        <!-- آراء العملاء -->
+        <section class="info-section" id="testimonials">
+            <h2 class="section-title"><i class="fas fa-comments"></i> <span data-i18n-key="testimonials_title">ماذا يقول عملاؤنا؟</span></h2>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="stars" aria-label="5 من 5">★★★★★</div>
+                    <p>"طلبت كود ببجي ووصلني خلال 10 دقائق. تعامل محترم جداً."</p>
+                    <div class="testimonial-author">— أحمد</div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars" aria-label="5 من 5">★★★★★</div>
+                    <p>"أفضل متجر أتعامل معه، أكواد أصلية وضمان حقيقي."</p>
+                    <div class="testimonial-author">— محمد</div>
+                </div>
+                <div class="testimonial-card">
+                    <div class="stars" aria-label="5 من 5">★★★★★</div>
+                    <p>"خدمة سريعة ودعم ممتاز، رحت وأكيد بطلب منهم مجدداً."</p>
+                    <div class="testimonial-author">— ريم</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+</div><!-- /page-shell -->
+
+<!-- ====================================================
+     المودالات (Modals)
+==================================================== -->
+
+<!-- مودال تسجيل الدخول / إنشاء حساب -->
 <div class="modal-overlay" id="authModal">
     <div class="auth-container">
         <button class="close-modal-btn" id="closeAuthModal">×</button>
@@ -260,6 +348,7 @@
     </div>
 </div>
 
+<!-- مودال السلة / الشراء -->
 <div class="modal-overlay" id="purchaseModal">
     <div class="delivery-container cart-modal">
         <button class="close-modal-btn" id="closeModal">×</button>
@@ -275,13 +364,13 @@
             <button id="clearCartBtn" class="clear-cart-btn">
                 <i class="fas fa-trash"></i> تفريغ السلة
             </button>
-            
+
             <div id="cartItemsList"></div>
         </div>
 
         <div class="cart-total-row">
             <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
-            <span id="cartTotalAmount" class="cart-total-amount">0.00$</span>
+            <span id="cartTotalAmount" class="cart-total-amount">0.00 ₪</span>
         </div>
 
         <div class="form-group">
@@ -297,7 +386,7 @@
                 </label>
             </div>
         </div>
-        
+
         <div id="paymentInstructions"></div>
 
         <div class="form-group">
@@ -346,6 +435,7 @@
     </div>
 </div>
 
+<!-- مودال استلام الكود -->
 <div class="modal-overlay" id="codeModal">
     <div class="delivery-container">
         <button class="close-modal-btn" id="closeCodeModal">×</button>
@@ -374,6 +464,9 @@
     </div>
 </div>
 
+<!-- ====================================================
+     الفوتر
+==================================================== -->
 <footer>
     <div class="footer-container">
         <div class="footer-brand">
@@ -394,14 +487,14 @@
             <a href="#" id="footerInstagram" target="_blank" rel="noopener" title="Instagram" class="social-link social-instagram" style="display: none;"><i class="fab fa-instagram"></i></a>
             <a href="#" id="footerTiktok" target="_blank" rel="noopener" title="TikTok" class="social-link social-tiktok" style="display: none;"><i class="fab fa-tiktok"></i></a>
         </div>
-        <div class="footer-links" style="margin-top: 16px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
-            <a href="#" id="trackOrderFooterBtn" style="color: #38bdf8; text-decoration: none;" data-i18n-key="track_footer_btn">تتبع طلبك</a>
-            <a href="#" id="wishlistFooterBtn" style="color: #38bdf8; text-decoration: none;"><i class="fas fa-heart"></i> <span data-i18n-key="wishlist_footer_btn">قائمة أمنياتي</span></a>
-            <a href="/about" style="color: #38bdf8; text-decoration: none;">من نحن</a>
-            <a href="/privacy" style="color: #38bdf8; text-decoration: none;">سياسة الخصوصية</a>
-            <a href="/terms" style="color: #38bdf8; text-decoration: none;">الشروط والأحكام</a>
-            <a href="/faq" style="color: #38bdf8; text-decoration: none;">الأسئلة الشائعة</a>
-            <a href="/contact" style="color: #38bdf8; text-decoration: none;">تواصل معنا</a>
+        <div class="footer-links">
+            <a href="#" id="trackOrderFooterBtn" data-i18n-key="track_footer_btn">تتبع طلبك</a>
+            <a href="#" id="wishlistFooterBtn"><i class="fas fa-heart"></i> <span data-i18n-key="wishlist_footer_btn">قائمة أمنياتي</span></a>
+            <a href="/about">من نحن</a>
+            <a href="/privacy">سياسة الخصوصية</a>
+            <a href="/terms">الشروط والأحكام</a>
+            <a href="/faq">الأسئلة الشائعة</a>
+            <a href="/contact">تواصل معنا</a>
         </div>
         <p class="copyright">© 2026 Joker Store — جميع الحقوق محفوظة</p>
     </div>
@@ -424,6 +517,7 @@
 <!-- قالب بطاقة المنتج في الشبكة -->
 <template id="product-card-template">
     <div class="product-item-card card" data-product-id="">
+        <div class="product-badge"></div>
         <div class="card-flag-badge"></div>
         <button class="wishlist-btn" data-wishlist-btn title="أضف لقائمة الأمنيات"><i class="far fa-heart"></i></button>
         <div class="card-img-container">
@@ -466,14 +560,14 @@
                 <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
                 <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
             </div>
-            <div class="price-tag product-price" style="font-size: 2.5rem; margin-bottom:30px;"></div>
-            <button class="buy-btn" style="padding: 20px; font-size: 1.2rem;">
+            <div class="price-tag product-price"></div>
+            <button class="buy-btn">
                 <i class="fas fa-shopping-cart"></i> إضافة للسلة وإتمام الشراء
             </button>
-            <button class="share-btn" style="margin-top:15px; background:transparent; border:1px solid #00f0ff; color:#00f0ff; padding: 15px; font-size: 1.1rem;">
+            <button class="share-btn">
                 <i class="fas fa-share-alt"></i> مشاركة المنتج
             </button>
-            <button class="back-to-main-btn" style="margin-top:20px; background:transparent; border:1px solid #333;">
+            <button class="back-to-main-btn">
                 ⬅️ العودة لقائمة البطاقات
             </button>
         </div>
@@ -488,6 +582,63 @@
         </div>
     </div>
 </template>
+
+<!-- ====================================================== -->
+<!-- ⏱️ عدّاد عرض اليوم (سكربت مستقل — لا يمس نظام الوحدات) -->
+<!-- ====================================================== -->
+<script>
+(function () {
+    'use strict';
+    var hoursEl = document.querySelector('[data-timer="hours"]');
+    var minutesEl = document.querySelector('[data-timer="minutes"]');
+    var secondsEl = document.querySelector('[data-timer="seconds"]');
+    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+
+    if (hoursEl && minutesEl && secondsEl) {
+        function updateCountdown() {
+            var now = new Date();
+            var midnight = new Date(now);
+            midnight.setHours(24, 0, 0, 0);
+            var totalSec = Math.max(0, Math.floor((midnight - now) / 1000));
+            hoursEl.textContent = pad(Math.floor(totalSec / 3600));
+            minutesEl.textContent = pad(Math.floor((totalSec % 3600) / 60));
+            secondsEl.textContent = pad(totalSec % 60);
+        }
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+    }
+
+    var offerCta = document.querySelector('[data-offer-cta]');
+    if (offerCta) {
+        offerCta.addEventListener('click', function () {
+            var target = document.getElementById('filterTabs');
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+})();
+</script>
+
+<!-- ====================================================== -->
+<!-- 🍔 قائمة الموبايل (سكربت مستقل — لا يتعارض مع الأكواد) -->
+<!-- ====================================================== -->
+<script>
+(function () {
+    'use strict';
+    var btn = document.getElementById('mobileMenuBtn');
+    var header = document.querySelector('header');
+    if (!btn || !header) return;
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = header.classList.toggle('nav-open');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('header')) header.classList.remove('nav-open');
+    });
+})();
+</script>
 
 </body>
 </html>

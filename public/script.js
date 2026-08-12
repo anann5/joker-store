@@ -1,7 +1,8 @@
-import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer } from './ui.js';
+import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer, escapeHtml } from './ui.js';
 import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage } from './i18n.js';
+import { setCurrency, formatPrice } from './currency.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام
@@ -39,7 +40,7 @@ async function updateTrustTicker() {
         const data = await res.json();
         if (data.success && data.orders.length > 0) {
             const tickerText = data.orders.map(o => 
-                `✨ تم تسليم طلب #${o.orderId.substring(0,8)} بنجاح (${o.productName}) .. `
+                `✨ تم تسليم طلب #${escapeHtml(o.orderId).substring(0,8)} بنجاح (${escapeHtml(o.productName)}) .. `
             ).join(' ✅ ');
             tickerZone.innerHTML = `${tickerText  } 🛡️ جميع الأكواد أصلية ومضمونة 100%`;
         }
@@ -174,7 +175,7 @@ async function showWishlist() {
             img.src = clientItem.image;
             img.onerror = () => { img.src = 'image/logo.png'; };
             card.querySelector('.card-title').textContent = clientItem.name;
-            card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+            card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
             card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
             card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
             container.appendChild(card);
@@ -194,7 +195,11 @@ async function fetchSiteConfig() {
     try {
         const res = await fetch('/api/site-config');
         const data = await res.json();
-        if (data.success) siteConfig = data.config;
+        if (data.success) {
+            siteConfig = data.config;
+            const currency = siteConfig.currency || {};
+            setCurrency(currency.code, currency.symbol);
+        }
     } catch (_e) {
         siteConfig = null;
     }
@@ -270,7 +275,7 @@ async function handleTrackOrder() {
         const data = await res.json();
 
         if (!data.success) {
-            results.innerHTML = `<p style="color:#e74c3c; text-align:center;">❌ ${data.error || 'فشل التتبع، حاول مرة أخرى.'}</p>`;
+            results.innerHTML = `<p style="color:#e74c3c; text-align:center;">❌ ${escapeHtml(data.error || 'فشل التتبع، حاول مرة أخرى.')}</p>`;
             return;
         }
         if (data.orders.length === 0) {
@@ -288,18 +293,18 @@ async function handleTrackOrder() {
         results.innerHTML = data.orders.map(order => {
             const st = statusMap[order.status] || { text: order.status, cls: '' };
             const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
-            const items = order.items.map(i => i.name[lang] || i.name.ar).join('، ');
+            const items = order.items.map(i => escapeHtml(i.name[lang] || i.name.ar)).join('، ');
             const codesHtml = order.codes && order.codes.length
-                ? `<div class="track-code-box"><span>كود الشحن:</span><span class="track-code">${order.codes.join('<br>')}</span></div>`
+                ? `<div class="track-code-box"><span>كود الشحن:</span><span class="track-code">${order.codes.map(escapeHtml).join('<br>')}</span></div>`
                 : '';
             return `
                 <div class="track-result-card">
                     <div class="track-head">
-                        <span class="track-id">#${order.orderId}</span>
+                        <span class="track-id">#${escapeHtml(order.orderId)}</span>
                         <span class="status-badge ${st.cls}">${st.text}</span>
                     </div>
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${order.price.toFixed(2)}$</b></div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${formatPrice(order.price)}</b></div>
                     ${codesHtml}
                 </div>`;
         }).join('');
@@ -391,7 +396,7 @@ export function selectCategory(categoryKey) {
                 imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
                 card.querySelector('.card-inner-img').alt = clientItem.name;
                 card.querySelector('.card-title').textContent = clientItem.name;
-                card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+                card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
                 card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
                 card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
                 grid.appendChild(card);
@@ -512,9 +517,14 @@ function renderProductCards(products, containerId) {
         imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
         card.querySelector('.card-inner-img').alt = clientItem.name;
         card.querySelector('.card-title').textContent = clientItem.name;
-        card.querySelector('.card-price').textContent = `${clientItem.price}$`;
+        card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
         card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
         card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+        const badge = card.querySelector('.product-badge');
+        if (badge) {
+            if (containerId === 'best-selling-container') badge.textContent = '🔥 الأكثر مبيعاً';
+            else if (containerId === 'newly-added-container') badge.textContent = '✨ وصل حديثاً';
+        }
         grid.appendChild(card);
     });
 }
@@ -809,25 +819,25 @@ function setupEventListeners() {
         const renderResults = (results, lang, query) => {
             resultsContainer.innerHTML = '';
             if (results.length === 0) {
-                resultsContainer.innerHTML = `<div class="autocomplete-empty">لا توجد نتائج لبحثك "<strong>${query}</strong>"</div>`;
+                resultsContainer.innerHTML = `<div class="autocomplete-empty">لا توجد نتائج لبحثك "<strong>${escapeHtml(query)}</strong>"</div>`;
                 showResults();
                 return;
             }
 
             results.forEach(product => {
                 const imgSrc = product.image ? `image/${product.image}` : 'image/logo.png';
-                const name = product.productName[lang] || product.productName['ar'] || '';
-                const categoryTitle = rawServerData.categories[product.category]?.title || 'قسم غير معروف';
+                const name = escapeHtml(product.productName[lang] || product.productName['ar'] || '');
+                const categoryTitle = escapeHtml(rawServerData.categories[product.category]?.title || 'قسم غير معروف');
 
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
                 item.innerHTML = `
-                    <img src="${imgSrc}" alt="${name}" loading="lazy">
+                    <img src="${escapeHtml(imgSrc)}" alt="${name}" loading="lazy">
                     <div class="autocomplete-item-info">
                         <h4>${name}</h4>
                         <span>${categoryTitle}</span>
                     </div>
-                    <span class="price">$${product.price.toFixed(2)}</span>
+                    <span class="price">${formatPrice(product.price)}</span>
                 `;
                 item.addEventListener('click', () => {
                     const clientItem = formatItem(product, product.category, detectRegion(product));
@@ -943,7 +953,6 @@ function setupEventListeners() {
             const orderData = {
                 cartItems: cart.map(item => ({ id: item.id, qty: item.qty })),
                 customerEmail: email,
-                customerName: "عميل المتجر", // قيمة افتراضية لأن النموذج لا يحتوي على حقل اسم
                 paymentGateway: gateway,
                 paymentRef: paymentRef
             };
@@ -952,34 +961,11 @@ function setupEventListeners() {
             submitOrderBtn.textContent = '⏳ جاري إرسال طلبك للـ الأدمن...';
 
             try {
-                // تجهيز الترويسة وإضافة توكن المستخدم إذا كان موجوداً
-                const headers = {
-                    'Content-Type': 'application/json'
-                };
-                const token = localStorage.getItem('joker_token');
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                }
-
-                // إذا كان الخيار هو Stripe، نقوم بفتح نافذة الدفع الآمنة
-                if (gateway === 'stripe') {
-                    const res = await fetch('/api/create-payment-intent', {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({ cartItems: cart.map(i => ({id: i.id, qty: i.qty})), customerEmail: email })
-                    });
-                    const { clientSecret } = await res.json();
-                    
-                    // هنا يتم استدعاء Stripe Checkout (يتطلب إضافة مكتبة Stripe.js في الـ HTML)
-                    // للمثال، سنفترض إعادة التوجيه لصفحة دفع Stripe
-                    window.location.href = `/checkout.html?secret=${clientSecret}`;
-                    return;
-                }
-
-                // الطريقة اليدوية الحالية
+                // الجلسة تُرسل تلقائياً عبر HttpOnly cookie (لا حاجة لتخزين توكن في localStorage)
                 const response = await fetch('/api/checkout', {
                     method: 'POST',
-                    headers: headers,
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderData)
                 });
 
@@ -992,7 +978,7 @@ function setupEventListeners() {
                     updateCartUI();
                     showToast('🚀 تم استلام طلبك بنجاح! سيصلك الكود فور تأكيد الأدمن.', 'success');
                 } else {
-                    showToast(`❌ فشل إرسال الطلب: ${  result.error || 'حدث خطأ غير متوقع'}`, 'error');
+                    showToast(`❌ فشل إرسال الطلب: ${  escapeHtml(result.error || 'حدث خطأ غير متوقع')}`, 'error');
                 }
             } catch (_err) {
                 showToast('❌ عذراً، السيرفر مغلق حالياً أو هناك مشكلة في الاتصال.', 'error');

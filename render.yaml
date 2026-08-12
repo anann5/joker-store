@@ -10,3 +10,16 @@ services:
         value: production
       - key: PORT
         value: 10000
+      # ⚠️ عيّن قيماً حقيقية في لوحة Render (Dashboard → Environment)
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: JWT_USER_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false

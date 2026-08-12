@@ -125,6 +125,7 @@ exports.getSiteConfig = (_req, res) => {
                 jawwalNumber: siteSettings.payment.jawwalNumber,
                 palpayNumber: siteSettings.payment.palpayNumber
             },
+            currency: siteSettings.currency,
             social: siteSettings.social,
             stats: siteSettings.stats
         }
@@ -152,14 +153,15 @@ exports.trackOrder = async (req, res) => {
         const orders = await Order.find(query)
             .sort({ createdAt: -1 })
             .limit(10)
-            .select('orderId status price items.createdAt code deliveredCodes completedAt');
+            .select('orderId status price items.name items.qty items.createdAt code deliveredCodes completedAt');
 
         const safeOrders = orders.map(order => {
             const items = (order.items || []).map(item => ({
                 name: getLocalizedValue(item.name),
                 qty: item.qty
             }));
-            const codes = order.status === 'completed'
+            // الأكواد تُكشف فقط عند تقديم رقم طلب مطابق (منع سحب الأكواد بالبريد فقط)
+            const codes = (orderId && order.status === 'completed')
                 ? (order.deliveredCodes?.length ? order.deliveredCodes : (order.code ? [order.code] : []))
                 : [];
             return {
@@ -365,10 +367,10 @@ exports.createOrder = async (req, res) => {
 
         await newOrder.save();
 
-        // Emit real-time notification via WebSocket
+        // Emit real-time notification to authenticated admin sockets only
         const io = req.app?.get('io');
         if (io) {
-            io.emit('new_order', {
+            io.to('admins').emit('new_order', {
                 orderId: newOrder.orderId,
                 buyerEmail: newOrder.buyerEmail,
                 price: newOrder.price,

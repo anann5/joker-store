@@ -1,5 +1,5 @@
-import { showToast } from './ui.js';
-import { logout } from './logout.js';
+import { showToast, escapeHtml } from './ui.js';
+import { formatPrice } from './currency.js';
 
 let currentUser = null;
 
@@ -96,9 +96,8 @@ export function initAuth() {
 async function showOrderHistory() {
     const modal = document.getElementById('orderHistoryModal');
     const listContainer = document.getElementById('orderHistoryList');
-    const token = localStorage.getItem('joker_token');
 
-    if (!token) {
+    if (!currentUser) {
         showToast('الرجاء تسجيل الدخول أولاً لعرض طلباتك.', 'error');
         return;
     }
@@ -107,16 +106,15 @@ async function showOrderHistory() {
     listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> جاري تحميل سجل الطلبات...</div>`;
 
     try {
-        const res = await fetch('/api/users/orders', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        // الجلسة تُرسل تلقائياً عبر HttpOnly cookie
+        const res = await fetch('/api/users/orders', { credentials: 'include' });
         const data = await res.json();
 
         if (data.success) {
             renderOrders(data.orders);
         } else {
-            listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ ${data.message || 'فشل تحميل الطلبات.'}</div>`;
-            if (data.message === "جلسة غير صالحة.") {
+            listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ ${escapeHtml(data.message || 'فشل تحميل الطلبات.')}</div>`;
+            if (res.status === 401) {
                 handleLogout(); // تسجيل الخروج إذا كانت الجلسة منتهية
             }
         }
@@ -144,12 +142,12 @@ function renderOrders(orders) {
     listContainer.innerHTML = orders.map(order => {
         const statusInfo = statusMap[order.status] || { text: order.status, class: '' };
         const orderDate = new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
-        
+
         // عرض الكود فقط إذا كان الطلب مكتملاً
         const codeHtml = order.status === 'completed' && order.code
             ? `<div style="background: #1a1a2e; border:1px solid #ff9f43; border-radius:8px; padding:10px; margin-top:10px; font-size: 0.9rem;">
                    <span style="color:#b9bbbe;">كود الشحن:</span>
-                   <strong style="color:#ff9f43; letter-spacing:1px; user-select:all;">${order.code}</strong>
+                   <strong style="color:#ff9f43; letter-spacing:1px; user-select:all;">${escapeHtml(order.code)}</strong>
                </div>`
             : '';
 
@@ -157,15 +155,15 @@ function renderOrders(orders) {
             <div class="order-item">
                 <div class="order-details">
                     <div style="font-weight: bold; color: #fff; margin-bottom: 8px;">
-                        ${order.items.map(item => item.name).join(', ')}
+                        ${order.items.map(item => escapeHtml(item.name)).join(', ')}
                     </div>
                     <div style="font-size: 0.85rem; color: var(--text-muted);">
-                        <span>رقم الطلب: #${order.orderId}</span> | <span>التاريخ: ${orderDate}</span>
+                        <span>رقم الطلب: #${escapeHtml(order.orderId)}</span> | <span>التاريخ: ${orderDate}</span>
                     </div>
                     ${codeHtml}
                 </div>
                 <div style="text-align: left;">
-                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--primary-neon); margin-bottom: 8px;">${order.price.toFixed(2)}$</div>
+                    <div style="font-size: 1.2rem; font-weight: bold; color: var(--primary-neon); margin-bottom: 8px;">${formatPrice(order.price)}</div>
                     <div class="order-status ${statusInfo.class}">${statusInfo.text}</div>
                 </div>
             </div>
@@ -187,18 +185,18 @@ async function handleLogin(e) {
     try {
         const res = await fetch('/api/users/login', {
             method: 'POST',
+            credentials: 'include', // استقبال الـ HttpOnly cookie
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
         });
         const data = await res.json();
 
         if (data.success) {
-            localStorage.setItem('joker_token', data.token);
             document.getElementById('authModal').classList.remove('active');
             showToast('✅ أهلاً بعودتك!', 'success');
-            checkLoginState();
+            await checkLoginState();
         } else {
-            showToast(`❌ ${data.message}`, 'error');
+            showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }
     } catch (_err) {
         showToast('❌ حدث خطأ في الاتصال بالخادم.', 'error');
@@ -234,7 +232,7 @@ async function handleRegister(e) {
             document.getElementById('loginEmail').value = email;
             document.getElementById('loginPassword').focus();
         } else {
-            showToast(`❌ ${data.message}`, 'error');
+            showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }
     } catch (_err) {
         showToast('❌ حدث خطأ في الاتصال بالخادم.', 'error');
@@ -245,24 +243,22 @@ async function handleRegister(e) {
 }
 
 /**
- * التحقق من حالة تسجيل الدخول وتحديث الواجهة
+ * التحقق من حالة تسجيل الدخول عبر الخادم (بدون كشف التوكن للجافاسكريبت)
  */
-function checkLoginState() {
-    const token = localStorage.getItem('joker_token');
-    if (token) {
-        try {
-            // فك تشفير التوكن محلياً للحصول على بيانات المستخدم
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            currentUser = { email: payload.email };
-            setAuthButtonLabel('حسابي');
-            const userEmailDisplay = document.getElementById('userEmailDisplay');
-            if (userEmailDisplay) {
-                userEmailDisplay.textContent = currentUser.email;
-            }
-        } catch (_) {
-            logout(); // التوكن غير صالح
+async function checkLoginState() {
+    try {
+        const res = await fetch('/api/users/me', { credentials: 'include' });
+        if (res.status === 401) throw new Error('no session');
+        const data = await res.json();
+        if (!data.success) throw new Error('no session');
+
+        currentUser = { email: data.user.email, balance: data.user.balance };
+        setAuthButtonLabel('حسابي');
+        const userEmailDisplay = document.getElementById('userEmailDisplay');
+        if (userEmailDisplay) {
+            userEmailDisplay.textContent = currentUser.email;
         }
-    } else {
+    } catch (_err) {
         currentUser = null;
         setAuthButtonLabel('تسجيل الدخول');
         const userAccountDropdown = document.getElementById('userAccountDropdown');
@@ -273,12 +269,23 @@ function checkLoginState() {
 }
 
 /**
- * تسجيل الخروج
+ * تسجيل الخروج (يمسح الجلسة في الخادم)
  */
-function handleLogout() {
-    localStorage.removeItem('joker_token');
+async function handleLogout() {
+    try {
+        await fetch('/api/users/logout', {
+            method: 'POST',
+            credentials: 'include'
+        });
+    } catch (_err) {
+        // نكمل حتى لو فشل الاتصال
+    }
     currentUser = null;
-    checkLoginState();
+    setAuthButtonLabel('تسجيل الدخول');
+    const userAccountDropdown = document.getElementById('userAccountDropdown');
+    if (userAccountDropdown) {
+        userAccountDropdown.classList.remove('active');
+    }
     showToast('تم تسجيل الخروج بنجاح.', 'success');
 }
 

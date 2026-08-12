@@ -6,6 +6,27 @@
 let isSoundEnabled = true;
 let adminCsrfToken = null;
 const _allOrdersCache = [];
+let _allProducts = [];
+let _allCategories = [];
+let CURRENCY_SYMBOL = '₪';
+
+function formatMoney(value) {
+    const numeric = Number(value);
+    return `${Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00'} ${CURRENCY_SYMBOL}`;
+}
+
+/**
+ * تهريب القيم لإدراجها بأمان داخل HTML (منع XSS).
+ */
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 //  WebSocket Connection — إشعارات فورية
 // ======================================================
 function connectWebSocket() {
@@ -27,7 +48,7 @@ function connectWebSocket() {
     });
 
     socket.on('new_order', (data) => {
-        showAdminToast(`🆕 طلب جديد #${data.orderId} — ${data.buyerEmail || ''} ($${(data.price || 0).toFixed(2)})`, 'success');
+        showAdminToast(`🆕 طلب جديد #${data.orderId} — ${data.buyerEmail || ''} (${formatMoney(data.price)})`, 'success');
         playNotificationSound();
         loadDashboard();
         loadRecentOrders();
@@ -129,7 +150,8 @@ const initAdmin = async () => {
             } else {
                 fetch('/api/admin/logout', { method: 'POST', credentials: 'include', keepalive: true }).catch(() => {});
             }
-            document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            // لا نحاول مسح الـ HttpOnly cookie عبر document.cookie (لن ينجح)؛
+            // الخادم يمسحه فعلياً في /api/admin/logout
             window.location.href = '/login.html';
         });
     }
@@ -200,6 +222,12 @@ const initAdmin = async () => {
     // === Dashboard ===
     const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
     if (refreshDashboardBtn) refreshDashboardBtn.addEventListener('click', loadDashboard);
+
+    // === Providers ===
+    const providerSyncBtn = document.getElementById('providerSyncBtn');
+    if (providerSyncBtn) providerSyncBtn.addEventListener('click', runProviderSync);
+    const refreshRatesBtn = document.getElementById('refreshRatesBtn');
+    if (refreshRatesBtn) refreshRatesBtn.addEventListener('click', refreshCurrencyRates);
 
     // === Inventory buttons ===
     const refreshBtn = document.getElementById('refreshBtn');
@@ -335,11 +363,11 @@ async function loadDashboard() {
 
         if (data.success) {
             const s = data.stats;
-            document.getElementById('statRevenue').textContent = `$${(s.revenue || 0).toFixed(2)}`;
-            document.getElementById('statProfit').textContent = `$${(s.totalProfit || 0).toFixed(2)}`;
+            document.getElementById('statRevenue').textContent = formatMoney(s.revenue || 0);
+            document.getElementById('statProfit').textContent = formatMoney(s.totalProfit || 0);
             document.getElementById('statCompleted').textContent = s.completedOrders || 0;
             document.getElementById('statPending').textContent = s.pendingOrders || 0;
-            document.getElementById('statTodaySales').textContent = `$${(s.salesToday || 0).toFixed(2)}`;
+            document.getElementById('statTodaySales').textContent = formatMoney(s.salesToday || 0);
             document.getElementById('statTodayOrders').textContent = s.completedOrdersToday || 0;
 
             // Provider balances
@@ -367,17 +395,129 @@ async function loadDashboard() {
         // Recent orders
         loadRecentOrdersMini();
 
+        // Providers status
+        loadProviderStatus();
+
     } catch (_err) {
         showAdminToast('❌ فشل تحميل الإحصائيات', 'error');
+    }
+}
+
+// ======================================================
+//  PROVIDERS — المزودون والمزامنة وأسعار الصرف
+// ======================================================
+
+function providerStatusRow(provider) {
+    const statusMap = {
+        ok: '<span class="mini-badge badge-success">متصل</span>',
+        failed: '<span class="mini-badge badge-danger">فشل</span>',
+        never: '<span class="mini-badge badge-warning">لم تتم المزامنة</span>'
+    };
+    const badge = statusMap[provider.status] || statusMap.never;
+    const lastSync = provider.lastSyncAt
+        ? new Date(provider.lastSyncAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })
+        : '—';
+    const error = provider.lastError ? `<div style="color:var(--danger);font-size:0.82rem;margin-top:4px;">⚠ ${escapeHtml(provider.lastError)}</div>` : '';
+
+    return `
+        <div class="mini-order-row" style="flex-wrap:wrap;gap:10px;">
+            <span style="color:var(--primary);font-weight:700;min-width:110px;">🏢 ${escapeHtml(provider.name)}</span>
+            ${badge}
+            <span class="order-amount">${provider.hasApiKey ? 'مفتاح API ✓' : 'بدون مفتاح'}</span>
+            <span class="order-email">عملة: ${escapeHtml(provider.currency || '—')}${provider.margin ? ` · هامش: ${provider.margin}` : ''}</span>
+            <span class="order-email">منتجات: ${provider.fetched ?? 0} (جديد ${provider.created ?? 0} / محدث ${provider.updated ?? 0})</span>
+            <span class="order-date">آخر مزامنة: ${lastSync}</span>
+            ${error}
+        </div>
+    `;
+}
+
+async function loadProviderStatus() {
+    const container = document.getElementById('providersStatusList');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/admin/providers/status', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = '<div style="padding:14px;color:var(--danger);">فشل تحميل حالة المزودين</div>';
+            return;
+        }
+
+        const fx = data.currency || {};
+        if (fx.symbol) CURRENCY_SYMBOL = fx.symbol;
+        const fxLine = `
+            <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08);color:var(--text-muted);font-size:0.9rem;">
+                💱 عملة المتجر: <b style="color:var(--primary);">${escapeHtml(fx.storeCurrency || 'ILS')} (${escapeHtml(fx.symbol || CURRENCY_SYMBOL)})</b>
+                · مصدر الأسعار: <b>${escapeHtml(fx.source || '—')}</b>
+                ${fx.updatedAt ? `· آخر تحديث: ${new Date(fx.updatedAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
+            </div>`;
+
+        if (!data.providers || data.providers.length === 0) {
+            container.innerHTML = fxLine + `
+                <div style="padding:14px;color:var(--text-muted);">
+                    لا يوجد مزودون مُعدّون. أضف <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">PROVIDERS_COUNT</code> ومفاتيح API في ملف <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">.env</code>.
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = fxLine + data.providers.map(providerStatusRow).join('');
+    } catch (_err) {
+        container.innerHTML = '<div style="padding:14px;color:var(--danger);">فشل تحميل حالة المزودين</div>';
+    }
+}
+
+async function runProviderSync() {
+    const btn = document.getElementById('providerSyncBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ المزامنة...'; }
+
+    try {
+        await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/providers/sync', {
+            method: 'POST', credentials: 'include', headers: buildJsonHeaders()
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ تمت المزامنة: ${data.totalCreated} جديد، ${data.totalUpdated} محدث`, 'success');
+        } else {
+            showAdminToast(`❌ ${data.error || 'فشلت المزامنة'}`, 'error');
+        }
+    } catch (_err) {
+        showAdminToast('❌ تعذر الوصول للسيرفر', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i> مزامنة الآن'; }
+        loadProviderStatus();
+    }
+}
+
+async function refreshCurrencyRates() {
+    const btn = document.getElementById('refreshRatesBtn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ التحديث...'; }
+
+    try {
+        await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/currency/rates/refresh', {
+            method: 'POST', credentials: 'include', headers: buildJsonHeaders()
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ تم تحديث أسعار الصرف (${data.rateCount} عملة)`, 'success');
+        } else {
+            showAdminToast(`❌ ${data.error || 'فشل تحديث أسعار الصرف'}`, 'error');
+        }
+    } catch (_err) {
+        showAdminToast('❌ تعذر الوصول للسيرفر', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-coins"></i> تحديث أسعار الصرف'; }
+        loadProviderStatus();
     }
 }
 
 async function loadRecentOrdersMini() {
     const container = document.getElementById('recentOrdersList');
     if (!container) return;
-
     try {
-        const res = await fetch('/api/admin/orders', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch('/api/admin/orders?limit=200', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
         if (!data.success) return;
 
@@ -389,11 +529,11 @@ async function loadRecentOrdersMini() {
 
         container.innerHTML = orders.map(order => `
             <div class="mini-order-row">
-                <span style="color:var(--primary);font-weight:700;min-width:80px;">#${order.orderId}</span>
-                <span class="order-email">${order.buyerEmail || '—'}</span>
-                <span class="order-amount">$${(order.price || 0).toFixed(2)}</span>
+                <span style="color:var(--primary);font-weight:700;min-width:80px;">#${escapeHtml(order.orderId)}</span>
+                <span class="order-email">${escapeHtml(order.buyerEmail || '—')}</span>
+                <span class="order-amount">${formatMoney(order.price)}</span>
                 <span class="mini-badge ${order.status === 'completed' ? 'badge-success' : order.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${order.status === 'completed' ? 'مكتمل' : order.status === 'pending' ? 'معلق' : order.status === 'refunded' ? 'مرفوض' : 'فشل'}</span>
-                <span class="order-date">${new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <span class="order-date">${escapeHtml(new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }))}</span>
             </div>
         `).join('');
     } catch (_) {
@@ -421,6 +561,7 @@ async function loadInventory() {
         }
 
         const products = Array.isArray(data) ? data : (data.products || []);
+        _allProducts = products;
         tbody.innerHTML = '';
 
         if (products.length === 0) {
@@ -429,8 +570,8 @@ async function loadInventory() {
         }
 
         tbody.innerHTML = products.map(item => {
-            const nameAr = item.productName?.ar || item.productName || '';
-            const nameEn = item.productName?.en || '';
+            const nameAr = escapeHtml(item.productName?.ar || item.productName || '');
+            const nameEn = escapeHtml(item.productName?.en || '');
             const availableCodes = item.codes ? item.codes.filter(c => c.status === 'available').length : 0;
             const totalCodes = item.codes ? item.codes.length : item.totalCodes || 0;
             const stockText = item.isExternal ? '🔄 API' : `${availableCodes} / ${totalCodes}`;
@@ -442,14 +583,14 @@ async function loadInventory() {
                     <td class="product-name-cell">${nameAr}
                         ${nameEn ? `<div class="product-name-secondary">${nameEn}</div>` : ''}
                     </td>
-                    <td><span class="badge badge-accent">${item.category || '—'}</span></td>
-                    <td>🌍 ${item.region || 'global'}</td>
-                    <td class="${priceClass}">$${item.price ? item.price.toFixed(2) : '0.00'}</td>
+                    <td><span class="badge badge-accent">${escapeHtml(item.category || '—')}</span></td>
+                    <td>🌍 ${escapeHtml(item.region || 'global')}</td>
+                    <td class="${priceClass}">${formatMoney(item.price)}</td>
                     <td><span class="badge ${stockBadgeClass}">${stockText}</span></td>
                     <td>
                         <div class="action-btns-group">
                             <button class="action-icon btn-edit" onclick="editProduct('${item._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon btn-delete" onclick="deleteProduct('${item._id}', '${nameAr}')" title="حذف"><i class="fas fa-trash"></i></button>
+                            <button class="action-icon btn-delete" onclick="deleteProduct('${item._id}')" title="حذف"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -504,7 +645,9 @@ async function editProduct(productId) {
 }
 
 // eslint-disable-next-line no-unused-vars
-async function deleteProduct(productId, productName) {
+async function deleteProduct(productId) {
+    const product = _allProducts.find(p => p._id === productId);
+    const productName = product?.productName?.ar || product?.productName?.en || product?.productName || '';
     if (!confirm(`هل أنت متأكد من حذف المنتج: ${productName}؟`)) return;
 
     try {
@@ -578,7 +721,7 @@ async function loadRecentOrders() {
     tbody.innerHTML = `<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> جاري جلب الفواتير...</td></tr>`;
 
     try {
-        const res = await fetch('/api/admin/orders', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch('/api/admin/orders?limit=200', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
 
         if (!data.success) {
@@ -618,9 +761,9 @@ function renderOrders(orders) {
                     ? (i.name.ar || i.name.en || '')
                     : (i.name || i.id || '');
                 const qty = i.qty ?? i.quantity ?? 1;
-                return `${itemName} (×${qty})`;
+                return `${escapeHtml(itemName)} (×${qty})`;
             }).join('، ')
-            : (order.productName || '—');
+            : escapeHtml(order.productName || '—');
         const total = order.price || order.totalAmount || 0;
         const status = order.status || 'pending';
         const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : status === 'refunded' ? 'badge-danger' : 'badge-danger');
@@ -634,11 +777,11 @@ function renderOrders(orders) {
 
         return `
             <tr>
-                <td style="color:var(--primary);font-weight:700;">#${order.orderId}</td>
-                <td class="customer-name-cell">${customerName}</td>
-                <td class="customer-email-cell">${email}</td>
+                <td style="color:var(--primary);font-weight:700;">#${escapeHtml(order.orderId)}</td>
+                <td class="customer-name-cell">${escapeHtml(customerName)}</td>
+                <td class="customer-email-cell">${escapeHtml(email)}</td>
                 <td>${items}</td>
-                <td class="price-cell">$${Number(total).toFixed(2)}</td>
+                <td class="price-cell">${formatMoney(total)}</td>
                 <td><span class="badge ${statusBadge}">${statusText}</span></td>
                 <td><div class="action-btns-group">${actionButtons}</div></td>
             </tr>
@@ -711,9 +854,9 @@ function showCodes(orderId) {
     modal.innerHTML = `
         <div class="modal-content" style="max-width:500px;">
             <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
-            <h3 class="modal-title"><i class="fas fa-key"></i> أكواد الطلب #${orderId}</h3>
+            <h3 class="modal-title"><i class="fas fa-key"></i> أكواد الطلب #${escapeHtml(orderId)}</h3>
             <div style="margin-bottom:15px;">
-                <span class="badge badge-success">📧 ${order.buyerEmail}</span>
+                <span class="badge badge-success">📧 ${escapeHtml(order.buyerEmail)}</span>
             </div>
         </div>
     `;
@@ -911,6 +1054,7 @@ async function loadCategories() {
         }
 
         const categories = data.categories || [];
+        _allCategories = categories;
         tbody.innerHTML = '';
 
         if (categories.length === 0) {
@@ -918,21 +1062,25 @@ async function loadCategories() {
             return;
         }
 
-        tbody.innerHTML = categories.map(cat => `
-            <tr>
-                <td><span class="badge badge-accent">${cat.key}</span></td>
-                <td>${cat.title?.ar || '—'}</td>
-                <td>${cat.title?.en || '—'}</td>
-                <td>${cat.order || 0}</td>
-                <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'نشط' : 'غير نشط'}</span></td>
-                <td>
-                    <div class="action-btns-group">
-                        <button class="action-icon btn-edit" onclick="editCategory('${cat._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                        <button class="action-icon btn-delete" onclick="deleteCategory('${cat._id}', '${cat.title?.ar || ''}')" title="حذف"><i class="fas fa-trash"></i></button>
-                    </div>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = categories.map(cat => {
+            const titleAr = escapeHtml(cat.title?.ar || '—');
+            const titleEn = escapeHtml(cat.title?.en || '—');
+            return `
+                <tr>
+                    <td><span class="badge badge-accent">${escapeHtml(cat.key)}</span></td>
+                    <td>${titleAr}</td>
+                    <td>${titleEn}</td>
+                    <td>${Number(cat.order) || 0}</td>
+                    <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'نشط' : 'غير نشط'}</span></td>
+                    <td>
+                        <div class="action-btns-group">
+                            <button class="action-icon btn-edit" onclick="editCategory('${cat._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
+                            <button class="action-icon btn-delete" onclick="deleteCategory('${cat._id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
     } catch (_err) {
         tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
@@ -1037,7 +1185,9 @@ async function editCategory(categoryId) {
 }
 
 // eslint-disable-next-line no-unused-vars
-async function deleteCategory(categoryId, name) {
+async function deleteCategory(categoryId) {
+    const cat = _allCategories.find(c => c._id === categoryId);
+    const name = cat?.title?.ar || cat?.title?.en || '';
     if (!confirm(`هل أنت متأكد من حذف القسم: ${name}؟`)) return;
     try {
         const csrfToken = await ensureAdminCsrfToken();
@@ -1083,9 +1233,9 @@ async function loadLogs() {
 
         container.innerHTML = logs.map(log => `
             <div class="log-entry">
-                <span class="log-action">${log.action}</span>
-                <span class="log-details">${log.details || ''} ${log.targetName ? `— ${log.targetName}` : ''}</span>
-                <span class="log-time">${new Date(log.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <span class="log-action">${escapeHtml(log.action)}</span>
+                <span class="log-details">${escapeHtml(log.details || '')} ${log.targetName ? `— ${escapeHtml(log.targetName)}` : ''}</span>
+                <span class="log-time">${escapeHtml(new Date(log.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }))}</span>
             </div>
         `).join('');
     } catch (_) {

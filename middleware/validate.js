@@ -119,14 +119,6 @@ exports.checkoutSchema = Joi.object({
         })
 });
 
-/**
- * مخطط التحقق من رفع صورة المنتج (للأدمن)
- */
-exports.productImageSchema = Joi.object({
-    productId: Joi.string().required(),
-    image: Joi.string().required()
-});
-
 exports.contactSchema = Joi.object({
     name: Joi.string().trim().min(2).max(80).required().messages({
         'string.empty': 'الاسم مطلوب',

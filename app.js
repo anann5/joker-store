@@ -26,10 +26,13 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com', 'https://cdn.socket.io'],
+            // Strict script policy: no 'unsafe-inline'. All JS is external
+            // (admin bootstrap was moved to public/admin-boot.js, socket.io client
+            // is served locally from node_modules/socket.io/client-dist).
+            scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://cdn.socket.io', 'wss://*', 'ws://*'],
+            connectSrc: ["'self'"],
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
@@ -37,7 +40,7 @@ app.use(helmet({
             frameAncestors: ["'self'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
-            upgradeInsecureRequests: []
+            ...(process.env.NODE_ENV === 'production' ? { upgradeInsecureRequests: [] } : {})
         }
     },
     hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
@@ -61,6 +64,12 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 app.use(cookieParser());
 
+// لا تخزين مؤقت لأي استجابة في مسارات الأدمن (بيانات حساسة)
+app.use('/api/admin', (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
+
 app.use((req, res, next) => {
     const sanitize = (obj) => {
         if (obj && typeof obj === 'object') {
@@ -80,6 +89,8 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+// عميل socket.io يُخدم محلياً (تطابق الإصدار مع الخادم + لا اعتماد على CDN خارجي)
+app.use('/socket.io', express.static(path.join(__dirname, 'node_modules', 'socket.io', 'client-dist')));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -92,6 +103,7 @@ const authenticateAdminPage = (req, res, next) => {
 };
 
 app.get('/admin', authenticateAdminPage, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
     res.sendFile(path.join(__dirname, 'private', 'admin.html'));
 });
 
@@ -137,7 +149,14 @@ app.get('/faq', (req, res) => {
 });
 
 app.get('/api/csrf-token', csrfProtection.issueToken);
-app.post('/api/contact', validate(contactSchema), (req, res) => {
+
+const contactLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: 'عدد رسائل الاتصال كبير جداً، يرجى المحاولة لاحقاً.'
+});
+
+app.post('/api/contact', contactLimiter, validate(contactSchema), (req, res) => {
     logSecurityEvent('CONTACT_MESSAGE', `Contact message received from ${req.body.email}`, req);
     res.json({
         success: true,

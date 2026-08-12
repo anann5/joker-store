@@ -1,6 +1,28 @@
 const fs = require('fs');
 const path = require('path');
 
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'security.log');
+const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
+
+function ensureLogDir() {
+    if (!fs.existsSync(LOG_DIR)) {
+        fs.mkdirSync(LOG_DIR, { recursive: true });
+    }
+}
+
+// Rotate the log file once it exceeds MAX_LOG_SIZE (keep one backup).
+function rotateIfNeeded() {
+    try {
+        const stat = fs.statSync(LOG_FILE);
+        if (stat.size > MAX_LOG_SIZE) {
+            fs.renameSync(LOG_FILE, `${LOG_FILE}.1`);
+        }
+    } catch (_e) {
+        // log file does not exist yet — nothing to rotate
+    }
+}
+
 /**
  * تسجيل الأحداث الأمنية في ملف لوج مخصص
  * @param {string} eventType - نوع الحدث الامني
@@ -24,15 +46,12 @@ exports.logSecurityEvent = (eventType, message, req) => {
             path: req.originalUrl || req.path
         };
         
-        // كتابة الحدث في ملف لوج أمني منفصل
-        const logDir = path.join(__dirname, '..', 'logs');
-        if (!fs.existsSync(logDir)) {
-            fs.mkdirSync(logDir, { recursive: true });
-        }
-        
-        const logFile = path.join(logDir, 'security.log');
+        ensureLogDir();
+        rotateIfNeeded();
+
+        // Non-blocking append (never blocks the request pipeline).
         const logLine = `${JSON.stringify(logEntry)  }\n`;
-        fs.appendFileSync(logFile, logLine);
+        fs.promises.appendFile(LOG_FILE, logLine).catch(() => {});
         
         // أيضًا إرسال تنبيه للأدمن عبر تلغرام في حالات الطارئة
         const criticalEvents = ['FAILED_LOGIN', 'SUSPICIOUS_ACTIVITY', 'RATE_LIMIT_EXCEEDED'];
