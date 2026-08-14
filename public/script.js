@@ -11,6 +11,8 @@ export const rawServerData = { categories: {} };
 
 let searchIndex = []; // 🚀 فهرس البحث السريع
 let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
+let _categoryProducts = []; // منتجات القسم الحالي (للترتيب والفلترة)
+let _currentSort = 'latest'; // الترتيب الحالي: latest | price_asc | price_desc | rating
 const productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
 
 // ======================================================
@@ -72,11 +74,13 @@ function formatItem(item, categoryKey, region) {
     return {
         id: item._id || item.id,
         name: item.name, // الخادم يرسل الاسم المترجم جاهزاً في حقل 'name'
+        description: item.description ? (item.description[getCurrentLanguage()] || item.description.en || item.description.ar || '') : '',
         price: (typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0).toFixed(2),
         region: region,
         image: imageUrl || `image/${categoryKey}.png`,
         rating: typeof item.rating === 'number' ? item.rating : 0,
-        reviewsCount: typeof item.reviewsCount === 'number' ? item.reviewsCount : 0
+        reviewsCount: typeof item.reviewsCount === 'number' ? item.reviewsCount : 0,
+        availableStock: (item.availableStock === null || item.availableStock === undefined) ? null : Number(item.availableStock)
     };
 }
 
@@ -92,6 +96,18 @@ export function renderRatingStars(rating = 0, reviewsCount = 0) {
         ? `<span class="rating-count">(${Number(reviewsCount)})</span>`
         : '';
     return `<span class="rating-stars">${filled}<span class="empty">${empty}</span></span>${count}`;
+}
+
+/**
+ * نص شارة توفر المخزون. يُرجع '' عندما تكون الكمية غير معروفة (منتج خارجي/API
+ * أو واجهة لا تُرسل المخزون)، فيُخفى العنصر تلقائياً عبر CSS.
+ */
+export function renderStockBadge(availableStock) {
+    if (availableStock === null || availableStock === undefined) return '';
+    const count = Math.max(0, Number(availableStock) || 0);
+    if (count === 0) return 'نفذت الكمية ⛔';
+    if (count < 10) return `كمية محدودة: ${count} فقط ⚡`;
+    return 'متوفر ✅';
 }
 
 // ======================================================
@@ -178,6 +194,12 @@ async function showWishlist() {
             card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
             card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
             card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+            const stockBadge = card.querySelector('[data-stock-badge]');
+            if (stockBadge) {
+                const stockText = renderStockBadge(clientItem.availableStock);
+                stockBadge.textContent = stockText;
+                stockBadge.classList.toggle('out-of-stock', stockText === 'نفذت الكمية ⛔');
+            }
             container.appendChild(card);
         });
         syncWishlistButtons();
@@ -229,26 +251,13 @@ function applySiteConfig() {
         link.style.display = 'flex';
     }
 
-    const stats = siteConfig.stats || {};
-    const statMap = { statCustomers: stats.customers, statOrders: stats.orders, statDelivery: stats.deliveryMinutes, statSupport: stats.supportHours };
-    for (const [id, target] of Object.entries(statMap)) {
-        const el = document.getElementById(id);
-        if (el && typeof target === 'number' && target > 0) {
-            animateCounter(el, target);
-        }
+    // وسائل الدفع: إن لم تُضبط أرقام الحسابات، نخفي خيارات الدفع تماماً (لا نعرض أرقاماً وهمية)
+    const payment = siteConfig.payment || {};
+    const paymentOptionsEl = document.querySelector('.payment-options');
+    const hasPaymentNumbers = Boolean(payment.jawwalNumber) || Boolean(payment.palpayNumber);
+    if (paymentOptionsEl && !hasPaymentNumbers) {
+        paymentOptionsEl.style.display = 'none';
     }
-}
-
-function animateCounter(el, target) {
-    const duration = 1200;
-    const start = performance.now();
-    const step = now => {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        el.textContent = Math.round(target * eased).toLocaleString('en-US');
-        if (progress < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
 }
 
 // ======================================================
@@ -338,9 +347,17 @@ export function selectCategory(categoryKey) {
     localStorage.setItem('joker_lastCategory', categoryKey);
 
     _currentCategoryKey = categoryKey; // تحديث القسم الحالي
+    _categoryProducts = []; // تصفير المنتجات المخزنة
+    _currentSort = 'latest'; // إعادة تعيين الترتيب
+    const availabilityCheck = document.getElementById('availabilityFilter');
+    if (availabilityCheck) availabilityCheck.checked = false;
+    const sortSelectEl = document.getElementById('sortSelect');
+    if (sortSelectEl) sortSelectEl.value = 'latest';
+
     const grid = document.getElementById('mainCategories');
     const backContainer = document.getElementById('back-container');
     const regionBar = document.getElementById('regionFilterBar');
+    const toolbar = document.getElementById('categoryToolbar');
     const homeSections = document.getElementById('homeSections');
 
     if (homeSections) homeSections.classList.add('hidden');
@@ -350,6 +367,7 @@ export function selectCategory(categoryKey) {
     grid.removeAttribute('style');
 
     if (backContainer) backContainer.classList.remove('hidden');
+    if (toolbar) toolbar.classList.remove('hidden');
     if (regionBar) {
         regionBar.classList.remove('hidden');
         regionBar.style.display = 'flex';
@@ -359,12 +377,13 @@ export function selectCategory(categoryKey) {
     }
 
     // استخدام مؤشر تحميل مرئي أفضل
-    grid.innerHTML = `
-        <div class="loader-container">
-            <i class="fas fa-spinner fa-spin loader-icon"></i>
-            <p class="loader-text">جاري جلب البطاقات...</p>
+    grid.innerHTML = Array.from({ length: 6 }, () => `
+        <div class="skeleton-card">
+            <div class="skeleton-img"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
         </div>
-    `;
+    `).join('');
 
     fetch(`/api/products/${categoryKey}?lang=${getCurrentLanguage()}`)
         .then(function(res) { return res.json(); })
@@ -373,39 +392,97 @@ export function selectCategory(categoryKey) {
                 throw new Error(data.error || 'فشل في جلب البيانات');
             }
 
-            grid.innerHTML = '';
+            _categoryProducts = data.products; // حفظ المنتجات للترتيب والفلترة
             productCache.clear(); // تفريغ الكاش قبل ملئه من جديد
-            const template = document.getElementById('product-card-template');
-
-            data.products.forEach(function(item) { // 🔥 تصحيح: استخدام data.products بدلاً من products مباشرة
-                const detectedRegion = detectRegion(item);
-                const regionInfo = getRegionDetails(detectedRegion);
-                // الخادم يرسل productName ككائن، نقوم بالترجمة هنا
-                const localizedName = item.productName[getCurrentLanguage()] || item.productName['ar'];
-                const clientItem = formatItem({ ...item, name: localizedName }, categoryKey, detectedRegion);
-
-                productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش
-
-                const card = template.content.cloneNode(true);
-                const cardElement = card.querySelector('.product-item-card');
-                cardElement.dataset.productId = clientItem.id;
-                cardElement.dataset.region = detectedRegion;
-                card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
-                const imgElement = card.querySelector('.card-inner-img');
-                imgElement.src = clientItem.image;
-                imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
-                card.querySelector('.card-inner-img').alt = clientItem.name;
-                card.querySelector('.card-title').textContent = clientItem.name;
-                card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
-                card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
-                card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
-                grid.appendChild(card);
-            });
-            
-            if (data.products.length === 0) {
-                grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">🚫 لا توجد بطاقات متاحة في هذا القسم حالياً.</p>';
-            }
+            renderCategoryProducts(grid);
         }).catch(err => console.error("Error fetching products:", err));
+}
+
+/**
+ * تقديم منتجات القسم الحالي مع تطبيق الترتيب وفلترة التوفر والمنطقة.
+ * @param {HTMLElement} [grid] - شبكة العرض (افتراضياً #mainCategories).
+ */
+function renderCategoryProducts(grid) {
+    const targetGrid = grid || document.getElementById('mainCategories');
+    if (!targetGrid) return;
+
+    const lang = getCurrentLanguage();
+
+    // 1) فرز المنتجات حسب الاختيار
+    const sorted = [..._categoryProducts].sort((a, b) => {
+        const pa = Number(a.price) || 0;
+        const pb = Number(b.price) || 0;
+        switch (_currentSort) {
+            case 'price_asc': return pa - pb;
+            case 'price_desc': return pb - pa;
+            case 'rating': return (Number(b.rating) || 0) - (Number(a.rating) || 0);
+            default: return Number(b.createdAt) - Number(a.createdAt); // الأحدث
+        }
+    });
+
+    // 2) فلترة التوفر (المتوفر فقط)
+    const availabilityCheck = document.getElementById('availabilityFilter');
+    const inStockOnly = availabilityCheck ? availabilityCheck.checked : false;
+    let visible = sorted;
+    if (inStockOnly) {
+        visible = sorted.filter(item => {
+            // المنتجات الخارجية (API) تعتبر متوفرة ما لم تُعلم بخلاف ذلك
+            if (item.availableStock === null || item.availableStock === undefined) return true;
+            return Number(item.availableStock) > 0;
+        });
+    }
+
+    // 3) فلترة المنطقة الحالية
+    const activeRegion = document.querySelector('#regionFilterBar .filter-btn.active');
+    const currentRegion = activeRegion ? activeRegion.dataset.target : 'all';
+
+    targetGrid.innerHTML = '';
+    const template = document.getElementById('product-card-template');
+
+    if (visible.length === 0) {
+        const emptyTitle = inStockOnly
+            ? (lang === 'en' ? 'No items are currently in stock.' : 'لا توجد عناصر متوفرة حالياً.')
+            : (lang === 'en' ? 'No cards are available in this category yet.' : 'لا توجد بطاقات متاحة في هذا القسم حالياً.');
+        targetGrid.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-box-open"></i>
+                <h3>${emptyTitle}</h3>
+                <p>${lang === 'en' ? 'Please check back soon or try another option.' : 'تفضل بالعودة لاحقاً أو جرّب خياراً آخر.'}</p>
+            </div>
+        `;
+        return;
+    }
+
+    visible.forEach(function(item) {
+        const detectedRegion = detectRegion(item);
+        if (currentRegion !== 'all' && detectedRegion !== currentRegion) return;
+        const regionInfo = getRegionDetails(detectedRegion);
+        const localizedName = item.productName[lang] || item.productName['ar'];
+        const clientItem = formatItem({ ...item, name: localizedName }, _currentCategoryKey, detectedRegion);
+
+        productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش
+
+        const card = template.content.cloneNode(true);
+        const cardElement = card.querySelector('.product-item-card');
+        cardElement.dataset.productId = clientItem.id;
+        cardElement.dataset.region = detectedRegion;
+        card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+        const imgElement = card.querySelector('.card-inner-img');
+        imgElement.src = clientItem.image;
+        imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
+        card.querySelector('.card-inner-img').alt = clientItem.name;
+        card.querySelector('.card-title').textContent = clientItem.name;
+        card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
+        card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
+        card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+        const stockBadge = card.querySelector('[data-stock-badge]');
+        if (stockBadge) {
+            const stockText = renderStockBadge(clientItem.availableStock);
+            stockBadge.textContent = stockText;
+            stockBadge.classList.toggle('out-of-stock', stockText === 'نفذت الكمية ⛔');
+        }
+        targetGrid.appendChild(card);
+    });
 }
 
 export const currentCategoryKey = () => _currentCategoryKey;
@@ -482,6 +559,32 @@ function renderRegionFilterButtons() {
 // ======================================================
 //  دالة مساعدة لتقديم المنتجات (تجنب التكرار)
 // ======================================================
+function renderSkeletonCards(container, count = 6) {
+    const grid = container.querySelector('.products-grid');
+    if (!grid) return;
+    grid.innerHTML = Array.from({ length: count }, () => `
+        <div class="skeleton-card">
+            <div class="skeleton-img"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+        </div>
+    `).join('');
+}
+
+function renderEmptyState(container, opts = {}) {
+    const grid = container.querySelector('.products-grid') || container;
+    const icon = opts.icon || 'fas fa-box-open';
+    const title = opts.title || 'لا توجد بطاقات متاحة حالياً.';
+    const sub = opts.sub || '';
+    grid.innerHTML = `
+        <div class="empty-state">
+            <i class="${icon}"></i>
+            <h3>${escapeHtml(title)}</h3>
+            ${sub ? `<p>${escapeHtml(sub)}</p>` : ''}
+        </div>
+    `;
+}
+
 function renderProductCards(products, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -494,7 +597,11 @@ function renderProductCards(products, containerId) {
     const lang = getCurrentLanguage();
 
     if (products.length === 0) {
-        grid.innerHTML = '<p style="color:#b9bbbe; grid-column:1/-1; text-align:center; padding:60px 0;">🚫 لا توجد بطاقات متاحة حالياً.</p>';
+        renderEmptyState(container, {
+            icon: 'fas fa-box-open',
+            title: lang === 'en' ? 'No cards are currently available.' : 'لا توجد بطاقات متاحة حالياً.',
+            sub: lang === 'en' ? 'Please check back soon or try another category.' : 'تفضل بالعودة لاحقاً أو جرّب قسماً آخر.'
+        });
         return;
     }
 
@@ -520,6 +627,12 @@ function renderProductCards(products, containerId) {
         card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
         card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
         card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+        const stockBadge = card.querySelector('[data-stock-badge]');
+        if (stockBadge) {
+            const stockText = renderStockBadge(clientItem.availableStock);
+            stockBadge.textContent = stockText;
+            stockBadge.classList.toggle('out-of-stock', stockText === 'نفذت الكمية ⛔');
+        }
         const badge = card.querySelector('.product-badge');
         if (badge) {
             if (containerId === 'best-selling-container') badge.textContent = '🔥 الأكثر مبيعاً';
@@ -548,14 +661,26 @@ async function renderBestSellingProducts() {
     const container = document.getElementById('best-selling-container');
     if (!container) return;
 
+    renderSkeletonCards(container, 4);
     try {
         const res = await fetch(`/api/products/best-selling?lang=${getCurrentLanguage()}`);
         const data = await res.json();
         if (data.success) {
             renderProductCards(data.products, 'best-selling-container');
+        } else {
+            renderEmptyState(container, {
+                icon: 'fas fa-fire',
+                title: getCurrentLanguage() === 'en' ? 'No best sellers yet.' : 'لا توجد منتجات الأكثر مبيعاً بعد.',
+                sub: getCurrentLanguage() === 'en' ? 'Products appear here once orders take place.' : 'تظهر المنتجات هنا بعد إتمام أولى الطلبات.'
+            });
         }
     } catch (error) {
         console.error("Failed to render best-selling products:", error);
+        renderEmptyState(container, {
+            icon: 'fas fa-fire',
+            title: getCurrentLanguage() === 'en' ? 'No best sellers yet.' : 'لا توجد منتجات الأكثر مبيعاً بعد.',
+            sub: getCurrentLanguage() === 'en' ? 'Products appear here once orders take place.' : 'تظهر المنتجات هنا بعد إتمام أولى الطلبات.'
+        });
     }
 }
 
@@ -566,14 +691,26 @@ async function renderNewlyAddedProducts() {
     const container = document.getElementById('newly-added-container');
     if (!container) return;
 
+    renderSkeletonCards(container, 4);
     try {
         const res = await fetch(`/api/products/newly-added?lang=${getCurrentLanguage()}`);
         const data = await res.json();
         if (data.success) {
             renderProductCards(data.products, 'newly-added-container');
+        } else {
+            renderEmptyState(container, {
+                icon: 'fas fa-sparkles',
+                title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'لا توجد منتجات جديدة بعد.',
+                sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ستظهر المنتجات الجديدة هنا.'
+            });
         }
     } catch (error) {
         console.error("Failed to render newly added products:", error);
+        renderEmptyState(container, {
+            icon: 'fas fa-sparkles',
+            title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'لا توجد منتجات جديدة بعد.',
+            sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ستظهر المنتجات الجديدة هنا.'
+        });
     }
 }
 
@@ -589,12 +726,56 @@ async function handleLanguageChange(event) {
             rawServerData.categories = data.categories;
             renderCategoryFilterButtons(); // إعادة عرض أزرار الأقسام
             renderRegionFilterButtons();   // إعادة عرض أزرار المناطق
-            showAllCategories(); // عرض الأقسام الرئيسية بعد جلبها
+            // عند فتح رابط عميق مباشر لمنتج لا نعيد عرض الأقسام (سيعرضه رابط العمق)
+            if (!isProductDeepLink()) {
+                showAllCategories(); // عرض الأقسام الرئيسية بعد جلبها
+            }
         }
     } catch (error) {
         console.error("Failed to reload dynamic categories:", error);
     }
 }
+
+// هل نحن داخل رابط عميق مباشر لمنتج؟
+function isProductDeepLink() {
+    return /^\/product\/[a-fA-F0-9]{24}\/?$/.test(window.location.pathname);
+}
+
+/**
+ * فتح رابط عميق مباشر للمنتج عند فتح صفحة /product/:id (SEO + مشاركة).
+ * يبحث المنتج في فهرس البحث أو يجلب بياناته مباشرة ثم يعرض التفاصيل.
+ */
+async function handleProductDeepLink() {
+    const match = window.location.pathname.match(/^\/product\/([a-fA-F0-9]{24})\/?$/);
+    if (!match) return;
+    const [, productId] = match;
+
+    const found = searchIndex.find(p => String(p._id) === productId);
+    if (found) {
+        const lang = getCurrentLanguage();
+        const localizedName = found.productName[lang] || found.productName['ar'] || '';
+        const clientItem = formatItem({ ...found, name: localizedName }, found.category, detectRegion(found));
+        showProductDetails(clientItem);
+    }
+}
+
+/**
+ * تحميل فهرس البحث (منتج واحد فقط بالرغم من الاسم) — يُستخدم للبحث السريع
+ * ولفتح صفحة تفاصيل المنتج عبر الروابط العميقة.
+ */
+async function loadSearchIndex() {
+    try {
+        const res = await fetch('/api/products/search-index');
+        const data = await res.json();
+        if (data.success) {
+            searchIndex = data.products;
+            console.log(`✅ تم تحميل فهرس البحث بنجاح (${searchIndex.length} منتج).`);
+        }
+    } catch (error) {
+        console.error('Failed to fetch search index:', error);
+    }
+}
+
 /**
  * تهيئة التطبيق بالكامل: جلب البيانات الأساسية وربط الأحداث.
  */
@@ -621,19 +802,11 @@ async function initializeApp() {
     renderNewlyAddedProducts(); // 🚀 عرض المنتجات المضافة حديثاً
     renderBestSellingProducts(); // 🚀 عرض المنتجات الأكثر مبيعاً
 
-    // 🚀 جلب فهرس البحث في الخلفية لتحسين الأداء
-    (async () => {
-        try {
-            const res = await fetch('/api/products/search-index');
-            const data = await res.json();
-            if (data.success) {
-                searchIndex = data.products;
-                console.log(`✅ تم تحميل فهرس البحث بنجاح (${searchIndex.length} منتج).`);
-            }
-        } catch (error) {
-            console.error("Failed to fetch search index:", error);
-        }
-    })();
+    // 🚀 جلب فهرس البحث في الخلفية (يُستخدم للبحث السريع ولفتح الروابط العميقة)
+    await loadSearchIndex();
+
+    // 🚀 فتح رابط عميق مباشر للمنتج (تحسين SEO + قابلية مشاركة الروابط)
+    await handleProductDeepLink();
 
     initAuth(); 
     updateTrustTicker(); // تحديث شريط الثقة
@@ -667,19 +840,26 @@ function setupEventListeners() {
             btn.classList.add('active');
 
             const targetRegion = btn.dataset.target;
-            const productCards = document.querySelectorAll('#mainCategories .product-item-card');
-
-            productCards.forEach(card => {
-                const cardRegion = card.dataset.region;
-                if (targetRegion === 'all' || cardRegion === targetRegion) {
-                    card.classList.remove('hidden');
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
+            // إعادة تقديم الشبكة مع تطبيق فلترة المنطقة + الترتيب + التوفر
+            renderCategoryProducts();
             return; // منع تكرار المعالجة إذا كان الحدث داخل شريط الفلترة
         } // إغلاق كتلة if هنا
     }); // إغلاق دالة addEventListener هنا
+
+    // ─── أدوات الترتيب وفلترة التوفر ───
+    const sortSelectEl = document.getElementById('sortSelect');
+    if (sortSelectEl) {
+        sortSelectEl.addEventListener('change', function() {
+            _currentSort = this.value;
+            renderCategoryProducts();
+        });
+    }
+    const availabilityCheckEl = document.getElementById('availabilityFilter');
+    if (availabilityCheckEl) {
+        availabilityCheckEl.addEventListener('change', function() {
+            renderCategoryProducts();
+        });
+    }
 
     const homeLink = document.getElementById('homeLink');
     if (homeLink) homeLink.addEventListener('click', function(e) { e.preventDefault(); goBack(); });
@@ -819,13 +999,20 @@ function setupEventListeners() {
         const renderResults = (results, lang, query) => {
             resultsContainer.innerHTML = '';
             if (results.length === 0) {
-                resultsContainer.innerHTML = `<div class="autocomplete-empty">لا توجد نتائج لبحثك "<strong>${escapeHtml(query)}</strong>"</div>`;
+                const msg = lang === 'en'
+                    ? `No results for "<strong>${escapeHtml(query)}</strong>"`
+                    : `لا توجد نتائج لبحثك "<strong>${escapeHtml(query)}</strong>"`;
+                resultsContainer.innerHTML = `<div class="autocomplete-empty"><i class="fas fa-search-minus"></i> ${msg}</div>`;
                 showResults();
                 return;
             }
 
             results.forEach(product => {
-                const imgSrc = product.image ? `image/${product.image}` : 'image/logo.png';
+                let imgPath = product.image || '';
+                if (imgPath && !imgPath.includes('/') && !imgPath.startsWith('http')) {
+                    imgPath = `image/${imgPath}`;
+                }
+                const imgSrc = imgPath || 'image/logo.png';
                 const name = escapeHtml(product.productName[lang] || product.productName['ar'] || '');
                 const categoryTitle = escapeHtml(rawServerData.categories[product.category]?.title || 'قسم غير معروف');
 
@@ -918,12 +1105,16 @@ function setupEventListeners() {
     const updatePaymentInstructions = (method) => {
         if (!instructionsZone) return;
         const payment = siteConfig?.payment || {};
-        const jawwal = payment.jawwalNumber || '059XXXXXXX';
-        const palpay = payment.palpayNumber || '9XXXXX';
+        const jawwal = payment.jawwalNumber || '';
+        const palpay = payment.palpayNumber || '';
         if (method === 'jawwal_pay') {
-            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${jawwal}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>`;
+            instructionsZone.innerHTML = jawwal
+                ? `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${jawwal}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>`
+                : `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> جوال بي (Jawwal Pay):</p><p style="margin: 5px 0; color: #b9bbbe;">سيتم تزويدك برقم الحساب بعد إرسال الطلب.</p>`;
         } else if (method === 'palpay') {
-            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${palpay}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>`;
+            instructionsZone.innerHTML = palpay
+                ? `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${palpay}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>`
+                : `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> بال بي (PalPay):</p><p style="margin: 5px 0; color: #b9bbbe;">سيتم تزويدك برقم المحفظة بعد إرسال الطلب.</p>`;
         }
     };
 

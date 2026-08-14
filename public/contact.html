@@ -3,56 +3,87 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>تواصل معنا | Joker Store</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-        main { max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
-        h1 { color: #ffffff; }
-        .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 24px; margin-top: 20px; }
-        form { display: grid; gap: 12px; }
-        input, textarea, button { padding: 12px; border-radius: 10px; border: 1px solid #334155; font-size: 16px; }
-        button { background: #38bdf8; color: #0f172a; font-weight: bold; cursor: pointer; }
-        #result { margin-top: 12px; color: #86efac; }
-    </style>
+    <title data-page-title-key="contact_title">تواصل معنا | Joker Store</title>
+    <meta name="description" content="تواصل مع فريق Joker Store — رسالتك تهمنا وسنرد عليك بأسرع وقت." />
+    <link rel="icon" type="image/png" href="image/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" />
+    <link rel="stylesheet" href="style.css?v=4.1" />
 </head>
 <body>
-    <main>
-        <h1>تواصل معنا</h1>
-        <div class="card">
-            <p>إذا كان لديك أي سؤال أو مشكلة، يمكنك التواصل معنا عبر البريد الإلكتروني أو عبر الحسابات الرسمية.</p>
-            <p>البريد: support@jokerstore.com</p>
+
+    <header class="sub-header">
+        <div class="header-container">
+            <a href="/" class="logo-zone" title="العودة للرئيسية">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <img src="image/logo.png" alt="Logo" class="header-image" />
+            </a>
+            <nav>
+                <a href="/">الرئيسية</a>
+                <a href="tel:+970000000000">دعم فوري</a>
+            </nav>
+            <div class="header-controls">
+                <button id="lang-switcher" class="header-btn" title="Switch Language">
+                    <i class="fas fa-globe"></i><span>EN</span>
+                </button>
+            </div>
         </div>
-        <div class="card">
-            <form id="contactForm">
-                <input type="text" id="name" name="name" placeholder="الاسم" required />
-                <input type="email" id="email" name="email" placeholder="البريد الإلكتروني" required />
-                <textarea id="message" name="message" rows="5" placeholder="رسالتك" required></textarea>
-                <button type="submit">إرسال الرسالة</button>
+    </header>
+
+    <main class="sub-page-main">
+        <div class="sub-page-hero">
+            <h1><i class="fas fa-envelope-open-text"></i><span data-i18n-key="contact_title">تواصل معنا</span></h1>
+            <p data-i18n-key="contact_lead">يسعدنا مساعدتك — راسلنا وسنرد عليك بأسرع وقت.</p>
+        </div>
+
+        <div class="sub-page-card">
+            <form id="contactForm" class="sub-contact-form" novalidate>
+                <div class="form-group">
+                    <label for="name" data-i18n-key="contact_name">الاسم</label>
+                    <input type="text" id="name" name="name" required />
+                </div>
+                <div class="form-group">
+                    <label for="email" data-i18n-key="contact_email">البريد الإلكتروني</label>
+                    <input type="email" id="email" name="email" required />
+                </div>
+                <div class="form-group">
+                    <label for="message" data-i18n-key="contact_message">رسالتك</label>
+                    <textarea id="message" name="message" rows="5" required></textarea>
+                </div>
+                <button type="submit" class="auth-submit-btn" style="width:100%;">
+                    <i class="fas fa-paper-plane"></i> <span data-i18n-key="contact_submit">إرسال الرسالة</span>
+                </button>
+                <div id="result"></div>
             </form>
-            <div id="result"></div>
+        </div>
+
+        <p class="sub-contact-email"><i class="fas fa-at"></i> <span data-i18n-key="contact_email_show">بريد الدعم:</span> <a href="mailto:support@jokerstore.com">support@jokerstore.com</a></p>
+
+        <div style="text-align:center; margin-top:26px;">
+            <a href="/" class="enter-btn" data-i18n-key="sub_back_home"><i class="fas fa-home"></i> العودة للمتجر</a>
         </div>
     </main>
-    <script>
-        document.getElementById('contactForm').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const form = event.target;
-            const result = document.getElementById('result');
-            const payload = {
-                name: form.name.value,
-                email: form.email.value,
-                message: form.message.value
-            };
 
-            result.textContent = 'جارٍ الإرسال...';
-            const response = await fetch('/api/contact', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            const data = await response.json();
-            result.textContent = data.message || 'تم إرسال الرسالة';
-            if (response.ok) form.reset();
-        });
-    </script>
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <p class="footer-slogan">بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.</p>
+            </div>
+            <hr class="footer-divider">
+            <div class="footer-links">
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
+                <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
+                <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
+                <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
+            </div>
+            <p class="copyright">© 2026 Joker Store — جميع الحقوق محفوظة</p>
+        </div>
+    </footer>
+
+    <script type="module" src="sub-page.js"></script>
 </body>
 </html>

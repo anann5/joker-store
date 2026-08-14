@@ -1,5 +1,6 @@
 const { Product, Order } = require('../models');
 const { createLog, sendTelegramAlert } = require('./helpers');
+const { sendOrderConfirmationEmail, sendOrderRejectedEmail } = require('./notification');
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
 
@@ -75,6 +76,7 @@ exports.rejectOrder = async (req, res) => {
 
         await createLog('رفض طلب', `تم رفض الطلب #${order.orderId}`, req, null, order.productName);
         await sendTelegramAlert(`⛔ تم رفض الطلب #${order.orderId}.`);
+        await sendOrderRejectedEmail(order);
         return res.json({ success: true, message: 'تم رفض الطلب بنجاح' });
     } catch (err) {
         console.error('Reject Error:', err.message);
@@ -145,6 +147,7 @@ exports.approveOrder = async (req, res) => {
         await order.save();
 
         await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
+        await sendOrderConfirmationEmail(order);
 
         // Emit WebSocket event to authenticated admin sockets only
         const io = req.app?.get('io');

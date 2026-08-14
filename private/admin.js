@@ -73,7 +73,7 @@ function playNotificationSound() {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.volume = 0.5;
         audio.play();
-    } catch (_) {}
+    } catch (_) { /* أومأ - قد لا يتمكن المتصفح من تشغيل الصوت */ }
 }
 
 // ======================================================
@@ -89,7 +89,7 @@ async function ensureAdminCsrfToken() {
             adminCsrfToken = data.csrfToken;
             return adminCsrfToken;
         }
-    } catch (_err) {}
+    } catch (_err) { /* تجاهل - لا يوجد توكن */ }
     return null;
 }
 
@@ -232,6 +232,9 @@ const initAdmin = async () => {
     // === Inventory buttons ===
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) refreshBtn.addEventListener('click', loadInventory);
+
+    const loadMoreInventoryBtn = document.getElementById('loadMoreInventoryBtn');
+    if (loadMoreInventoryBtn) loadMoreInventoryBtn.addEventListener('click', loadMoreInventory);
 
     const addManualBtn = document.getElementById('addManualBtn');
     if (addManualBtn) addManualBtn.addEventListener('click', openAddManualModal);
@@ -454,14 +457,14 @@ async function loadProviderStatus() {
             </div>`;
 
         if (!data.providers || data.providers.length === 0) {
-            container.innerHTML = fxLine + `
+            container.innerHTML = `${fxLine}
                 <div style="padding:14px;color:var(--text-muted);">
                     لا يوجد مزودون مُعدّون. أضف <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">PROVIDERS_COUNT</code> ومفاتيح API في ملف <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">.env</code>.
                 </div>`;
             return;
         }
 
-        container.innerHTML = fxLine + data.providers.map(providerStatusRow).join('');
+        container.innerHTML = `${fxLine}${data.providers.map(providerStatusRow).join('')}`;
     } catch (_err) {
         container.innerHTML = '<div style="padding:14px;color:var(--danger);">فشل تحميل حالة المزودين</div>';
     }
@@ -545,14 +548,54 @@ async function loadRecentOrdersMini() {
 //  إدارة المخزون
 // ======================================================
 
+let _inventoryPage = 1;
+let _inventoryHasMore = false;
+
+function renderInventoryRow(item) {
+    const nameAr = escapeHtml(item.productName?.ar || item.productName || '');
+    const nameEn = escapeHtml(item.productName?.en || '');
+    const availableCodes = item.codes ? item.codes.filter(c => c.status === 'available').length : 0;
+    const totalCodes = item.codes ? item.codes.length : item.totalCodes || 0;
+    const stockText = item.isExternal ? '🔄 API' : `${availableCodes} / ${totalCodes}`;
+    const stockBadgeClass = item.isExternal ? 'badge-accent' : (availableCodes > 0 ? 'badge-success' : 'badge-danger');
+    const priceClass = item.price ? 'price-cell' : 'price-normal';
+
+    return `
+        <tr>
+            <td class="product-name-cell">${nameAr}
+                ${nameEn ? `<div class="product-name-secondary">${nameEn}</div>` : ''}
+            </td>
+            <td><span class="badge badge-accent">${escapeHtml(item.category || '—')}</span></td>
+            <td>🌍 ${escapeHtml(item.region || 'global')}</td>
+            <td class="${priceClass}">${formatMoney(item.price)}</td>
+            <td><span class="badge ${stockBadgeClass}">${stockText}</span></td>
+            <td>
+                <div class="action-btns-group">
+                    <button class="action-icon btn-edit" onclick="editProduct('${item._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
+                    <button class="action-icon btn-delete" onclick="deleteProduct('${item._id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+function updateInventoryFooter(hasMore) {
+    const footer = document.getElementById('inventoryFooter');
+    if (!footer) return;
+    footer.style.display = hasMore ? '' : 'none';
+}
+
 async function loadInventory() {
     const tbody = document.getElementById('inventoryList');
     if (!tbody) return;
 
+    _inventoryPage = 1;
+    _allProducts = [];
     tbody.innerHTML = `<tr><td colspan="6" class="loading-cell"><span class="spinner"></span> جاري تحميل المنتجات...</td></tr>`;
+    updateInventoryFooter(false);
 
     try {
-        const res = await fetch('/api/admin/inventory', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch(`/api/admin/inventory?page=${_inventoryPage}&limit=100`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
 
         if (!res.ok || !data.success) {
@@ -562,46 +605,43 @@ async function loadInventory() {
 
         const products = Array.isArray(data) ? data : (data.products || []);
         _allProducts = products;
+        _inventoryHasMore = Boolean(data.hasMore);
         tbody.innerHTML = '';
 
         if (products.length === 0) {
             tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">لا توجد منتجات متاحة حالياً.</td></tr>`;
+            updateInventoryFooter(false);
             return;
         }
 
-        tbody.innerHTML = products.map(item => {
-            const nameAr = escapeHtml(item.productName?.ar || item.productName || '');
-            const nameEn = escapeHtml(item.productName?.en || '');
-            const availableCodes = item.codes ? item.codes.filter(c => c.status === 'available').length : 0;
-            const totalCodes = item.codes ? item.codes.length : item.totalCodes || 0;
-            const stockText = item.isExternal ? '🔄 API' : `${availableCodes} / ${totalCodes}`;
-            const stockBadgeClass = item.isExternal ? 'badge-accent' : (availableCodes > 0 ? 'badge-success' : 'badge-danger');
-            const priceClass = item.price ? 'price-cell' : 'price-normal';
-
-            return `
-                <tr>
-                    <td class="product-name-cell">${nameAr}
-                        ${nameEn ? `<div class="product-name-secondary">${nameEn}</div>` : ''}
-                    </td>
-                    <td><span class="badge badge-accent">${escapeHtml(item.category || '—')}</span></td>
-                    <td>🌍 ${escapeHtml(item.region || 'global')}</td>
-                    <td class="${priceClass}">${formatMoney(item.price)}</td>
-                    <td><span class="badge ${stockBadgeClass}">${stockText}</span></td>
-                    <td>
-                        <div class="action-btns-group">
-                            <button class="action-icon btn-edit" onclick="editProduct('${item._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon btn-delete" onclick="deleteProduct('${item._id}')" title="حذف"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        tbody.innerHTML = products.map(renderInventoryRow).join('');
+        updateInventoryFooter(_inventoryHasMore);
     } catch (_err) {
         tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+        updateInventoryFooter(false);
     }
 }
 
-// eslint-disable-next-line no-unused-vars
+async function loadMoreInventory() {
+    const tbody = document.getElementById('inventoryList');
+    if (!tbody) return;
+
+    _inventoryPage += 1;
+    try {
+        const res = await fetch(`/api/admin/inventory?page=${_inventoryPage}&limit=100`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!res.ok || !data.success) return;
+
+        const products = Array.isArray(data) ? data : (data.products || []);
+        _allProducts = _allProducts.concat(products);
+        _inventoryHasMore = Boolean(data.hasMore);
+        tbody.insertAdjacentHTML('beforeend', products.map(renderInventoryRow).join(''));
+        updateInventoryFooter(_inventoryHasMore);
+    } catch (_err) {
+        _inventoryPage -= 1;
+    }
+}
+
 function fillEditProductForm(product) {
     document.getElementById('editId').value = product._id;
     document.getElementById('editName').value = product.productName?.en || product.productName;
@@ -623,13 +663,15 @@ function fillEditProductForm(product) {
     openModal(document.getElementById('editModal'));
 }
 
+// تُستدعى من onclick في HTML ("تعديل")
+// eslint-disable-next-line no-unused-vars
 async function editProduct(productId) {
     try {
         const res = await fetch(`/api/admin/inventory/${productId}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
 
         if (!data.success && !data._id) {
-            const allData = await fetch('/api/admin/inventory', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json());
+            const allData = await fetch('/api/admin/inventory?limit=200', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json());
             const allProducts = Array.isArray(allData) ? allData : (allData.products || []);
             const product = allProducts.find(p => p._id === productId);
             if (!product) return alert('❌ لم يتم العثور على المنتج');
@@ -830,6 +872,8 @@ async function rejectOrder(orderId) {
     } catch (_err) { showAdminToast('❌ فشل الاتصال بالسيرفر', 'error'); }
 }
 
+// تُستدعى من onclick في HTML ("الأكواد")
+// eslint-disable-next-line no-unused-vars
 function showCodes(orderId) {
     const order = _allOrdersCache.find(o => o.orderId === orderId);
     if (!order || !order.deliveredCodes || order.deliveredCodes.length === 0) {
@@ -1225,7 +1269,7 @@ async function loadLogs() {
             return;
         }
 
-        const logs = data.logs;
+        const { logs } = data;
         if (logs.length === 0) {
             container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد سجلات</div>';
             return;

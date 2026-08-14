@@ -85,7 +85,7 @@ setInterval(() => {
 }, 60 * 60 * 1000).unref();
 
 // Middleware للتحقق من التوكن
-exports.verifyAdminToken = (req, res, next, redirectPath) => {
+exports.verifyAdminToken = (req, res, next, redirectPath = null) => {
     const token = (req.headers['authorization'] && req.headers['authorization'].split(' ')[1]) ||
                   req.cookies['admin_token'];
 

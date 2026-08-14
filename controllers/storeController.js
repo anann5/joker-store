@@ -35,7 +35,12 @@ function toPublicProduct(product) {
         subscriptionType: source.subscriptionType,
         subscriptionDuration: source.subscriptionDuration,
         rating: Number(source.rating) || 0,
-        reviewsCount: Number(source.reviewsCount) || 0
+        reviewsCount: Number(source.reviewsCount) || 0,
+        availableStock: source.isExternal
+            ? null
+            : (Array.isArray(source.codes)
+                ? source.codes.filter(code => code.status === 'available').length
+                : null)
     };
 }
 
@@ -115,21 +120,48 @@ exports.getLatestOrders = async (_req, res) => {
 };
 
 /**
- * جلب الإعدادات العامة للمتجر (أرقام الدفع، روابط التواصل، الإحصائيات).
+ * جلب الإعدادات العامة للمتجر (أرقام الدفع، روابط التواصل، الإحصائيات الحقيقية).
+ * الإحصائيات تُحسب من قاعدة البيانات مباشرة — لا أرقام مفبركة.
  */
-exports.getSiteConfig = (_req, res) => {
-    res.json({
-        success: true,
-        config: {
-            payment: {
-                jawwalNumber: siteSettings.payment.jawwalNumber,
-                palpayNumber: siteSettings.payment.palpayNumber
-            },
-            currency: siteSettings.currency,
-            social: siteSettings.social,
-            stats: siteSettings.stats
-        }
-    });
+exports.getSiteConfig = async (_req, res) => {
+    try {
+        // إحصائيات حقيقية من قاعدة البيانات: عدد الطلبات المكتملة والناجحة زائداً عدد العملاء المميزين
+        const [orderStats, uniqueCustomers] = await Promise.all([
+            Order.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: 1 },
+                        completed: {
+                            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                        }
+                    }
+                }
+            ]),
+            Order.distinct('buyerEmail')
+        ]);
+
+        const aggregate = orderStats[0] || { total: 0, completed: 0 };
+
+        res.json({
+            success: true,
+            config: {
+                payment: {
+                    jawwalNumber: siteSettings.payment.jawwalNumber,
+                    palpayNumber: siteSettings.payment.palpayNumber
+                },
+                currency: siteSettings.currency,
+                social: siteSettings.social,
+                stats: {
+                    orders: aggregate.completed,
+                    customers: Array.isArray(uniqueCustomers) ? uniqueCustomers.filter(Boolean).length : 0
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Failed to load site config stats:', err);
+        res.status(500).json({ success: false, error: 'فشل في تحميل إعدادات المتجر' });
+    }
 };
 
 /**

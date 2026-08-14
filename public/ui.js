@@ -1,4 +1,4 @@
-import { rawServerData, selectCategory, currentCategoryKey, renderRatingStars, syncWishlistButtons } from './script.js';
+import { rawServerData, selectCategory, currentCategoryKey, renderRatingStars, renderStockBadge, syncWishlistButtons } from './script.js';
 import { formatPrice } from './currency.js';
 
 let toastContainer = null;
@@ -94,6 +94,11 @@ export function showAllCategories() {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
 
+    // إعادة الرابط إلى الواجهة الرئيسية عند العودة للأقسام
+    if (history.replaceState && window.location.pathname.startsWith('/product/')) {
+        history.replaceState(null, '', '/');
+    }
+
     const homeSections = document.getElementById('homeSections');
     if (homeSections) homeSections.classList.remove('hidden');
 
@@ -106,6 +111,9 @@ export function showAllCategories() {
 
     const regionBar = document.getElementById('regionFilterBar');
     if (regionBar) regionBar.style.display = 'none';
+
+    const toolbar = document.getElementById('categoryToolbar');
+    if (toolbar) toolbar.classList.add('hidden');
 
     document.querySelectorAll('#filterTabs .filter-btn').forEach(b => b.classList.remove('active'));
     const allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
@@ -136,6 +144,9 @@ export function showProductDetails(product) {
 
     const homeSections = document.getElementById('homeSections');
     if (homeSections) homeSections.classList.add('hidden');
+
+    const toolbar = document.getElementById('categoryToolbar');
+    if (toolbar) toolbar.classList.add('hidden');
 
     // استخدام القالب الجاهز من HTML
     const template = document.getElementById('product-details-template');
@@ -181,6 +192,12 @@ export function showProductDetails(product) {
                     card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
                     card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
                     card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+                    const stockBadge = card.querySelector('[data-stock-badge]');
+                    if (stockBadge) {
+                        const stockText = renderStockBadge(clientItem.availableStock);
+                        stockBadge.textContent = stockText;
+                        stockBadge.classList.toggle('out-of-stock', stockText === 'نفذت الكمية ⛔');
+                    }
                     relatedContainer.appendChild(card);
                 });
                 syncWishlistButtons();
@@ -216,6 +233,12 @@ export function showProductDetails(product) {
     if (regionSpan) {
         regionSpan.textContent = product.region;
     }
+
+    // عرض الوصف الحقيقي من قاعدة البيانات (إن وُجد)
+    const descriptionEl = view.querySelector('[data-detail-description]');
+    if (descriptionEl && product.description && product.description.trim()) {
+        descriptionEl.textContent = product.description;
+    }
     
     // إضافة منطق لزر "إضافة للسلة"
     const buyButton = view.querySelector('.buy-btn');
@@ -242,6 +265,11 @@ export function showProductDetails(product) {
 
     // بعد عرض المنتج، نقوم بجلب وعرض المنتجات ذات الصلة
     renderRelatedProducts(product.id);
+
+    // تحديث عنوان الرابط ليتوافق مع المنتج (رابط قابل للمشاركة/الفهرسة)
+    if (history.replaceState && product.id) {
+        history.replaceState(null, '', `/product/${product.id}`);
+    }
 }
 
 // تحديث واجهة السلة: العدّاد + قائمة العناصر + المجموع الإجمالي

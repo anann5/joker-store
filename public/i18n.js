@@ -1,5 +1,6 @@
 let currentTranslations = {};
 let currentLang = 'ar'; // سيتم تحديده بشكل صحيح في setLanguage
+const I18N_BASE = new URL('.', import.meta.url).href;
 
 /**
  * يحدد اللغة الأولية بناءً على رابط URL ثم التخزين المحلي.
@@ -22,7 +23,7 @@ async function setLanguage(lang) {
     try {
         currentLang = lang;
         // تعديل: جلب الملفات من المجلد الرئيسي مباشرة
-        const response = await fetch(`${lang}.json`);
+        const response = await fetch(`${I18N_BASE}${lang}.json`);
         if (!response.ok) {
             return;
         }
@@ -67,8 +68,10 @@ function translatePage() {
         }
     });
     // ترجمة عنوان الصفحة
-    if (currentTranslations.site_title) {
-        document.title = currentTranslations.site_title;
+    const pageTitleKey = document.querySelector('[data-page-title-key]')?.getAttribute('data-page-title-key');
+    const titleKey = pageTitleKey || 'site_title';
+    if (currentTranslations[titleKey]) {
+        document.title = currentTranslations[titleKey];
     }
 }
 

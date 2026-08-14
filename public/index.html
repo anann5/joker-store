@@ -6,28 +6,61 @@
     <title>Joker Store | بطاقات رقمية وألعاب</title>
     <meta name="description" content="Joker Store — متجرك الموثوق لشحن الألعاب والبطاقات الرقمية. أكواد أصلية مضمونة 100% وتوصيل فوري: ببجي، فورتنايت، ستيم، بلايستيشن والمزيد.">
     <meta name="keywords" content="ببجي, فورتنايت, ستيم, بلايستيشن, شدات, بطاقات رقمية, شحن, Joker Store">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="/">
+    <meta name="theme-color" content="#0f172a">
     <meta property="og:title" content="Joker Store | بطاقات رقمية وألعاب">
     <meta property="og:description" content="أكواد أصلية مضمونة 100% وتوصيل فوري. اشحن ببجي، فورتنايت، ستيم والمزيد بضمان Joker Store.">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="image/logo.png">
-    <meta name="robots" content="index, follow">
+    <meta property="og:url" content="/">
+    <meta property="og:image" content="/image/logo.png">
+    <meta property="og:site_name" content="Joker Store">
+    <meta property="og:locale" content="ar_AR">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Joker Store | بطاقات رقمية وألعاب">
+    <meta name="twitter:description" content="أكواد أصلية مضمونة 100% وتوصيل فوري. اشحن ببجي، فورتنايت، ستيم والمزيد بضمان Joker Store.">
+    <meta name="twitter:image" content="/image/logo.png">
+    <link rel="alternate" hreflang="ar" href="/?lang=ar">
+    <link rel="alternate" hreflang="en" href="/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="/">
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "OnlineStore",
         "name": "Joker Store",
         "description": "متجر بطاقات رقمية وألعاب — أكواد أصلية مضمونة وتوصيل فوري.",
+        "image": "/image/logo.png",
         "paymentAccepted": ["Jawwal Pay", "PalPay"],
         "currenciesAccepted": "ILS",
-        "priceRange": "₪₪"
+        "priceRange": "₪₪",
+        "address": { "@type": "PostalAddress", "addressCountry": "PS" },
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
     }
     </script>
-    <link rel="icon" type="image/png" href="image/logo.png">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Joker Store",
+        "logo": "/image/logo.png",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "availableLanguage": ["Arabic", "English"]
+        }
+    }
+    </script>
+    <link rel="icon" type="image/png" href="/image/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
-    <link rel="stylesheet" href="style.css?v=4.0">
+    <link rel="stylesheet" href="/style.css?v=4.0">
 </head>
 <body>
 
@@ -39,7 +72,7 @@
 
         <div class="logo-zone" id="logoHomeBtn" title="العودة للرئيسية">
             <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
-            <img src="image/logo.png" alt="Logo" class="header-image">
+            <img src="/image/logo.png" alt="Logo" class="header-image">
         </div>
 
         <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="فتح القائمة" aria-expanded="false">
@@ -76,21 +109,30 @@
                 <button class="dropdown-btn" id="categoriesBtn" data-i18n-key="nav_categories">
                     <i class="fas fa-list"></i>الأقسام
                 </button>
-                <div class="dropdown-menu" id="categoriesDropdown">
-                    <button class="dropdown-item" data-category="gaming_general"><i class="fas fa-gamepad"></i> الألعاب</button>
-                    <button class="dropdown-item" data-category="steam"><i class="fab fa-steam"></i> ستيم</button>
-                    <button class="dropdown-item" data-category="pubg"><i class="fas fa-crosshairs"></i> ببجي</button>
-                    <button class="dropdown-item" data-category="fortnite"><i class="fas fa-gun"></i> فورتنايت</button>
-                    <button class="dropdown-item" data-category="playstation"><i class="fab fa-playstation"></i> بلايستيشن</button>
-                    <button class="dropdown-item" data-category="xbox"><i class="fab fa-xbox"></i> إكس بوكس</button>
-                    <button class="dropdown-item" data-category="microsoft_windows"><i class="fab fa-windows"></i> ويندوز</button>
-                    <button class="dropdown-item" data-category="adobe"><i class="fab fa-adobe"></i> أدوبي</button>
-                    <button class="dropdown-item" data-category="antivirus"><i class="fas fa-shield-alt"></i> الحماية</button>
-                    <button class="dropdown-item" data-category="vpn"><i class="fas fa-lock"></i> VPN</button>
-                    <button class="dropdown-item" data-category="google"><i class="fab fa-google-play"></i> جوجل بلاي</button>
-                    <button class="dropdown-item" data-category="itunes"><i class="fab fa-apple"></i> آيتونز</button>
-                    <button class="dropdown-item" data-category="razer_gold"><i class="fas fa-gamepad"></i> ريزر جولد</button>
-                    <button class="dropdown-item" data-category="amazon"><i class="fab fa-amazon"></i> أمازون</button>
+                <div class="dropdown-menu mega-menu" id="categoriesDropdown">
+                    <div class="mega-column">
+                        <span class="mega-heading"><i class="fas fa-gamepad"></i> <span data-i18n-key="menu_group_games">الألعاب والمنصات</span></span>
+                        <button class="dropdown-item" data-category="gaming_general"><i class="fas fa-gamepad"></i> الألعاب</button>
+                        <button class="dropdown-item" data-category="steam"><i class="fab fa-steam"></i> ستيم</button>
+                        <button class="dropdown-item" data-category="pubg"><i class="fas fa-crosshairs"></i> ببجي</button>
+                        <button class="dropdown-item" data-category="fortnite"><i class="fas fa-gun"></i> فورتنايت</button>
+                        <button class="dropdown-item" data-category="playstation"><i class="fab fa-playstation"></i> بلايستيشن</button>
+                        <button class="dropdown-item" data-category="xbox"><i class="fab fa-xbox"></i> إكس بوكس</button>
+                    </div>
+                    <div class="mega-column">
+                        <span class="mega-heading"><i class="fas fa-window-restore"></i> <span data-i18n-key="menu_group_software">البرامج والتراخيص</span></span>
+                        <button class="dropdown-item" data-category="microsoft_windows"><i class="fab fa-windows"></i> ويندوز</button>
+                        <button class="dropdown-item" data-category="adobe"><i class="fab fa-adobe"></i> أدوبي</button>
+                        <button class="dropdown-item" data-category="antivirus"><i class="fas fa-shield-alt"></i> الحماية</button>
+                        <button class="dropdown-item" data-category="vpn"><i class="fas fa-lock"></i> VPN</button>
+                    </div>
+                    <div class="mega-column">
+                        <span class="mega-heading"><i class="fas fa-gift"></i> <span data-i18n-key="menu_group_giftcards">بطاقات هدايا</span></span>
+                        <button class="dropdown-item" data-category="google"><i class="fab fa-google-play"></i> جوجل بلاي</button>
+                        <button class="dropdown-item" data-category="itunes"><i class="fab fa-apple"></i> آيتونز</button>
+                        <button class="dropdown-item" data-category="razer_gold"><i class="fas fa-gamepad"></i> ريزر جولد</button>
+                        <button class="dropdown-item" data-category="amazon"><i class="fab fa-amazon"></i> أمازون</button>
+                    </div>
                 </div>
             </div>
             <a href="#" id="digitalCardsLink" data-i18n-key="nav_digital_cards">البطاقات الرقمية</a>
@@ -154,7 +196,7 @@
             <div class="offer-banner-text">
                 <span class="offer-kicker"><i class="fas fa-bolt"></i> عرض اليوم</span>
                 <h2 class="offer-title">خصومات على أكواد الشحن <span class="offer-title-emoji">🎮</span></h2>
-                <p class="offer-sub">اشحن قبل انتهاء العرض بأفضل الأسعار — والتوصيل فوري خلال دقائق.</p>
+                <p class="offer-sub">اشحن قبل انتهاء العرض بأفضل الأسعار — والتوصيل تلقائي بعد تأكيد الطلب.</p>
             </div>
             <div class="offer-timer-wrap">
                 <div class="countdown-timer" id="dailyCountdown" aria-label="الوقت المتبقي حتى نهاية عرض اليوم">
@@ -181,27 +223,7 @@
 
     <!-- ===== Trust Ticker ===== -->
     <div class="trust-ticker">
-        <div class="ticker-content">🛡️ جميع الأكواد أصلية ومضمونة 100% .. ⚡ توصيل فوري خلال دقائق .. 💬 دعم متواصل على مدار الساعة</div>
-    </div>
-
-    <!-- ===== Stats Strip ===== -->
-    <div class="stats-strip">
-        <div class="stat-item">
-            <i class="fas fa-users"></i>
-            <div><span class="stat-number" id="statCustomers">2500</span><span class="stat-suffix">+</span><p data-i18n-key="stat_customers_label">عميل سعيد</p></div>
-        </div>
-        <div class="stat-item">
-            <i class="fas fa-box"></i>
-            <div><span class="stat-number" id="statOrders">8500</span><span class="stat-suffix">+</span><p data-i18n-key="stat_orders_label">طلب ناجح</p></div>
-        </div>
-        <div class="stat-item">
-            <i class="fas fa-bolt"></i>
-            <div><span class="stat-number" id="statDelivery">10</span><span class="stat-suffix"> <span data-i18n-key="stat_delivery_unit">دقائق</span></span><p data-i18n-key="stat_delivery_label">متوسط التوصيل</p></div>
-        </div>
-        <div class="stat-item">
-            <i class="fas fa-headset"></i>
-            <div><span class="stat-number" id="statSupport">24</span><span class="stat-suffix">/7</span><p data-i18n-key="stat_support_label">دعم متواصل</p></div>
-        </div>
+        <div class="ticker-content">🛡️ أكواد أصلية ومضمونة .. ⚡ توصيل تلقائي بعد تأكيد الطلب .. 💬 دعم فني سريع</div>
     </div>
 
     <!-- ===== فلترة الأقسام ===== -->
@@ -216,6 +238,21 @@
     <!-- ===== منطقة الأقسام والمنتجات ===== -->
     <div class="main-container">
         <div id="regionFilterBar" class="region-filter-bar"></div>
+        <div id="categoryToolbar" class="category-toolbar hidden">
+            <div class="toolbar-group">
+                <label for="sortSelect"><i class="fas fa-sort-amount-down-alt"></i> <span data-i18n-key="sort_by_label">ترتيب حسب</span></label>
+                <select id="sortSelect" class="toolbar-select">
+                    <option value="latest" data-i18n-key="sort_latest">الأحدث</option>
+                    <option value="price_asc" data-i18n-key="sort_price_asc">السعر: من الأقل للأعلى</option>
+                    <option value="price_desc" data-i18n-key="sort_price_desc">السعر: من الأعلى للأقل</option>
+                    <option value="rating" data-i18n-key="sort_rating">الأعلى تقييماً</option>
+                </select>
+            </div>
+            <label class="toolbar-check">
+                <input type="checkbox" id="availabilityFilter">
+                <span data-i18n-key="in_stock_only">المتوفر فقط</span>
+            </label>
+        </div>
         <div id="mainCategories"></div>
     </div>
 
@@ -277,28 +314,6 @@
                 <div class="guarantee-card"><i class="fas fa-undo-alt"></i><h3 data-i18n-key="guarantee2_title">ضمان الاسترجاع</h3><p data-i18n-key="guarantee2_desc">إذا لم يعمل الكود نستبدله أو نعيد لك المبلغ بالكامل.</p></div>
                 <div class="guarantee-card"><i class="fas fa-headset"></i><h3 data-i18n-key="guarantee3_title">دعم مباشر</h3><p data-i18n-key="guarantee3_desc">فريقنا جاهز لمساعدتك في أي وقت على مدار الساعة.</p></div>
                 <div class="guarantee-card"><i class="fas fa-lock"></i><h3 data-i18n-key="guarantee4_title">تعامل آمن</h3><p data-i18n-key="guarantee4_desc">طلباتك محمية وبياناتك في أمان تام.</p></div>
-            </div>
-        </section>
-
-        <!-- آراء العملاء -->
-        <section class="info-section" id="testimonials">
-            <h2 class="section-title"><i class="fas fa-comments"></i> <span data-i18n-key="testimonials_title">ماذا يقول عملاؤنا؟</span></h2>
-            <div class="testimonials-grid">
-                <div class="testimonial-card">
-                    <div class="stars" aria-label="5 من 5">★★★★★</div>
-                    <p>"طلبت كود ببجي ووصلني خلال 10 دقائق. تعامل محترم جداً."</p>
-                    <div class="testimonial-author">— أحمد</div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="stars" aria-label="5 من 5">★★★★★</div>
-                    <p>"أفضل متجر أتعامل معه، أكواد أصلية وضمان حقيقي."</p>
-                    <div class="testimonial-author">— محمد</div>
-                </div>
-                <div class="testimonial-card">
-                    <div class="stars" aria-label="5 من 5">★★★★★</div>
-                    <p>"خدمة سريعة ودعم ممتاز، رحت وأكيد بطلب منهم مجدداً."</p>
-                    <div class="testimonial-author">— ريم</div>
-                </div>
             </div>
         </section>
     </div>
@@ -507,8 +522,8 @@
 
 <!-- استخدام type="module" لتفعيل نظام الوحدات (ES6 Modules). -->
 <!-- الملف الرئيسي script.js هو نقطة الدخول الوحيدة التي تستورد باقي الوحدات. -->
-<script type="module" src="script.js"></script>
-<script type="module" src="i18n.js"></script>
+<script type="module" src="/script.js?v=4.0"></script>
+<script type="module" src="/i18n.js?v=4.0"></script>
 
 <!-- ====================================================== -->
 <!-- 🔥 قوالب الواجهة الديناميكية (Dynamic UI Templates) -->
@@ -555,7 +570,7 @@
                 <button class="wishlist-btn detail-wishlist" data-wishlist-btn title="أضف لقائمة الأمنيات"><i class="far fa-heart"></i></button>
             </div>
             <div class="detail-desc">
-                <p>✨ <b>وصف المنتج:</b> استلم كود شحن أصلي ومضمون 100%.</p>
+                <p class="detail-description-text">✨ <b>وصف المنتج:</b> <span data-detail-description>استلم كود شحن أصلي ومضمون 100%.</span></p>
                 <p>🌍 <b>المنطقة:</b> <span class="product-region"></span></p>
                 <p>🛡️ <b>الضمان:</b> ضمان Joker Store لعمل الكود بشكل فوري.</p>
                 <p style="margin-top:20px; color:var(--primary-neon);">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>

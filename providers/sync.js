@@ -55,7 +55,10 @@ async function applyItem(product, provider, item) {
     if (item.image) product.image = item.image;
     if (item.category) product.category = item.category;
     if (item.region) product.region = item.region;
-    if (item.description?.ar) product.description.ar = item.description.ar;
+    if (item.description?.ar) {
+        product.description.ar = item.description.ar;
+        product.description.en = item.description.ar;
+    }
 
     await product.save();
 
@@ -86,7 +89,7 @@ function newProductFor(provider, item) {
         providerCurrency: item.currency,
         description: {
             ar: item.description?.ar || 'منتج خارجي يُشحن مباشرة من المزود.',
-            en: item.description?.en || 'External product fulfilled directly by the provider.'
+            en: item.description?.ar || 'External product fulfilled directly by the provider.'
         }
     });
 }
@@ -102,7 +105,7 @@ async function recordState(provider, state) {
                 fetched: state.fetched,
                 created: state.created,
                 updated: state.updated,
-                errors: state.errors,
+                errorCount: state.errorCount,
                 lastError: state.lastError || null,
                 ratesSource: state.ratesSource || null,
                 storeCurrency: currency.STORE_CURRENCY
@@ -132,7 +135,7 @@ async function syncCatalog() {
             fetched: 0,
             created: 0,
             updated: 0,
-            errors: 0,
+            errorCount: 0,
             lastError: null
         };
 
@@ -144,7 +147,7 @@ async function syncCatalog() {
                 try {
                     const item = adapter.normalizeItem(provider, raw);
                     if (!item.id) {
-                        state.errors += 1;
+                        state.errorCount += 1;
                         continue;
                     }
 
@@ -163,7 +166,7 @@ async function syncCatalog() {
 
                     await applyItem(product, provider, item);
                 } catch (err) {
-                    state.errors += 1;
+                    state.errorCount += 1;
                 }
             }
         } catch (err) {

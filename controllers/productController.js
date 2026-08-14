@@ -24,8 +24,20 @@ function validateCategory(category) {
 
 exports.getInventory = async (req, res) => {
     try {
-        const products = await Product.find({ isActive: true }).select('productName category region price codes updatedAt isExternal externalId profitMargin basePrice currentProvider');
-        res.json({ success: true, products });
+        const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+        const skip = (page - 1) * limit;
+
+        const [products, total] = await Promise.all([
+            Product.find({ isActive: true })
+                .select('productName category region price codes updatedAt isExternal externalId profitMargin basePrice currentProvider')
+                .sort({ updatedAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Product.countDocuments({ isActive: true })
+        ]);
+
+        res.json({ success: true, products, total, page, limit, hasMore: skip + products.length < total });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب المخزون' });
     }

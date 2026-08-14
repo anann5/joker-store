@@ -1,6 +1,7 @@
 node_modules/
 .kilo/
 .env
+.env.*.example
 *.exe
 logs/
 *.log

@@ -23,3 +23,19 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
+      # ضع قيمة SITE_URL في لوحة Render بعد أول ديبلوي (مثلاً https://joker-store.onrender.com)
+      - key: SITE_URL
+        sync: false
+      # أرقام الدفع وروابط التواصل — املأها في لوحة Render
+      - key: JAWWAL_PAY_NUMBER
+        sync: false
+      - key: PALPAY_NUMBER
+        sync: false
+      - key: WHATSAPP_NUMBER
+        sync: false
+      - key: TELEGRAM_LINK
+        sync: false
+      - key: INSTAGRAM_LINK
+        sync: false
+      - key: TIKTOK_LINK
+        sync: false

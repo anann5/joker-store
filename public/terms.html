@@ -3,19 +3,79 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>الشروط والأحكام | Joker Store</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-        main { max-width: 900px; margin: 0 auto; padding: 48px 24px 80px; }
-        h1, h2 { color: #ffffff; }
-    </style>
+    <title data-page-title-key="terms_title">الشروط والأحكام | Joker Store</title>
+    <meta name="description" content="الشروط والأحكام لاستخدام متجر Joker Store: الاستخدام، الأكواد، الدفع والاسترجاع." />
+    <link rel="icon" type="image/png" href="image/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" />
+    <link rel="stylesheet" href="style.css?v=4.1" />
 </head>
 <body>
-    <main>
-        <h1>الشروط والأحكام</h1>
-        <p>باستخدامك لهذا الموقع، فإنك توافق على الالتزام بالشروط التالية.</p>
-        <h2>الاستعمال</h2>
-        <p>يجب استخدام الموقع بشكل قانوني وغير مسيء، ويجب عدم محاولة التلاعب بالأنظمة أو إساءة استخدام الخدمات.</p>
+
+    <header class="sub-header">
+        <div class="header-container">
+            <a href="/" class="logo-zone" title="العودة للرئيسية">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <img src="image/logo.png" alt="Logo" class="header-image" />
+            </a>
+            <nav>
+                <a href="/">الرئيسية</a>
+                <a href="/contact">تواصل معنا</a>
+            </nav>
+            <div class="header-controls">
+                <button id="lang-switcher" class="header-btn" title="Switch Language">
+                    <i class="fas fa-globe"></i><span>EN</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="sub-page-main">
+        <div class="sub-page-hero">
+            <h1><i class="fas fa-file-contract"></i><span data-i18n-key="terms_title">الشروط والأحكام</span></h1>
+            <p data-i18n-key="terms_lead">استخدامك لمتجر Joker Store يعني موافقتك على الشروط التالية.</p>
+        </div>
+
+        <div class="sub-page-card">
+            <h2><i class="fas fa-tag"></i> <span data-i18n-key="terms_s1_title">الاستخدام والأكواد</span></h2>
+            <p data-i18n-key="terms_s1_desc">الأكواد أصلية ومضمونة، وعليك استخدامها وفق شروط المزود الرسمي للمنصة.</p>
+        </div>
+
+        <div class="sub-page-card">
+            <h2><i class="fas fa-money-bill-wave"></i> <span data-i18n-key="terms_s2_title">الدفع والاسترجاع</span></h2>
+            <p data-i18n-key="terms_s2_desc">لا نقدم استرجاعاً نقدياً بعد تسليم الكود، إلا إذا لم يعمل الكود وتم التحقق من ذلك.</p>
+        </div>
+
+        <div class="sub-page-card">
+            <h2><i class="fas fa-balance-scale"></i> <span data-i18n-key="terms_s3_title">المسؤولية</span></h2>
+            <p data-i18n-key="terms_s3_desc">لا نتحمل مسؤولية الاستخدام الخاطئ للكود أو تسليمه لطرف آخر بعد الشراء.</p>
+        </div>
+
+        <div style="text-align:center; margin-top:26px;">
+            <a href="/" class="enter-btn" data-i18n-key="sub_back_home"><i class="fas fa-home"></i> العودة للمتجر</a>
+        </div>
     </main>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <p class="footer-slogan">بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.</p>
+            </div>
+            <hr class="footer-divider">
+            <div class="footer-links">
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
+                <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
+                <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
+                <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
+            </div>
+            <p class="copyright">© 2026 Joker Store — جميع الحقوق محفوظة</p>
+        </div>
+    </footer>
+
+    <script type="module" src="sub-page.js"></script>
 </body>
 </html>

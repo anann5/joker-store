@@ -185,7 +185,7 @@ const providerSyncStateSchema = new mongoose.Schema({
     fetched: { type: Number, default: 0 },
     created: { type: Number, default: 0 },
     updated: { type: Number, default: 0 },
-    errors: { type: Number, default: 0 },
+    errorCount: { type: Number, default: 0 },
     lastError: { type: String, default: null },
     ratesSource: { type: String, default: null },
     storeCurrency: { type: String, default: 'USD' }

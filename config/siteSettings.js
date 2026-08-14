@@ -1,17 +1,11 @@
-// إعدادات الموقع العامة المكشوفة للواجهة (أرقام الدفع، روابط التواصل، الإحصائيات)
-// ⚠️ ضع القيم الحقيقية في .env أو املأها هنا مباشرة
-
-function getNumber(envName, fallback) {
-    const value = process.env[envName];
-    const parsed = Number.parseInt(value, 10);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
-}
+// إعدادات الموقع العامة المكشوفة للواجهة (أرقام الدفع، روابط التواصل)
+// ⚠️ لا تضع أرقاماً أو إحصائيات وهمية — القيم الفارغة تُخفي العنصر في الواجهة.
 
 module.exports = {
     payment: {
-        // أرقام حسابات الدفع التي تظهر للمشتري في صفحة الدفع
-        jawwalNumber: process.env.JAWWAL_PAY_NUMBER || '059XXXXXXX',
-        palpayNumber: process.env.PALPAY_NUMBER || '9XXXXX'
+        // أرقام حسابات الدفع — تُضبط في .env؛ تبقى فارغة (ويُخفى خيار الدفع) إن لم تُضبط
+        jawwalNumber: process.env.JAWWAL_PAY_NUMBER || '',
+        palpayNumber: process.env.PALPAY_NUMBER || ''
     },
     currency: {
         // عملة المتجر (رمز العملة + رمز العرض) — تُعرض للواجهة لعرض الأسعار
@@ -19,17 +13,10 @@ module.exports = {
         symbol: process.env.STORE_CURRENCY_SYMBOL || '₪'
     },
     social: {
-        // روابط التواصل — ضع القيم الحقيقية في .env
+        // روابط التواصل — تُضبط في .env؛ تبقى فارغة (ويُخفى الرابط) إن لم تُضبط
         whatsapp: process.env.WHATSAPP_NUMBER || '',
         telegram: process.env.TELEGRAM_LINK || '',
         instagram: process.env.INSTAGRAM_LINK || '',
         tiktok: process.env.TIKTOK_LINK || ''
-    },
-    stats: {
-        // إحصائيات المتجر المعروضة في الواجهة (قيم افتراضية تُستبدل ببيانات حقيقية)
-        customers: getNumber('STAT_CUSTOMERS', 2500),
-        orders: getNumber('STAT_ORDERS', 8500),
-        deliveryMinutes: getNumber('STAT_DELIVERY_MIN', 10),
-        supportHours: getNumber('STAT_SUPPORT_HOURS', 24)
     }
 };

@@ -4,11 +4,14 @@ dotenv.config();
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/database');
+const { validateEnv } = require('./config/envCheck');
 const app = require('./app');
 const { syncInventoryInternal } = require('./controllers/productController');
 const { cleanupOldLogsInternal } = require('./controllers/logController');
 const { verifyAdminSocket } = require('./controllers/authController');
 const registry = require('./providers/registry');
+
+validateEnv();
 
 connectDB();
 
@@ -25,8 +28,7 @@ const io = new Server(server, {
 
 io.use((socket, next) => {
     // Reject cross-origin handshakes (defense in depth).
-    const origin = socket.handshake.headers.origin;
-    const host = socket.handshake.headers.host;
+    const { origin, host } = socket.handshake.headers;
     if (origin && host && origin !== `http://${host}` && origin !== `https://${host}`) {
         return next(new Error('cross-origin connections are not allowed'));
     }

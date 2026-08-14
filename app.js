@@ -11,6 +11,7 @@ const { logSecurityEvent } = require('./middleware/securityLogger');
 const csrfProtection = require('./middleware/csrf');
 const authController = require('./controllers/authController');
 const { validate, contactSchema } = require('./middleware/validate');
+const seoController = require('./controllers/seoController');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -58,7 +59,7 @@ app.disable('x-powered-by');
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: Math.max(120, Number.parseInt(process.env.API_RATE_LIMIT_MAX, 10) || 300),
     message: 'عدد طلبات كبير جداً، يرجى المحاولة لاحقاً.'
 });
 app.use('/api/', limiter);
@@ -128,6 +129,10 @@ app.get('/health', (req, res) => {
     res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/robots.txt', seoController.robotsTxt);
+app.get('/sitemap.xml', seoController.sitemapXml);
+app.get('/api/products/schema/:productId', seoController.productSchema);
+
 app.get('/privacy', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });
@@ -146,6 +151,16 @@ app.get('/about', (req, res) => {
 
 app.get('/faq', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'faq.html'));
+});
+
+// مسار عميق للمنتجات: تُخدم صفحة الواجهة (SPA) لفتح تفاصيل المنتج مباشرة.
+// يُقبل فقط معرفات المنتج الصالحة (24 خانة سداسية)، وكل ما عدا ذلك يُترك للمسارات الثابتة
+// (الأصول مثل /products/script.js أو الصور تُخدم عادياً).
+app.get('/product/:productId', (req, res, next) => {
+    if (!/^[a-fA-F0-9]{24}$/.test(req.params.productId)) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/api/csrf-token', csrfProtection.issueToken);
