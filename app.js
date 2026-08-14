@@ -16,8 +16,14 @@ const seoController = require('./controllers/seoController');
 const app = express();
 app.set('trust proxy', 1);
 
+// فرض HTTPS عند الحاجة فقط.
+// - على Render (وضع الإنتاج): يتوفر `x-forwarded-proto: https` من الـ Load Balancer، فيُبقي الطلبات.
+// - محلياً في التطوير: نُعطّل التوجيه إما بـ NODE_ENV=development أو بـ FORCE_HTTPS=0 حتى يعمل http مباشرة.
+const forceHttps = process.env.FORCE_HTTPS !== '0' &&
+    process.env.NODE_ENV === 'production';
+
 app.use((req, res, next) => {
-    if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    if (forceHttps && req.headers['x-forwarded-proto'] !== 'https' && req.headers['x-forwarded-proto'] !== 'https,http') {
         return res.redirect(301, `https://${req.get('host')}${req.url}`);
     }
     next();
@@ -41,10 +47,13 @@ app.use(helmet({
             frameAncestors: ["'self'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],
-            ...(process.env.NODE_ENV === 'production' ? { upgradeInsecureRequests: [] } : {})
+            upgradeInsecureRequests: null,
+            ...(forceHttps ? { upgradeInsecureRequests: [] } : {})
         }
     },
-    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+    // HSTS يُفعّل فقط عند فرض HTTPS (الإنتاج). محلياً في التطوير يبقى معطّلاً
+    // حتى لا يفرض المتصفح https على localhost ويحجب الصفحة.
+    hsts: forceHttps ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     xssFilter: true,
     noSniff: true,

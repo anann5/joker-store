@@ -8,6 +8,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # فرض HTTPS مفعّل افتراضياً في الإنتاج (Render يمرر x-forwarded-proto: https).
+      # لا تضبط FORCE_HTTPS هنا — يبقى مفعّلاً.
       - key: PORT
         value: 10000
       # ⚠️ عيّن قيماً حقيقية في لوحة Render (Dashboard → Environment)

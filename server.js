@@ -89,6 +89,7 @@ setInterval(async () => {
 }, DAILY_INTERVAL);
 
 const FINAL_PORT = process.env.PORT || 5850;
-server.listen(FINAL_PORT, '0.0.0.0', () => {
+// الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
+server.listen(FINAL_PORT, '::', () => {
     console.log(`🚀 السيرفر شغال ومثالي على بورت ${FINAL_PORT}`);
 });
