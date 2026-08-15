@@ -9,7 +9,7 @@ const { AdminSession } = require('../models');
 const adminFailedAttempts = new Map();
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours (matches JWT expiry)
+const SESSION_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours (matches JWT expiry)
 
 const computeFingerprint = (ip, userAgent) => {
     return crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex');
@@ -179,7 +179,7 @@ exports.login = async (req, res) => {
                 httpOnly: true,
                 secure: !isLocalhost,
                 sameSite: 'lax',
-                maxAge: 12 * 60 * 60 * 1000,
+                maxAge: SESSION_TTL_MS,
                 path: '/',
                 overwrite: true
             });

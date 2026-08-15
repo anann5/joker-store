@@ -203,7 +203,7 @@ const adminSessionSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     expiresAt: {
         type: Date,
-        default: () => new Date(Date.now() + 12 * 60 * 60 * 1000)
+        default: () => new Date(Date.now() + 3 * 60 * 60 * 1000)
     }
 });
 
