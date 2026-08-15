@@ -15,8 +15,28 @@ const computeFingerprint = (ip, userAgent) => {
     return crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex');
 };
 
+const getClientIp = (req) => {
+    // خلف وسطاء (Cloudflare/Render) يحوي x-forwarded-for قائمة IPs مفصولة بفواصل
+    // ويغيّر ترتيبها بين الطلبات، لذا نأخذ أول عنوان فقط لثبات البصمة.
+    const xff = req.headers['x-forwarded-for'];
+    if (xff) {
+        const first = String(xff).split(',')[0].trim();
+        if (first) return first;
+    }
+    return req.socket.remoteAddress || 'unknown';
+};
+
+// نفس منطق getClientIp لكن للسياق الخاص الصادرة من مآخذ الويب (socket.io)
+const clientIpFrom = (xff, remoteAddress) => {
+    if (xff) {
+        const first = String(xff).split(',')[0].trim();
+        if (first) return first;
+    }
+    return remoteAddress || 'unknown';
+};
+
 const getClientFingerprint = (req) => {
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    const ip = getClientIp(req);
     const userAgent = req.headers['user-agent'] || 'unknown';
     return computeFingerprint(ip, userAgent);
 };
@@ -58,7 +78,7 @@ exports.verifyAdminSocket = async (socket, next) => {
 
     const decoded = await verifyAdminSession(
         token,
-        socket.handshake.headers['x-forwarded-for'] || socket.handshake.address || 'unknown',
+        clientIpFrom(socket.handshake.headers['x-forwarded-for'], socket.handshake.address),
         socket.handshake.headers['user-agent'] || 'unknown'
     );
     if (!decoded) return next(new Error('unauthorized'));
@@ -92,7 +112,7 @@ exports.verifyAdminToken = async (req, res, next, redirectPath = null) => {
 
     const decoded = await verifyAdminSession(
         token,
-        req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+        getClientIp(req),
         req.headers['user-agent'] || 'unknown'
     );
     if (!decoded) {
@@ -115,7 +135,7 @@ exports.login = async (req, res) => {
         if (!adminHash || !jwtSecret) return res.status(500).json({ success: false, message: "إعدادات الأمان ناقصة" });
 
         // Check for account lockout
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        const ip = getClientIp(req);
         const attemptKey = `admin:${ip}`;
         const attempts = adminFailedAttempts.get(attemptKey) || { count: 0, lockedUntil: 0 };
 
@@ -140,7 +160,7 @@ exports.login = async (req, res) => {
             await AdminSession.create({
                 jti: sessionId,
                 fingerprint,
-                ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+                ip: getClientIp(req),
                 expiresAt: new Date(Date.now() + SESSION_TTL_MS)
             });
 
