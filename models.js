@@ -191,11 +191,30 @@ const providerSyncStateSchema = new mongoose.Schema({
     storeCurrency: { type: String, default: 'USD' }
 });
 
+// ======================================================
+// Schema جلسات الأدمن (مخزنة في MongoDB بدل الذاكرة
+// حتى تبقى صالحة بعد إعادة تشغيل السيرفر، مع إمكانية
+// إبطالها فوراً عبر logout).
+// ======================================================
+const adminSessionSchema = new mongoose.Schema({
+    jti: { type: String, required: true, unique: true },
+    fingerprint: { type: String, required: true },
+    ip: { type: String, default: null },
+    createdAt: { type: Date, default: Date.now },
+    expiresAt: {
+        type: Date,
+        default: () => new Date(Date.now() + 12 * 60 * 60 * 1000)
+    }
+});
+
+adminSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Category: mongoose.model('Category', categorySchema),
     Order: mongoose.model('Order', orderSchema),
     Log: mongoose.model('Log', logSchema),
     User: mongoose.model('User', userSchema),
-    ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema)
+    ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema),
+    AdminSession: mongoose.model('AdminSession', adminSessionSchema)
 };

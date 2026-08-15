@@ -3,11 +3,11 @@ import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist } from './shared.js';
 
 // ======================================================
-//  البيانات الأساسية للأقسام
+//  البيانات الأساسية للأقسام (مستوردة من shared.js)
 // ======================================================
-export const rawServerData = { categories: {} };
 
 let searchIndex = []; // 🚀 فهرس البحث السريع
 let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
@@ -85,69 +85,12 @@ function formatItem(item, categoryKey, region) {
 }
 
 // ======================================================
-//  ⭐ تقييمات المنتجات
+//  ⭐ تقييمات المنتجات (مستوردة من shared.js)
 // ======================================================
-export function renderRatingStars(rating = 0, reviewsCount = 0) {
-    const rounded = Math.max(0, Math.min(5, Math.round(Number(rating) || 0)));
-    if (rounded <= 0) return '';
-    const filled = '★'.repeat(rounded);
-    const empty = '★'.repeat(5 - rounded);
-    const count = Number(reviewsCount) > 0
-        ? `<span class="rating-count">(${Number(reviewsCount)})</span>`
-        : '';
-    return `<span class="rating-stars">${filled}<span class="empty">${empty}</span></span>${count}`;
-}
-
-/**
- * نص شارة توفر المخزون. يُرجع '' عندما تكون الكمية غير معروفة (منتج خارجي/API
- * أو واجهة لا تُرسل المخزون)، فيُخفى العنصر تلقائياً عبر CSS.
- */
-export function renderStockBadge(availableStock) {
-    if (availableStock === null || availableStock === undefined) return '';
-    const count = Math.max(0, Number(availableStock) || 0);
-    if (count === 0) return 'نفذت الكمية ⛔';
-    if (count < 10) return `كمية محدودة: ${count} فقط ⚡`;
-    return 'متوفر ✅';
-}
 
 // ======================================================
 //  ❤️ قائمة الأمنيات (Wishlist — localStorage)
 // ======================================================
-const WISHLIST_KEY = 'joker_wishlist';
-
-function getWishlist() {
-    try {
-        const parsed = JSON.parse(localStorage.getItem(WISHLIST_KEY));
-        return Array.isArray(parsed) ? parsed : [];
-    } catch (_e) {
-        return [];
-    }
-}
-
-function saveWishlist(ids) {
-    localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids));
-}
-
-function toggleWishlist(id) {
-    let ids = getWishlist();
-    const added = !ids.includes(id);
-    ids = added ? [...ids, id] : ids.filter(x => x !== id);
-    saveWishlist(ids);
-    syncWishlistButtons();
-    return added;
-}
-
-export function syncWishlistButtons() {
-    const ids = getWishlist();
-    document.querySelectorAll('[data-wishlist-btn]').forEach(btn => {
-        const id = btn.dataset.productId;
-        if (!id) return;
-        const active = ids.includes(id);
-        btn.classList.toggle('active', active);
-        const icon = btn.querySelector('i');
-        if (icon) icon.className = active ? 'fas fa-heart' : 'far fa-heart';
-    });
-}
 
 async function showWishlist() {
     const modal = document.getElementById('wishlistModal');
@@ -189,7 +132,7 @@ async function showWishlist() {
             card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
             const img = card.querySelector('.card-inner-img');
             img.src = clientItem.image;
-            img.onerror = () => { img.src = 'image/logo.png'; };
+            img.onerror = () => { img.src = '/image/logo.png'; };
             card.querySelector('.card-title').textContent = clientItem.name;
             card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
             card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
@@ -469,7 +412,7 @@ function renderCategoryProducts(grid) {
         card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
-        imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
+        imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
         card.querySelector('.card-inner-img').alt = clientItem.name;
         card.querySelector('.card-title').textContent = clientItem.name;
         card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
@@ -543,7 +486,7 @@ function renderRegionFilterButtons() {
         if (region.icon) {
             content = `${region.icon} ${region.text}`;
         } else if (region.flag) {
-            content = `<img src="image/flags/${region.flag}" class="flag-img" alt="${region.key.toUpperCase()}"> ${region.text}`;
+            content = `<img src="/image/flags/${region.flag}" class="flag-img" alt="${region.key.toUpperCase()}"> ${region.text}`;
         } else {
             content = region.text;
         }
@@ -621,7 +564,7 @@ function renderProductCards(products, containerId) {
         card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
-        imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
+        imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
         card.querySelector('.card-inner-img').alt = clientItem.name;
         card.querySelector('.card-title').textContent = clientItem.name;
         card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
@@ -839,7 +782,6 @@ function setupEventListeners() {
             regionFilterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            const targetRegion = btn.dataset.target;
             // إعادة تقديم الشبكة مع تطبيق فلترة المنطقة + الترتيب + التوفر
             renderCategoryProducts();
             return; // منع تكرار المعالجة إذا كان الحدث داخل شريط الفلترة
@@ -947,7 +889,7 @@ function setupEventListeners() {
         const productCard = e.target.closest('.product-item-card[data-product-id]');
         if (productCard) {
             const product = productCache.get(productCard.dataset.productId);
-            if (product) showProductDetails(product);
+            if (product) showProductDetails(product, _currentCategoryKey);
         }
     });
 
@@ -1012,7 +954,7 @@ function setupEventListeners() {
                 if (imgPath && !imgPath.includes('/') && !imgPath.startsWith('http')) {
                     imgPath = `image/${imgPath}`;
                 }
-                const imgSrc = imgPath || 'image/logo.png';
+                const imgSrc = imgPath || '/image/logo.png';
                 const name = escapeHtml(product.productName[lang] || product.productName['ar'] || '');
                 const categoryTitle = escapeHtml(rawServerData.categories[product.category]?.title || 'قسم غير معروف');
 
@@ -1027,8 +969,8 @@ function setupEventListeners() {
                     <span class="price">${formatPrice(product.price)}</span>
                 `;
                 item.addEventListener('click', () => {
-                    const clientItem = formatItem(product, product.category, detectRegion(product));
-                    showProductDetails(clientItem);
+const clientItem = formatItem(product, product.category, detectRegion(product));
+                    showProductDetails(clientItem, _currentCategoryKey);
                     hideResults();
                     searchInput.value = '';
                 });
@@ -1201,7 +1143,7 @@ function setupEventListeners() {
         e.preventDefault();
         const id = btn.dataset.productId;
         if (!id) return;
-        const added = toggleWishlist(id);
+        const added = toggleWishlistKey(id);
         showToast(added ? '❤️ أُضيف إلى قائمة الأمنيات' : 'تمت الإزالة من قائمة الأمنيات', added ? 'success' : 'info');
     });
 

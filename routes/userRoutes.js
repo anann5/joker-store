@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const userAuthController = require('../controllers/userAuthController');
-const { verifyUserToken } = require('../middleware/authMiddleware');
+const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, loginSchema, registerSchema } = require('../middleware/validate');
 const rateLimit = require("express-rate-limit");
 
@@ -18,7 +18,7 @@ router.post('/users/login', authLimiter, validate(loginSchema), userAuthControll
 
 // مسارات محمية تتطلب تسجيل الدخول
 router.get('/users/orders', verifyUserToken, userAuthController.getOrderHistory);
-router.get('/users/me', verifyUserToken, userAuthController.getMe);
+router.get('/users/me', verifyUserTokenOptional, userAuthController.getMe);
 
 // تسجيل الخروج: يمسح الكوكي ولا يتطلب توكن صالحاً (حتى مع توكن منتهي)
 router.post('/users/logout', userAuthController.logout);

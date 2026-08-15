@@ -159,9 +159,12 @@ exports.login = async (req, res) => {
  */
 exports.getMe = async (req, res) => {
     try {
+        if (!req.user || !req.user.userId) {
+            return res.json({ success: true, user: null });
+        }
         const user = await User.findById(req.user.userId).select('email balance');
         if (!user) {
-            return res.status(401).json({ success: false, message: 'المستخدم غير موجود.' });
+            return res.json({ success: true, user: null });
         }
         res.json({ success: true, user: { email: user.email, balance: user.balance } });
     } catch (_err) {

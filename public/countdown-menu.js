@@ -2,17 +2,17 @@
     'use strict';
 
     // ⏱️ عدّاد عرض اليوم
-    var hoursEl = document.querySelector('[data-timer="hours"]');
-    var minutesEl = document.querySelector('[data-timer="minutes"]');
-    var secondsEl = document.querySelector('[data-timer="seconds"]');
-    var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+    const hoursEl = document.querySelector('[data-timer="hours"]');
+    const minutesEl = document.querySelector('[data-timer="minutes"]');
+    const secondsEl = document.querySelector('[data-timer="seconds"]');
+    const pad = n => (n < 10 ? `0${n}` : String(n));
 
     if (hoursEl && minutesEl && secondsEl) {
         function updateCountdown() {
-            var now = new Date();
-            var midnight = new Date(now);
+            const now = new Date();
+            const midnight = new Date(now);
             midnight.setHours(24, 0, 0, 0);
-            var totalSec = Math.max(0, Math.floor((midnight - now) / 1000));
+            const totalSec = Math.max(0, Math.floor((midnight - now) / 1000));
             hoursEl.textContent = pad(Math.floor(totalSec / 3600));
             minutesEl.textContent = pad(Math.floor((totalSec % 3600) / 60));
             secondsEl.textContent = pad(totalSec % 60);
@@ -22,21 +22,21 @@
     }
 
     // 🍔 قائمة الموبايل
-    var offerCta = document.querySelector('[data-offer-cta]');
+    const offerCta = document.querySelector('[data-offer-cta]');
     if (offerCta) {
         offerCta.addEventListener('click', function () {
-            var target = document.getElementById('filterTabs');
+            const target = document.getElementById('filterTabs');
             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     }
 
-    var btn = document.getElementById('mobileMenuBtn');
-    var header = document.querySelector('header');
-    if (btn && header) {
-        btn.addEventListener('click', function (e) {
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const header = document.querySelector('header');
+    if (mobileMenuBtn && header) {
+        mobileMenuBtn.addEventListener('click', function (e) {
             e.stopPropagation();
-            var open = header.classList.toggle('nav-open');
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            const open = header.classList.toggle('nav-open');
+            mobileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
 
         document.addEventListener('click', function (e) {

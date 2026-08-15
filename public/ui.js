@@ -1,4 +1,4 @@
-import { rawServerData, selectCategory, currentCategoryKey, renderRatingStars, renderStockBadge, syncWishlistButtons } from './script.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons } from './shared.js';
 import { formatPrice } from './currency.js';
 
 let toastContainer = null;
@@ -138,7 +138,7 @@ export function showAllCategories() {
  * عرض تفاصيل المنتج.
  * @param {object} product - بيانات المنتج.
  */
-export function showProductDetails(product) {
+export function showProductDetails(product, currentCategory = '') {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
 
@@ -214,7 +214,7 @@ export function showProductDetails(product) {
 
     // ملء القالب ببيانات المنتج
     const detailImgElement = view.querySelector('.detail-img');
-    detailImgElement.src = product.image || `image/${currentCategoryKey()}.png`;
+    detailImgElement.src = product.image || `image/${currentCategory || 'all'}.png`;
     detailImgElement.onerror = () => { detailImgElement.src = 'image/logo.png'; }; // Fallback image
     view.querySelector('.detail-img').alt = product.name;
     view.querySelector('.product-name').textContent = product.name;
@@ -257,7 +257,10 @@ export function showProductDetails(product) {
 
     // إضافة منطق لزر "العودة"
     const backButton = view.querySelector('.back-to-main-btn');
-    backButton.addEventListener('click', () => selectCategory(currentCategoryKey()));
+    backButton.addEventListener('click', async () => {
+        const { selectCategory } = await import('./script.js');
+        selectCategory(currentCategory);
+    });
 
     grid.className = 'product-details-wrapper';
     grid.innerHTML = ''; // تفريغ الشبكة أولاً

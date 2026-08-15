@@ -248,9 +248,8 @@ async function handleRegister(e) {
 async function checkLoginState() {
     try {
         const res = await fetch('/api/users/me', { credentials: 'include' });
-        if (res.status === 401) throw new Error('no session');
         const data = await res.json();
-        if (!data.success) throw new Error('no session');
+        if (!data.success || !data.user) throw new Error('no session');
 
         currentUser = { email: data.user.email, balance: data.user.balance };
         setAuthButtonLabel('حسابي');

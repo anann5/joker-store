@@ -29,3 +29,4 @@ export function formatPrice(value) {
     const amount = Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00';
     return `${amount} ${symbol}`;
 }
+

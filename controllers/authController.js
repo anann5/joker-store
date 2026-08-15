@@ -3,12 +3,12 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { createLog, sendTelegramAlert } = require('./helpers');
 const { logSecurityEvent } = require('../middleware/securityLogger');
+const { AdminSession } = require('../models');
 
 // Rate limiting storage for admin login attempts
 const adminFailedAttempts = new Map();
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
-const adminSessions = new Map();
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours (matches JWT expiry)
 
 const computeFingerprint = (ip, userAgent) => {
@@ -22,14 +22,14 @@ const getClientFingerprint = (req) => {
 };
 
 /**
- * Verify an admin JWT against the in-memory server session + client fingerprint.
+ * Verify an admin JWT against the DB-persisted session + client fingerprint.
  * Returns the decoded payload or null when invalid/expired/mismatched.
  */
-const verifyAdminSession = (token, ip, userAgent) => {
+const verifyAdminSession = async (token, ip, userAgent) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const fingerprint = computeFingerprint(ip, userAgent);
-        const session = adminSessions.get(decoded.jti || token);
+        const session = await AdminSession.findOne({ jti: decoded.jti || token });
         if (!session || session.fingerprint !== fingerprint) {
             return null;
         }
@@ -43,7 +43,7 @@ const verifyAdminSession = (token, ip, userAgent) => {
  * Socket.IO middleware: authenticate an admin socket using the HttpOnly cookie.
  * On success the socket joins the 'admins' room.
  */
-exports.verifyAdminSocket = (socket, next) => {
+exports.verifyAdminSocket = async (socket, next) => {
     const cookieHeader = socket.handshake.headers.cookie || '';
     const cookies = {};
     cookieHeader.split(';').forEach(part => {
@@ -56,7 +56,7 @@ exports.verifyAdminSocket = (socket, next) => {
     const token = cookies['admin_token'];
     if (!token) return next(new Error('unauthorized'));
 
-    const decoded = verifyAdminSession(
+    const decoded = await verifyAdminSession(
         token,
         socket.handshake.headers['x-forwarded-for'] || socket.handshake.address || 'unknown',
         socket.handshake.headers['user-agent'] || 'unknown'
@@ -68,24 +68,19 @@ exports.verifyAdminSocket = (socket, next) => {
     next();
 };
 
-// Periodic cleanup of expired sessions / stale failed-attempt counters
-// to prevent unbounded in-memory growth.
+// Periodic cleanup of stale failed-attempt counters
+// (الجلسات تنظف تلقائياً من MongoDB عبر TTL على expiresAt)
 setInterval(() => {
     const now = Date.now();
-    adminSessions.forEach((session, key) => {
-        if (!session.issuedAt || now - session.issuedAt > SESSION_TTL_MS) {
-            adminSessions.delete(key);
-        }
-    });
     adminFailedAttempts.forEach((attempt, key) => {
-        if (attempt.lockedUntil && now > attempt.lockedUntil + LOCKOUT_DURATION) {
+        if (attempt.lockedUntil && now <= attempt.lockedUntil + LOCKOUT_DURATION) {
             adminFailedAttempts.delete(key);
         }
     });
 }, 60 * 60 * 1000).unref();
 
 // Middleware للتحقق من التوكن
-exports.verifyAdminToken = (req, res, next, redirectPath = null) => {
+exports.verifyAdminToken = async (req, res, next, redirectPath = null) => {
     const token = (req.headers['authorization'] && req.headers['authorization'].split(' ')[1]) ||
                   req.cookies['admin_token'];
 
@@ -95,7 +90,7 @@ exports.verifyAdminToken = (req, res, next, redirectPath = null) => {
         return res.status(403).json({ success: false, message: "يجب تسجيل الدخول أولاً" });
     }
 
-    const decoded = verifyAdminSession(
+    const decoded = await verifyAdminSession(
         token,
         req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
         req.headers['user-agent'] || 'unknown'
@@ -137,9 +132,17 @@ exports.login = async (req, res) => {
             adminFailedAttempts.delete(attemptKey);
 
             const sessionId = crypto.randomBytes(16).toString('hex');
-            const token = jwt.sign({ role: 'admin', jti: sessionId }, jwtSecret, { expiresIn: '12h' });
+            const token = jwt.sign({ role: 'admin', jti: sessionId }, jwtSecret, { expiresIn: SESSION_TTL_MS / 1000 });
             const fingerprint = getClientFingerprint(req);
-            adminSessions.set(sessionId, { fingerprint, issuedAt: Date.now() });
+
+            // الجلسة محفوظة في MongoDB (بدل الذاكرة) حتى تبقى صالحة
+            // بعد إعادة تشغيل السيرفر، وتُنظف تلقائياً عبر TTL.
+            await AdminSession.create({
+                jti: sessionId,
+                fingerprint,
+                ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+                expiresAt: new Date(Date.now() + SESSION_TTL_MS)
+            });
 
             // ✅ تحسين أمني: إرسال الـ HttpOnly Cookie
             // في التطوير (localhost/127.0.0.1) → secure = false، sameSite = 'lax'
@@ -190,13 +193,13 @@ exports.login = async (req, res) => {
     }
 };
 
-exports.logout = (req, res) => {
+exports.logout = async (req, res) => {
     const token = req.cookies['admin_token'];
     if (token) {
         try {
             const decoded = jwt.decode(token);
             if (decoded?.jti) {
-                adminSessions.delete(decoded.jti);
+                await AdminSession.deleteOne({ jti: decoded.jti });
             }
         } catch (_error) {
             // ignore malformed token

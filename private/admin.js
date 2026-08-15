@@ -5,7 +5,7 @@
 
 let isSoundEnabled = true;
 let adminCsrfToken = null;
-const _allOrdersCache = [];
+let _allOrdersCache = [];
 let _allProducts = [];
 let _allCategories = [];
 let CURRENCY_SYMBOL = '₪';
@@ -764,6 +764,10 @@ async function loadRecentOrders() {
 
     try {
         const res = await fetch('/api/admin/orders?limit=200', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        if (res.status === 401 || res.status === 403) {
+            window.location.href = '/login.html';
+            return;
+        }
         const data = await res.json();
 
         if (!data.success) {
