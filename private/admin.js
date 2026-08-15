@@ -140,6 +140,22 @@ function showAdminToast(message, type = 'info') {
 // ======================================================
 
 const initAdmin = async () => {
+    // === Event delegation for dynamic action buttons (CSP blocks inline onclick) ===
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+        const action = btn.getAttribute('data-action');
+        const id = btn.getAttribute('data-order-id') || btn.getAttribute('data-id');
+        if (action === 'approve-order') approveOrder(id);
+        else if (action === 'reject-order') rejectOrder(id);
+        else if (action === 'show-codes') showCodes(id);
+        else if (action === 'edit-product') editProduct(id);
+        else if (action === 'delete-product') deleteProduct(id);
+        else if (action === 'edit-category') editCategory(id);
+        else if (action === 'delete-category') deleteCategory(id);
+        else if (action === 'close-modal') { const m = btn.closest('.modal-overlay'); if (m) m.remove(); }
+    });
+
     // === Logout: يُربط أولاً قبل أي طلب شبكة حتى يعمل الزر دائماً ===
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -451,7 +467,7 @@ async function loadProviderStatus() {
         if (fx.symbol) CURRENCY_SYMBOL = fx.symbol;
         const fxLine = `
             <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.08);color:var(--text-muted);font-size:0.9rem;">
-                💱 عملة المتجر: <b style="color:var(--primary);">${escapeHtml(fx.storeCurrency || 'ILS')} (${escapeHtml(fx.symbol || CURRENCY_SYMBOL)})</b>
+                <i class="fas fa-coins" style="color:var(--primary);margin-left:4px;"></i> عملة المتجر: <b style="color:var(--primary);">${escapeHtml(fx.storeCurrency || 'ILS')} (${escapeHtml(fx.symbol || CURRENCY_SYMBOL)})</b>
                 · مصدر الأسعار: <b>${escapeHtml(fx.source || '—')}</b>
                 ${fx.updatedAt ? `· آخر تحديث: ${new Date(fx.updatedAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
             </div>`;
@@ -571,8 +587,8 @@ function renderInventoryRow(item) {
             <td><span class="badge ${stockBadgeClass}">${stockText}</span></td>
             <td>
                 <div class="action-btns-group">
-                    <button class="action-icon btn-edit" onclick="editProduct('${item._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                    <button class="action-icon btn-delete" onclick="deleteProduct('${item._id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                    <button class="action-icon btn-edit" data-action="edit-product" data-id="${item._id}" title="تعديل"><i class="fas fa-edit"></i></button>
+                    <button class="action-icon btn-delete" data-action="delete-product" data-id="${item._id}" title="حذف"><i class="fas fa-trash"></i></button>
                 </div>
             </td>
         </tr>
@@ -663,8 +679,7 @@ function fillEditProductForm(product) {
     openModal(document.getElementById('editModal'));
 }
 
-// تُستدعى من onclick في HTML ("تعديل")
-// eslint-disable-next-line no-unused-vars
+// تُستدعى من أزرار الجدول (event delegation)
 async function editProduct(productId) {
     try {
         const res = await fetch(`/api/admin/inventory/${productId}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
@@ -686,7 +701,6 @@ async function editProduct(productId) {
     }
 }
 
-// eslint-disable-next-line no-unused-vars
 async function deleteProduct(productId) {
     const product = _allProducts.find(p => p._id === productId);
     const productName = product?.productName?.ar || product?.productName?.en || product?.productName || '';
@@ -815,10 +829,10 @@ function renderOrders(orders) {
         const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : status === 'refunded' ? 'badge-danger' : 'badge-danger');
         const statusText = status === 'completed' ? 'مكتمل' : (status === 'pending' ? 'معلّق' : (status === 'refunded' ? 'مرفوض' : (status === 'processing' ? 'قيد التنفيذ' : 'فشل')));
         const actionButtons = status === 'pending'
-            ? `<button class="btn btn-approve btn-sm" onclick="approveOrder('${order.orderId}')"><i class="fas fa-check"></i> اعتماد</button>
-               <button class="btn btn-reject btn-sm" onclick="rejectOrder('${order.orderId}')" style="margin-right:4px;"><i class="fas fa-times"></i> رفض</button>`
+            ? `<button class="btn btn-approve btn-sm" data-action="approve-order" data-order-id="${order.orderId}"><i class="fas fa-check"></i> اعتماد</button>
+               <button class="btn btn-reject btn-sm" data-action="reject-order" data-order-id="${order.orderId}" style="margin-right:4px;"><i class="fas fa-times"></i> رفض</button>`
             : (status === 'completed' && order.deliveredCodes && order.deliveredCodes.length > 0
-                ? `<button class="btn btn-secondary btn-sm" onclick="showCodes('${order.orderId}')"><i class="fas fa-eye"></i> الأكواد</button>`
+                ? `<button class="btn btn-secondary btn-sm" data-action="show-codes" data-order-id="${order.orderId}"><i class="fas fa-eye"></i> الأكواد</button>`
                 : '—');
 
         return `
@@ -835,7 +849,6 @@ function renderOrders(orders) {
     }).join('');
 }
 
-// eslint-disable-next-line no-unused-vars
 async function approveOrder(orderId) {
     if (!confirm(`هل أنت متأكد من اعتماد الطلب #${orderId}؟`)) return;
     try {
@@ -856,7 +869,6 @@ async function approveOrder(orderId) {
     } catch (_err) { showAdminToast('❌ فشل الاتصال بالسيرفر', 'error'); }
 }
 
-// eslint-disable-next-line no-unused-vars
 async function rejectOrder(orderId) {
     if (!confirm(`هل أنت متأكد من رفض الطلب #${orderId}؟`)) return;
     try {
@@ -876,8 +888,7 @@ async function rejectOrder(orderId) {
     } catch (_err) { showAdminToast('❌ فشل الاتصال بالسيرفر', 'error'); }
 }
 
-// تُستدعى من onclick في HTML ("الأكواد")
-// eslint-disable-next-line no-unused-vars
+// تُستدعى من أزرار الجدول (event delegation)
 function showCodes(orderId) {
     const order = _allOrdersCache.find(o => o.orderId === orderId);
     if (!order || !order.deliveredCodes || order.deliveredCodes.length === 0) {
@@ -901,7 +912,7 @@ function showCodes(orderId) {
     modal.className = 'modal-overlay active';
     modal.innerHTML = `
         <div class="modal-content" style="max-width:500px;">
-            <button class="close-modal-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+            <button class="close-modal-btn" data-action="close-modal">&times;</button>
             <h3 class="modal-title"><i class="fas fa-key"></i> أكواد الطلب #${escapeHtml(orderId)}</h3>
             <div style="margin-bottom:15px;">
                 <span class="badge badge-success">📧 ${escapeHtml(order.buyerEmail)}</span>
@@ -1122,8 +1133,8 @@ async function loadCategories() {
                     <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'نشط' : 'غير نشط'}</span></td>
                     <td>
                         <div class="action-btns-group">
-                            <button class="action-icon btn-edit" onclick="editCategory('${cat._id}')" title="تعديل"><i class="fas fa-edit"></i></button>
-                            <button class="action-icon btn-delete" onclick="deleteCategory('${cat._id}')" title="حذف"><i class="fas fa-trash"></i></button>
+                            <button class="action-icon btn-edit" data-action="edit-category" data-id="${cat._id}" title="تعديل"><i class="fas fa-edit"></i></button>
+                            <button class="action-icon btn-delete" data-action="delete-category" data-id="${cat._id}" title="حذف"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -1201,7 +1212,6 @@ async function saveCategoryHandler() {
     }
 }
 
-// eslint-disable-next-line no-unused-vars
 async function editCategory(categoryId) {
     try {
         const res = await fetch('/api/admin/categories', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
@@ -1232,7 +1242,6 @@ async function editCategory(categoryId) {
     }
 }
 
-// eslint-disable-next-line no-unused-vars
 async function deleteCategory(categoryId) {
     const cat = _allCategories.find(c => c._id === categoryId);
     const name = cat?.title?.ar || cat?.title?.en || '';

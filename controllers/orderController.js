@@ -128,7 +128,13 @@ exports.approveOrder = async (req, res) => {
                     const code = await Product.claimCodeAtomic(product._id, order.orderId, order.buyerEmail);
                     deliveredCodes.push(code);
                 }
-                itemCost = (Number(product.basePrice) || 0) * item.qty;
+                // التكلفة الفعلية: basePrice إن وُجد، وإلا تقديرها من هامش الربح
+                // (سعر البيع = basePrice × profitMargin، لذا basePrice ≈ price / profitMargin)
+                const unitPrice = Number(item.unitPrice) || Number(product.price) || 0;
+                const basePrice = Number(product.basePrice);
+                const margin = Number(product.profitMargin) > 1 ? Number(product.profitMargin) : 1.10;
+                const unitCost = basePrice > 0 ? basePrice : (unitPrice > 0 ? unitPrice / margin : 0);
+                itemCost = unitCost * item.qty;
             }
 
             item.deliveredCodes = deliveredCodes;
