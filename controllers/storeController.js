@@ -1,9 +1,43 @@
-const { Product, Order, Category } = require('../models');
+const { Product, Order, Category, Promotion } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const siteSettings = require('../config/siteSettings');
+const stripeController = require('./stripeController');
+const { getSafeBaseHost } = require('./helpers');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
+
+// ======================================================
+// كاش بسيط في الذاكرة لواجهة المتجر (TTL)
+// ------------------------------------------------------
+// يخفف ضغط قاعدة البيانات مع تكرار زيارة الزبائن للواجهة.
+// - المدة الافتراضية بالثواني من STOREFRONT_CACHE_TTL (0 = تعطيل)
+// - يُعطَّل تلقائياً أثناء الاختبارات (NODE_ENV=test)
+// - clearStorefrontCache() يمسح الكاش فوراً (يُستدعى بعد كل مزامنة أسعار)
+// ======================================================
+const cacheTtlRaw = Number.parseInt(process.env.STOREFRONT_CACHE_TTL || '', 10);
+const DEFAULT_CACHE_TTL_SECONDS = Number.isInteger(cacheTtlRaw) && cacheTtlRaw >= 0 ? cacheTtlRaw : 60;
+const cacheEnabled = process.env.NODE_ENV !== 'test' && DEFAULT_CACHE_TTL_SECONDS > 0;
+const cacheStore = new Map();
+
+function cacheWrap(key, ttlSeconds, fn) {
+    if (!cacheEnabled) return fn();
+    const seconds = Number.isInteger(ttlSeconds) && ttlSeconds > 0 ? ttlSeconds : DEFAULT_CACHE_TTL_SECONDS;
+    const hit = cacheStore.get(key);
+    if (hit && hit.expiresAt > Date.now()) return Promise.resolve(hit.value);
+    return fn().then(value => {
+        cacheStore.set(key, { value, expiresAt: Date.now() + seconds * 1000 });
+        return value;
+    });
+}
+
+/**
+ * مسح كاش الواجهة بالكامل — يُستدعى بعد كل مزامنة أسعار من المزودين
+ * حتى لا تُعرض أسعار/منتجات قديمة من الذاكرة.
+ */
+exports.clearStorefrontCache = () => {
+    cacheStore.clear();
+};
 
 function getLocalizedValue(value, fallback = '') {
     if (value && typeof value === 'object') {
@@ -63,7 +97,35 @@ function escapeRegex(value) {
 exports.getCategories = async (req, res) => {
     try {
         const lang = req.query.lang === 'en' ? 'en' : 'ar';
-        const categories = await Category.find({ isActive: true }).sort({ order: 1 });
+        // نعرض فقط الأقسام النشطة التي لديها منتجات نشطة فعلاً
+        // (الأقسام التلقائية الفارغة تختفي تلقائياً من الواجهة)
+        const categories = await cacheWrap(`categories-${lang}`, 300, () => Category.aggregate([
+            { $match: { isActive: true } },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'key',
+                    foreignField: 'category',
+                    as: 'items'
+                }
+            },
+            {
+                $addFields: {
+                    activeCount: {
+                        $size: {
+                            $filter: {
+                                input: '$items',
+                                as: 'item',
+                                cond: { $eq: ['$$item.isActive', true] }
+                            }
+                        }
+                    }
+                }
+            },
+            { $match: { activeCount: { $gt: 0 } } },
+            { $sort: { order: 1 } },
+            { $project: { items: 0, activeCount: 0 } }
+        ]));
         const localizedCategories = {};
 
         categories.forEach(category => {
@@ -126,38 +188,41 @@ exports.getLatestOrders = async (_req, res) => {
 exports.getSiteConfig = async (_req, res) => {
     try {
         // إحصائيات حقيقية من قاعدة البيانات: عدد الطلبات المكتملة والناجحة زائداً عدد العملاء المميزين
-        const [orderStats, uniqueCustomers] = await Promise.all([
-            Order.aggregate([
-                {
-                    $group: {
-                        _id: null,
-                        total: { $sum: 1 },
-                        completed: {
-                            $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+        // مخزنة مؤقتاً (TTL قصير) لأنها تُستدعى في كل تحميل للواجهة وهي تكلفة تجميع كاملة على الطلبات
+        const config = await cacheWrap('siteConfig', 60, async () => {
+            const [orderStats, uniqueCustomers] = await Promise.all([
+                Order.aggregate([
+                    {
+                        $group: {
+                            _id: null,
+                            total: { $sum: 1 },
+                            completed: {
+                                $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] }
+                            }
                         }
                     }
-                }
-            ]),
-            Order.distinct('buyerEmail')
-        ]);
+                ]),
+                Order.distinct('buyerEmail')
+            ]);
 
-        const aggregate = orderStats[0] || { total: 0, completed: 0 };
+            const aggregate = orderStats[0] || { total: 0, completed: 0 };
 
-        res.json({
-            success: true,
-            config: {
+            return {
                 payment: {
                     jawwalNumber: siteSettings.payment.jawwalNumber,
                     palpayNumber: siteSettings.payment.palpayNumber
                 },
                 currency: siteSettings.currency,
                 social: siteSettings.social,
+                stripe: { enabled: stripeController.isStripeEnabled() },
                 stats: {
                     orders: aggregate.completed,
                     customers: Array.isArray(uniqueCustomers) ? uniqueCustomers.filter(Boolean).length : 0
                 }
-            }
+            };
         });
+
+        res.json({ success: true, config });
     } catch (err) {
         console.error('Failed to load site config stats:', err);
         res.status(500).json({ success: false, error: 'فشل في تحميل إعدادات المتجر' });
@@ -219,7 +284,7 @@ exports.trackOrder = async (req, res) => {
 exports.getBestSellingProducts = async (req, res) => {
     try {
         const limit = parseProductLimit(req.query.limit);
-        const bestSellers = await Order.aggregate([
+        const bestSellers = await cacheWrap(`best-${limit}`, 60, () => Order.aggregate([
             { $match: { status: 'completed' } },
             { $unwind: '$items' },
             {
@@ -254,7 +319,7 @@ exports.getBestSellingProducts = async (req, res) => {
                     totalSold: 1
                 }
             }
-        ]);
+        ]));
 
         res.json({
             success: true,
@@ -272,9 +337,9 @@ exports.getBestSellingProducts = async (req, res) => {
 exports.getNewlyAddedProducts = async (req, res) => {
     try {
         const limit = parseProductLimit(req.query.limit);
-        const products = await Product.find({ isActive: true })
-            .sort({ createdAt: -1 })
-            .limit(limit);
+        const products = await cacheWrap(`newly-${limit}`, DEFAULT_CACHE_TTL_SECONDS, () =>
+            Product.find({ isActive: true }).sort({ createdAt: -1 }).limit(limit)
+        );
 
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (err) {
@@ -317,16 +382,72 @@ exports.getRelatedProducts = async (req, res) => {
  */
 exports.getSearchIndex = async (_req, res) => {
     try {
-        const products = await Product.find({ isActive: true });
+        const products = await cacheWrap('search-index', 300, () => Product.find({ isActive: true }));
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل في بناء فهرس البحث.' });
     }
 };
 
+/**
+ * جلب العروض/الخصومات الفعالة (غير المنتهية):
+ * - لكل عرض يُحسب سعر البيع بعد الخصم (salePrice) لمنتجاته المستهدفة
+ * - الواجهة تستخدمه لعرض «عرض اليوم» مع عدّاد تنازلي حتى expiresAt
+ * يُخزَّن مؤقتاً في كاش الواجهة ويُمسح عند أي تعديل من لوحة التحكم.
+ */
+exports.getActivePromotions = async (_req, res) => {
+    try {
+        const promotions = await cacheWrap('promotions', 60, async () => {
+            const now = new Date();
+            const docs = await Promotion.find({ isActive: true, expiresAt: { $gt: now } })
+                .sort({ expiresAt: 1 })
+                .lean();
+
+            const result = [];
+            for (const promo of docs) {
+                let products = [];
+                if (promo.productId) {
+                    const product = await Product.findOne({ _id: promo.productId, isActive: true });
+                    if (product) products = [product];
+                } else if (promo.category) {
+                    products = await Product.find({ category: promo.category, isActive: true });
+                }
+
+                const discountFactor = 1 - Number(promo.discountPercent) / 100;
+                result.push({
+                    _id: promo._id,
+                    title: getLocalizedValue(promo.title),
+                    description: getLocalizedValue(promo.description),
+                    discountPercent: promo.discountPercent,
+                    expiresAt: promo.expiresAt,
+                    target: promo.productId
+                        ? { type: 'product', id: promo.productId.toString() }
+                        : { type: 'category', key: promo.category || null },
+                    products: products.slice(0, 12).map(product => {
+                        const pub = toPublicProduct(product);
+                        const fullPrice = Number(pub.price) || 0;
+                        pub.salePrice = Math.round(fullPrice * discountFactor * 100) / 100;
+                        pub.discountPercent = promo.discountPercent;
+                        return pub;
+                    })
+                });
+            }
+            return result;
+        });
+
+        res.json({ success: true, promotions });
+    } catch (err) {
+        console.error('Error fetching promotions:', err);
+        res.status(500).json({ success: false, error: 'فشل جلب العروض' });
+    }
+};
+
 exports.createOrder = async (req, res) => {
     try {
         const { cartItems, customerEmail, paymentGateway, paymentRef } = req.body;
+        if (paymentGateway === 'stripe' && !stripeController.isStripeEnabled()) {
+            return res.status(400).json({ success: false, error: 'الدفع بالبطاقة غير مفعل حالياً.' });
+        }
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
             return res.status(400).json({ success: false, error: 'سلة المشتريات فارغة.' });
         }
@@ -399,6 +520,28 @@ exports.createOrder = async (req, res) => {
 
         await newOrder.save();
 
+        // Stripe: إنشاء جلسة دفع آمنة مستضافة على Stripe (لا حاجة لمكتبة عميل)
+        let stripeUrl = null;
+        if (paymentGateway === 'stripe') {
+            try {
+                const session = await stripeController.createCheckoutSession({
+                    orderId,
+                    amount: total,
+                    currency: siteSettings.currency.code,
+                    name: itemsForOrder.map(item => item.name.ar).join('، '),
+                    baseUrl: `${req.protocol}://${getSafeBaseHost(req)}`
+                });
+                newOrder.paymentRef = session.id;
+                await newOrder.save();
+                stripeUrl = session.url;
+            } catch (err) {
+                console.error('Stripe checkout error:', err.message);
+                newOrder.status = 'failed';
+                await newOrder.save();
+                return res.status(502).json({ success: false, error: 'تعذر إنشاء جلسة الدفع عبر Stripe، حاول بطريقة أخرى.' });
+            }
+        }
+
         // Emit real-time notification to authenticated admin sockets only
         const io = req.app?.get('io');
         if (io) {
@@ -411,7 +554,12 @@ exports.createOrder = async (req, res) => {
             });
         }
 
-        res.status(201).json({ success: true, message: 'تم استلام طلبك بنجاح.', orderId });
+        res.status(201).json({
+            success: true,
+            message: 'تم استلام طلبك بنجاح.',
+            orderId,
+            ...(stripeUrl ? { stripeUrl, gateway: 'stripe' } : {})
+        });
     } catch (err) {
         console.error('Order creation error:', err);
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء إنشاء الطلب.' });
@@ -435,14 +583,109 @@ exports.searchAll = async (req, res) => {
         }
 
         const searchField = `productName.${lang}`;
+        // بحث بادئة (^): متوافق مع الفهرسة السريعة وطبيعة الإكمال التلقائي في الواجهة
+        const queryRegex = new RegExp(`^${escapeRegex(q.trim())}`, 'i');
         const products = await Product.find({
-            [searchField]: { $regex: escapeRegex(q.trim()), $options: 'i' },
+            [searchField]: queryRegex,
             isActive: true
         }).limit(10);
 
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء البحث.' });
+    }
+};
+
+/**
+ * إرسال تقييم/مراجعة لمنتج (رصيد 1-5 + تعليق اختياري).
+ * يُعاد حساب متوسط التقييم وعدد المراجعات آلياً.
+ */
+// حد أقصى للمراجعات المخزنة داخل المستند لمنع نمو غير محدود للحجم
+const MAX_STORED_REVIEWS = 500;
+
+/**
+ * إرسال تقييم/مراجعة لمنتج وإعادة حساب المعدل.
+ */
+exports.submitProductReview = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        if (!productId || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+            return res.status(400).json({ success: false, error: 'معرف المنتج غير صالح' });
+        }
+
+        const rating = Number.parseInt(req.body?.rating, 10);
+        if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+            return res.status(400).json({ success: false, error: 'التقييم يجب أن يكون بين 1 و 5' });
+        }
+        const comment = typeof req.body?.comment === 'string' ? req.body.comment.trim().slice(0, 500) : '';
+        if (comment && comment.length < 3) {
+            return res.status(400).json({ success: false, error: 'التعليق قصير جداً (3 أحرف على الأقل)' });
+        }
+
+        const product = await Product.findById(productId);
+        if (!product || !product.isActive) {
+            return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
+        }
+
+        product.reviews = Array.isArray(product.reviews) ? product.reviews : [];
+        product.reviews.push({
+            rating,
+            comment,
+            reviewerEmail: req.user?.email || null,
+            createdAt: new Date()
+        });
+        // نُبقي المخزون تحت حد معقول ونتخلص من الأقدم أولاً
+        if (product.reviews.length > MAX_STORED_REVIEWS) {
+            product.reviews.splice(0, product.reviews.length - MAX_STORED_REVIEWS);
+        }
+        const total = product.reviews.reduce((sum, review) => sum + review.rating, 0);
+        product.rating = Math.round((total / product.reviews.length) * 10) / 10;
+        product.reviewsCount = product.reviews.length;
+        await product.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'شكراً لتقييمك!',
+            rating: product.rating,
+            reviewsCount: product.reviewsCount
+        });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل حفظ التقييم' });
+    }
+};
+
+/**
+ * جلب أحدث تقييمات / مراجعات منتج.
+ */
+exports.getProductReviews = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        if (!productId || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+            return res.status(400).json({ success: false, error: 'معرف المنتج غير صالح' });
+        }
+
+        const product = await Product.findById(productId).select('rating reviewsCount reviews');
+        if (!product) {
+            return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
+        }
+
+        const reviews = (Array.isArray(product.reviews) ? product.reviews : [])
+            .slice(-10)
+            .reverse()
+            .map(review => ({
+                rating: review.rating,
+                comment: review.comment || '',
+                createdAt: review.createdAt
+            }));
+
+        res.json({
+            success: true,
+            rating: product.rating,
+            reviewsCount: product.reviewsCount,
+            reviews
+        });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب التقييمات' });
     }
 };
 

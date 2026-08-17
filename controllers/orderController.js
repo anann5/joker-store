@@ -4,44 +4,76 @@ const { sendOrderConfirmationEmail, sendOrderRejectedEmail } = require('./notifi
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
 
-const PROVIDER_RETRY_COUNT = 3;
+// حماية هامش الربح: نسبة (سعر البيع / التكلفة) الدنيا المسموح بها عند التنفيذ.
+// الافتراضي 1.0 = منع البيع بسعر أقل من التكلفة؛ يمكن رفعه عبر MIN_PROFIT_RATIO.
+const MIN_PROFIT_RATIO = Number.parseFloat(process.env.MIN_PROFIT_RATIO) || 1.0;
 
 function getItemProductId(item) {
     return item.productId || item.id;
 }
 
 /**
- * شراء أكواد خارجية من المزود عبر طبقة providers/adapter
+ * قائمة مزودين للتسليم مرتبة من الأرخص للأغلى (أسعار شاملة التحويل لعملة المتجر).
+ * شراء الأكواد يُجرب من الأرخص أولاً، فإن فشل ينتقل تلقائياً للمزود التالي.
+ */
+function buildFulfilmentQueue(product) {
+    const primary = {
+        provider: product.currentProvider,
+        externalId: product.externalId,
+        basePrice: Number(product.basePrice) || 0
+    };
+    const options = Array.isArray(product.providerOptions) && product.providerOptions.length > 0
+        ? product.providerOptions
+        : [primary];
+
+    const seen = new Set();
+    const queue = [];
+    for (const option of options) {
+        if (!option?.provider || !option?.externalId) continue;
+        if (seen.has(option.provider)) continue;
+        seen.add(option.provider);
+        queue.push({
+            provider: option.provider,
+            externalId: option.externalId,
+            basePrice: Number(option.basePrice) || 0
+        });
+    }
+
+    return queue.length > 0
+        ? queue
+        : [primary];
+}
+
+/**
+ * شراء أكواد خارجية من المزود عبر طبقة providers/adapter،
+ * مع تراجع تلقائي للمزود التالي عند فشل الأول.
  */
 async function buyExternalCodes(product, quantity) {
-    const provider = registry.getProvider(product.currentProvider);
-    if (!provider?.purchaseUrl || !provider.apiKey || !product.externalId) {
-        throw new Error('إعداد شراء المنتج الخارجي غير مكتمل');
-    }
+    const queue = buildFulfilmentQueue(product);
+    let lastError = null;
 
-    const lastError = await (async () => {
-        for (let attempt = 1; attempt <= PROVIDER_RETRY_COUNT; attempt += 1) {
-            try {
-                // eslint-disable-next-line no-await-in-loop
-                return await adapter.purchaseItem(provider, {
-                    externalId: product.externalId,
-                    quantity,
-                    basePrice: product.basePrice
-                });
-            } catch (err) {
-                const isClientFailure = err.response?.status >= 400 && err.response?.status < 500;
-                if (isClientFailure || attempt === PROVIDER_RETRY_COUNT) {
-                    return err;
-                }
-            }
+    for (const candidate of queue) {
+        const provider = registry.getProvider(candidate.provider);
+        if (!provider?.purchaseUrl || !provider.apiKey || !candidate.externalId) {
+            lastError = new Error(`إعداد شراء المنتج من ${candidate.provider} غير مكتمل`);
+            continue;
         }
-        return new Error('فشل شراء الأكواد من المزود');
-    })();
 
-    if (lastError instanceof Error) {
-        throw lastError;
+        try {
+            // eslint-disable-next-line no-await-in-loop
+            return await adapter.purchaseItem(provider, {
+                externalId: candidate.externalId,
+                quantity,
+                basePrice: candidate.basePrice
+            });
+        } catch (err) {
+            const isClientFailure = err.response?.status >= 400 && err.response?.status < 500;
+            if (isClientFailure) throw err;
+            lastError = err;
+        }
     }
-    return lastError;
+
+    throw lastError || new Error('فشل شراء الأكواد من المزود');
 }
 
 exports.getOrders = async (req, res) => {
@@ -118,6 +150,22 @@ exports.approveOrder = async (req, res) => {
             let itemCost = 0;
 
             if (item.fulfilmentType === 'external' || product.isExternal) {
+                // حماية هامش الربح: تمر على أحدث سعر للمزود بعد آخر مزامنة،
+                // فلو هبط الهامش دون الحد المسموح يُوقف التنفيذ آلياً ويُرسل تنبيه.
+                const baseCost = Number(product.basePrice);
+                if (baseCost > 0 && Number(product.price) / baseCost < MIN_PROFIT_RATIO) {
+                    const name = product.productName.ar || product.productName.en;
+                    // eslint-disable-next-line no-await-in-loop
+                    await sendTelegramAlert(
+                        `🚨 *هامش ربح منخفض — تنفيذ موقوف*\n`
+                        + `📦 *المنتج:* ${name}\n`
+                        + `💰 *سعر البيع:* \`${Number(product.price) || 0}\`\n`
+                        + `🏷️ *التكلفة:* \`${baseCost}\`\n`
+                        + `🛡️ *الحد الأدنى للنسبة:* ${MIN_PROFIT_RATIO}\n`
+                        + `👀 يرجى مراجعة الطلب #${order.orderId} يدوياً.`
+                    );
+                    throw new Error(`هامش الربح للمنتج "${name}" دون الحد المسموح؛ التنفيذ يتطلب تدخلاً يدوياً.`);
+                }
                 // eslint-disable-next-line no-await-in-loop
                 const purchase = await buyExternalCodes(product, item.qty);
                 deliveredCodes.push(...purchase.codes);

@@ -1,4 +1,15 @@
 const axios = require('axios');
+const { buildGroupKey } = require('./bestPrice');
+const fazercards = require('./fazercards');
+
+// ======================================================
+// توجيه المحول حسب مزود (adapterType):
+//   generic    → الافتراضي: كتالوج مسطح (قائمة items عبر رابط واحد)
+//   fazercards → كتالوج هرمي + شراء غير متزامن (FazerCards)
+// ======================================================
+function isAdapter(provider, type) {
+    return String(provider?.adapterType || 'generic').toLowerCase() === type;
+}
 
 // ======================================================
 // محول الشبكة والتطبيع (Provider Adapter)
@@ -110,6 +121,9 @@ function mapRegion(provider, rawValue) {
  * تطبيع عنصر من كتالوج المزود إلى الشكل الداخلي الموحّد.
  */
 function normalizeItem(provider, raw) {
+    if (isAdapter(provider, 'fazercards')) {
+        return fazercards.normalizeItem(provider, raw);
+    }
     const fields = provider.fields;
     const nameAr = mapValue(provider, resolvePath(raw, fields.nameAr));
     const nameEn = mapValue(provider, resolvePath(raw, fields.nameEn));
@@ -136,7 +150,12 @@ function normalizeItem(provider, raw) {
         description: {
             ar: (typeof descriptionRaw === 'string' ? descriptionRaw : '') || '',
             en: ''
-        }
+        },
+        groupKey: buildGroupKey({
+            category: mapCategory(provider, resolvePath(raw, fields.category)) || provider.defaultCategory,
+            region: mapRegion(provider, resolvePath(raw, fields.region)) || provider.defaultRegion,
+            name: nameAr || nameEn || name || ''
+        })
     };
 }
 
@@ -145,6 +164,9 @@ function normalizeItem(provider, raw) {
  * @returns {Promise<Array>} مصفوفة العناصر الخام
  */
 async function fetchCatalog(provider) {
+    if (isAdapter(provider, 'fazercards')) {
+        return fazercards.fetchCatalog(provider);
+    }
     const data = await getJson(provider, provider.itemsUrl);
     return Array.isArray(data) ? data : (resolvePath(data, provider.fields.itemsPath) || []);
 }
@@ -153,6 +175,9 @@ async function fetchCatalog(provider) {
  * جلب رصيد المزود.
  */
 async function fetchBalance(provider) {
+    if (isAdapter(provider, 'fazercards')) {
+        return fazercards.fetchBalance(provider);
+    }
     try {
         const data = await getJson(provider, provider.balanceUrl);
         const balance = Number.parseFloat(
@@ -201,6 +226,9 @@ function extractProviderCodes(data, expectedQuantity) {
  * @returns {Promise<{codes: string[], costPrice: number}>}
  */
 async function purchaseItem(provider, { externalId, quantity, basePrice }) {
+    if (isAdapter(provider, 'fazercards')) {
+        return fazercards.purchaseItem(provider, { externalId, quantity, basePrice });
+    }
     const data = await postJson(provider, provider.purchaseUrl, {
         api_key: provider.apiKey,
         product_id: externalId,

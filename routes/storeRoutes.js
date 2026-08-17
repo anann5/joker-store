@@ -43,6 +43,20 @@ router.get('/products/newly-added', storeController.getNewlyAddedProducts);
 // Route to get related products for a given product
 router.get('/products/related/:productId', storeController.getRelatedProducts);
 
+// Route to submit a product review (rate 1-5 + optional comment)
+const reviewLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: 'عدد التقييمات كبير جداً، يرجى المحاولة لاحقاً.'
+});
+router.post('/products/:productId/review', reviewLimiter, verifyUserTokenOptional, storeController.submitProductReview);
+
+// Route to fetch recent reviews for a product
+router.get('/products/:productId/reviews', storeController.getProductReviews);
+
+// Route to get active promotions (deals/discounts) for the storefront
+router.get('/promotions', storeController.getActivePromotions);
+
 // Route to get products by category — MUST be last (catch-all with :categoryKey)
 router.get('/products/:categoryKey', storeController.getProductsByCategory);
 

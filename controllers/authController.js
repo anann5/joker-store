@@ -166,14 +166,10 @@ exports.login = async (req, res) => {
 
             // ✅ تحسين أمني: إرسال الـ HttpOnly Cookie
             // في التطوير (localhost/127.0.0.1) → secure = false، sameSite = 'lax'
-            // في الإنتاج (https) → secure = true، sameSite = 'lax'
+            // في الإنتاج (https) → secure = true دائماً (بغض النظر عن أي ترويسات X-Forwarded مخادعة)
             // ملاحظة: 'sameSite=none' مرفوض من المتصفحات بدون 'secure'، لذا نعتمد 'lax' دائماً.
-            const isLocalhost = req.hostname === 'localhost' ||
-                                req.hostname === '127.0.0.1' ||
-                                req.headers['x-forwarded-host']?.includes('localhost') ||
-                                req.headers['x-forwarded-host']?.includes('127.0.0.1');
-
-            console.log('🔐 Setting cookie → isLocalhost:', isLocalhost, '| secure:', !isLocalhost);
+            const isLocalhost = process.env.NODE_ENV !== 'production' &&
+                (req.hostname === 'localhost' || req.hostname === '127.0.0.1');
 
             res.cookie('admin_token', token, {
                 httpOnly: true,
@@ -209,7 +205,11 @@ exports.login = async (req, res) => {
             res.status(401).json({ success: false, message: "كلمة المرور غير صحيحة" });
         }
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        // لا نكشف للعميل تفاصيل الخطأ الداخلية (bcrypt/DB) في الإنتاج
+        const message = process.env.NODE_ENV === 'production'
+            ? 'حدث خطأ أثناء تسجيل الدخول'
+            : err.message;
+        res.status(500).json({ success: false, error: message });
     }
 };
 

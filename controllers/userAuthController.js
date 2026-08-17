@@ -21,11 +21,10 @@ setInterval(() => {
     });
 }, 60 * 60 * 1000).unref();
 
+// في الإنتاج يكون secure دائماً — لا نثق إطلاقاً بترويسات X-Forwarded-Host المخادعة
 const isLocalhostRequest = (req) => {
-    return req.hostname === 'localhost' ||
-        req.hostname === '127.0.0.1' ||
-        req.headers['x-forwarded-host']?.includes('localhost') ||
-        req.headers['x-forwarded-host']?.includes('127.0.0.1');
+    return process.env.NODE_ENV !== 'production' &&
+        (req.hostname === 'localhost' || req.hostname === '127.0.0.1');
 };
 
 /**

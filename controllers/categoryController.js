@@ -3,7 +3,20 @@ const { createLog } = require('./helpers');
 
 exports.getCategories = async (req, res) => {
     try {
-        const categories = await Category.find().sort({ order: 1 });
+        // عدد المنتجات لكل قسم يُحسب مباشرة ليفرّق الأدمن بين الأقسام النشطة والفارغة
+        const categories = await Category.aggregate([
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'key',
+                    foreignField: 'category',
+                    as: 'items'
+                }
+            },
+            { $addFields: { productCount: { $size: '$items' } } },
+            { $sort: { order: 1 } },
+            { $project: { items: 0 } }
+        ]);
         res.json({ success: true, categories });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب الأقسام' });

@@ -2,6 +2,7 @@ const { Product } = require('../models');
 const { createLog } = require('./helpers');
 const providerSync = require('../providers/sync');
 const currency = require('../providers/currency');
+const pricing = require('../providers/pricing');
 
 const ALLOWED_CATEGORIES = ['gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
     'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
@@ -101,11 +102,12 @@ exports.updateProductMargin = async (req, res) => {
     try {
         let { margin } = req.body;
         const { productId } = req.params;
-        margin = parseFloat(margin);
+        const normalized = pricing.normalizeMargin(margin);
 
-        if (isNaN(margin) || margin < 1.0) {
-            return res.status(400).json({ success: false, message: 'هامش الربح يجب أن يكون 1.0 أو أكثر.' });
+        if (normalized === null || normalized < 1) {
+            return res.status(400).json({ success: false, message: 'هامش الربح يجب أن يكون 1.0 (أو نسبة % إيجابية) أو أكثر.' });
         }
+        margin = normalized;
 
         const product = await Product.findById(productId);
         if (!product) return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
@@ -115,7 +117,7 @@ exports.updateProductMargin = async (req, res) => {
         product.profitMarginOverride = true;
         
         if (product.isExternal && product.basePrice > 0) {
-            product.price = parseFloat((product.basePrice * product.profitMargin).toFixed(2));
+            product.price = pricing.computeSellingPrice({ basePrice: product.basePrice, margin });
         }
         
         await product.save();
@@ -169,8 +171,8 @@ exports.createProduct = async (req, res) => {
             },
             image: image || '',
             isExternal: isExternal || false,
-            profitMargin: parseFloat(profitMargin) || 1.10,
-            profitMarginOverride: Boolean(profitMargin && parseFloat(profitMargin) >= 1),
+            profitMargin: pricing.normalizeMargin(profitMargin) || 1.10,
+            profitMarginOverride: Boolean(profitMargin && pricing.normalizeMargin(profitMargin) >= 1),
             basePrice: basePrice || 0,
             currentProvider: provider || 'Local',
             isSubscription: isSubscription || false,
@@ -369,7 +371,7 @@ exports.updateProduct = async (req, res) => {
 
         // Recalculate price if basePrice or margin changed
         if (product.isExternal && product.basePrice > 0) {
-            product.price = parseFloat((product.basePrice * product.profitMargin).toFixed(2));
+            product.price = pricing.computeSellingPrice({ basePrice: product.basePrice, margin: product.profitMargin });
         }
 
         product.updatedAt = new Date();
@@ -548,8 +550,10 @@ exports.exportProductsCSV = async (req, res) => {
                 csvEscape(product.productName?.en || ''),
                 csvEscape(product.category || ''),
                 csvEscape(product.region || ''),
-                csvEscape(product.price.toFixed(2)),
-                csvEscape(product.profitMargin?.toString() || '1.10'),
+                csvEscape(Math.round(product.price || 0)),
+                csvEscape(product.profitMargin !== undefined && product.profitMargin !== null
+                    ? pricing.normalizeMargin(product.profitMargin)
+                    : '1.10'),
                 csvEscape(product.basePrice?.toString() || '0'),
                 csvEscape(product.isSubscription ? 'اشتراك' : (product.isExternal ? 'خارجي' : 'محلي')),
                 csvEscape(product.subscriptionType || ''),

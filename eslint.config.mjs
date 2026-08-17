@@ -20,6 +20,7 @@ export default [
         __dirname: 'readonly',
         __filename: 'readonly',
         Buffer: 'readonly',
+        URL: 'readonly',
         fetch: 'readonly',
         setInterval: 'readonly',
         setTimeout: 'readonly',

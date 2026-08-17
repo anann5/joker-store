@@ -9,6 +9,8 @@ const app = require('./app');
 const { syncInventoryInternal } = require('./controllers/productController');
 const { cleanupOldLogsInternal } = require('./controllers/logController');
 const { verifyAdminSocket } = require('./controllers/authController');
+const { checkProviderBalancesAlert } = require('./controllers/helpers');
+const { clearStorefrontCache } = require('./controllers/storeController');
 const registry = require('./providers/registry');
 
 validateEnv();
@@ -49,17 +51,26 @@ app.set('io', io);
 // هذا يبقي المتجر "صاحياً" على تغيّرات الأسعار لدى المزودين.
 const SYNC_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.SYNC_INTERVAL_HOURS, 10) || 6);
 const AUTO_SYNC_INTERVAL = SYNC_INTERVAL_HOURS * 60 * 60 * 1000;
+// حراسة التداخل: تمنع تشغيل نفس المهمة بشكل متوازٍ إذا تجاوزت مدة الدورة الفاصل الزمني
+// (مثلاً مزامنة أسعار أبطأ من 6 ساعات، أو تزامن المزامنة الأولى مع الدورة التالية)
+let priceSyncInFlight = false;
 const runPriceSync = async () => {
+    if (priceSyncInFlight) return;
+    priceSyncInFlight = true;
     try {
         console.log('🔄 جاري بدء مراقبة وتحديث الأسعار من المزودين...');
         const result = await syncInventoryInternal();
         if (result.success) {
+            // بعد تحديث الأسعار/المنتجات نمسح كاش الواجهة حتى لا تُعرض بيانات قديمة
+            clearStorefrontCache();
             console.log(`✅ تم تحديث ${result.count} منتج بناءً على الأسعار الجديدة لهوامش الربح.`);
         } else {
             console.error('⚠️ فشل التحديث التلقائي للأسعار:', result.error);
         }
     } catch (error) {
         console.error('❌ خطأ فادح في مهمة تحديث الأسعار:', error);
+    } finally {
+        priceSyncInFlight = false;
     }
 };
 
@@ -76,7 +87,10 @@ if (hasConfiguredProviders) {
 }
 
 const DAILY_INTERVAL = 24 * 60 * 60 * 1000;
+let logCleanupInFlight = false;
 setInterval(async () => {
+    if (logCleanupInFlight) return;
+    logCleanupInFlight = true;
     try {
         console.log('🧹 جاري فحص وتنظيف السجلات القديمة...');
         const result = await cleanupOldLogsInternal();
@@ -85,8 +99,37 @@ setInterval(async () => {
         }
     } catch (error) {
         console.error('❌ خطأ فادح في مهمة تنظيف السجلات:', error);
+    } finally {
+        logCleanupInFlight = false;
     }
 }, DAILY_INTERVAL);
+
+// فحص دوري لأرصدة المزودين مع تنبيه تيليغرام عند الانخفاض (LOW_BALANCE_THRESHOLD)
+const BALANCE_CHECK_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.BALANCE_CHECK_INTERVAL_HOURS, 10) || 6);
+let balanceCheckInFlight = false;
+setInterval(async () => {
+    if (balanceCheckInFlight) return;
+    balanceCheckInFlight = true;
+    try {
+        const result = await checkProviderBalancesAlert();
+        if (result.alerted > 0) {
+            console.log(`⚠️ تم إرسال ${result.alerted} تنبيه أرصدة/انقطاع مزود.`);
+        }
+    } catch (error) {
+        console.error('❌ خطأ فادح في فحص أرصدة المزودين:', error);
+    } finally {
+        balanceCheckInFlight = false;
+    }
+}, BALANCE_CHECK_INTERVAL_HOURS * 60 * 60 * 1000);
+
+// فحص أولي بعد الإقلاع (نفس تأخير المزامنة) لتنبيه رصيد منخفض فوراً
+if (hasConfiguredProviders) {
+    setTimeout(() => {
+        checkProviderBalancesAlert().catch(err => {
+            console.error('❌ خطأ في الفحص الأولي لأرصدة المزودين:', err);
+        });
+    }, Math.max(10, Number.parseInt(process.env.INITIAL_SYNC_DELAY_SEC, 10) || 30) * 1000);
+}
 
 const FINAL_PORT = process.env.PORT || 5850;
 // الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.

@@ -12,6 +12,8 @@ const csrfProtection = require('./middleware/csrf');
 const authController = require('./controllers/authController');
 const { validate, contactSchema } = require('./middleware/validate');
 const seoController = require('./controllers/seoController');
+const stripeController = require('./controllers/stripeController');
+const { getSafeBaseHost } = require('./controllers/helpers');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -24,7 +26,9 @@ const forceHttps = process.env.FORCE_HTTPS !== '0' &&
 
 app.use((req, res, next) => {
     if (forceHttps && req.headers['x-forwarded-proto'] !== 'https' && req.headers['x-forwarded-proto'] !== 'https,http') {
-        return res.redirect(301, `https://${req.get('host')}${req.url}`);
+        // نستخدم نطاقاً آمناً (SITE_URL الثابت أو Host منظّف) — يمنع حقن الروابط عبر Host header
+        const host = getSafeBaseHost(req);
+        if (host) return res.redirect(301, `https://${host}${req.url}`);
     }
     next();
 });
@@ -63,6 +67,10 @@ app.use(helmet({
     crossOriginEmbedderPolicy: false
 }));
 
+// Webhook Stripe: يُسجَّل قبل express.json للحصول على النص الخام (RAW)
+// للتحقق من توقيع HMAC ومنع استدعاءات مزيفة.
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeController.stripeWebhook);
+
 app.use(express.json({ limit: '10kb' }));
 app.disable('x-powered-by');
 
@@ -81,13 +89,23 @@ app.use('/api/admin', (req, res, next) => {
 });
 
 app.use((req, res, next) => {
+    // مفاتيح خطرة: تُحذف مهما كان نوع قيمتها (لم تكن تُحذف إلا عند كونها سلسلة)
+    const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
     const sanitize = (obj) => {
+        // Object.keys يعبر الخصائص الخاصة فقط (لا السلسلة البرمجية الموروثة)
         if (obj && typeof obj === 'object') {
-            for (const key in obj) {
-                if (key.startsWith('$') || key.includes('.')) delete obj[key];
-                else if (typeof obj[key] === 'object') sanitize(obj[key]);
-                else if (typeof obj[key] === 'string' && ['__proto__', 'constructor', 'prototype'].includes(key)) {
+            for (const key of Object.keys(obj)) {
+                if (key.startsWith('$') || key.includes('.') || DANGEROUS_KEYS.has(key)) {
                     delete obj[key];
+                    continue;
+                }
+                const value = obj[key];
+                if (value && typeof value === 'object') {
+                    try {
+                        sanitize(value);
+                    } catch (_e) {
+                        // تجاهل الكائنات غير القابلة للتعديل بأمان
+                    }
                 }
             }
         }
@@ -172,7 +190,14 @@ app.get('/product/:productId', (req, res, next) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/api/csrf-token', csrfProtection.issueToken);
+// حدّ تفصيلي لتوليد توكنات CSRF: يمنع إغراق خريطة الذاكرة csrfTokens بتوكنات وهمية
+const csrfTokenLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'عدد طلبات توليد توكن الحماية كبير جداً، يرجى المحاولة لاحقاً.'
+});
+
+app.get('/api/csrf-token', csrfTokenLimiter, csrfProtection.issueToken);
 
 const contactLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
@@ -203,21 +228,24 @@ app.use('/api', userRoutes);
 app.use((req, res) => {
     logSecurityEvent('UNDEFINED_ROUTE', `Attempted access to undefined route: ${req.method} ${req.originalUrl}`, req);
     if (req.accepts('html')) {
-        return res.status(404).type('html').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>الصفحة غير موجودة</title><style>body{font-family:Arial,sans-serif;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;} .card{background:#111827;border:1px solid #334155;border-radius:16px;padding:32px;max-width:520px;text-align:center;} a{color:#38bdf8;text-decoration:none;} </style></head><body><div class="card"><h1>الصفحة غير موجودة</h1><p>الصفحة التي تبحث عنها غير متاحة أو تم نقلها.</p><a href="/">العودة للصفحة الرئيسية</a></div></body></html>`);
+        return res.status(404).type('html').sendFile(path.join(__dirname, 'public', '404.html'));
     }
     res.status(404).json({ success: false, message: 'الصفحة غير موجودة' });
 });
 
 app.use((err, req, res, next) => {
-    console.error(err);
-    if (err.status >= 500 || err.status === 401 || err.status === 403) {
+    const status = err.status || 500;
+    const isProd = process.env.NODE_ENV === 'production';
+    // سجل منسق ومصفي: لا نطبع كائن الخطأ الكامل (قد يحتوي بيانات حساسة) بل ملخصاً قصيراً
+    console.error(`${new Date().toISOString()} [${status}] ${req.method} ${req.originalUrl}: ${err.message || err.name || 'Internal Server Error'}`);
+    if (status >= 500 || status === 401 || status === 403) {
         logSecurityEvent('SERVER_ERROR', `${err.message || 'Internal Server Error'} - ${req.method} ${req.originalUrl}`, req);
     }
-    const status = err.status || 500;
     res.status(status).json({
         success: false,
-        message: err.message || 'Internal Server Error',
-        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+        // في الإنتاج لا نكشف لمحة داخلية عن أخطاء الخادم (5xx) للعملاء
+        message: (status >= 500 && isProd) ? 'Internal Server Error' : (err.message || 'Internal Server Error'),
+        ...(!isProd && { stack: err.stack })
     });
 });
 

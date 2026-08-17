@@ -82,10 +82,12 @@ function buildProvider(index) {
     const currency = (read('CURRENCY') || 'USD').toUpperCase();
     const margin = Number.parseFloat(read('MARGIN'));
     const itemsPath = read('ITEMS_PATH') || DEFAULT_FIELDS.itemsPath;
+    const adapterType = String(read('ADAPTER_TYPE') || 'generic').toLowerCase();
 
     return {
         index,
         name,
+        adapterType,
         enabled: true,
         baseUrl,
         apiKey,
@@ -142,6 +144,7 @@ function getProvider(name) {
 function getProvidersSafe() {
     return getProviders().map(provider => ({
         name: provider.name,
+        adapterType: provider.adapterType,
         enabled: provider.enabled,
         currency: provider.currency,
         margin: provider.margin,

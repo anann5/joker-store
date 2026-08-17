@@ -14,7 +14,10 @@ const categorySchema = new mongoose.Schema({
         ar: { type: String, trim: true, default: '' },
         en: { type: String, trim: true, default: '' }
     },
-    image: { type: String, required: true },
+    // source: 'manual' → أُنشئ يدوياً من لوحة التحكم (لا يتدخل السيرفر به)
+    //         'auto'   → أُنشئ تلقائياً من كتالوج المزودين (يُدار آلياً)
+    source: { type: String, enum: ['manual', 'auto'], default: 'manual' },
+    image: { type: String, default: '' },
     isActive: { type: Boolean, default: true },
     order: { type: Number, default: 0 }
 });
@@ -51,15 +54,11 @@ const productSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        required: true,
-        enum: ['gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
-            'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
-            'itunes', 'razer_gold', 'amazon', 'steam']
+        required: true
     },
     region: {
         type: String,
         required: true,
-        enum: ['global', 'us', 'tr', 'eu', 'sa'],
         default: 'global'
     },
     price: { type: Number, required: true, min: 0 },
@@ -77,14 +76,33 @@ const productSchema = new mongoose.Schema({
     basePrice: { type: Number, default: 0 },
     lastProviderPrice: { type: Number, default: 0 },
     providerCurrency: { type: String, default: null },
+    providerStock: { type: Number, default: null },
     lastPriceSyncAt: { type: Date, default: null },
     currentProvider: { type: String, default: 'Local' },
+    groupKey: { type: String, default: null },
+    providerOptions: {
+        type: [{
+            provider: { type: String, required: true },
+            externalId: { type: String, required: true },
+            basePrice: { type: Number, default: 0 }
+        }],
+        default: []
+    },
     isSubscription: { type: Boolean, default: false },
     subscriptionType: { type: String, enum: ['fixed', 'recurring'], default: 'fixed' },
     subscriptionDuration: { type: Number, default: null },
     codeGenerationMethod: { type: String, enum: ['static', 'dynamic'], default: 'static' },
     rating: { type: Number, default: 0, min: 0, max: 5 },
     reviewsCount: { type: Number, default: 0, min: 0 },
+    reviews: {
+        type: [{
+            rating: { type: Number, required: true, min: 1, max: 5 },
+            comment: { type: String, trim: true, default: '', maxlength: 500 },
+            reviewerEmail: { type: String, trim: true, default: null },
+            createdAt: { type: Date, default: Date.now }
+        }],
+        default: []
+    },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
@@ -93,6 +111,8 @@ const productSchema = new mongoose.Schema({
 productSchema.virtual('availableStock').get(function() {
     return this.codes.filter(code => code.status === 'available').length;
 });
+
+productSchema.index({ groupKey: 1, isExternal: 1 });
 
 /**
  * Atomically claim a single local code for an order.
@@ -176,6 +196,33 @@ const logSchema = new mongoose.Schema({
 });
 
 // ======================================================
+// Schema العروض/الخصومات (Promotions)
+// ------------------------------------------------------
+// عرض قابل للضبط من لوحة التحكم مع مدة انتهاء (countdown):
+// - discountPercent: خصم نسبة مئوية (1-99)
+// - productId أو category: يستهدف منتجاً محدداً أو قسماً كاملاً
+// - isActive + expiresAt: يظهر فقط للعروض الفعالة غير المنتهية
+// ======================================================
+const promotionSchema = new mongoose.Schema({
+    title: {
+        ar: { type: String, required: true, trim: true, maxlength: 100 },
+        en: { type: String, trim: true, default: '' }
+    },
+    description: {
+        ar: { type: String, trim: true, default: '', maxlength: 300 },
+        en: { type: String, trim: true, default: '' }
+    },
+    discountPercent: { type: Number, required: true, min: 1, max: 99 },
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
+    category: { type: String, default: null },
+    isActive: { type: Boolean, default: true },
+    expiresAt: { type: Date, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+
+promotionSchema.index({ isActive: 1, expiresAt: 1 });
+
+// ======================================================
 // Schema حالة مزامنة المزودين (Provider Sync State)
 // ======================================================
 const providerSyncStateSchema = new mongoose.Schema({
@@ -209,6 +256,22 @@ const adminSessionSchema = new mongoose.Schema({
 
 adminSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
+// ======================================================
+// فهارس قاعدة البيانات (أداء الاستعلامات الشائعة)
+// ======================================================
+productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ currentProvider: 1, externalId: 1, isExternal: 1 });
+productSchema.index({ groupKey: 1 });
+productSchema.index({ isActive: 1, createdAt: -1 });
+// فهارس البحث بالاسم (تُستخدم مع regex مسبوق بالبادئة في /api/search)
+productSchema.index({ isActive: 1, 'productName.ar': 1 });
+productSchema.index({ isActive: 1, 'productName.en': 1 });
+orderSchema.index({ status: 1, completedAt: -1 });
+orderSchema.index({ buyerEmail: 1, createdAt: -1 });
+categorySchema.index({ isActive: 1, order: 1 });
+// سجل النشاطات: يُفرز بـ createdAt في لوحة التحكم ويُحذف الأقدم عبر deleteMany
+logSchema.index({ createdAt: -1 });
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Category: mongoose.model('Category', categorySchema),
@@ -216,5 +279,6 @@ module.exports = {
     Log: mongoose.model('Log', logSchema),
     User: mongoose.model('User', userSchema),
     ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema),
-    AdminSession: mongoose.model('AdminSession', adminSessionSchema)
+    AdminSession: mongoose.model('AdminSession', adminSessionSchema),
+    Promotion: mongoose.model('Promotion', promotionSchema)
 };

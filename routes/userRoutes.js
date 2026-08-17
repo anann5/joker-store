@@ -20,7 +20,14 @@ router.post('/users/login', authLimiter, validate(loginSchema), userAuthControll
 router.get('/users/orders', verifyUserToken, userAuthController.getOrderHistory);
 router.get('/users/me', verifyUserTokenOptional, userAuthController.getMe);
 
+// ليميتر لتسجيل الخروج (منع إغراق المسار أو استنزاف الموارد بتكرار الطلب)
+const logoutLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: "طلبات كثيرة، يرجى الانتظار قليلاً."
+});
+
 // تسجيل الخروج: يمسح الكوكي ولا يتطلب توكن صالحاً (حتى مع توكن منتهي)
-router.post('/users/logout', userAuthController.logout);
+router.post('/users/logout', logoutLimiter, userAuthController.logout);
 
 module.exports = router;
