@@ -1,4 +1,5 @@
 import { updateCartUI, showToast } from './ui.js';
+import { t } from './i18n.js';
 
 // ======================================================
 // 🛒 سيستم السلة المحلية المستقلة النظيفة
@@ -26,7 +27,7 @@ export function addToCart(product) {
     
     localStorage.setItem('joker_cart', JSON.stringify(cart));
     updateCartUI(); // استدعاء دالة الواجهة من الملف الآخر
-    showToast(`📥 تم إضافة "${product.name}" إلى السلة`);
+    showToast(t('cart_added').replace('{name}', product.name));
 }
 
 /**
@@ -46,7 +47,7 @@ export function removeFromCart(index) {
  */
 export function clearCart() {
     if (cart.length === 0) return;
-    if (confirm('هل أنت متأكد من رغبتك في تفريغ السلة بالكامل؟')) {
+    if (confirm(t('cart_clear_confirm'))) {
         cart = [];
         localStorage.setItem('joker_cart', JSON.stringify(cart));
         updateCartUI();

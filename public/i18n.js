@@ -52,44 +52,79 @@ async function setLanguage(lang) {
 }
 
 /**
- * يمر على جميع العناصر التي تحتوي على `data-i18n` ويترجمها.
+ * يمر على جميع العناصر التي تحتوي على `data-i18n-key` ويترجمها.
+ * يشمل أيضاً محتوى قوالب `<template>` حتى تظهر البطاقات المولّدة مترجمة،
+ * ويدعم خصائص placeholder و title و aria-label.
  */
 function translatePage() {
-    document.querySelectorAll('[data-i18n-key]').forEach(element => {
-        const key = element.getAttribute('data-i18n-key');
+    const applyTranslation = (element, key) => {
         const translation = currentTranslations[key];
-        if (translation) {
-            // التحقق إذا كان يجب تغيير placeholder أو المحتوى النصي
-            if (element.hasAttribute('data-i18n-placeholder')) {
-                element.placeholder = translation;
-            } else {
-                element.textContent = translation;
-            }
+        if (!translation) return;
+        if (element.hasAttribute('data-i18n-placeholder')) {
+            element.placeholder = translation;
+        } else if (element.hasAttribute('data-i18n-title')) {
+            element.title = translation;
+        } else if (element.hasAttribute('data-i18n-aria')) {
+            element.setAttribute('aria-label', translation);
+        } else {
+            element.textContent = translation;
         }
+    };
+
+    // ترجمة العناصر الحية في الصفحة
+    document.querySelectorAll('[data-i18n-key]').forEach(element => {
+        applyTranslation(element, element.getAttribute('data-i18n-key'));
     });
+
+    // ترجمة محتوى القوالب (يُستنسخ عند عرض البطاقات لاحقاً)
+    document.querySelectorAll('template').forEach(template => {
+        template.content.querySelectorAll('[data-i18n-key]').forEach(element => {
+            applyTranslation(element, element.getAttribute('data-i18n-key'));
+        });
+    });
+
     // ترجمة عنوان الصفحة
     const pageTitleKey = document.querySelector('[data-page-title-key]')?.getAttribute('data-page-title-key');
     const titleKey = pageTitleKey || 'site_title';
     if (currentTranslations[titleKey]) {
         document.title = currentTranslations[titleKey];
     }
+
+    // ترجمة وصوف meta (مثل meta[name=description])
+    document.querySelectorAll('[data-i18n-meta]').forEach(element => {
+        const translation = currentTranslations[element.getAttribute('data-i18n-meta')];
+        if (translation) element.setAttribute('content', translation);
+    });
 }
 
 /**
  * تهيئة نظام الترجمة عند تحميل الصفحة.
+ * @returns {Promise<void>} وعد يكتمل عند تحميل الترجمات وتطبيقها.
  */
 export function initI18n() {
     const initialLang = getInitialLanguage();
-    setLanguage(initialLang);
+    const ready = setLanguage(initialLang);
 
     document.getElementById('lang-switcher').addEventListener('click', () => {
         const newLang = currentLang === 'ar' ? 'en' : 'ar';
         // إعادة تحميل الصفحة مع اللغة الجديدة في الرابط
         window.location.href = `${window.location.pathname  }?lang=${newLang}`;
     });
+
+    return ready;
 }
 
 /**
  * دالة مساعدة للحصول على اللغة الحالية.
  */
 export const getCurrentLanguage = () => currentLang;
+
+/**
+ * ترجمة مفتاح مباشرة من ملف الترجمة (للاستخدام في الكود الديناميكي).
+ * @param {string} key - مفتاح الترجمة.
+ * @param {string} [fallback] - قيمة احتياطية عند غياب المفتاح.
+ * @returns {string}
+ */
+export function t(key, fallback = key) {
+    return currentTranslations[key] ?? fallback;
+}

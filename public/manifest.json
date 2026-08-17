@@ -1,0 +1,27 @@
+{
+  "name": "Joker Store — بطاقات رقمية وألعاب",
+  "short_name": "Joker Store",
+  "description": "متجر البطاقات الرقمية والألعاب — أكواد أصلية مضمونة 100% وتوصيل فوري.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/image/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/image/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

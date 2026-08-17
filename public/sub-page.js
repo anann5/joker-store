@@ -1,6 +1,6 @@
 // سكربت موحّد للصفحات الثانوية (من نحن / سياسة الخصوصية / الشروط / الأسئلة / تواصل معنا)
 // بصيغة module خارجية ليتوافق مع سياسة CSP الصارمة (لا unsafe-inline).
-import { initI18n } from './i18n.js';
+import { initI18n, t } from './i18n.js';
 initI18n();
 
 // واجهة الأسئلة الشائعة (Accordion)
@@ -28,13 +28,13 @@ document.addEventListener('submit', async function (event) {
     };
     if (!payload.name || !payload.email || !payload.message) {
         result.className = 'sub-result err';
-        result.textContent = 'يرجى تعبئة جميع الحقول.';
+        result.textContent = t('contact_fields_required');
         return;
     }
 
     submitBtn.disabled = true;
     result.className = 'sub-result';
-    result.textContent = 'جاري الإرسال...';
+    result.textContent = t('contact_sending');
 
     try {
         const response = await fetch('/api/contact', {
@@ -45,15 +45,15 @@ document.addEventListener('submit', async function (event) {
         const data = await response.json();
         if (response.ok && data.success) {
             result.className = 'sub-result ok';
-            result.textContent = data.message || 'تم إرسال رسالتك بنجاح، سنرد عليك قريباً.';
+            result.textContent = data.message || t('contact_success');
             form.reset();
         } else {
             result.className = 'sub-result err';
-            result.textContent = data.message || 'تعذر إرسال الرسالة، حاول مرة أخرى.';
+            result.textContent = data.message || t('contact_error');
         }
     } catch (_e) {
         result.className = 'sub-result err';
-        result.textContent = 'تعذر إرسال الرسالة، حاول مرة أخرى.';
+        result.textContent = t('contact_error');
     } finally {
         submitBtn.disabled = false;
     }

@@ -1,5 +1,6 @@
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl } from './shared.js';
 import { formatPrice } from './currency.js';
+import { t, getCurrentLanguage } from './i18n.js';
 
 let toastContainer = null;
 
@@ -22,7 +23,7 @@ export function escapeHtml(value) {
  */
 export function shareProduct(product) {
     const pageUrl = window.location.href; // مشاركة رابط الصفحة الحالية
-    const shareText = `شاهد هذا المنتج الرائع: ${product.name} في متجر Joker Store!`;
+    const shareText = t('share_text').replace('{name}', product.name);
 
     if (navigator.share) {
         navigator.share({
@@ -40,7 +41,7 @@ export function shareProduct(product) {
         const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareText)}`;
         const shareWindow = window.open(facebookUrl, '_blank', 'width=600,height=400');
         if (shareWindow) shareWindow.focus();
-        else showToast('الرجاء تفعيل النوافذ المنبثقة لمشاركة المنتج.', 'info');
+        else showToast(t('share_popup_required'), 'info');
     }
 }
 
@@ -125,7 +126,7 @@ export function showAllCategories() {
     Object.entries(rawServerData.categories).forEach(([key, cat]) => {
         const card = template.content.cloneNode(true);
         card.querySelector('.category-card').dataset.category = key;
-        card.querySelector('img').src = cat.image;
+        card.querySelector('img').src = resolveImageUrl(cat.image);
         card.querySelector('img').alt = cat.title;
         card.querySelector('h3').textContent = cat.title;
         card.querySelector('p').textContent = cat.desc;
@@ -187,7 +188,7 @@ export function showProductDetails(product, currentCategory = '') {
                     card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
                     const imgElement = card.querySelector('.card-inner-img');
                     imgElement.src = clientItem.image;
-                    imgElement.onerror = () => { imgElement.src = 'image/logo.png'; }; // Fallback image
+                    imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
                     card.querySelector('.card-title').textContent = clientItem.name;
                     card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
                     card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
@@ -196,7 +197,7 @@ export function showProductDetails(product, currentCategory = '') {
                     if (stockBadge) {
                         const stockText = renderStockBadge(clientItem.availableStock);
                         stockBadge.textContent = stockText;
-                        stockBadge.classList.toggle('out-of-stock', stockText === 'نفذت الكمية ⛔');
+                        stockBadge.classList.toggle('out-of-stock', Number(clientItem.availableStock) <= 0);
                     }
                     relatedContainer.appendChild(card);
                 });
@@ -214,8 +215,8 @@ export function showProductDetails(product, currentCategory = '') {
 
     // ملء القالب ببيانات المنتج
     const detailImgElement = view.querySelector('.detail-img');
-    detailImgElement.src = product.image || `image/${currentCategory || 'all'}.png`;
-    detailImgElement.onerror = () => { detailImgElement.src = 'image/logo.png'; }; // Fallback image
+    detailImgElement.src = resolveImageUrl(product.image) || resolveImageUrl(`image/${currentCategory || 'all'}.png`);
+    detailImgElement.onerror = () => { detailImgElement.src = '/image/logo.png'; }; // Fallback image
     view.querySelector('.detail-img').alt = product.name;
     view.querySelector('.product-name').textContent = product.name;
     view.querySelector('.product-price').textContent = formatPrice(product.price);
@@ -262,6 +263,88 @@ export function showProductDetails(product, currentCategory = '') {
         selectCategory(currentCategory);
     });
 
+    // === نظام التقييمات (رجوع 1-5 + تعليق + عرض التقييمات) ===
+    const renderProductReviews = async (productId, container) => {
+        const reviewsContainer = container || view.querySelector('#product-reviews-list');
+        if (!reviewsContainer) return;
+        try {
+            const res = await fetch(`/api/products/${productId}/reviews`);
+            const data = await res.json();
+            if (!data.success || !Array.isArray(data.reviews) || data.reviews.length === 0) {
+                reviewsContainer.innerHTML = `<div class="reviews-empty">${t('reviews_empty')}</div>`;
+                return;
+            }
+            reviewsContainer.innerHTML = data.reviews.map(review => `
+                <div class="review-item">
+                    <div class="review-meta">
+                        ${renderRatingStars(review.rating, 0)}
+                        <span class="review-date">${new Date(review.createdAt).toLocaleDateString(getCurrentLanguage() === 'en' ? 'en-US' : 'ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </div>
+                    ${review.comment ? `<p class="review-comment">${escapeHtml(review.comment)}</p>` : ''}
+                </div>
+            `).join('');
+        } catch (_err) {
+            reviewsContainer.innerHTML = `<div class="reviews-empty">${t('reviews_load_error')}</div>`;
+        }
+    };
+
+    const reviewStars = view.querySelector('[data-review-stars]');
+    const reviewComment = view.querySelector('[data-review-comment]');
+    const reviewSubmitBtn = view.querySelector('.review-submit-btn');
+    let selectedRating = 0;
+
+    const updateStarDisplay = () => {
+        if (!reviewStars) return;
+        reviewStars.querySelectorAll('i').forEach(star => {
+            const value = Number(star.dataset.star);
+            star.className = value <= selectedRating ? 'fas fa-star star-active' : 'far fa-star';
+        });
+    };
+    if (reviewStars) {
+        reviewStars.querySelectorAll('i').forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = Number(star.dataset.star);
+                updateStarDisplay();
+            });
+        });
+    }
+    if (reviewSubmitBtn) {
+        reviewSubmitBtn.addEventListener('click', async () => {
+            if (selectedRating < 1) {
+                showToast(t('review_select_first'), 'error');
+                return;
+            }
+            reviewSubmitBtn.disabled = true;
+            try {
+                const res = await fetch(`/api/products/${product.id}/review`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rating: selectedRating, comment: reviewComment ? reviewComment.value : '' })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message || t('review_thanks'), 'success');
+                    selectedRating = 0;
+                    if (reviewStars) updateStarDisplay();
+                    if (reviewComment) reviewComment.value = '';
+                    renderProductReviews(product.id);
+                    const ratingZoneEl = view.querySelector('[data-rating]');
+                    if (ratingZoneEl && data.rating) {
+                        ratingZoneEl.innerHTML = renderRatingStars(data.rating, data.reviewsCount);
+                    }
+                } else {
+                    showToast(`❌ ${escapeHtml(data.error || data.message || t('review_failed'))}`, 'error');
+                }
+            } catch (_err) {
+                showToast(t('review_error'), 'error');
+            } finally {
+                reviewSubmitBtn.disabled = false;
+            }
+        });
+    }
+    renderProductReviews(product.id);
+
     grid.className = 'product-details-wrapper';
     grid.innerHTML = ''; // تفريغ الشبكة أولاً
     grid.appendChild(view);
@@ -290,7 +373,7 @@ export function updateCartUI() {
 
     if (list) {
         if (items.length === 0) {
-            list.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 20px 0;">سلتك فارغة حالياً 🛒</p>`;
+            list.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 20px 0;">${t('cart_empty')}</p>`;
         } else {
             list.innerHTML = items.map((item, index) => `
                 <div class="cart-item">
@@ -298,10 +381,10 @@ export function updateCartUI() {
                         <span class="cart-item-name">${escapeHtml(item.name)}</span>
                         <span class="cart-item-price">${formatPrice(item.price)}</span>
                     </div>
-                    <button type="button" class="cart-qty-btn" data-cart-dec="${index}" aria-label="إنقاص الكمية">−</button>
+                    <button type="button" class="cart-qty-btn" data-cart-dec="${index}" aria-label="${t('cart_decrease')}">−</button>
                     <input type="text" class="cart-item-qty" value="${Number(item.qty) || 1}" readonly>
-                    <button type="button" class="cart-qty-btn" data-cart-inc="${index}" aria-label="زيادة الكمية">+</button>
-                    <button type="button" class="cart-item-remove" data-cart-remove="${index}" aria-label="حذف من السلة">×</button>
+                    <button type="button" class="cart-qty-btn" data-cart-inc="${index}" aria-label="${t('cart_increase')}">+</button>
+                    <button type="button" class="cart-item-remove" data-cart-remove="${index}" aria-label="${t('cart_remove')}">×</button>
                 </div>`).join('');
         }
     }

@@ -1,5 +1,6 @@
 import { showToast, escapeHtml } from './ui.js';
 import { formatPrice } from './currency.js';
+import { t, getCurrentLanguage } from './i18n.js';
 
 let currentUser = null;
 
@@ -68,7 +69,7 @@ export function initAuth() {
     // التبديل بين نماذج التسجيل والدخول
     authTabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            authTabs.forEach(t => t.classList.remove('active'));
+            authTabs.forEach(el => el.classList.remove('active'));
             tab.classList.add('active');
             document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
             document.getElementById(tab.dataset.form).classList.add('active');
@@ -98,12 +99,12 @@ async function showOrderHistory() {
     const listContainer = document.getElementById('orderHistoryList');
 
     if (!currentUser) {
-        showToast('الرجاء تسجيل الدخول أولاً لعرض طلباتك.', 'error');
+        showToast(t('auth_login_required'), 'error');
         return;
     }
 
     modal.classList.add('active');
-    listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> جاري تحميل سجل الطلبات...</div>`;
+    listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> ${t('auth_loading_orders')}</div>`;
 
     try {
         // الجلسة تُرسل تلقائياً عبر HttpOnly cookie
@@ -113,13 +114,13 @@ async function showOrderHistory() {
         if (data.success) {
             renderOrders(data.orders);
         } else {
-            listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ ${escapeHtml(data.message || 'فشل تحميل الطلبات.')}</div>`;
+            listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ ${escapeHtml(data.message || t('auth_orders_error'))}</div>`;
             if (res.status === 401) {
                 handleLogout(); // تسجيل الخروج إذا كانت الجلسة منتهية
             }
         }
     } catch (_err) {
-        listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ حدث خطأ في الاتصال بالخادم.</div>`;
+        listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: #e74c3c;">❌ ${t('auth_orders_conn_error')}</div>`;
     }
 }
 
@@ -129,24 +130,25 @@ async function showOrderHistory() {
 function renderOrders(orders) {
     const listContainer = document.getElementById('orderHistoryList');
     if (orders.length === 0) {
-        listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);">لم تقم بأي طلبات بعد.</div>`;
+        listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);">${t('auth_no_orders')}</div>`;
         return;
     }
 
     const statusMap = {
-        completed: { text: 'مكتمل', class: 'status-completed' },
-        pending: { text: 'قيد المراجعة', class: 'status-pending' },
-        failed: { text: 'فشل', class: 'status-failed' }
+        completed: { text: t('auth_status_completed'), class: 'status-completed' },
+        pending: { text: t('auth_status_pending'), class: 'status-pending' },
+        failed: { text: t('auth_status_failed'), class: 'status-failed' }
     };
 
     listContainer.innerHTML = orders.map(order => {
         const statusInfo = statusMap[order.status] || { text: order.status, class: '' };
-        const orderDate = new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+        const dateLocale = getCurrentLanguage() === 'en' ? 'en-US' : 'ar-EG';
+        const orderDate = new Date(order.createdAt).toLocaleString(dateLocale, { dateStyle: 'medium', timeStyle: 'short' });
 
         // عرض الكود فقط إذا كان الطلب مكتملاً
         const codeHtml = order.status === 'completed' && order.code
             ? `<div style="background: #1a1a2e; border:1px solid #ff9f43; border-radius:8px; padding:10px; margin-top:10px; font-size: 0.9rem;">
-                   <span style="color:#b9bbbe;">كود الشحن:</span>
+                   <span style="color:#b9bbbe;">${t('auth_shipping_code_label')}</span>
                    <strong style="color:#ff9f43; letter-spacing:1px; user-select:all;">${escapeHtml(order.code)}</strong>
                </div>`
             : '';
@@ -158,7 +160,7 @@ function renderOrders(orders) {
                         ${order.items.map(item => escapeHtml(item.name)).join(', ')}
                     </div>
                     <div style="font-size: 0.85rem; color: var(--text-muted);">
-                        <span>رقم الطلب: #${escapeHtml(order.orderId)}</span> | <span>التاريخ: ${orderDate}</span>
+                        <span>${t('auth_order_num')} #${escapeHtml(order.orderId)}</span> | <span>${t('auth_order_date')} ${orderDate}</span>
                     </div>
                     ${codeHtml}
                 </div>
@@ -180,7 +182,7 @@ async function handleLogin(e) {
     const password = document.getElementById('loginPassword').value;
     const btn = e.target.querySelector('button');
     btn.disabled = true;
-    btn.textContent = 'جاري التحقق...';
+    btn.textContent = t('auth_checking');
 
     try {
         const res = await fetch('/api/users/login', {
@@ -193,16 +195,16 @@ async function handleLogin(e) {
 
         if (data.success) {
             document.getElementById('authModal').classList.remove('active');
-            showToast('✅ أهلاً بعودتك!', 'success');
+            showToast(t('auth_welcome_back'), 'success');
             await checkLoginState();
         } else {
             showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }
     } catch (_err) {
-        showToast('❌ حدث خطأ في الاتصال بالخادم.', 'error');
+        showToast(t('auth_error_connection'), 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'تسجيل الدخول';
+        btn.textContent = t('auth_login_btn');
     }
 }
 
@@ -215,7 +217,7 @@ async function handleRegister(e) {
     const password = document.getElementById('registerPassword').value;
     const btn = e.target.querySelector('button');
     btn.disabled = true;
-    btn.textContent = 'جاري الإنشاء...';
+    btn.textContent = t('auth_creating');
 
     try {
         const res = await fetch('/api/users/register', {
@@ -226,7 +228,7 @@ async function handleRegister(e) {
         const data = await res.json();
 
         if (data.success) {
-            showToast('✅ تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.', 'success');
+            showToast(t('auth_account_created'), 'success');
             // التبديل إلى نموذج تسجيل الدخول تلقائياً
             document.querySelector('.auth-tab-btn[data-form="loginForm"]').click();
             document.getElementById('loginEmail').value = email;
@@ -235,10 +237,10 @@ async function handleRegister(e) {
             showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }
     } catch (_err) {
-        showToast('❌ حدث خطأ في الاتصال بالخادم.', 'error');
+        showToast(t('auth_error_connection'), 'error');
     } finally {
         btn.disabled = false;
-        btn.textContent = 'إنشاء حساب';
+        btn.textContent = t('auth_register_btn');
     }
 }
 
@@ -252,14 +254,14 @@ async function checkLoginState() {
         if (!data.success || !data.user) throw new Error('no session');
 
         currentUser = { email: data.user.email, balance: data.user.balance };
-        setAuthButtonLabel('حسابي');
+        setAuthButtonLabel(t('auth_account_label'));
         const userEmailDisplay = document.getElementById('userEmailDisplay');
         if (userEmailDisplay) {
             userEmailDisplay.textContent = currentUser.email;
         }
     } catch (_err) {
         currentUser = null;
-        setAuthButtonLabel('تسجيل الدخول');
+        setAuthButtonLabel(t('auth_login_btn'));
         const userAccountDropdown = document.getElementById('userAccountDropdown');
         if (userAccountDropdown) {
             userAccountDropdown.classList.remove('active');
@@ -280,12 +282,12 @@ async function handleLogout() {
         // نكمل حتى لو فشل الاتصال
     }
     currentUser = null;
-    setAuthButtonLabel('تسجيل الدخول');
+    setAuthButtonLabel(t('auth_login_btn'));
     const userAccountDropdown = document.getElementById('userAccountDropdown');
     if (userAccountDropdown) {
         userAccountDropdown.classList.remove('active');
     }
-    showToast('تم تسجيل الخروج بنجاح.', 'success');
+    showToast(t('auth_logout_success'), 'success');
 }
 
 /**

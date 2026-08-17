@@ -20,13 +20,13 @@ export function getCurrency() {
 }
 
 /**
- * تنسيق سعر مالي مع رمز العملة.
+ * تنسيق سعر مالي مع رمز العملة — ينتهي دائماً بـ 0 أو 5 (بدون كسور).
  * @param {number|string} value المبلغ
- * @returns {string} مثال: 12.50 ₪
+ * @returns {string} مثال: 65 ₪
  */
 export function formatPrice(value) {
     const numeric = Number(value);
-    const amount = Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00';
+    const amount = Number.isFinite(numeric) ? (Math.round(numeric / 5) * 5).toString() : '0';
     return `${amount} ${symbol}`;
 }
 
