@@ -8,11 +8,28 @@ let adminCsrfToken = null;
 let _allOrdersCache = [];
 let _allProducts = [];
 let _allCategories = [];
+let _activeReportDays = 30;
 let CURRENCY_SYMBOL = '₪';
 
 function formatMoney(value) {
     const numeric = Number(value);
     return `${Number.isFinite(numeric) ? numeric.toFixed(2) : '0.00'} ${CURRENCY_SYMBOL}`;
+}
+
+/**
+ * تحويل هامش الربح (مضاعف 1.30) إلى نسبة مئوية (30).
+ */
+function marginToPercent(multiplier) {
+    const value = Number(multiplier);
+    return Number.isFinite(value) && value > 0 ? Math.round((value - 1) * 100) : 15;
+}
+
+/**
+ * تحويل نسبة مئوية (30) إلى مضاعف (1.30).
+ */
+function percentToMargin(percent) {
+    const value = parseFloat(percent);
+    return Number.isFinite(value) && value > 0 ? 1 + value / 100 : 1.15;
 }
 
 /**
@@ -209,6 +226,8 @@ const initAdmin = async () => {
         { btn: 'inventoryTabBtn', section: 'inventorySection' },
         { btn: 'ordersTabBtn', section: 'ordersSection' },
         { btn: 'categoriesTabBtn', section: 'categoriesSection' },
+        { btn: 'reportsTabBtn', section: 'reportsSection' },
+        { btn: 'pricingTabBtn', section: 'pricingSection' },
         { btn: 'logsTabBtn', section: 'logsSection' }
     ];
 
@@ -231,6 +250,8 @@ const initAdmin = async () => {
             else if (sectionId === 'inventorySection') loadInventory();
             else if (sectionId === 'ordersSection') loadRecentOrders();
             else if (sectionId === 'categoriesSection') loadCategories();
+            else if (sectionId === 'reportsSection') loadReports(_activeReportDays);
+            else if (sectionId === 'pricingSection') loadLivePricing();
             else if (sectionId === 'logsSection') loadLogs();
         });
     });
@@ -244,6 +265,18 @@ const initAdmin = async () => {
     if (providerSyncBtn) providerSyncBtn.addEventListener('click', runProviderSync);
     const refreshRatesBtn = document.getElementById('refreshRatesBtn');
     if (refreshRatesBtn) refreshRatesBtn.addEventListener('click', refreshCurrencyRates);
+
+    // === Reports & Live Pricing ===
+    document.querySelectorAll('[data-report-days]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            _activeReportDays = Number(btn.dataset.reportDays) || 30;
+            loadReports(_activeReportDays);
+        });
+    });
+    const refreshReportsBtn = document.getElementById('refreshReportsBtn');
+    if (refreshReportsBtn) refreshReportsBtn.addEventListener('click', () => loadReports(_activeReportDays));
+    const refreshPricingBtn = document.getElementById('refreshPricingBtn');
+    if (refreshPricingBtn) refreshPricingBtn.addEventListener('click', loadLivePricing);
 
     // === Inventory buttons ===
     const refreshBtn = document.getElementById('refreshBtn');
@@ -662,7 +695,7 @@ function fillEditProductForm(product) {
     document.getElementById('editId').value = product._id;
     document.getElementById('editName').value = product.productName?.en || product.productName;
     document.getElementById('editPrice').value = product.price || '';
-    document.getElementById('editMargin').value = product.profitMargin || 1.15;
+    document.getElementById('editMargin').value = marginToPercent(product.profitMargin);
     const ratingInput = document.getElementById('editRating');
     if (ratingInput) ratingInput.value = product.rating || 0;
     const reviewsInput = document.getElementById('editReviewsCount');
@@ -727,7 +760,7 @@ async function deleteProduct(productId) {
 async function saveProductEdit() {
     const productId = document.getElementById('editId').value;
     const price = parseFloat(document.getElementById('editPrice').value);
-    const margin = parseFloat(document.getElementById('editMargin').value);
+    const margin = percentToMargin(document.getElementById('editMargin').value);
     const ratingInput = document.getElementById('editRating');
     const reviewsInput = document.getElementById('editReviewsCount');
 
@@ -948,7 +981,7 @@ function openAddManualModal() {
     document.getElementById('manualProductNameEn').value = '';
     document.getElementById('manualCategory').value = '';
     document.getElementById('manualPrice').value = '';
-    document.getElementById('manualProfitMargin').value = '1.15';
+    document.getElementById('manualProfitMargin').value = '15';
     document.getElementById('manualCodesTextarea').value = '';
     document.getElementById('manualCodesFile').value = '';
     const manualImageInput = document.getElementById('manualProductImage');
@@ -1011,7 +1044,7 @@ async function saveManualProduct() {
     const productNameEn = document.getElementById('manualProductNameEn').value.trim();
     const category = document.getElementById('manualCategory').value.trim();
     const price = parseFloat(document.getElementById('manualPrice').value) || 0;
-    const profitMargin = parseFloat(document.getElementById('manualProfitMargin').value) || 1.15;
+    const profitMargin = percentToMargin(document.getElementById('manualProfitMargin').value);
 
     if (!productNameAr || !productNameEn || !category) {
         showAdminToast('❌ يرجى ملء جميع الحقول المطلوبة', 'error');
@@ -1102,13 +1135,13 @@ async function loadCategories() {
     const tbody = document.getElementById('categoryList');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="6" class="loading-cell"><span class="spinner"></span> جاري تحميل الأقسام...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> جاري تحميل الأقسام...</td></tr>`;
 
     try {
         const res = await fetch('/api/admin/categories', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         const data = await res.json();
         if (!data.success) {
-            tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل تحميل الأقسام</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل تحميل الأقسام</td></tr>`;
             return;
         }
 
@@ -1117,18 +1150,22 @@ async function loadCategories() {
         tbody.innerHTML = '';
 
         if (categories.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">لا توجد أقسام بعد</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">لا توجد أقسام بعد</td></tr>`;
             return;
         }
 
         tbody.innerHTML = categories.map(cat => {
             const titleAr = escapeHtml(cat.title?.ar || '—');
             const titleEn = escapeHtml(cat.title?.en || '—');
+            const autoBadge = cat.source === 'auto'
+                ? '<span class="badge badge-warning" title="أُنشئ تلقائياً من المزودين">تلقائي</span>'
+                : '';
             return `
                 <tr>
-                    <td><span class="badge badge-accent">${escapeHtml(cat.key)}</span></td>
+                    <td><span class="badge badge-accent">${escapeHtml(cat.key)}</span> ${autoBadge}</td>
                     <td>${titleAr}</td>
                     <td>${titleEn}</td>
+                    <td>${Number(cat.productCount) || 0}</td>
                     <td>${Number(cat.order) || 0}</td>
                     <td><span class="badge ${cat.isActive ? 'badge-success' : 'badge-danger'}">${cat.isActive ? 'نشط' : 'غير نشط'}</span></td>
                     <td>
@@ -1142,7 +1179,139 @@ async function loadCategories() {
         }).join('');
 
     } catch (_err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+    }
+}
+
+// ======================================================
+//  تقرير الأرباح (يومي + حسب القسم + حسب المزود)
+// ======================================================
+async function loadReports(days = 30) {
+    const summaryEl = document.getElementById('reportsSummary');
+    const byCatEl = document.getElementById('reportsByCategory');
+    const byProvEl = document.getElementById('reportsByProvider');
+    if (!summaryEl || !byCatEl || !byProvEl) return;
+
+    summaryEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>`;
+    byCatEl.innerHTML = '';
+    byProvEl.innerHTML = '';
+
+    try {
+        const res = await fetch(`/api/admin/reports?days=${days}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) {
+            summaryEl.innerHTML = `<div class="error-cell">❌ فشل تحميل التقارير</div>`;
+            return;
+        }
+
+        const { totals, byCategory, byProvider } = data;
+        const profit = (Number(totals.revenue) || 0) - (Number(totals.cost) || 0);
+        const marginPct = Number(totals.revenue) > 0 ? ((profit / Number(totals.revenue)) * 100).toFixed(1) : '0.0';
+
+        summaryEl.innerHTML = `
+            <div class="stat-card stat-revenue"><div class="stat-icon">💰</div><div class="stat-value">${Number(totals.revenue).toLocaleString()}</div><div class="stat-label">إيرادات</div></div>
+            <div class="stat-card stat-profit"><div class="stat-icon">📈</div><div class="stat-value">${profit.toLocaleString()}</div><div class="stat-label">أرباح (${marginPct}%)</div></div>
+            <div class="stat-card stat-orders"><div class="stat-icon">🗓️</div><div class="stat-value">${days}</div><div class="stat-label">فترة (يوم)</div></div>
+        `;
+
+        const renderTable = (rows, isCategory) => {
+            const headers = isCategory ? ['القسم', 'طلبات', 'إيرادات', 'ربح'] : ['المزود', 'طلبات', 'إيرادات', 'ربح'];
+            if (!Array.isArray(rows) || rows.length === 0) {
+                return `<div style="text-align:center; padding:14px; color:var(--text-muted);">لا بيانات في هذه الفترة.</div>`;
+            }
+            return `
+                <table class="reports-table">
+                    <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+                    <tbody>
+                        ${rows.map(row => {
+                            const rev = Number(row.revenue) || 0;
+                            const cost = Number(row.cost) || 0;
+                            return `<tr>
+                                <td>${escapeHtml(String(row._id))}</td>
+                                <td>${Number(row.orders) || 0}</td>
+                                <td>${rev.toLocaleString()}</td>
+                                <td>${(rev - cost).toLocaleString()}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        };
+
+        byCatEl.innerHTML = renderTable(byCategory, true);
+        byProvEl.innerHTML = renderTable(byProvider, false);
+    } catch (_err) {
+        summaryEl.innerHTML = `<div class="error-cell">❌ تعذر تحميل التقارير.</div>`;
+    }
+}
+
+// ======================================================
+//  مقارنة أسعار المزودين (اكتشاف الهوامش الضعيفة)
+// ======================================================
+async function loadLivePricing() {
+    const list = document.getElementById('livePricingList');
+    if (!list) return;
+
+    list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> جاري تحميل الأسعار...</div>`;
+
+    try {
+        const res = await fetch('/api/admin/pricing/compare?limit=500', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) {
+            list.innerHTML = `<div class="error-cell">❌ فشل تحميل مقارنة الأسعار</div>`;
+            return;
+        }
+
+        const products = data.products || [];
+        if (products.length === 0) {
+            list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">لا توجد منتجات خارجية نشطة حالياً.</div>`;
+            return;
+        }
+
+        list.innerHTML = `
+            <table class="reports-table">
+                <thead>
+                    <tr>
+                        <th>المنتج</th>
+                        <th>القسم</th>
+                        <th>مزود العرض</th>
+                        <th>تكلفة</th>
+                        <th>سعر المتجر</th>
+                        <th>الهامش</th>
+                        <th>أرخص بديل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${products.map(p => {
+                        const name = escapeHtml(p.nameAr || p.nameEn);
+                        const margin = p.margin === null ? '—' : `${p.margin.toFixed(2)}×`;
+                        const [cheapestOption] = (p.providerOptions || [])
+                            .filter(o => o.provider !== p.currentProvider && Number(o.basePrice) > 0)
+                            .sort((a, b) => a.basePrice - b.basePrice);
+                        const altText = cheapestOption
+                            ? `${escapeHtml(cheapestOption.provider)} (${Number(cheapestOption.basePrice).toLocaleString()})`
+                            : '—';
+                        const rowClass = p.margin === null || p.margin >= 1.05
+                            ? ''
+                            : (p.margin < 1.0 ? 'pricing-row-zero' : 'pricing-row-low');
+                        return `<tr class="${rowClass}">
+                            <td title="${escapeHtml(p.nameEn || '')}">${name}</td>
+                            <td>${escapeHtml(p.category || '—')}</td>
+                            <td>${escapeHtml(p.currentProvider || '—')}</td>
+                            <td>${Number(p.basePrice).toLocaleString()}</td>
+                            <td>${Number(p.price).toLocaleString()}</td>
+                            <td>${margin}</td>
+                            <td>${altText}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+            <div style="padding:10px 12px; color:var(--text-muted); font-size:0.8rem;">
+                🟥 أحمر قاتم = بيع تحت التكلفة · 🟨 أحمر فاتح = هامش أقل من 5%
+            </div>
+        `;
+    } catch (_err) {
+        list.innerHTML = `<div class="error-cell">❌ تعذر تحميل مقارنة الأسعار.</div>`;
     }
 }
 
