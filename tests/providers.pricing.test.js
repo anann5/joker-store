@@ -25,12 +25,48 @@ describe('Pricing Engine', () => {
         expect(pricing.getMarginForProduct(fallback, null)).toBe(1.30);
     });
 
-    it('يحسب سعر البيع من سعر الأساس والهامش', () => {
-        expect(pricing.computeSellingPrice({ basePrice: 10, margin: 1.15 })).toBe(11.5);
-        expect(pricing.computeSellingPrice({ basePrice: 19.99, margin: 1.15 })).toBe(22.99);
+    it('يحسب سعر البيع (ينتهي بـ 0 أو 5 دائماً)', () => {
+        expect(pricing.computeSellingPrice({ basePrice: 10, margin: 1.15 })).toBe(15);
+        expect(pricing.computeSellingPrice({ basePrice: 19.99, margin: 1.15 })).toBe(25);
+        expect(pricing.computeSellingPrice({ basePrice: 50, margin: 30 })).toBe(65);
+        expect(pricing.computeSellingPrice({ basePrice: 10, margin: '30%' })).toBe(15);
+        expect(pricing.computeSellingPrice({ basePrice: 200, margin: 30 })).toBe(260);
         expect(pricing.computeSellingPrice({ basePrice: null, margin: 1.15 })).toBeNull();
         expect(pricing.computeSellingPrice({ basePrice: 0, margin: 1.15 })).toBeNull();
-        expect(pricing.computeSellingPrice({ basePrice: 10, margin: 0.9 })).toBeNull();
+        expect(pricing.computeSellingPrice({ basePrice: 10, margin: 0.9 })).toBe(20);
+    });
+
+    it('يضيف ربحاً ثابتاً حسب طبقة سعر الشراء (بدون هامش)', () => {
+        expect(pricing.computeSellingPrice({ basePrice: 10 })).toBe(15);      // أقل من 50 → +5
+        expect(pricing.computeSellingPrice({ basePrice: 48 })).toBe(55);      // أقل من 50 → +5
+        expect(pricing.computeSellingPrice({ basePrice: 50 })).toBe(60);      // 50→ +10
+        expect(pricing.computeSellingPrice({ basePrice: 99 })).toBe(110);     // <100 → +10
+        expect(pricing.computeSellingPrice({ basePrice: 100 })).toBe(115);    // 100→ +15
+        expect(pricing.computeSellingPrice({ basePrice: 199 })).toBe(215);    // <200 → +15
+        expect(pricing.computeSellingPrice({ basePrice: 200 })).toBe(220);    // 200→ +20
+        expect(pricing.computeSellingPrice({ basePrice: 500 })).toBe(520);    // 200+ → +20
+    });
+
+    it('تحدد طبقة الربح المناسبة لسعر الشراء', () => {
+        expect(pricing.tierProfit(10)).toBe(5);
+        expect(pricing.tierProfit(49.9)).toBe(5);
+        expect(pricing.tierProfit(50)).toBe(10);
+        expect(pricing.tierProfit(99)).toBe(10);
+        expect(pricing.tierProfit(100)).toBe(15);
+        expect(pricing.tierProfit(199)).toBe(15);
+        expect(pricing.tierProfit(200)).toBe(20);
+        expect(pricing.tierProfit(0)).toBeNull();
+        expect(pricing.tierProfit(-5)).toBeNull();
+    });
+
+    it('يوحّد صيغ هامش الربح: نسبة مئوية أو مضاعف أو كسر', () => {
+        expect(pricing.normalizeMargin(30)).toBe(1.30);
+        expect(pricing.normalizeMargin('30%')).toBe(1.30);
+        expect(pricing.normalizeMargin(1.30)).toBe(1.30);
+        expect(pricing.normalizeMargin(0.30)).toBe(1.30);
+        expect(pricing.normalizeMargin(0)).toBeNull();
+        expect(pricing.normalizeMargin(-5)).toBeNull();
+        expect(pricing.normalizeMargin('abc')).toBeNull();
     });
 
     it('يحسب نسبة التغير بين سعرين', () => {
