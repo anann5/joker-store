@@ -317,5 +317,8 @@
     "promo_remove": "إزالة",
     "promo_invalid": "رمز الخصم غير صالح أو منتهي.",
     "promo_not_applicable": "رمز الخصم لا ينطبق على هذه المنتجات.",
-    "cart_discount": "خصم ({code})"
+    "cart_discount": "خصم ({code})",
+    "realtime_order_updated": "تم تحديث حالة طلبك {orderId}.",
+    "realtime_order_completed": "✅ اكتمل طلبك {orderId} — استلم كودك الآن!",
+    "realtime_order_rejected": "❌ رُفض طلبك {orderId} — تم استرداد المبلغ."
 }

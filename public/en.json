@@ -317,5 +317,8 @@
     "promo_remove": "Remove",
     "promo_invalid": "Invalid or expired promo code.",
     "promo_not_applicable": "This promo code does not apply to these items.",
-    "cart_discount": "Discount ({code})"
+    "cart_discount": "Discount ({code})",
+    "realtime_order_updated": "Order {orderId} status updated.",
+    "realtime_order_completed": "✅ Your order {orderId} is complete — grab your code now!",
+    "realtime_order_rejected": "❌ Order {orderId} was rejected — amount refunded."
 }

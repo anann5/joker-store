@@ -5,6 +5,7 @@ import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
 import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
+import { initRealtime } from './realtime.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
@@ -414,6 +415,9 @@ function getRegionDetails(region) {
 export function selectCategory(categoryKey) {
     // حفظ القسم الذي تمت زيارته في التخزين المحلي
     localStorage.setItem('joker_lastCategory', categoryKey);
+
+    // استعادة العنوان الافتراضي عند مغادرة صفحة تفاصيل المنتج
+    document.title = t('site_title');
 
     _currentCategoryKey = categoryKey; // تحديث القسم الحالي
     _categoryProducts = []; // تصفير المنتجات المخزنة
@@ -1250,8 +1254,13 @@ function isProductDeepLink() {
 
 /**
  * فتح رابط عميق مباشر للمنتج عند فتح صفحة /product/:id (SEO + مشاركة).
- * يبحث المنتج في فهرس البحث أو يجلب بياناته مباشرة ثم يعرض التفاصيل.
+ * يبحث المنتج في فهرس البحث، وإن لم يجده يجلب بياناته من الخادم مباشرة
+ * (fallback) حتى لا يفشل الرابط العميق بصمت أبداً.
+ * عند إعادة الاستدعاء (مثلاً بعد تغيير اللغة) يُعاد العرض من الكاش
+ * دون إعادة جلب إضافية من الخادم.
  */
+let deepLinkProductData = null;
+
 async function handleProductDeepLink() {
     const match = window.location.pathname.match(/^\/product\/([a-fA-F0-9]{24})\/?$/);
     if (!match) return;
@@ -1262,7 +1271,33 @@ async function handleProductDeepLink() {
         const lang = getCurrentLanguage();
         const localizedName = found.productName[lang] || found.productName['ar'] || '';
         const clientItem = formatItem({ ...found, name: localizedName }, found.category, detectRegion(found));
-        showProductDetails(clientItem);
+        showProductDetails(clientItem, found.category);
+        return;
+    }
+
+    // إعادة الاستدعاء لنفس المنتج → إعادة العرض من الكاش دون إعادة جلب
+    if (deepLinkProductData && String(deepLinkProductData._id) === productId) {
+        const lang = getCurrentLanguage();
+        const localizedName = deepLinkProductData.productName[lang] || deepLinkProductData.productName['ar'] || '';
+        const clientItem = formatItem({ ...deepLinkProductData, name: localizedName }, deepLinkProductData.category, detectRegion(deepLinkProductData));
+        showProductDetails(clientItem, deepLinkProductData.category);
+        return;
+    }
+
+    // المنتج غير موجود في فهرس البحث → جلب مباشر من الخادم (لا فشل صامت).
+    try {
+        const res = await fetch(`/api/products/item/${productId}`);
+        const data = await res.json();
+        if (data.success && data.product) {
+            deepLinkProductData = data.product;
+            const item = data.product;
+            const lang = getCurrentLanguage();
+            const localizedName = item.productName[lang] || item.productName['ar'] || '';
+            const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectRegion(item));
+            showProductDetails(clientItem, item.category);
+        }
+    } catch (error) {
+        console.error('Failed to load product for deep link:', error);
     }
 }
 
@@ -1315,6 +1350,7 @@ async function initializeApp() {
     await handleProductDeepLink();
 
     initAuth(); 
+    initRealtime(); // إشعارات لحظية لحالة الطلبات للمستخدمين المسجلين
     updateTrustTicker(); // تحديث شريط الثقة
     renderPromotions(); // عرض قسم "عروض جاهزة الشحن"
 
@@ -1853,6 +1889,20 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     if (trackOrderBtn) {
         trackOrderBtn.addEventListener('click', handleTrackOrder);
     }
+
+    // تحديث نافذة التتبع تلقائياً عند تغيّر حالة طلب عبر WebSocket (من realtime.js)
+    window.addEventListener('joker-order-status', function(e) {
+        const orderId = e.detail && e.detail.orderId;
+        if (!orderId) return;
+        const trackModalEl = document.getElementById('trackOrderModal');
+        if (!trackModalEl || !trackModalEl.classList.contains('active')) return;
+        const idInput = document.getElementById('trackOrderIdInput');
+        if (!idInput) return;
+        const current = idInput.value.trim();
+        if (current && current.toLowerCase() === String(orderId).toLowerCase()) {
+            handleTrackOrder();
+        }
+    });
 
     // فتح/إغلاق نافذة قائمة الأمنيات
     const wishlistFooterBtn = document.getElementById('wishlistFooterBtn');

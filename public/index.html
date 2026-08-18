@@ -61,9 +61,19 @@
     <link rel="icon" type="image/png" href="/image/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" media="print" data-async-css>
     <link rel="stylesheet" href="/style.css?v=5.0">
+    <link rel="modulepreload" href="/script.js">
+    <link rel="modulepreload" href="/i18n.js">
+    <link rel="modulepreload" href="/ui.js">
+    <link rel="modulepreload" href="/shared.js">
+    <link rel="modulepreload" href="/auth.js">
+    <link rel="modulepreload" href="/cart.js">
+    <link rel="modulepreload" href="/modals.js">
+    <link rel="modulepreload" href="/currency.js">
+    <link rel="modulepreload" href="/realtime.js">
+    <script src="/async-css.js" defer></script>
 </head>
 <body>
 
@@ -162,7 +172,7 @@
 <!-- ====================================================
      المحتوى الرئيسي
 ==================================================== -->
-<div class="page-shell">
+<main class="page-shell">
 
     <!-- ===== Hero Slider ===== -->
     <div class="hero-section">
@@ -370,7 +380,7 @@
         </section>
     </div>
 
-</div><!-- /page-shell -->
+</main><!-- /page-shell -->
 
 <!-- ====================================================
      المودالات (Modals)
@@ -662,6 +672,7 @@
 
 <!-- استخدام type="module" لتفعيل نظام الوحدات (ES6 Modules). -->
 <!-- الملف الرئيسي script.js هو نقطة الدخول الوحيدة التي تستورد باقي الوحدات. -->
+<script src="/vendor/socket.io/socket.io.min.js" defer></script>
 <script type="module" src="/script.js"></script>
 <script type="module" src="/i18n.js"></script>
 

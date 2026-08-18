@@ -380,6 +380,26 @@ exports.getRelatedProducts = async (req, res) => {
 };
 
 /**
+ * جلب منتج عام واحد بمعرّفه — يُستخدم كخطة احتياطية للروابط العميقة
+ * عندما يكون المنتج غائباً عن فهرس البحث لدى الزائر (مثلاً بعد تحديث المخزون).
+ */
+exports.getProductItem = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        if (!productId || typeof productId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+            return res.status(400).json({ success: false, error: 'معرف المنتج غير صالح' });
+        }
+        const product = await Product.findOne({ _id: productId, isActive: true });
+        if (!product) {
+            return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
+        }
+        return res.json({ success: true, product: toPublicProduct(product) });
+    } catch (_err) {
+        return res.status(500).json({ success: false, error: 'فشل في جلب المنتج' });
+    }
+};
+
+/**
  * جلب قائمة خفيفة بجميع المنتجات لأغراض البحث السريع في الواجهة الأمامية.
  */
 exports.getSearchIndex = async (_req, res) => {

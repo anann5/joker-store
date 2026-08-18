@@ -109,6 +109,16 @@ exports.rejectOrder = async (req, res) => {
         await createLog('رفض طلب', `تم رفض الطلب #${order.orderId}`, req, null, order.productName);
         await sendTelegramAlert(`⛔ تم رفض الطلب #${order.orderId}.`);
         await sendOrderRejectedEmail(order);
+
+        // إشعار لحظي للعميل المسجل عند رفض الطلب واسترداد المبلغ
+        const io = req.app?.get('io');
+        if (io && order.userId) {
+            io.to(`user:${String(order.userId)}`).emit('order_status', {
+                orderId: order.orderId,
+                status: 'refunded'
+            });
+        }
+
         return res.json({ success: true, message: 'تم رفض الطلب بنجاح' });
     } catch (err) {
         console.error('Reject Error:', err.message);
@@ -210,6 +220,14 @@ exports.approveOrder = async (req, res) => {
                 orderId: order.orderId,
                 buyerEmail: order.buyerEmail
             });
+
+            // إشعار لحظي للعميل المسجل عند اكتمال الطلب (لا تُرسل الأكواد عبر WS)
+            if (order.userId) {
+                io.to(`user:${String(order.userId)}`).emit('order_status', {
+                    orderId: order.orderId,
+                    status: 'completed'
+                });
+            }
         }
 
         return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });

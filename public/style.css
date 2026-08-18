@@ -52,7 +52,7 @@ html {
 }
 
 body {
-    background: url('image/background.png') no-repeat center center fixed;
+background: url('image/background.webp') no-repeat center center fixed;
     background-size: cover;
     background-color: var(--bg-dark);
     min-height: 100vh;

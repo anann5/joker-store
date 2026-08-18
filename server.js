@@ -8,7 +8,7 @@ const { validateEnv } = require('./config/envCheck');
 const app = require('./app');
 const { syncInventoryInternal } = require('./controllers/productController');
 const { cleanupOldLogsInternal } = require('./controllers/logController');
-const { verifyAdminSocket } = require('./controllers/authController');
+const { verifyAdminSocket, verifyUserSocket } = require('./controllers/authController');
 const { checkProviderBalancesAlert } = require('./controllers/helpers');
 const { clearStorefrontCache } = require('./controllers/storeController');
 const registry = require('./providers/registry');
@@ -34,7 +34,13 @@ io.use((socket, next) => {
     if (origin && host && origin !== `http://${host}` && origin !== `https://${host}`) {
         return next(new Error('cross-origin connections are not allowed'));
     }
-    return verifyAdminSocket(socket, next);
+    // Accept the handshake if it passes EITHER admin OR user authentication:
+    //   - admin sockets join the 'admins' room (existing behavior)
+    //   - logged-in customers join their 'user:<id>' room for order_status events
+    verifyAdminSocket(socket, (adminError) => {
+        if (!adminError) return next();
+        return verifyUserSocket(socket, next);
+    });
 });
 
 io.on('connection', (socket) => {

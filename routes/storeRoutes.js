@@ -43,6 +43,9 @@ router.get('/products/newly-added', storeController.getNewlyAddedProducts);
 // Route to get related products for a given product
 router.get('/products/related/:productId', storeController.getRelatedProducts);
 
+// Route to get a single public product by id (deep-link fallback when missing from search index)
+router.get('/products/item/:productId', storeController.getProductItem);
+
 // Route to submit a product review (rate 1-5 + optional comment)
 const reviewLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,

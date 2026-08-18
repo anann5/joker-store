@@ -67,6 +67,7 @@ function translatePage() {
         } else if (element.hasAttribute('data-i18n-aria')) {
             element.setAttribute('aria-label', translation);
         } else {
+            if (element.textContent === translation) return; // لا نعيد الرسم إن كان النص متطابقاً (يؤخر LCP)
             element.textContent = translation;
         }
     };

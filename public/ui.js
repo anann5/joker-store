@@ -120,6 +120,9 @@ export function showAllCategories() {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
 
+    // استعادة العنوان الافتراضي عند مغادرة صفحة تفاصيل المنتج
+    document.title = t('site_title');
+
     // إعادة الرابط إلى الواجهة الرئيسية عند العودة للأقسام
     if (history.replaceState && window.location.pathname.startsWith('/product/')) {
         history.replaceState(null, '', '/');
@@ -181,6 +184,11 @@ export function showProductDetails(product, currentCategory = '') {
 
     const toolbar = document.getElementById('categoryToolbar');
     if (toolbar) toolbar.classList.add('hidden');
+
+    // تحديث عنوان الصفحة (SEO/UX): اسم المنتج باللغة الحالية.
+    if (product.name) {
+        document.title = `${product.name} | Joker Store`;
+    }
 
     setGuaranteeStripVisible(true);
 

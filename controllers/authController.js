@@ -88,6 +88,37 @@ exports.verifyAdminSocket = async (socket, next) => {
     next();
 };
 
+/**
+ * Socket.IO middleware: authenticate a storefront user socket using the
+ * HttpOnly `user_token` cookie. On success the socket joins the 'user:<id>' room
+ * so approved/rejected orders reach the customer in realtime.
+ */
+exports.verifyUserSocket = async (socket, next) => {
+    try {
+        const cookieHeader = socket.handshake.headers.cookie || '';
+        const cookies = {};
+        cookieHeader.split(';').forEach(part => {
+            const idx = part.indexOf('=');
+            if (idx > -1) {
+                cookies[part.slice(0, idx).trim()] = decodeURIComponent(part.slice(idx + 1).trim());
+            }
+        });
+
+        const token = cookies['user_token'];
+        if (!token) return next(new Error('unauthorized'));
+
+        const secret = process.env.JWT_USER_SECRET || process.env.JWT_SECRET;
+        const decoded = jwt.verify(token, secret);
+        if (!decoded || !decoded.userId) return next(new Error('unauthorized'));
+
+        socket.userId = decoded.userId;
+        socket.join(`user:${decoded.userId}`);
+        return next();
+    } catch (_err) {
+        return next(new Error('unauthorized'));
+    }
+};
+
 // Periodic cleanup of stale failed-attempt counters
 // (الجلسات تنظف تلقائياً من MongoDB عبر TTL على expiresAt)
 setInterval(() => {

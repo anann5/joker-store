@@ -89,7 +89,7 @@ export function initAuth() {
 /**
  * إظهار نافذة سجل الطلبات وجلب البيانات
  */
-async function showOrderHistory() {
+export async function showOrderHistory() {
     const modal = document.getElementById('orderHistoryModal');
     const listContainer = document.getElementById('orderHistoryList');
 
@@ -192,7 +192,9 @@ async function handleLogin(e) {
             closeModal(document.getElementById('authModal'));
             showToast(t('auth_welcome_back'), 'success');
             await checkLoginState();
-            await syncUserCart(); // دمج سلة الجهاز مع السلة السحابية بعد الدخول
+            await syncUserCart();
+            // وصّل الأحداث اللحظية فور تسجيل الدخول (idempotent)
+            realtimeAfterLogin();
         } else {
             showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }
@@ -257,6 +259,8 @@ async function checkLoginState() {
         }
         // مستخدم مسجّل من قبل — دمج السلة السحابية محلياً (صامت عند الفشل)
         syncUserCart();
+        // وصّل الأحداث اللحظية فور معرفة حالة الدخول (idempotent)
+        realtimeAfterLogin();
     } catch (_err) {
         currentUser = null;
         setAuthButtonLabel(t('auth_login_btn'));
@@ -264,6 +268,7 @@ async function checkLoginState() {
         if (userAccountDropdown) {
             userAccountDropdown.classList.remove('active');
         }
+        realtimeAfterLogout();
     }
 }
 
@@ -347,7 +352,33 @@ async function handleLogout() {
     if (userAccountDropdown) {
         userAccountDropdown.classList.remove('active');
     }
+    realtimeAfterLogout();
     showToast(t('auth_logout_success'), 'success');
+}
+
+/**
+ * تفعيل الأحداث اللحظية بعد التأكد من تسجيل الدخول (تحميل ديناميكي
+ * لتفادي أي دورة استيراد ثابتة بين الوحدات — الرابط idempotent).
+ */
+async function realtimeAfterLogin() {
+    try {
+        const { initRealtime } = await import('./realtime.js');
+        initRealtime();
+    } catch (_err) {
+        // لا تُعطّل تجربة الشراء إن تعذر تحميل عميل الأحداث اللحظية
+    }
+}
+
+/**
+ * إيقاف الأحداث اللحظية عند تسجيل الخروج.
+ */
+async function realtimeAfterLogout() {
+    try {
+        const { destroyRealtime } = await import('./realtime.js');
+        destroyRealtime();
+    } catch (_err) {
+        // تجاهل صامت
+    }
 }
 
 /**
