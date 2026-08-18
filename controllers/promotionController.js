@@ -32,6 +32,14 @@ function validatePromotionInput(body) {
         return 'معرف المنتج المستهدف غير صالح';
     }
 
+    // كود الخصم اختياري — يُكتب بحروف كبيرة وبدون مسافات (حتى 20 حرفاً)
+    if (typeof body.code === 'string' && body.code.trim()) {
+        const code = body.code.trim().toUpperCase();
+        if (!/^[A-Za-z0-9-]{3,20}$/.test(code)) {
+            return 'كود الخصم يجب أن يكون 3-20 حرفاً (أحرف، أرقام، شرطات فقط)';
+        }
+    }
+
     return null;
 }
 
@@ -44,6 +52,9 @@ function pickPromotionFields(body) {
     fields.expiresAt = new Date(body.expiresAt);
     fields.productId = typeof body.productId === 'string' && body.productId.trim() ? body.productId.trim() : null;
     fields.category = typeof body.category === 'string' && body.category.trim() ? body.category.trim() : null;
+    if (typeof body.code === 'string' && body.code.trim()) {
+        fields.code = body.code.trim().toUpperCase();
+    }
     if (typeof body.description?.ar === 'string') fields['description.ar'] = body.description.ar.trim().slice(0, 300);
     if (typeof body.description?.en === 'string') fields['description.en'] = body.description.en.trim().slice(0, 300);
     if (typeof body.isActive === 'boolean') fields.isActive = body.isActive;

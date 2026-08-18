@@ -311,6 +311,15 @@
             </div>
         </section>
 
+        <!-- عروض جاهزة الشحن — بيانات حقيقية من /api/promotions -->
+        <section class="info-section auto-section" id="promoSection" hidden>
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-badge-percent"></i> <span data-i18n-key="promo_section_title">عروض جاهزة الشحن 🎁</span></h2>
+                <p class="section-kicker" data-i18n-key="promo_section_kicker">خصومات فعّالة على بطاقات متوفرة فوراً</p>
+            </div>
+            <div id="promoContainer" class="promo-cards-grid"></div>
+        </section>
+
         <!-- قالوا عنا — تقييمات حقيقية -->
         <section class="info-section auto-section" id="testimonialsSection" hidden>
             <div class="section-head">
@@ -370,7 +379,7 @@
 <!-- مودال تسجيل الدخول / إنشاء حساب -->
 <div class="modal-overlay" id="authModal">
     <div class="auth-container">
-        <button class="close-modal-btn" id="closeAuthModal">×</button>
+        <button class="close-modal-btn" id="closeAuthModal" data-close-modal>×</button>
         <div class="auth-tabs">
             <button class="auth-tab-btn active" data-form="loginForm" data-i18n-key="auth_tab_login">تسجيل الدخول</button>
             <button class="auth-tab-btn" data-form="registerForm" data-i18n-key="auth_tab_register">إنشاء حساب جديد</button>
@@ -381,7 +390,7 @@
             <h3 data-i18n-key="auth_welcome_heading">أهلاً بعودتك!</h3>
             <div class="form-group">
                 <label for="loginEmail" data-i18n-key="auth_email_label">البريد الإلكتروني</label>
-                <input type="email" id="loginEmail" required>
+                <input type="email" id="loginEmail" data-autofocus required>
             </div>
             <div class="form-group">
                 <label for="loginPassword" data-i18n-key="auth_password_label">كلمة المرور</label>
@@ -409,7 +418,7 @@
 <!-- مودال السلة / الشراء -->
 <div class="modal-overlay" id="purchaseModal">
     <div class="delivery-container cart-modal">
-        <button class="close-modal-btn" id="closeModal">×</button>
+        <button class="close-modal-btn" id="closeModal" data-close-modal>×</button>
         <div class="cart-modal-header">
             <h3><i class="fas fa-shopping-cart"></i> <span data-i18n-key="cart_title">سلة المشتريات الخاصة بك</span></h3>
         </div>
@@ -437,7 +446,7 @@
             <div class="cart-modal-body">
                 <div class="form-group">
                     <label for="user-email" data-i18n-key="email_label">البريد الإلكتروني لاستلام الكود</label>
-                    <input type="email" id="user-email" data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
+                    <input type="email" id="user-email" data-autofocus data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
                 </div>
 
                 <button id="clearCartBtn" class="clear-cart-btn">
@@ -445,12 +454,25 @@
                 </button>
 
                 <div id="cartItemsList"></div>
+
+                <div class="promo-input-row">
+                    <label for="promoCodeInput" class="promo-input-label" data-i18n-key="promo_label">كود الخصم</label>
+                    <input type="text" id="promoCodeInput" data-i18n-key="promo_placeholder" data-i18n-placeholder="true" placeholder="أدخل رمز الخصم" autocomplete="off" spellcheck="false">
+                    <button type="button" id="applyPromoBtn" data-i18n-key="promo_apply">تطبيق</button>
+                    <button type="button" id="removePromoBtn" data-i18n-key="promo_remove" hidden>إزالة</button>
+                </div>
+                <p id="promoFeedback" class="promo-feedback" data-state="neutral" hidden></p>
             </div>
-            <div class="cart-total-row">
-                <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
-                <span id="cartTotalAmount" class="cart-total-amount">0.00 ₪</span>
+
+<div class="cart-total-row">
+                    <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
+                    <span id="cartTotalAmount" class="cart-total-amount">0.00 ₪</span>
+                </div>
+                <div class="cart-total-row cart-discount-row" id="cartDiscountRow" hidden>
+                    <span class="cart-total-label promo-discount-label" id="cartDiscountLabel"></span>
+                    <span class="cart-total-amount promo-discount-amount" id="cartDiscountAmount"></span>
+                </div>
             </div>
-        </div>
 
         <!-- الخطوة 2: الدفع -->
         <div class="checkout-panel" data-checkout-panel="2" aria-hidden="true">
@@ -501,6 +523,10 @@
                         <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
                         <span class="cart-total-amount">0.00 ₪</span>
                     </div>
+                    <div class="cart-total-row review-discount-row" id="reviewDiscountRow" hidden>
+                        <span class="cart-total-label promo-discount-label" id="reviewDiscountLabel"></span>
+                        <span class="cart-total-amount promo-discount-amount" id="reviewDiscountAmount"></span>
+                    </div>
                 </div>
 
                 <div class="trust-badges" aria-label="Trust badges">
@@ -528,7 +554,7 @@
 <!-- Order History Modal -->
 <div class="modal-overlay" id="orderHistoryModal">
     <div class="delivery-container cart-modal">
-        <button class="close-modal-btn" id="closeOrderHistoryModal">×</button>
+        <button class="close-modal-btn" id="closeOrderHistoryModal" data-close-modal>×</button>
         <div class="cart-modal-header">
             <h3><i class="fas fa-history"></i> <span data-i18n-key="order_history_title">سجل طلباتك</span></h3>
         </div>
@@ -543,7 +569,7 @@
 <!-- Track Order Modal -->
 <div class="modal-overlay" id="trackOrderModal">
     <div class="delivery-container cart-modal">
-        <button class="close-modal-btn" id="closeTrackOrderModal">×</button>
+        <button class="close-modal-btn" id="closeTrackOrderModal" data-close-modal>×</button>
         <div class="cart-modal-header">
             <h3><i class="fas fa-search"></i> <span data-i18n-key="track_title">تتبع طلبك</span></h3>
         </div>
@@ -565,7 +591,7 @@
 <!-- مودال استلام الكود -->
 <div class="modal-overlay" id="codeModal">
     <div class="delivery-container">
-        <button class="close-modal-btn" id="closeCodeModal">×</button>
+        <button class="close-modal-btn" id="closeCodeModal" data-close-modal>×</button>
         <h3 data-i18n-key="purchase_success_title">🎉 تم الشراء بنجاح!</h3>
         <p id="modalProductTitle" class="modal-product-title"></p>
         <div class="delivery-code-box code-reveal">
@@ -574,7 +600,7 @@
             <p id="generatedCode" class="delivery-code">···</p>
             <span class="code-reveal-ring" aria-hidden="true"></span>
         </div>
-        <button id="copyCodeBtn" class="copy-code-btn">
+        <button id="copyCodeBtn" class="copy-code-btn" data-autofocus>
             <i class="fas fa-copy"></i> <span data-i18n-key="copy_code_btn">نسخ الكود</span>
         </button>
     </div>
@@ -583,7 +609,7 @@
 <!-- Wishlist Modal -->
 <div class="modal-overlay" id="wishlistModal">
     <div class="delivery-container cart-modal" style="max-width: 640px;">
-        <button class="close-modal-btn" id="closeWishlistModal">×</button>
+        <button class="close-modal-btn" id="closeWishlistModal" data-close-modal>×</button>
         <div class="cart-modal-header">
             <h3><i class="fas fa-heart"></i> <span data-i18n-key="wishlist_title">قائمة أمنياتي</span></h3>
         </div>
@@ -651,7 +677,7 @@
         <button class="wishlist-btn" data-wishlist-btn title="أضف لقائمة الأمنيات" data-i18n-title="wishlist_tooltip"><i class="far fa-heart"></i></button>
         <div class="card-img-container">
             <span class="card-img-shimmer" aria-hidden="true"></span>
-            <img src="" alt="" class="card-inner-img" loading="lazy" decoding="async" width="200" height="160">
+            <img src="" alt="" class="card-inner-img" loading="lazy" decoding="async" fetchpriority="low" width="200" height="160">
         </div>
         <div class="card-content">
             <div class="card-rating" data-rating></div>
@@ -672,7 +698,7 @@
 <!-- قالب بطاقة القسم الرئيسي -->
 <template id="category-card-template">
     <div class="category-card" data-category="">
-        <img src="" alt="" loading="lazy" decoding="async" width="200" height="135">
+        <img src="" alt="" loading="lazy" decoding="async" fetchpriority="low" width="200" height="135">
         <h3></h3>
         <p></p>
         <button class="enter-btn" data-category="" data-i18n-key="category_enter">دخول القسم 📂</button>

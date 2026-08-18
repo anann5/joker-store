@@ -20,6 +20,10 @@ router.post('/users/login', authLimiter, validate(loginSchema), userAuthControll
 router.get('/users/orders', verifyUserToken, userAuthController.getOrderHistory);
 router.get('/users/me', verifyUserTokenOptional, userAuthController.getMe);
 
+// مزامنة السلة السحابية (يتطلب تسجيل الدخول — للتزامن بين الأجهزة)
+router.get('/users/cart', verifyUserToken, userAuthController.getUserCart);
+router.put('/users/cart', verifyUserToken, userAuthController.saveUserCart);
+
 // ليميتر لتسجيل الخروج (منع إغراق المسار أو استنزاف الموارد بتكرار الطلب)
 const logoutLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,

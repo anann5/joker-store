@@ -100,6 +100,14 @@ exports.checkoutSchema = Joi.object({
             'string.email': 'البريد الإلكتروني غير صالح',
             'any.required': 'البريد الإلكتروني مطلوب'
         }),
+    promoCode: Joi.string()
+        .trim()
+        .pattern(/^[A-Za-z0-9-]{3,20}$/)
+        .allow('')
+        .optional()
+        .messages({
+            'string.pattern.base': 'كود الخصم غير صالح'
+        }),
     paymentGateway: Joi.string()
         .valid('jawwal_pay', 'palpay', 'stripe')
         .required()

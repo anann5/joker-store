@@ -57,6 +57,14 @@ router.get('/products/:productId/reviews', storeController.getProductReviews);
 // Route to get active promotions (deals/discounts) for the storefront
 router.get('/promotions', storeController.getActivePromotions);
 
+// Route to validate a promo code against a product/category (used at checkout)
+const promoValidateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'محاولات كثيرة للتحقق من الرمز، يرجى الانتظار قليلاً.'
+});
+router.post('/promotions/validate', promoValidateLimiter, storeController.validatePromoCode);
+
 // Route to fetch site-wide customer testimonials (latest product reviews)
 router.get('/testimonials', storeController.getTestimonials);
 

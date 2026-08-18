@@ -3,7 +3,8 @@ import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo } from './shared.js';
+import { openModal, closeModal, initModalBehaviors } from './modals.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
@@ -105,7 +106,7 @@ async function showWishlist() {
     const modal = document.getElementById('wishlistModal');
     const container = document.getElementById('wishlistGrid');
     if (!modal || !container) return;
-    modal.classList.add('active');
+    openModal(modal);
     const ids = getWishlist();
 
     if (ids.length === 0) {
@@ -156,6 +157,7 @@ async function showWishlist() {
                 stockBadge.textContent = stockText;
                 stockBadge.classList.toggle('out-of-stock', Number(clientItem.availableStock) <= 0);
             }
+            applyProductBadge(card.querySelector('.product-badge'), { productId: clientItem.id });
             container.appendChild(card);
         });
         syncWishlistButtons();
@@ -591,6 +593,11 @@ function renderCategoryProducts(grid) {
             stockBadge.textContent = stockText;
             stockBadge.classList.toggle('out-of-stock', Number(clientItem.availableStock) <= 0);
         }
+        // شارة الأكثر مبيعاً في عرض القسم (كلاسيكية، لا تُطبّق على كل البطاقات)
+        const badge = card.querySelector('.product-badge');
+        if (badge) {
+            applyProductBadge(badge, { productId: clientItem.id });
+        }
         targetGrid.appendChild(card);
     });
 }
@@ -749,8 +756,8 @@ function renderProductCards(products, containerId) {
         }
         const badge = card.querySelector('.product-badge');
         if (badge) {
-            if (containerId === 'best-selling-container') badge.textContent = t('best_badge');
-            else if (containerId === 'newly-added-container') badge.textContent = t('new_badge');
+            const isNew = containerId === 'newly-added-container';
+            applyProductBadge(badge, { productId: clientItem.id, isNew });
         }
         grid.appendChild(card);
     });
@@ -780,6 +787,12 @@ async function renderBestSellingProducts() {
         const res = await fetch(`/api/products/best-selling?lang=${getCurrentLanguage()}`);
         const data = await res.json();
         if (data.success) {
+            // ملء مجموعة معرّفات الأكثر مبيعاً حتى تحافظ البطاقات على شارتها في كل الأقسام
+            bestSellerIds.clear();
+            (Array.isArray(data.products) ? data.products : []).forEach(p => {
+                const pid = String(p._id || p.id || '');
+                if (pid) bestSellerIds.add(pid);
+            });
             renderProductCards(data.products, 'best-selling-container');
         } else {
             renderEmptyState(container, {
@@ -824,6 +837,190 @@ async function renderNewlyAddedProducts() {
             icon: 'fas fa-sparkles',
             title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'لا توجد منتجات جديدة بعد.',
             sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ستظهر المنتجات الجديدة هنا.'
+        });
+    }
+}
+
+// ======================================================
+//  🎁 قسم "عروض جاهزة الشحن" — بيانات حقيقية من /api/promotions
+// ======================================================
+const _promoProducts = new Map(); // معرّف المنتج ← clientItem (لفتح التفاصيل)
+
+async function renderPromotions() {
+    const section = document.getElementById('promoSection');
+    const container = document.getElementById('promoContainer');
+    if (!section || !container) return;
+
+    try {
+        const res = await fetch('/api/promotions');
+        const data = await res.json();
+        const promos = data?.success && Array.isArray(data.promotions) ? data.promotions : [];
+
+        if (promos.length === 0) {
+            section.hidden = true;
+            container.innerHTML = '';
+            _promoProducts.clear();
+            return;
+        }
+
+        const lang = getCurrentLanguage();
+        section.hidden = false;
+        _promoProducts.clear();
+
+        container.innerHTML = promos.map((promo, index) => {
+            const title = promo.title?.[lang] || promo.title?.ar || '';
+            const description = promo.description ? (promo.description[lang] || promo.description.ar || '') : '';
+            const products = Array.isArray(promo.products) ? promo.products.slice(0, 3) : [];
+
+            const chips = products.map(product => {
+                const localizedName = product.productName?.[lang] || product.productName?.ar || '';
+                const thumb = resolveImageUrl(product.image) || '/image/logo.png';
+                const chipPrice = Number(product.salePrice ?? product.price) || 0;
+                const fullPrice = Number(product.price) || 0;
+                const detectedRegion = detectRegion(product);
+                const clientItem = formatItem({ ...product, name: localizedName },
+                    promo.target?.type === 'category' ? promo.target.key : (product.category || ''), detectedRegion);
+                _promoProducts.set(clientItem.id, clientItem);
+                return `
+                    <button type="button" class="promo-product-chip" data-promo-product="${escapeHtml(clientItem.id)}">
+                        <img src="${escapeHtml(thumb)}" alt="${escapeHtml(localizedName)}" width="56" height="56" loading="lazy" decoding="async">
+                        <span class="promo-chip-info">
+                            <span class="promo-chip-name">${escapeHtml(localizedName)}</span>
+                            <span class="promo-chip-prices">
+                                <span class="promo-chip-price">${formatPrice(chipPrice)}</span>
+                                ${fullPrice > chipPrice ? `<s class="promo-chip-old">${formatPrice(fullPrice)}</s>` : ''}
+                            </span>
+                        </span>
+                    </button>`;
+            }).join('');
+
+            const categoryKey = promo.target?.type === 'category' ? promo.target.key : null;
+            const browseBtn = categoryKey
+                ? `<button type="button" class="promo-browse-btn" data-promo-category="${escapeHtml(categoryKey)}">${escapeHtml(t('promo_browse_category'))}</button>`
+                : '';
+
+            const expiresAt = promo.expiresAt ? new Date(promo.expiresAt) : null;
+            const expiryHtml = expiresAt && !Number.isNaN(expiresAt.getTime())
+                ? `<span class="promo-expires">${t('promo_expires').replace('{date}', expiresAt.toLocaleDateString(lang === 'en' ? 'en-US' : 'ar-EG', { day: 'numeric', month: 'short', year: 'numeric' }))}</span>`
+                : '';
+
+            return `
+                <article class="promo-card" style="animation-delay:${index * 70}ms">
+                    <div class="promo-card-head">
+                        <span class="promo-discount-badge">${escapeHtml(t('promo_discount').replace('{percent}', String(promo.discountPercent ?? 0)))}</span>
+                        ${expiryHtml}
+                    </div>
+                    <h3 class="promo-card-title">${escapeHtml(title)}</h3>
+                    ${description ? `<p class="promo-card-desc">${escapeHtml(description)}</p>` : ''}
+                    <div class="promo-product-chips">${chips || `<span class="promo-empty-chips">${escapeHtml(t('promo_sale'))}</span>`}</div>
+                    ${browseBtn}
+                </article>`;
+        }).join('');
+    } catch (_err) {
+        section.hidden = true;
+    }
+}
+
+// تفاعلات قسم العروض (فتح تفاصيل منتج + تصفح القسم)
+function initPromoSectionInteractions() {
+    const container = document.getElementById('promoContainer');
+    if (!container) return;
+
+    container.addEventListener('click', (e) => {
+        const chip = e.target.closest('[data-promo-product]');
+        if (chip) {
+            const item = _promoProducts.get(chip.dataset.promoProduct);
+            if (item) showProductDetails(item, item.category || 'all');
+            return;
+        }
+        const browse = e.target.closest('[data-promo-category]');
+        if (browse) {
+            const key = browse.dataset.promoCategory;
+            if (key) selectCategory(key);
+        }
+    });
+}
+
+// حقل كود الخصم في نافذة السلة (تطبيق/إزالة + تغذية راجعة فورية)
+function initPromoInput() {
+    const input = document.getElementById('promoCodeInput');
+    const applyBtn = document.getElementById('applyPromoBtn');
+    const removeBtn = document.getElementById('removePromoBtn');
+    const feedback = document.getElementById('promoFeedback');
+    if (!input || !applyBtn || !feedback) return;
+
+    const showState = (state, message) => {
+        feedback.hidden = false;
+        feedback.dataset.state = state;
+        feedback.textContent = message;
+        if (removeBtn) removeBtn.hidden = state !== 'applied';
+    };
+
+    const existing = getAppliedPromo();
+    if (existing) {
+        input.value = existing.code;
+        showState('applied', t('promo_applied').replace('{code}', existing.code.toUpperCase()));
+    } else if (removeBtn) {
+        removeBtn.hidden = true;
+    }
+
+    const apply = async () => {
+        const code = input.value.trim();
+        if (!code) {
+            showState('error', t('promo_invalid'));
+            return;
+        }
+        if (cart.length === 0) {
+            showState('error', t('promo_not_applicable'));
+            return;
+        }
+        applyBtn.disabled = true;
+        try {
+            // نرسل كل منتجات السلة — الخادم يرفض الكود إن لم ينطبق على جميعها
+            const res = await fetch('/api/promotions/validate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, productIds: cart.map(item => item.id) })
+            });
+            const data = await res.json();
+            if (data && data.ok) {
+                setAppliedPromo({
+                    code,
+                    label: t('promo_applied').replace('{code}', code.toUpperCase()),
+                    percent: data.discountPercent,
+                    anchorProductId: String(cart[0]?.id || '')
+                });
+                showState('applied', t('promo_applied').replace('{code}', code.toUpperCase()));
+            } else {
+                clearAppliedPromo();
+                const message = data?.code === 'not_applicable' ? t('promo_not_applicable') : t('promo_invalid');
+                showState('error', message);
+            }
+            updateCartUI();
+        } catch (_err) {
+            clearAppliedPromo();
+            showState('error', t('promo_invalid'));
+            updateCartUI();
+        } finally {
+            applyBtn.disabled = false;
+        }
+    };
+
+    applyBtn.addEventListener('click', apply);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            apply();
+        }
+    });
+    input.addEventListener('input', () => { feedback.hidden = true; });
+    if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+            clearAppliedPromo();
+            input.value = '';
+            feedback.hidden = true;
+            removeBtn.hidden = true;
+            updateCartUI();
         });
     }
 }
@@ -1024,6 +1221,7 @@ async function handleLanguageChange(event) {
             productCache.clear();          // تفريغ الكاش حتى تُعرض التفاصيل باللغة الجديدة
             renderBestSellingProducts();   // إعادة عرض "الأكثر مبيعاً"
             renderNewlyAddedProducts();    // إعادة عرض "وصل حديثاً"
+            renderPromotions();            // إعادة عرض "عروض جاهزة الشحن"
             renderTestimonials();          // إعادة عرض "قالوا عنا"
 
             const grid = document.getElementById('mainCategories');
@@ -1118,6 +1316,7 @@ async function initializeApp() {
 
     initAuth(); 
     updateTrustTicker(); // تحديث شريط الثقة
+    renderPromotions(); // عرض قسم "عروض جاهزة الشحن"
 
     // ⚙️ جلب إعدادات الموقع (أرقام الدفع، السوشيال، الإحصائيات) قبل ربط الأحداث
     await fetchSiteConfig();
@@ -1127,6 +1326,9 @@ async function initializeApp() {
 
     setupEventListeners();
     syncWishlistButtons(); // تفعيل أزرار الأمنيات بعد أول عرض
+    initModalBehaviors(); // إغلاق النوافذ بالخلفية/زر الإغلاق + التبويب
+    initPromoSectionInteractions(); // تفاعلات بطاقات العروض
+    initPromoInput(); // حقل كود الخصم في نافذة السلة
 }
 
 function setupEventListeners() {
@@ -1206,17 +1408,9 @@ function setupEventListeners() {
     });
 
     // أحداث المودالات العامة لتجنب التكرار
+    // إغلاق السلة ونافذة الكود يعتمد على [data-close-modal] عبر initModalBehaviors
+    // (يُغلق عبر closeModal — ينظف aria-modal وفخّ التبويب وقفل التمرير)
     const purchaseModal = document.getElementById('purchaseModal');
-    const closePurchaseBtn = document.getElementById('closeModal');
-    if (closePurchaseBtn && purchaseModal) {
-        closePurchaseBtn.addEventListener('click', function() { purchaseModal.classList.remove('active'); });
-    }
-
-    const codeModal = document.getElementById('codeModal');
-    const closeCodeBtn = document.getElementById('closeCodeModal');
-    if (closeCodeBtn && codeModal) {
-        closeCodeBtn.addEventListener('click', function() { codeModal.classList.remove('active'); });
-    }
 
     const copyCodeBtn = document.getElementById('copyCodeBtn');
     if (copyCodeBtn) {
@@ -1246,7 +1440,7 @@ function setupEventListeners() {
             requestAnimationFrame(() => codeEl.classList.add('revealed'));
         }
 
-        codeModalEl.classList.add('active');
+        openModal(codeModalEl);
         if (onDone) onDone();
     }
 
@@ -1421,7 +1615,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             }
             setCheckoutStep(1);
             updateCartUI();
-            purchaseModal.classList.add('active'); 
+            openModal(purchaseModal); 
         });
     }
 
@@ -1521,11 +1715,13 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             if (cart.length === 0) { showToast(t('checkout_cart_empty'), 'error'); return; }
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
+            const appliedPromo = getAppliedPromo();
             const orderData = {
                 cartItems: cart.map(item => ({ id: item.id, qty: item.qty })),
                 customerEmail: email,
                 paymentGateway: gateway,
-                paymentRef: paymentRef
+                paymentRef: paymentRef,
+                ...(appliedPromo ? { promoCode: appliedPromo.code } : {})
             };
 
             submitOrderBtn.disabled = true;
@@ -1543,10 +1739,11 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 const result = await response.json();
 
                 if (result.success) {
-                    purchaseModal.classList.remove('active');
+                    closeModal(purchaseModal);
                     setCheckoutStep(1);
                     cart.length = 0; // تفريغ المصفوفة
                     localStorage.removeItem('joker_cart');
+                    clearAppliedPromo(); // إزالة كود الخصم بعد إتمام الطلب
                     updateCartUI();
                     if (result.gateway === 'stripe' && result.stripeUrl) {
                         window.open(result.stripeUrl, '_blank', 'noopener');
@@ -1646,11 +1843,11 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             document.getElementById('trackEmailInput').value = '';
             document.getElementById('trackOrderIdInput').value = '';
             document.getElementById('trackOrderResults').innerHTML = '';
-            trackModal.classList.add('active');
+            openModal(trackModal);
         });
     }
     if (closeTrackBtn && trackModal) {
-        closeTrackBtn.addEventListener('click', function() { trackModal.classList.remove('active'); });
+        closeTrackBtn.addEventListener('click', function() { closeModal(trackModal); });
     }
     const trackOrderBtn = document.getElementById('trackOrderBtn');
     if (trackOrderBtn) {
@@ -1660,26 +1857,10 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     // فتح/إغلاق نافذة قائمة الأمنيات
     const wishlistFooterBtn = document.getElementById('wishlistFooterBtn');
     const wishlistModal = document.getElementById('wishlistModal');
-    const closeWishlistBtn = document.getElementById('closeWishlistModal');
     if (wishlistFooterBtn && wishlistModal) {
         wishlistFooterBtn.addEventListener('click', function(e) {
             e.preventDefault();
             showWishlist();
-        });
-    }
-    if (closeWishlistBtn && wishlistModal) {
-        closeWishlistBtn.addEventListener('click', function() { wishlistModal.classList.remove('active'); });
-    }
-
-    // إغلاق نافذة الأمنيات عند ضغط زر تفاصيل منتج بداخلها (التفويض يعمل تلقائياً)
-    if (wishlistModal) {
-        wishlistModal.addEventListener('click', function(e) {
-            if (e.target === wishlistModal) wishlistModal.classList.remove('active');
-        });
-    }
-    if (trackModal) {
-        trackModal.addEventListener('click', function(e) {
-            if (e.target === trackModal) trackModal.classList.remove('active');
         });
     }
 }

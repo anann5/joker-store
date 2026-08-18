@@ -303,5 +303,19 @@
     "copy_code_btn": "Copy code",
     "footer_slogan": "Your secure gateway to game top-ups and digital cards instantly with high-grade encryption.",
     "copyright_text": "© 2026 Joker Store — All rights reserved",
-    "whatsapp_title": "Contact us on WhatsApp"
+    "whatsapp_title": "Contact us on WhatsApp",
+    "promo_section_title": "Ready-to-ship Deals 🎁",
+    "promo_section_kicker": "Active discounts on instantly available cards",
+    "promo_browse_category": "Browse category",
+    "promo_expires": "Ends {date}",
+    "promo_sale": "Flat discount on these items",
+    "promo_discount": "Save {percent}%",
+    "promo_label": "Promo code",
+    "promo_applied": "Promo code {code} applied ✔",
+    "promo_placeholder": "Enter promo code",
+    "promo_apply": "Apply",
+    "promo_remove": "Remove",
+    "promo_invalid": "Invalid or expired promo code.",
+    "promo_not_applicable": "This promo code does not apply to these items.",
+    "cart_discount": "Discount ({code})"
 }

@@ -1868,6 +1868,283 @@ margin-bottom: 14px;
 .badge-vn { color: var(--danger); border-color: rgba(231, 76, 60, 0.4); background: rgba(231, 76, 60, 0.12); }
 .badge-cn { color: #e74c3c; border-color: rgba(192, 57, 43, 0.4); background: rgba(192, 57, 43, 0.12); }
 
+/* شارة "الأكثر مبيعاً" — تدرج ذهبي/أحمر مع توهج ونبض خفيف */
+.product-badge.best-seller {
+    background: linear-gradient(120deg, #ffb347, #ff7e29 45%, #ff3d2e);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(255, 122, 46, 0.7), 0 4px 14px rgba(255, 61, 46, 0.5);
+    border: 1px solid rgba(255, 200, 130, 0.6);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    animation: badgePop 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), bestPulse 2.6s ease-in-out 0.6s infinite;
+}
+
+/* شارة "جديد" — مميزة بالسيان */
+.product-badge.new-arrival {
+    background: linear-gradient(120deg, #22d3ee, #0e7490);
+    color: #f0fdff;
+    border: 1px solid rgba(103, 232, 249, 0.5);
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.55), 0 4px 12px rgba(14, 116, 144, 0.5);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes bestPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(255, 122, 46, 0.7), 0 4px 14px rgba(255, 61, 46, 0.5); }
+    50% { box-shadow: 0 0 26px rgba(255, 122, 46, 1), 0 4px 20px rgba(255, 61, 46, 0.7); }
+}
+
+/* ===================================================
+   🎁 قسم "عروض جاهزة الشحن" — بطاقات العروض
+   =================================================== */
+.promo-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.promo-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(145deg, rgba(20, 18, 40, 0.9), rgba(12, 10, 26, 0.95));
+    border: 1px solid rgba(255, 176, 32, 0.28);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 18px rgba(255, 176, 32, 0.08);
+    animation: fadeIn 0.45s ease both;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.promo-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 26px rgba(255, 176, 32, 0.18);
+}
+
+.promo-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.promo-discount-badge {
+    align-self: flex-start;
+    font-size: 1.15rem;
+    font-weight: 900;
+    padding: 6px 14px;
+    border-radius: 999px;
+    color: #1a1205;
+    background: linear-gradient(120deg, #ffd35c, #ffb020 55%, #ff8a00);
+    box-shadow: 0 0 16px rgba(255, 176, 32, 0.65), 0 4px 12px rgba(255, 138, 0, 0.4);
+    animation: fadeIn 0.45s ease both;
+}
+
+.promo-expires {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.promo-card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #fff;
+    font-weight: 800;
+}
+
+.promo-card-desc {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.promo-product-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.promo-product-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-align: start;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    cursor: pointer;
+    transition: border-color 0.25s ease, background 0.25s ease;
+}
+.promo-product-chip:hover {
+    border-color: rgba(0, 229, 255, 0.5);
+    background: rgba(0, 229, 255, 0.08);
+}
+
+.promo-product-chip img {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.promo-chip-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.promo-chip-name {
+    font-size: 0.85rem;
+    color: #eef;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.promo-chip-prices {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.promo-chip-price {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: var(--success, #2ecc71);
+}
+
+.promo-chip-old {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.promo-empty-chips {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.promo-browse-btn {
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    background: rgba(0, 229, 255, 0.12);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    color: var(--primary-neon, #00e5ff);
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 0.25s ease;
+}
+.promo-browse-btn:hover {
+    background: rgba(0, 229, 255, 0.22);
+}
+
+/* ===================================================
+   🎟️ حقل كود الخصم في نافذة السلة + صف الخصم
+   =================================================== */
+.promo-input-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 4px;
+}
+.promo-input-label {
+    flex-basis: 100%;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+.promo-input-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font-size: 0.85rem;
+}
+.promo-input-row input:focus {
+    outline: none;
+    border-color: var(--primary-neon, #00e5ff);
+    box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.15);
+}
+.promo-input-row button {
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    background: rgba(0, 229, 255, 0.12);
+    color: var(--primary-neon, #00e5ff);
+    font-weight: 700;
+    font-size: 0.82rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.25s ease;
+}
+.promo-input-row button:hover { background: rgba(0, 229, 255, 0.22); }
+.promo-input-row button[hidden] { display: none; }
+
+.promo-feedback {
+    margin: 4px 0 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.promo-feedback[hidden] { display: none; }
+.promo-feedback[data-state="applied"] { color: var(--success, #2ecc71); }
+.promo-feedback[data-state="error"] { color: var(--danger, #e74c3c); }
+
+.cart-discount-row,
+.review-discount-row {
+    font-size: 0.86rem;
+}
+.cart-discount-row[hidden],
+.review-discount-row[hidden] { display: none; }
+.promo-discount-label { color: var(--text-muted); }
+.promo-discount-amount { color: var(--success, #2ecc71); font-weight: 800; }
+
+/* منع انزياح التخطيط أثناء تحميل الصور (CLS) */
+.card-inner-img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 5 / 4;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.04);
+}
+.category-card img {
+    aspect-ratio: 5 / 3.4;
+    background: rgba(255, 255, 255, 0.04);
+}
+.detail-img {
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+}
+
+@media (max-width: 900px) {
+    .promo-cards-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+    .promo-cards-grid { grid-template-columns: 1fr; }
+    .promo-input-row { flex-wrap: wrap; }
+    .promo-input-row input { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .product-badge.best-seller { animation: badgePop 0.2s ease both; }
+    .promo-card { animation: fadeIn 0.2s ease both; }
+}
+
 /* زر الأمنيات */
 .wishlist-btn {
     position: absolute;

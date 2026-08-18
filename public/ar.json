@@ -303,5 +303,19 @@
     "copy_code_btn": "نسخ الكود",
     "footer_slogan": "بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.",
     "copyright_text": "© 2026 Joker Store — جميع الحقوق محفوظة",
-    "whatsapp_title": "تواصل معنا عبر واتساب"
+    "whatsapp_title": "تواصل معنا عبر واتساب",
+    "promo_section_title": "عروض جاهزة الشحن 🎁",
+    "promo_section_kicker": "خصومات فعّالة على بطاقات متوفرة فوراً",
+    "promo_browse_category": "تصفح القسم",
+    "promo_expires": "ينتهي في {date}",
+    "promo_sale": "خصم شامل على هذه المنتجات",
+    "promo_discount": "خصم {percent}%",
+    "promo_label": "كود الخصم",
+    "promo_applied": "تم تطبيق كود {code} ✔",
+    "promo_placeholder": "أدخل رمز الخصم",
+    "promo_apply": "تطبيق",
+    "promo_remove": "إزالة",
+    "promo_invalid": "رمز الخصم غير صالح أو منتهي.",
+    "promo_not_applicable": "رمز الخصم لا ينطبق على هذه المنتجات.",
+    "cart_discount": "خصم ({code})"
 }

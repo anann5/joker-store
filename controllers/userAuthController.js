@@ -211,3 +211,65 @@ exports.logout = async (req, res) => {
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء تسجيل الخروج.' });
     }
 };
+
+// أقصى عدد عناصر في السلة المخزنة (حماية من سوء الاستخدام)
+const MAX_CART_ITEMS = 200;
+
+/**
+ * جلب سلة المستخدم السحابية (للزامنة بين الأجهزة).
+ * المعرّف في التوكن هو req.user.userId — لا يوجد req.user.id إطلاقاً.
+ */
+exports.getUserCart = async (req, res) => {
+    if (!req.user || !req.user.userId) {
+        return res.status(401).json({ success: false });
+    }
+    try {
+        const user = await User.findById(req.user.userId).select('cart');
+        if (!user) {
+            return res.status(401).json({ success: false });
+        }
+        res.json({ success: true, cart: Array.isArray(user.cart) ? user.cart : [] });
+    } catch (_err) {
+        res.status(500).json({ success: false });
+    }
+};
+
+/**
+ * حفظ سلة المستخدم السحابية.
+ * الجسم المتوقع: { cart: [{ id, qty }] } — يُطبَّع ويُخزَّن بصيغة productId/qty.
+ */
+exports.saveUserCart = async (req, res) => {
+    if (!req.user || !req.user.userId) {
+        return res.status(401).json({ success: false });
+    }
+    try {
+        const input = Array.isArray(req.body && req.body.cart) ? req.body.cart : [];
+        if (input.length > MAX_CART_ITEMS) {
+            return res.status(400).json({ success: false, error: 'سلة كبيرة جداً.' });
+        }
+
+        const normalized = [];
+        const seen = new Set();
+        for (const item of input) {
+            if (!item || typeof item !== 'object') continue;
+            const id = typeof item.id === 'string' ? item.id.trim() : '';
+            if (!id || !/^[a-fA-F0-9]{24}$/.test(id)) continue; // نتجاهل المعرّفات غير الصالحة
+            if (seen.has(id)) continue; // نمنع التكرار
+            const parsedQty = Number.parseInt(item.qty, 10);
+            const qty = Number.isInteger(parsedQty) ? Math.min(99, Math.max(1, parsedQty)) : 1;
+            seen.add(id);
+            normalized.push({ productId: id, qty });
+            if (normalized.length >= MAX_CART_ITEMS) break;
+        }
+
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(401).json({ success: false });
+        }
+        user.cart = normalized;
+        await user.save();
+        res.json({ success: true });
+    } catch (_err) {
+        res.status(500).json({ success: false });
+    }
+};

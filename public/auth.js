@@ -1,6 +1,9 @@
-import { showToast, escapeHtml } from './ui.js';
+import { showToast, escapeHtml, updateCartUI } from './ui.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
+import { openModal, closeModal } from './modals.js';
+import { mergeCarts } from './shared.js';
+import { cart } from './cart.js';
 
 let currentUser = null;
 
@@ -55,16 +58,11 @@ export function initAuth() {
     // فتح نافذة التسجيل
     userAuthBtn.addEventListener('click', () => {
         if (!currentUser) {
-            authModal.classList.add('active');
+            openModal(authModal);
         } else {
             document.getElementById('userAccountDropdown').classList.toggle('active');
         }
     });
-
-    // إغلاق نافذة التسجيل
-    if (closeAuthModal) { // أضف فحصاً هنا أيضاً
-        closeAuthModal.addEventListener('click', () => authModal.classList.remove('active'));
-    }
 
     // التبديل بين نماذج التسجيل والدخول
     authTabs.forEach(tab => {
@@ -81,11 +79,8 @@ export function initAuth() {
     if (registerForm) registerForm.addEventListener('submit', handleRegister);
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
-    // معالجة نافذة سجل الطلبات
+    // معالجة نافذة سجل الطلبات (الإغلاق عبر [data-close-modal] في initModalBehaviors)
     if (orderHistoryBtn) orderHistoryBtn.addEventListener('click', showOrderHistory);
-    if (closeOrderHistoryModal) closeOrderHistoryModal.addEventListener('click', () => {
-        document.getElementById('orderHistoryModal').classList.remove('active');
-    });
 
     // التحقق من حالة تسجيل الدخول عند تحميل الصفحة
     checkLoginState();
@@ -103,7 +98,7 @@ async function showOrderHistory() {
         return;
     }
 
-    modal.classList.add('active');
+    openModal(modal);
     listContainer.innerHTML = `<div style="text-align: center; padding: 40px 0; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> ${t('auth_loading_orders')}</div>`;
 
     try {
@@ -194,9 +189,10 @@ async function handleLogin(e) {
         const data = await res.json();
 
         if (data.success) {
-            document.getElementById('authModal').classList.remove('active');
+            closeModal(document.getElementById('authModal'));
             showToast(t('auth_welcome_back'), 'success');
             await checkLoginState();
+            await syncUserCart(); // دمج سلة الجهاز مع السلة السحابية بعد الدخول
         } else {
             showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }
@@ -259,6 +255,8 @@ async function checkLoginState() {
         if (userEmailDisplay) {
             userEmailDisplay.textContent = currentUser.email;
         }
+        // مستخدم مسجّل من قبل — دمج السلة السحابية محلياً (صامت عند الفشل)
+        syncUserCart();
     } catch (_err) {
         currentUser = null;
         setAuthButtonLabel(t('auth_login_btn'));
@@ -266,6 +264,68 @@ async function checkLoginState() {
         if (userAccountDropdown) {
             userAccountDropdown.classList.remove('active');
         }
+    }
+}
+
+/**
+ * مزامنة السلة بين الجهاز الحالي والخادم (بعد تسجيل الدخول).
+ * الترتيب الآمن: جلب السلة السحابية أولاً ← دمجها مع المحلية (اتحاد، أعلى كمية)
+ * ← رفع النتيجة المدمجة. السلة الفارغة محلياً لا تمسح أبداً سلة الخادم.
+ * أي فشل يبقى صامتاً — تبقى السلة المحلية كما هي.
+ */
+async function syncUserCart() {
+    try {
+        // 1) السلة السحابية أولاً — الخادم هو مصدر الحقيقة عبر الأجهزة
+        const getRes = await fetch('/api/users/cart', { credentials: 'include' });
+        const getData = await getRes.json();
+        if (!getData.success) return;
+        const serverCart = Array.isArray(getData.cart) ? getData.cart : [];
+
+        // 2) ادمج المحلية والسحابية، ثم ارفع النتيجة (لا حذف)
+        const merged = mergeCarts(cart, serverCart);
+        if (merged.length === 0) return;
+
+        const putRes = await fetch('/api/users/cart', {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cart: merged })
+        });
+        if (!putRes.ok) return;
+
+        // 3) حدّث السلة المحلية لتعكس الدمج (تُثرى عناصر الخادم بالاسم والسعر)
+        const idxRes = await fetch('/api/products/search-index');
+        const idxData = await idxRes.json();
+        const byId = new Map();
+        (Array.isArray(idxData?.products) ? idxData.products : []).forEach(p => {
+            byId.set(String(p._id || p.id), p);
+        });
+        const lang = getCurrentLanguage();
+
+        const next = [];
+        merged.forEach(item => {
+            const existing = cart.find(c => c.id === item.id);
+            if (existing) {
+                next.push({ ...existing, qty: Math.min(99, item.qty) });
+                return;
+            }
+            const known = byId.get(item.id);
+            if (!known) return;
+            const name = typeof known.productName === 'object'
+                ? (known.productName[lang] || known.productName.ar || '')
+                : String(known.productName || '');
+            next.push({ id: item.id, name, price: Number(known.price) || 0, qty: item.qty });
+        });
+
+        const before = cart.map(i => `${i.id}:${i.qty}`).join(',');
+        cart.splice(0, cart.length, ...next);
+        const after = cart.map(i => `${i.id}:${i.qty}`).join(',');
+        if (before !== after) {
+            localStorage.setItem('joker_cart', JSON.stringify(cart));
+            updateCartUI();
+        }
+    } catch (_err) {
+        // فشل المزامنة لا يُعطّل تجربة الشراء المحلية
     }
 }
 

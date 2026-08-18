@@ -102,3 +102,117 @@ export function resolveImageUrl(value) {
     if (src.includes('/')) return `/${src}`;
     return `/image/${src}`;
 }
+
+// ======================================================
+// 🔥 شارة "الأكثر مبيعاً" — مجموعة معرّفات مملوءة من قسم الأكثر مبيعاً
+// ======================================================
+
+export const bestSellerIds = new Set();
+
+export function isBestSeller(productId) {
+    return bestSellerIds.has(String(productId ?? ''));
+}
+
+/**
+ * تطبيق شارة المنتج (الأكثر مبيعاً / جديد) على عنصر `.product-badge`.
+ * @param {HTMLElement|null} badgeEl
+ * @param {{ productId?: string, isNew?: boolean }} opts
+ */
+export function applyProductBadge(badgeEl, { productId, isNew = false } = {}) {
+    if (!badgeEl) return;
+    const isBest = productId !== null && productId !== undefined && bestSellerIds.has(String(productId));
+    if (!isBest && !isNew) {
+        badgeEl.textContent = '';
+        badgeEl.classList.remove('best-seller', 'new-arrival');
+        return;
+    }
+    badgeEl.textContent = isBest ? t('best_badge') : t('new_badge');
+    badgeEl.classList.toggle('best-seller', isBest);
+    badgeEl.classList.toggle('new-arrival', Boolean(isNew) && !isBest);
+}
+
+// ======================================================
+// 🎟️ كود الخصم المطبّق (حالة ثابتة عبر الجلسة داخل المتصفح)
+// الشكل: { code, label, percent, anchorProductId }
+// ======================================================
+
+const PROMO_STORAGE_KEY = 'joker_applied_promo';
+
+export function getAppliedPromo() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(PROMO_STORAGE_KEY));
+        return parsed && parsed.code ? parsed : null;
+    } catch (_e) {
+        return null;
+    }
+}
+
+export function setAppliedPromo(promo) {
+    if (promo && promo.code) {
+        localStorage.setItem(PROMO_STORAGE_KEY, JSON.stringify({
+            code: String(promo.code).toUpperCase(),
+            label: promo.label || '',
+            percent: Number(promo.percent) || 0,
+            anchorProductId: promo.anchorProductId || ''
+        }));
+    } else {
+        clearAppliedPromo();
+    }
+    return getAppliedPromo();
+}
+
+export function clearAppliedPromo() {
+    localStorage.removeItem(PROMO_STORAGE_KEY);
+}
+
+function roundMoney(value) {
+    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+function clampQty(qty) {
+    const n = Number.parseInt(qty, 10);
+    if (!Number.isInteger(n)) return 1;
+    return Math.min(99, Math.max(1, n));
+}
+
+/**
+ * دمج سلتين (محلية + سحابية) باتحاد حسب المعرّف، مع الاحتفاظ بأعلى كمية
+ * لكل منتج. لا تتجاوز 200 عنصر. تُرجع نسخة نظيفة {id, qty}.
+ * @param {Array} local
+ * @param {Array} server
+ */
+export function mergeCarts(local, server) {
+    const merged = new Map();
+    const take = (id, qty) => {
+        if (!id) return;
+        const prev = merged.get(id);
+        merged.set(id, prev ? { id, qty: Math.max(prev.qty, clampQty(qty)) } : { id, qty: clampQty(qty) });
+    };
+    (Array.isArray(local) ? local : []).forEach(item => take(String(item.id || ''), item.qty));
+    (Array.isArray(server) ? server : []).forEach(item => {
+        take(String(item.productId || item.id || ''), item.qty);
+    });
+    return [...merged.values()].slice(0, 200);
+}
+
+/**
+ * حساب مبالغ السلة (الإجمالي قبل الخصم، قيمة الخصم، الإجمالي النهائي)
+ * مع مراعاة كود الخصم المطبّق. إجمالي العرض التقريبي — الخادم هو المرجع النهائي.
+ * @param {Array} cartItems - عناصر السلة بصيغة {id, price, qty}
+ */
+export function cartTotals(cartItems) {
+    const items = Array.isArray(cartItems) ? cartItems : [];
+    const subtotal = items.reduce((sum, item) =>
+        sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
+
+    const promo = getAppliedPromo();
+    let discount = 0;
+    if (promo && promo.percent > 0) {
+        // الكود لا يُقبل إلا عندما ينطبق على كل منتجات السلة (يُتحقق عند التطبيق)،
+        // لذا يطبّق الخادم النسبة على إجمالي الطلب — نطابق نفس السلوك هنا.
+        const percent = Math.min(99, Math.max(1, Number(promo.percent) || 0));
+        discount = subtotal * percent / 100;
+    }
+
+    return { subtotal: roundMoney(subtotal), discount: roundMoney(discount), total: roundMoney(subtotal - discount) };
+}

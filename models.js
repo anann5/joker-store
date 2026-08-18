@@ -29,6 +29,14 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true, select: false },
     balance: { type: Number, default: 0, min: 0 },
+    // سلة المستخدم السحابية — تُزامن بين الأجهزة بعد تسجيل الدخول
+    cart: {
+        type: [{
+            productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+            qty: { type: Number, min: 1, max: 99, default: 1 }
+        }],
+        default: []
+    },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -178,6 +186,10 @@ const orderSchema = new mongoose.Schema({
     paymentGateway: { type: String, default: 'manual' },
     paymentRef: { type: String, default: null },
     stripePaymentIntentId: { type: String, default: null },
+    // خصم رموز العروض (اختياري) — يُسجّل على مستوى الطلب فقط
+    discount: { type: Number, default: 0, min: 0 },
+    discountCode: { type: String, default: null },
+    discountPercent: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date, default: null },
     failedAt: { type: Date, default: null }
@@ -215,6 +227,8 @@ const promotionSchema = new mongoose.Schema({
     discountPercent: { type: Number, required: true, min: 1, max: 99 },
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
     category: { type: String, default: null },
+    // كود الخصم الاختياري (مثل SAVE10) — يُبحث به في الدفع عند عدم استخدام مؤشر إلى منتج أو قسم
+    code: { type: String, trim: true, default: null, sparse: true, index: true },
     isActive: { type: Boolean, default: true },
     expiresAt: { type: Date, required: true },
     createdAt: { type: Date, default: Date.now }

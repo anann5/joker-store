@@ -1,4 +1,4 @@
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo } from './shared.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
 
@@ -238,6 +238,10 @@ export function showProductDetails(product, currentCategory = '') {
                         stockBadge.textContent = stockText;
                         stockBadge.classList.toggle('out-of-stock', Number(clientItem.availableStock) <= 0);
                     }
+                    const badge = card.querySelector('.product-badge');
+                    if (badge) {
+                        applyProductBadge(badge, { productId: clientItem.id });
+                    }
                     relatedContainer.appendChild(card);
                 });
                 syncWishlistButtons();
@@ -428,8 +432,23 @@ export function updateCartUI() {
         }
     }
 
-    const total = items.reduce((sum, item) => sum + (Number(item.price || 0) * (Number(item.qty) || 1)), 0);
-    if (totalEl) totalEl.textContent = formatPrice(total);
+    const totals = cartTotals(items);
+    if (totalEl) totalEl.textContent = formatPrice(totals.total);
+
+    // صف الخصم في الخطوة 1 (يظهر فقط عند وجود كود مطبّق)
+    const cartDiscountRow = document.getElementById('cartDiscountRow');
+    const cartDiscountLabel = document.getElementById('cartDiscountLabel');
+    const cartDiscountAmount = document.getElementById('cartDiscountAmount');
+    const promo = getAppliedPromo();
+    if (cartDiscountRow && cartDiscountLabel && cartDiscountAmount) {
+        if (promo && totals.discount > 0) {
+            cartDiscountRow.hidden = false;
+            cartDiscountLabel.textContent = t('cart_discount').replace('{code}', promo.code || '');
+            cartDiscountAmount.textContent = `-${formatPrice(totals.discount)}`;
+        } else {
+            cartDiscountRow.hidden = true;
+        }
+    }
 
     // ملخص المراجعة (الخطوة 3) — قائمة قراءة فقط
     const reviewList = document.getElementById('cartReviewList');
@@ -443,7 +462,19 @@ export function updateCartUI() {
                     <span class="review-cart-price">${formatPrice(Number(item.price || 0) * (Number(item.qty) || 1))}</span>
                 </div>`).join('');
         const reviewTotalEl = document.querySelector('.review-total-row .cart-total-amount');
-        if (reviewTotalEl) reviewTotalEl.textContent = formatPrice(total);
+        if (reviewTotalEl) reviewTotalEl.textContent = formatPrice(totals.total);
+        const reviewDiscountRow = document.getElementById('reviewDiscountRow');
+        const reviewDiscountLabel = document.getElementById('reviewDiscountLabel');
+        const reviewDiscountAmount = document.getElementById('reviewDiscountAmount');
+        if (reviewDiscountRow && reviewDiscountLabel && reviewDiscountAmount) {
+            if (promo && totals.discount > 0) {
+                reviewDiscountRow.hidden = false;
+                reviewDiscountLabel.textContent = t('cart_discount').replace('{code}', promo.code || '');
+                reviewDiscountAmount.textContent = `-${formatPrice(totals.discount)}`;
+            } else {
+                reviewDiscountRow.hidden = true;
+            }
+        }
     }
 
     bindCartListEvents(list);

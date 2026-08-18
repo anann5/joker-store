@@ -2,6 +2,8 @@ const { Product, Order, Category, Promotion } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const siteSettings = require('../config/siteSettings');
 const stripeController = require('./stripeController');
+const notification = require('./notification');
+const { applyPromoCode, applyPromoCodeToProducts, applyPromoCodeToProductIds, round2 } = require('./promo');
 const { getSafeBaseHost } = require('./helpers');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
@@ -420,6 +422,7 @@ exports.getActivePromotions = async (_req, res) => {
                     description: getLocalizedValue(promo.description),
                     discountPercent: promo.discountPercent,
                     expiresAt: promo.expiresAt,
+                    code: promo.code || null,
                     target: promo.productId
                         ? { type: 'product', id: promo.productId.toString() }
                         : { type: 'category', key: promo.category || null },
@@ -444,13 +447,15 @@ exports.getActivePromotions = async (_req, res) => {
 
 exports.createOrder = async (req, res) => {
     try {
-        const { cartItems, customerEmail, paymentGateway, paymentRef } = req.body;
+        const { cartItems, customerEmail, paymentGateway, paymentRef, promoCode: rawPromoCode } = req.body;
         if (paymentGateway === 'stripe' && !stripeController.isStripeEnabled()) {
             return res.status(400).json({ success: false, error: 'الدفع بالبطاقة غير مفعل حالياً.' });
         }
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
             return res.status(400).json({ success: false, error: 'سلة المشتريات فارغة.' });
         }
+
+        const promoCode = typeof rawPromoCode === 'string' ? rawPromoCode.trim().toUpperCase() : '';
 
         const quantities = new Map();
         for (const item of cartItems) {
@@ -469,6 +474,22 @@ exports.createOrder = async (req, res) => {
         const productIds = [...quantities.keys()];
         const productsInCart = await Product.find({ _id: { $in: productIds } });
         const productMap = new Map(productsInCart.map(product => [product._id.toString(), product]));
+
+        // كود خصم اختياري — يجب أن ينطبق على كل منتج مميز في السلة (لا خصم جزئي
+        // ولا خصم على منتجات لا يغطيها الكود). الخصم يُحسب على إجمالي الطلب.
+        let promoPercent = 0;
+        if (promoCode) {
+            const cartProducts = [...productMap.values()];
+            const promoResult = await applyPromoCodeToProducts({ code: promoCode, products: cartProducts });
+            if (!promoResult.ok) {
+                const errorMessage = promoResult.error === 'not_applicable'
+                    ? 'رمز الخصم لا ينطبق على هذه المنتجات'
+                    : 'رمز الخصم غير صالح';
+                return res.status(400).json({ success: false, error: errorMessage });
+            }
+            promoPercent = Number(promoResult.discountPercent) || 0;
+        }
+
         const itemsForOrder = [];
         let total = 0;
 
@@ -488,7 +509,7 @@ exports.createOrder = async (req, res) => {
             }
 
             const unitPrice = Number(product.price);
-            const itemPrice = unitPrice * qty;
+            const itemPrice = round2(unitPrice * qty);
             total += itemPrice;
             itemsForOrder.push({
                 productId: product._id,
@@ -505,6 +526,12 @@ exports.createOrder = async (req, res) => {
             return res.status(400).json({ success: false, error: 'تعذر إنشاء طلب صالح من السلة.' });
         }
 
+        // الخصم يُحسب على إجمالي الطلب ويبقى سعر العناصر على حاله (الخادم هو المرجع)
+        const discountAmount = promoCode && promoPercent > 0 ? round2(total * promoPercent / 100) : 0;
+        if (discountAmount > 0) {
+            total = round2(total - discountAmount);
+        }
+
         const orderId = uuidv4().split('-')[0].toUpperCase();
         const newOrder = new Order({
             orderId,
@@ -515,10 +542,18 @@ exports.createOrder = async (req, res) => {
             paymentGateway,
             paymentRef,
             status: 'pending',
-            userId: req.user?.userId || null
+            userId: req.user?.userId || null,
+            discount: promoCode ? discountAmount : 0,
+            discountCode: promoCode || null,
+            discountPercent: promoCode ? promoPercent : 0
         });
 
         await newOrder.save();
+
+        // إشعار الزبون فور الاستلام (لا يُعطّل عملية الدفع عند الفشل)
+        notification.sendOrderCreatedEmail(newOrder).catch(err => {
+            console.error('Order-created email failure:', err && err.message);
+        });
 
         // Stripe: إنشاء جلسة دفع آمنة مستضافة على Stripe (لا حاجة لمكتبة عميل)
         let stripeUrl = null;
@@ -558,11 +593,35 @@ exports.createOrder = async (req, res) => {
             success: true,
             message: 'تم استلام طلبك بنجاح.',
             orderId,
+            discount: newOrder.discount,
+            discountCode: newOrder.discountCode,
+            total: newOrder.price,
             ...(stripeUrl ? { stripeUrl, gateway: 'stripe' } : {})
         });
     } catch (err) {
         console.error('Order creation error:', err);
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء إنشاء الطلب.' });
+    }
+};
+
+/**
+ * التحقق من صحة كود الخصم — يُستخدم من نموذج الدفع والمودال.
+ * الجسم المتوقع: { code, productId } لمنتج واحد، أو { code, productIds: [...] } للسلة كاملة.
+ * عندما تُرسل السلة كاملة، يتحقق الخادم من أن الكود ينطبق على كل منتج مميز فيها.
+ */
+exports.validatePromoCode = async (req, res) => {
+    try {
+        const code = typeof req.body.code === 'string' ? req.body.code.trim() : '';
+        const productIds = Array.isArray(req.body.productIds) ? req.body.productIds : [];
+        const result = productIds.length > 0
+            ? await applyPromoCodeToProductIds({ code, productIds })
+            : await applyPromoCode({ code, productId: typeof req.body.productId === 'string' ? req.body.productId : '' });
+        if (!result.ok) {
+            return res.json({ ok: false, code: result.error || 'invalid' });
+        }
+        res.json({ ok: true, ...result });
+    } catch (_err) {
+        res.status(200).json({ success: false, code: 'invalid' });
     }
 };
 

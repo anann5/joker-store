@@ -10,6 +10,7 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 }
 
 // SVG مستبعد عمداً: قد يحتوي سكربتات قابلة للتنفيذ.
+// يُفضَّل رفع صور WebP لأنها أخف بنسبة تصل لـ 30-50% وتُحمّل أسرع في الواجهة.
 const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 
 const storage = multer.diskStorage({
