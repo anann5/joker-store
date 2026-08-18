@@ -57,6 +57,9 @@ router.get('/products/:productId/reviews', storeController.getProductReviews);
 // Route to get active promotions (deals/discounts) for the storefront
 router.get('/promotions', storeController.getActivePromotions);
 
+// Route to fetch site-wide customer testimonials (latest product reviews)
+router.get('/testimonials', storeController.getTestimonials);
+
 // Route to get products by category — MUST be last (catch-all with :categoryKey)
 router.get('/products/:categoryKey', storeController.getProductsByCategory);
 

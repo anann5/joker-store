@@ -1,4 +1,4 @@
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme } from './shared.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
 
@@ -14,6 +14,31 @@ export function escapeHtml(value) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+/**
+ * تجهيز صورة الكرت: يربط حالة "تحميل الصورة" لإيقاف الـ shimmer عند اكتمالها.
+ * @param {HTMLImageElement} img - عنصر الصورة داخل بطاقة منتج.
+ */
+export function bindCardImageState(img) {
+    if (!img) return;
+    const container = img.closest('.card-img-container');
+    if (!container) return;
+    const done = () => container.classList.add('img-loaded');
+    if (img.complete && img.naturalWidth > 0) done();
+    else {
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+    }
+}
+
+/**
+ * إظهار/إخفاء شريط الضمانات داخل منطقة القسم والمنتجات.
+ * @param {boolean} visible
+ */
+export function setGuaranteeStripVisible(visible) {
+    const strip = document.getElementById('trustGuardStrip');
+    if (strip) strip.hidden = !visible;
 }
 
 /**
@@ -116,6 +141,10 @@ export function showAllCategories() {
     const toolbar = document.getElementById('categoryToolbar');
     if (toolbar) toolbar.classList.add('hidden');
 
+    const categoryBanner = document.getElementById('categoryBanner');
+    if (categoryBanner) categoryBanner.hidden = true;
+    setGuaranteeStripVisible(false);
+
     document.querySelectorAll('#filterTabs .filter-btn').forEach(b => b.classList.remove('active'));
     const allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
     if (allBtn) allBtn.classList.add('active');
@@ -123,9 +152,13 @@ export function showAllCategories() {
     const template = document.getElementById('category-card-template');
     grid.innerHTML = ''; // تفريغ المحتوى قبل الإضافة
 
-    Object.entries(rawServerData.categories).forEach(([key, cat]) => {
+    Object.entries(rawServerData.categories).forEach(([key, cat], idx) => {
         const card = template.content.cloneNode(true);
-        card.querySelector('.category-card').dataset.category = key;
+        const cardElement = card.querySelector('.category-card');
+        cardElement.dataset.category = key;
+        cardElement.style.setProperty('--i', String(idx));
+        const theme = getCategoryTheme(key);
+        cardElement.style.setProperty('--cat-color', theme.color);
         card.querySelector('img').src = resolveImageUrl(cat.image);
         card.querySelector('img').alt = cat.title;
         card.querySelector('h3').textContent = cat.title;
@@ -148,6 +181,8 @@ export function showProductDetails(product, currentCategory = '') {
 
     const toolbar = document.getElementById('categoryToolbar');
     if (toolbar) toolbar.classList.add('hidden');
+
+    setGuaranteeStripVisible(true);
 
     // استخدام القالب الجاهز من HTML
     const template = document.getElementById('product-details-template');
@@ -173,7 +208,7 @@ export function showProductDetails(product, currentCategory = '') {
                 const productCardTemplate = document.getElementById('product-card-template');
                 const { productCache, formatItem, detectRegion, getRegionDetails } = await import('./script.js');
 
-                data.products.forEach(item => {
+                data.products.forEach((item, idx) => {
                     const localizedName = item.productName[lang] || item.productName['ar'];
                     const detectedRegion = detectRegion(item);
                     const regionInfo = getRegionDetails(detectedRegion);
@@ -185,10 +220,14 @@ export function showProductDetails(product, currentCategory = '') {
                     const cardElement = card.querySelector('.product-item-card');
                     cardElement.dataset.productId = clientItem.id;
                     cardElement.dataset.region = detectedRegion;
+                    cardElement.style.setProperty('--i', String(idx));
                     card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
                     const imgElement = card.querySelector('.card-inner-img');
                     imgElement.src = clientItem.image;
                     imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
+                    bindCardImageState(imgElement);
+                    const quickAdd = card.querySelector('[data-quick-add]');
+                    if (quickAdd) quickAdd.dataset.productId = clientItem.id;
                     card.querySelector('.card-title').textContent = clientItem.name;
                     card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
                     card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
@@ -391,6 +430,21 @@ export function updateCartUI() {
 
     const total = items.reduce((sum, item) => sum + (Number(item.price || 0) * (Number(item.qty) || 1)), 0);
     if (totalEl) totalEl.textContent = formatPrice(total);
+
+    // ملخص المراجعة (الخطوة 3) — قائمة قراءة فقط
+    const reviewList = document.getElementById('cartReviewList');
+    if (reviewList) {
+        reviewList.innerHTML = items.length === 0
+            ? ''
+            : items.map(item => `
+                <div class="review-cart-item">
+                    <span class="review-cart-name">${escapeHtml(item.name)}</span>
+                    <span class="review-cart-qty">× ${Number(item.qty) || 1}</span>
+                    <span class="review-cart-price">${formatPrice(Number(item.price || 0) * (Number(item.qty) || 1))}</span>
+                </div>`).join('');
+        const reviewTotalEl = document.querySelector('.review-total-row .cart-total-amount');
+        if (reviewTotalEl) reviewTotalEl.textContent = formatPrice(total);
+    }
 
     bindCartListEvents(list);
 }

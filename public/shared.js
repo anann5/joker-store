@@ -7,6 +7,31 @@ import { t } from './i18n.js';
 
 export const rawServerData = { categories: {} };
 
+// ======================================================
+// 🎨 الثيمات البراندية للأقسام (لون الهوية + أيقونة)
+// ======================================================
+export const CATEGORY_THEMES = {
+    pubg: { color: '#F99E0A', icon: 'fas fa-crosshairs' },
+    fortnite: { color: '#7A1FF5', icon: 'fas fa-gun' },
+    playstation: { color: '#0070D1', icon: 'fab fa-playstation' },
+    xbox: { color: '#107C10', icon: 'fab fa-xbox' },
+    steam: { color: '#66C0F4', icon: 'fab fa-steam' },
+    microsoft_windows: { color: '#0078D4', icon: 'fab fa-windows' },
+    adobe: { color: '#DA2200', icon: 'fas fa-paint-brush' },
+    antivirus: { color: '#0FA958', icon: 'fas fa-shield-halved' },
+    vpn: { color: '#12B7F5', icon: 'fas fa-lock' },
+    google: { color: '#34A853', icon: 'fab fa-google-play' },
+    itunes: { color: '#A2AAAD', icon: 'fab fa-apple' },
+    razer_gold: { color: '#00A651', icon: 'fas fa-coins' },
+    amazon: { color: '#FF9900', icon: 'fab fa-amazon' },
+    gaming_general: { color: '#00E5FF', icon: 'fas fa-gamepad' },
+    fallback: { color: '#00E5FF', icon: 'fas fa-tag' }
+};
+
+export function getCategoryTheme(categoryKey) {
+    return CATEGORY_THEMES[categoryKey] || CATEGORY_THEMES.fallback;
+}
+
 export function renderRatingStars(rating = 0, reviewsCount = 0) {
     const value = Number(rating) || 0;
     const rounded = Math.max(0, Math.min(5, Math.round(value)));

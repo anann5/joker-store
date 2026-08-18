@@ -689,4 +689,46 @@ exports.getProductReviews = async (req, res) => {
     }
 };
 
+/**
+ * جلب أحدث تقييمات العملاء على مستوى المتجر (للقسم الرئيسي "قالوا عنا").
+ * - تُقرأ المراجعات من المنتجات النشطة فقط
+ * - يُكشف فقط اسم المنتج المترجم والتقييم والتعليق والتاريخ
+ * - لا يُكشف البريد الإلكتروني للمراجع أبداً
+ */
+exports.getTestimonials = async (_req, res) => {
+    try {
+        const testimonials = await cacheWrap('testimonials', 300, async () => {
+            const products = await Product.find({ isActive: true, 'reviews.0': { $exists: true } })
+                .select('productName reviews')
+                .limit(60);
+
+            const collected = [];
+            for (const product of products) {
+                const localizedProductName = getLocalizedValue(product.productName);
+                const reviews = Array.isArray(product.reviews) ? product.reviews : [];
+                for (const review of reviews) {
+                    const rating = Number(review.rating) || 0;
+                    if (rating < 1 || rating > 5) continue;
+                    if (!review.createdAt) continue; // لا تاريخ صريح → نتخطى المراجعة ولا نلفّق تاريخاً
+                    const reviewDate = new Date(review.createdAt);
+                    if (!(reviewDate instanceof Date) || Number.isNaN(reviewDate.getTime())) continue;
+                    collected.push({
+                        productName: localizedProductName,
+                        rating,
+                        comment: typeof review.comment === 'string' ? review.comment.trim() : '',
+                        createdAt: reviewDate
+                    });
+                }
+            }
+
+            collected.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            return collected.slice(0, 10);
+        });
+
+        res.json({ success: true, testimonials });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل في جلب تقييمات العملاء' });
+    }
+};
+
 exports.toPublicProduct = toPublicProduct;

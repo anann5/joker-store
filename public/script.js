@@ -1,9 +1,9 @@
-import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer, escapeHtml } from './ui.js';
+import { showAllCategories, showProductDetails, updateCartUI, showToast, initToastContainer, escapeHtml, bindCardImageState, setGuaranteeStripVisible } from './ui.js';
 import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme } from './shared.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
@@ -33,6 +33,21 @@ function initHeroSlider() {
 // ======================================================
 // 🛡️ تحديث شريط الثقة ببيانات حقيقية
 // ======================================================
+let _lastTickerOrders = [];
+
+function renderTickerItems() {
+    const tickerZone = document.querySelector('.ticker-content');
+    if (!tickerZone || _lastTickerOrders.length === 0) return;
+
+    const itemsHtml = _lastTickerOrders.map(o => {
+        const id = escapeHtml(String(o.orderId || '')).substring(0, 8);
+        const name = escapeHtml(String(o.productName || ''));
+        return `<span class="ticker-item"><i class="fas fa-check-circle" aria-hidden="true"></i><b>${id}</b><span class="ticker-name">${name}</span><em>${t('ticker_moment')}</em></span>`;
+    }).join('<span class="ticker-sep" aria-hidden="true">✦</span>');
+
+    tickerZone.innerHTML = `${itemsHtml} <span class="ticker-item trust">${t('trust_all_codes')}</span>`;
+}
+
 async function updateTrustTicker() {
     const tickerZone = document.querySelector('.ticker-content');
     if (!tickerZone) return;
@@ -41,12 +56,8 @@ async function updateTrustTicker() {
         const res = await fetch('/api/products/latest-orders'); // سنفترض وجود هذا المسار البسيط
         const data = await res.json();
         if (data.success && data.orders.length > 0) {
-            const tickerText = data.orders.map(o => 
-                t('ticker_delivered')
-                    .replace('{orderId}', escapeHtml(o.orderId).substring(0, 8))
-                    .replace('{productName}', escapeHtml(o.productName)) + ' .. '
-            ).join(' ✅ ');
-            tickerZone.innerHTML = `${tickerText} ${t('trust_all_codes')}`;
+            _lastTickerOrders = data.orders;
+            renderTickerItems();
         }
     } catch (_e) {
         // في حال الفشل نترك النص الافتراضي الجميل الذي وضعناه
@@ -117,7 +128,7 @@ async function showWishlist() {
             return;
         }
 
-        wished.forEach(item => {
+        wished.forEach((item, idx) => {
             const localizedName = item.productName[lang] || item.productName['ar'];
             const detectedRegion = detectRegion(item);
             const regionInfo = getRegionDetails(detectedRegion);
@@ -127,10 +138,14 @@ async function showWishlist() {
             const cardElement = card.querySelector('.product-item-card');
             cardElement.dataset.productId = clientItem.id;
             cardElement.dataset.region = detectedRegion;
+            cardElement.style.setProperty('--i', String(idx));
             card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
             const img = card.querySelector('.card-inner-img');
             img.src = clientItem.image;
             img.onerror = () => { img.src = '/image/logo.png'; };
+            bindCardImageState(img);
+            const quickAdd = card.querySelector('[data-quick-add]');
+            if (quickAdd) quickAdd.dataset.productId = clientItem.id;
             card.querySelector('.card-title').textContent = clientItem.name;
             card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
             card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
@@ -220,11 +235,97 @@ function applySiteConfig() {
     } else if (proofEl) {
         proofEl.style.display = 'none';
     }
+
+    // شريط الإحصائيات في أعلى الصفحة الرئيسية
+    const homeStatsStrip = document.getElementById('homeStatsStrip');
+    const homeStatsCountEl = document.getElementById('homeStatsCount');
+    const homeStatsTextEl = document.getElementById('homeStatsText');
+    if (homeStatsStrip && (customers > 0 || orders > 0)) {
+        const target = customers + orders;
+        if (homeStatsCountEl) animateNumber(homeStatsCountEl, 0, target, 800);
+        if (homeStatsTextEl) homeStatsTextEl.textContent = t('stats_strip_text')
+            .replace('{customers}', customers)
+            .replace('{orders}', orders);
+        homeStatsStrip.hidden = false;
+    } else if (homeStatsStrip) {
+        homeStatsStrip.hidden = true;
+    }
+}
+
+/**
+ * عدّاد متحرك من صفر إلى القيمة المستهدفة (أثبات حي للإحصائيات).
+ * @param {HTMLElement} el - العنصر الذي يظهر الرقم.
+ * @param {number} from - قيمة البداية.
+ * @param {number} to - القيمة المستهدفة.
+ * @param {number} duration - مدة الحركة بالميلي ثانية.
+ */
+function animateNumber(el, from, to, duration = 800) {
+    if (typeof requestAnimationFrame !== 'function') {
+        el.textContent = to.toLocaleString();
+        return;
+    }
+    const prefersReducedMotion = window.matchMedia
+        ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        : false;
+    if (prefersReducedMotion) {
+        el.textContent = to.toLocaleString();
+        return;
+    }
+    const start = performance.now();
+    const tick = (now) => {
+        const p = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+        el.textContent = Math.round(from + (to - from) * eased).toLocaleString();
+        if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
 }
 
 // ======================================================
 //  🔍 تتبع الطلب
 // ======================================================
+// خط زمني من 3 خطوات لحالة الطلب (يُبنى كـ HTML وأسلاكه في style.css)
+function buildOrderTimeline(status) {
+    const steps = [
+        { key: 'track_step_received', state: 'pending' },
+        { key: 'track_step_processing', state: 'pending' },
+        { key: 'track_step_delivered', state: 'pending' }
+    ];
+
+    if (status === 'pending') {
+        steps[0].state = 'current';
+    } else if (status === 'processing') {
+        steps[0].state = 'done';
+        steps[1].state = 'current';
+    } else if (status === 'completed') {
+        steps[0].state = 'done';
+        steps[1].state = 'done';
+        steps[2].state = 'done';
+    }
+
+    return `
+        <div class="track-timeline">
+            ${steps.map(step => `
+                <div class="timeline-step ${step.state}">
+                    <span class="timeline-dot">${step.state === 'done' ? '<i class="fas fa-check"></i>' : ''}</span>
+                    <span class="timeline-step-label">${escapeHtml(t(step.key))}</span>
+                </div>`).join('')}
+        </div>`;
+}
+
+// عرض فشل/استرداد على الخط الزمني بالكامل (أحمر + ❌) دون صندوق الأكواد
+function buildOrderFailureTimeline() {
+    const steps = ['track_step_received', 'track_step_processing', 'track_step_delivered'];
+    return `
+        <div class="track-timeline fail">
+            ${steps.map(key => `
+                <div class="timeline-step fail">
+                    <span class="timeline-dot"><i class="fas fa-times"></i></span>
+                    <span class="timeline-step-label">${escapeHtml(t(key))}</span>
+                </div>`).join('')}
+        </div>`;
+}
+
 async function handleTrackOrder() {
     const emailInput = document.getElementById('trackEmailInput');
     const orderIdInput = document.getElementById('trackOrderIdInput');
@@ -258,14 +359,17 @@ async function handleTrackOrder() {
         const statusMap = {
             completed: { text: t('track_status_completed'), cls: 'completed' },
             pending: { text: t('track_status_pending'), cls: 'pending' },
-            failed: { text: t('track_status_failed'), cls: 'failed' }
+            processing: { text: t('track_status_processing'), cls: 'processing' },
+            failed: { text: t('track_status_failed'), cls: 'failed' },
+            refunded: { text: t('track_status_refunded'), cls: 'refunded' }
         };
 
         results.innerHTML = data.orders.map(order => {
             const st = statusMap[order.status] || { text: order.status, cls: '' };
+            const isFailure = order.status === 'failed' || order.status === 'refunded';
             const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
             const items = order.items.map(i => escapeHtml(i.name[lang] || i.name.ar)).join('، ');
-            const codesHtml = order.codes && order.codes.length
+            const codesHtml = (!isFailure && order.codes && order.codes.length)
                 ? `<div class="track-code-box"><span>${t('track_shipping_code')}</span><span class="track-code">${order.codes.map(escapeHtml).join('<br>')}</span></div>`
                 : '';
             return `
@@ -274,6 +378,7 @@ async function handleTrackOrder() {
                         <span class="track-id">#${escapeHtml(order.orderId)}</span>
                         <span class="status-badge ${st.cls}">${st.text}</span>
                     </div>
+                    ${isFailure ? buildOrderFailureTimeline() : buildOrderTimeline(order.status)}
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${formatPrice(order.price)}</b></div>
                     ${codesHtml}
@@ -347,6 +452,9 @@ export function selectCategory(categoryKey) {
         </div>
     `).join('');
 
+    renderCategoryBanner(categoryKey);
+    setGuaranteeStripVisible(true);
+
     fetch(`/api/products/${categoryKey}?lang=${getCurrentLanguage()}`)
         .then(function(res) { return res.json(); })
         .then(function(data) { // 🔥 تصحيح: المتغير الآن هو 'data' الذي يحتوي على success و products
@@ -358,6 +466,32 @@ export function selectCategory(categoryKey) {
             productCache.clear(); // تفريغ الكاش قبل ملئه من جديد
             renderCategoryProducts(grid);
         }).catch(err => console.error("Error fetching products:", err));
+}
+
+// ======================================================
+//  🏷️ بانر القسم الحالي
+// ======================================================
+function renderCategoryBanner(categoryKey) {
+    const banner = document.getElementById('categoryBanner');
+    if (!banner) return;
+    const cat = rawServerData.categories[categoryKey];
+    banner.hidden = false;
+
+    const iconEl = banner.querySelector('.category-banner-icon i');
+    const titleEl = banner.querySelector('.category-banner-title');
+    const tagEl = banner.querySelector('.category-banner-tag');
+    const metaEl = banner.querySelector('.category-banner-meta');
+    const countEl = banner.querySelector('[data-banner-count]');
+
+    if (titleEl) titleEl.textContent = cat ? cat.title : (categoryKey === 'all' ? t('all_products') : categoryKey);
+    if (tagEl && cat && cat.desc) { tagEl.textContent = cat.desc; }
+    else if (tagEl && !cat) { tagEl.textContent = t('category_banner_tag'); }
+    // يُملأ بالعدد الحقيقي في renderCategoryProducts بعد اكتمال الجلب
+    if (metaEl && countEl) countEl.textContent = '';
+    if (iconEl) iconEl.className = (getCategoryTheme(categoryKey) || {}).icon || 'fas fa-gamepad';
+
+    const accent = (getCategoryTheme(categoryKey) || {}).color || '#b8860b';
+    banner.style.setProperty('--banner-accent', accent);
 }
 
 /**
@@ -398,6 +532,16 @@ function renderCategoryProducts(grid) {
     const activeRegion = document.querySelector('#regionFilterBar .filter-btn.active');
     const currentRegion = activeRegion ? activeRegion.dataset.target : 'all';
 
+    // عدد البطاقات الظاهرة فعلياً (بعد فلترة المنطقة) لعرضه في بانر القسم
+    const displayedCount = visible.filter(item =>
+        currentRegion === 'all' || detectRegion(item) === currentRegion
+    ).length;
+
+    const bannerCountEl = document.querySelector('#categoryBanner [data-banner-count]');
+    if (bannerCountEl) {
+        bannerCountEl.textContent = t('banner_item_count').replace('{count}', String(displayedCount));
+    }
+
     targetGrid.innerHTML = '';
     const template = document.getElementById('product-card-template');
 
@@ -415,7 +559,7 @@ function renderCategoryProducts(grid) {
         return;
     }
 
-    visible.forEach(function(item) {
+    visible.forEach(function(item, idx) {
         const detectedRegion = detectRegion(item);
         if (currentRegion !== 'all' && detectedRegion !== currentRegion) return;
         const regionInfo = getRegionDetails(detectedRegion);
@@ -428,11 +572,15 @@ function renderCategoryProducts(grid) {
         const cardElement = card.querySelector('.product-item-card');
         cardElement.dataset.productId = clientItem.id;
         cardElement.dataset.region = detectedRegion;
+        cardElement.style.setProperty('--i', String(idx));
         card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
         imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
+        bindCardImageState(imgElement);
         card.querySelector('.card-inner-img').alt = clientItem.name;
+        const quickAdd = card.querySelector('[data-quick-add]');
+        if (quickAdd) quickAdd.dataset.productId = clientItem.id;
         card.querySelector('.card-title').textContent = clientItem.name;
         card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
         card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
@@ -567,7 +715,7 @@ function renderProductCards(products, containerId) {
         return;
     }
 
-    products.forEach(item => {
+    products.forEach((item, idx) => {
         // بما أن اسم المنتج يأتي ككائن (ar, en)، نختار اللغة الصحيحة
         const localizedName = item.productName[lang] || item.productName['ar'];
         const detectedRegion = detectRegion(item);
@@ -580,11 +728,15 @@ function renderProductCards(products, containerId) {
         const cardElement = card.querySelector('.product-item-card');
         cardElement.dataset.productId = clientItem.id;
         cardElement.dataset.region = detectedRegion;
+        cardElement.style.setProperty('--i', String(idx));
         card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
         imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
+        bindCardImageState(imgElement);
         card.querySelector('.card-inner-img').alt = clientItem.name;
+        const quickAdd = card.querySelector('[data-quick-add]');
+        if (quickAdd) quickAdd.dataset.productId = clientItem.id;
         card.querySelector('.card-title').textContent = clientItem.name;
         card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
         card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
@@ -676,6 +828,185 @@ async function renderNewlyAddedProducts() {
     }
 }
 
+// ======================================================
+//  💬 قسم "قالوا عنا" — سلايدر التقييمات (بيانات حقيقية)
+// ======================================================
+let _testimonialsCards = [];
+let _testimonialsIndex = 0;
+let _testimonialsTimer = null;
+
+function _getTestimonialsPerView() {
+    const slider = document.getElementById('testimonialsSlider');
+    if (!slider) return 3;
+    const raw = window.getComputedStyle(slider).getPropertyValue('--per-view').trim();
+    const perView = Number(raw);
+    return perView >= 1 ? perView : 3;
+}
+
+function _getTestimonialsMaxIndex(cards) {
+    const perView = _getTestimonialsPerView();
+    return Math.max(0, (cards || _testimonialsCards).length - perView);
+}
+
+function _updateTestimonialsTransform() {
+    const track = document.getElementById('testimonialsTrack');
+    const slider = document.getElementById('testimonialsSlider');
+    if (!track || !slider) return;
+    const cards = _testimonialsCards.length ? _testimonialsCards : Array.from(track.children);
+    const [firstCard] = cards;
+    if (!firstCard) return;
+    const perView = _getTestimonialsPerView();
+    const maxIndex = Math.max(0, cards.length - perView);
+    if (_testimonialsIndex > maxIndex) _testimonialsIndex = maxIndex;
+    const step = firstCard.getBoundingClientRect().width || firstCard.offsetWidth;
+    const direction = document.documentElement.dir === 'rtl' ? 1 : -1;
+    track.style.transform = `translateX(${direction * _testimonialsIndex * step}px)`;
+    slider.classList.toggle('single-page', maxIndex === 0);
+}
+
+function _stopTestimonialsAuto() {
+    if (_testimonialsTimer) {
+        clearInterval(_testimonialsTimer);
+        _testimonialsTimer = null;
+    }
+}
+
+function _restartTestimonialsAuto() {
+    const slider = document.getElementById('testimonialsSlider');
+    if (slider && slider.matches(':hover')) return; // إيقاف مؤقت أثناء مرور الماوس
+    _stopTestimonialsAuto();
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    _testimonialsTimer = setInterval(() => {
+        _testimonialsIndex = (_testimonialsIndex + 1) % (_getTestimonialsMaxIndex() + 1);
+        _updateTestimonialsTransform();
+    }, 6000);
+}
+
+function _bindTestimonialsControls() {
+    const slider = document.getElementById('testimonialsSlider');
+    if (!slider || slider.dataset.bound === 'true') return;
+    slider.dataset.bound = 'true';
+
+    const prevBtn = document.getElementById('testimonialsPrevBtn');
+    const nextBtn = document.getElementById('testimonialsNextBtn');
+    const maxIndex = () => _getTestimonialsMaxIndex();
+
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            _testimonialsIndex = (_testimonialsIndex - 1 + maxIndex() + 1) % (maxIndex() + 1);
+            _updateTestimonialsTransform();
+            _restartTestimonialsAuto();
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            _testimonialsIndex = (_testimonialsIndex + 1) % (maxIndex() + 1);
+            _updateTestimonialsTransform();
+            _restartTestimonialsAuto();
+        });
+    }
+
+    // إيقاف التشغيل التلقائي عند التمرير/التركيز واستئنافه عند المغادرة
+    slider.addEventListener('mouseenter', _stopTestimonialsAuto);
+    slider.addEventListener('mouseleave', _restartTestimonialsAuto);
+    slider.addEventListener('focusin', _stopTestimonialsAuto);
+    slider.addEventListener('focusout', _restartTestimonialsAuto);
+
+    // إعادة حساب حجم الصفحة عند تغيير عرض النافذة
+    let resizeRaf = null;
+    window.addEventListener('resize', () => {
+        if (resizeRaf) return;
+        resizeRaf = requestAnimationFrame(() => {
+            resizeRaf = null;
+            _updateTestimonialsTransform();
+        });
+    });
+
+    // عند عودة القسم إلى الشاشة (مثلاً بعد تصفح قسم) نعيد ضبط الموضع
+    if (window.IntersectionObserver) {
+        const visibilityObserver = new window.IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) _updateTestimonialsTransform();
+            });
+        });
+        visibilityObserver.observe(slider);
+    }
+}
+
+/**
+ * تاريخ نسبي قصير محلي ("منذ X"/"X ago") عبر Intl.RelativeTimeFormat.
+ */
+function formatTestimonialDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const locale = getCurrentLanguage() === 'en' ? 'en' : 'ar';
+
+    if (window.Intl && window.Intl.RelativeTimeFormat) {
+        const formatter = new window.Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+        const diffSec = (date.getTime() - Date.now()) / 1000;
+        const absSec = Math.abs(diffSec);
+        if (absSec < 60) return formatter.format(Math.round(diffSec / 1), 'second');
+        if (absSec < 3600) return formatter.format(Math.round(diffSec / 60), 'minute');
+        if (absSec < 86400) return formatter.format(Math.round(diffSec / 3600), 'hour');
+        if (absSec < 2592000) return formatter.format(Math.round(diffSec / 86400), 'day');
+        if (absSec < 31536000) return formatter.format(Math.round(diffSec / 2592000), 'month');
+        return formatter.format(Math.round(diffSec / 31536000), 'year');
+    }
+
+    // احتياطي: تاريخ قصير فقط
+    return date.toLocaleDateString(locale === 'en' ? 'en-GB' : 'ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+/**
+ * جلب وعرض تقييمات العملاء في القسم الرئيسي.
+ * إذا لم توجد تقييمات يُخفى القسم كاملاً (لا مكان فارغ).
+ */
+async function renderTestimonials() {
+    const section = document.getElementById('testimonialsSection');
+    const track = document.getElementById('testimonialsTrack');
+    if (!section || !track) return;
+
+    section.hidden = true;
+    _stopTestimonialsAuto();
+
+    try {
+        const res = await fetch('/api/testimonials');
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.testimonials) || data.testimonials.length === 0) return;
+
+        const lang = getCurrentLanguage();
+        track.innerHTML = data.testimonials.map(item => {
+            const productName = String((item.productName || {})[lang] || (item.productName || {}).ar || '');
+            const comment = item.comment ? item.comment.trim() : '';
+            const commentHtml = comment
+                ? escapeHtml(comment)
+                : `<span class="testimonial-anonymous">${escapeHtml(t('testimonial_anonymous'))}</span>`;
+            return `
+                <div class="testimonial-card">
+                    <div class="testimonial-card-inner">
+                        <div class="testimonial-stars">${renderRatingStars(item.rating, 0)}</div>
+                        <p class="testimonial-text">${commentHtml}</p>
+                        <div class="testimonial-footer">
+                            <span class="testimonial-product"><i class="fas fa-tag"></i> ${escapeHtml(productName)}</span>
+                            <span class="testimonial-verified"><i class="fas fa-check-circle"></i> ${escapeHtml(t('testimonial_verified'))}</span>
+                            <span class="testimonial-date">${escapeHtml(formatTestimonialDate(item.createdAt))}</span>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+
+        _testimonialsCards = Array.from(track.querySelectorAll('.testimonial-card'));
+        _testimonialsIndex = 0;
+        _bindTestimonialsControls();
+        _updateTestimonialsTransform();
+        _restartTestimonialsAuto();
+        section.hidden = false;
+    } catch (_e) {
+        // فشل الجلب → يُبقى القسم مخفياً (لا نعرض أي محتوى وهمي)
+    }
+}
+
 /**
  * يعالج حدث تغيير اللغة، ويقوم بجلب بيانات الأقسام والمنتجات وعرضها باللغة الجديدة.
  */
@@ -691,9 +1022,9 @@ async function handleLanguageChange(event) {
 
             // تحديث كل المقاطع الديناميكية للغة الجديدة
             productCache.clear();          // تفريغ الكاش حتى تُعرض التفاصيل باللغة الجديدة
-            await loadSearchIndex();       // تحديث فهرس البحث (يُستخدم للروابط العميقة)
             renderBestSellingProducts();   // إعادة عرض "الأكثر مبيعاً"
             renderNewlyAddedProducts();    // إعادة عرض "وصل حديثاً"
+            renderTestimonials();          // إعادة عرض "قالوا عنا"
 
             const grid = document.getElementById('mainCategories');
             const inCategoryView = grid && grid.classList.contains('products-grid');
@@ -711,6 +1042,7 @@ async function handleLanguageChange(event) {
     } catch (error) {
         console.error("Failed to reload dynamic categories:", error);
     }
+    renderTickerItems(); // إعادة عرض شريط الثقة باللغة الجديدة
 }
 
 // هل نحن داخل رابط عميق مباشر لمنتج؟
@@ -771,16 +1103,14 @@ async function initializeApp() {
     // عرض المحتوى الديناميكي لضمان ترجمته باللغة الصحيحة منذ البداية.
     await initI18n(); 
 
-    // 2. المستمع لحدث 'languageChanged' سيتكفل بجلب الأقسام وعرضها.
+    // 2. المستمع لحدث 'languageChanged' (المُسجَّل أعلاه ويُطلق أثناء initI18n)
+    //    هو المسؤول الوحيد عن جلب الأقسام وعرض أزرار الفلترة والمقاطع الرئيسية
+    //    (الأكثر مبيعاً، وصل حديثاً، "قالوا عنا") — لا نكرر الاستدعاءات هنا.
     // 3. باقي عمليات التهيئة التي لا تعتمد على اللغة.
     initToastContainer(); // تهيئة حاوية الإشعارات
-    renderCategoryFilterButtons(); // عرض أزرار فلترة الأقسام
-    renderRegionFilterButtons();   // عرض أزرار فلترة المناطق
     initHeroSlider(); // تشغيل السلايدر
-    renderNewlyAddedProducts(); // 🚀 عرض المنتجات المضافة حديثاً
-    renderBestSellingProducts(); // 🚀 عرض المنتجات الأكثر مبيعاً
 
-    // 🚀 جلب فهرس البحث في الخلفية (يُستخدم للبحث السريع ولفتح الروابط العميقة)
+    // 🚀 جلب فهرس البحث (مرة واحدة فقط هنا) — يُستخدم للبحث السريع وللروابط العميقة
     await loadSearchIndex();
 
     // 🚀 فتح رابط عميق مباشر للمنتج (تحسين SEO + قابلية مشاركة الروابط)
@@ -898,9 +1228,32 @@ function setupEventListeners() {
         });
     }
 
+    // عرض إيصال الطلب في مودال الكود بعد نجاح العملية
+    function renderCodeModalReceipt(result, onDone) {
+        const codeModalEl = document.getElementById('codeModal');
+        if (!codeModalEl) { if (onDone) onDone(); return; }
+
+        const titleEl = document.getElementById('modalProductTitle');
+        if (titleEl) {
+            titleEl.textContent = t('codeModal_confirm')
+                .replace('{orderId}', escapeHtml(result.orderId || ''));
+        }
+
+        const codeEl = document.getElementById('generatedCode');
+        if (codeEl) {
+            codeEl.textContent = result.orderId || '—';
+            codeEl.classList.remove('revealed');
+            requestAnimationFrame(() => codeEl.classList.add('revealed'));
+        }
+
+        codeModalEl.classList.add('active');
+        if (onDone) onDone();
+    }
+
     // صائد ضغطات الكروت والدخول للسلة
     document.getElementById('mainCategories').addEventListener('click', function(e) {
         if (e.target.closest('[data-wishlist-btn]')) return; // لا تفتح التفاصيل عند ضغط زر الأمنيات
+        if (e.target.closest('[data-quick-add]')) return; // لا تفتح التفاصيل عند ضغط زر الإضافة السريعة
         
         const enterBtn = e.target.closest('.enter-btn[data-category]');
         if (enterBtn) {
@@ -1066,9 +1419,61 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             if (loggedInUser && emailInput) {
                 emailInput.value = loggedInUser.email;
             }
+            setCheckoutStep(1);
             updateCartUI();
             purchaseModal.classList.add('active'); 
         });
+    }
+
+    // ======================================================
+    //  خطوات الشراء (بيانات ← دفع ← استلام)
+    // ======================================================
+    let checkoutStep = 1;
+    const checkoutPrevBtn = document.getElementById('checkoutPrevBtn');
+    const checkoutNextBtn = document.getElementById('checkoutNextBtn');
+    const submitOrderBtnEl = document.getElementById('submitOrderBtn');
+
+    function setCheckoutStep(step) {
+        checkoutStep = Math.min(3, Math.max(1, step));
+
+        document.querySelectorAll('[data-checkout-panel]').forEach(panel => {
+            const active = Number(panel.dataset.checkoutPanel) === checkoutStep;
+            panel.classList.toggle('active', active);
+            panel.setAttribute('aria-hidden', String(!active));
+        });
+
+        document.querySelectorAll('[data-checkout-step-label]').forEach(stepEl => {
+            const stepNumber = Number(stepEl.dataset.checkoutStepLabel);
+            stepEl.classList.toggle('active', stepNumber <= checkoutStep);
+            stepEl.classList.toggle('done', stepNumber < checkoutStep);
+        });
+
+        if (checkoutPrevBtn) checkoutPrevBtn.disabled = checkoutStep === 1;
+        if (checkoutNextBtn) checkoutNextBtn.style.display = checkoutStep === 3 ? 'none' : 'inline-flex';
+        if (submitOrderBtnEl) submitOrderBtnEl.style.display = checkoutStep === 3 ? 'inline-flex' : 'none';
+
+        if (checkoutStep === 3) updateCartUI(); // تحديث ملخص المراجعة قبل الظهور
+    }
+
+    if (checkoutNextBtn) {
+        checkoutNextBtn.addEventListener('click', () => {
+            if (checkoutStep === 1) {
+                const email = document.getElementById('user-email');
+                if (!email || !email.value.trim()) { showToast(t('checkout_email_required'), 'error'); return; }
+            }
+            if (checkoutStep === 2) {
+                const gateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
+                const refInput = document.getElementById('paymentRefInput');
+                if (gateway !== 'stripe' && (!refInput || !refInput.value.trim())) {
+                    showToast(t('checkout_ref_required'), 'error');
+                    return;
+                }
+            }
+            setCheckoutStep(checkoutStep + 1);
+        });
+    }
+    if (checkoutPrevBtn) {
+        checkoutPrevBtn.addEventListener('click', () => setCheckoutStep(checkoutStep - 1));
     }
 
     // تغيير المحافظ ديناميكياً داخل المودال
@@ -1139,6 +1544,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
                 if (result.success) {
                     purchaseModal.classList.remove('active');
+                    setCheckoutStep(1);
                     cart.length = 0; // تفريغ المصفوفة
                     localStorage.removeItem('joker_cart');
                     updateCartUI();
@@ -1146,7 +1552,9 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                         window.open(result.stripeUrl, '_blank', 'noopener');
                         showToast(t('checkout_stripe_success'), 'success');
                     } else {
-                        showToast(t('checkout_success'), 'success');
+                        renderCodeModalReceipt(result, () => {
+                            showToast(t('checkout_success'), 'success');
+                        });
                     }
                 } else {
                     showToast(`❌ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');
@@ -1183,6 +1591,49 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         if (!id) return;
         const added = toggleWishlistKey(id);
         showToast(added ? t('wishlist_added') : t('wishlist_removed'), added ? 'success' : 'info');
+    });
+
+    // زر "إضافة سريعة" (+)
+    document.addEventListener('click', function(e) {
+        const addBtn = e.target.closest('[data-quick-add]');
+        if (!addBtn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const id = addBtn.dataset.productId;
+        if (!id) return;
+        const item = productCache.get(id);
+        if (!item) return;
+        // المخزون غير معروف (خارجي) → يُعتبر متوفراً؛ النفاذ فقط عندما يكون رقماً معروفاً ≤ 0
+        if (item.availableStock !== null && item.availableStock !== undefined && Number(item.availableStock) <= 0) {
+            showToast(t('stock_out'), 'error');
+            return;
+        }
+        addToCart(item); // addToCart يعرض إشعار "cart_added" بنفسه ولا حاجة لإشعار مكرر
+        addBtn.classList.add('added');
+        const label = addBtn.querySelector('i');
+        if (label) label.classList.replace('fa-plus', 'fa-check');
+        setTimeout(() => {
+            addBtn.classList.remove('added');
+            if (label) label.classList.replace('fa-check', 'fa-plus');
+        }, 1400);
+    });
+
+    // تأثير 3D خفيف عند مرور الفأرة على الكرت
+    document.addEventListener('mousemove', function(e) {
+        const card = e.target.closest('.product-item-card');
+        if (!card || card.closest('.tilt-disabled')) return;
+        if (!window.matchMedia('(hover: hover)').matches) return;
+        const rect = card.getBoundingClientRect();
+        const px = (e.clientX - rect.left) / rect.width - 0.5;
+        const py = (e.clientY - rect.top) / rect.height - 0.5;
+        card.style.setProperty('--tilt-x', `${py * -5}deg`);
+        card.style.setProperty('--tilt-y', `${px * 5}deg`);
+    });
+    document.addEventListener('mouseleave', () => {
+        document.querySelectorAll('.product-item-card').forEach(card => {
+            card.style.setProperty('--tilt-x', '0deg');
+            card.style.setProperty('--tilt-y', '0deg');
+        });
     });
 
     // فتح/إغلاق نافذة تتبع الطلب
