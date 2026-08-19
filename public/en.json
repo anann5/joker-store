@@ -343,5 +343,18 @@
     "realtime_order_completed": "✅ Your order {orderId} is complete — grab your code now!",
     "realtime_order_rejected": "❌ Order {orderId} was rejected — amount refunded.",
     "mobile_cart_label": "Cart",
-    "mobile_cart_checkout": "Checkout"
+    "mobile_cart_checkout": "Checkout",
+    "receipt_title": "🎉 Your order is received!",
+    "copy_order_id_btn": "Copy Order ID",
+    "receipt_waiting_title": "Waiting for payment confirmation",
+    "receipt_waiting_desc": "Your code will appear here automatically once we confirm the transfer. Closing this window won't lose your order — follow up anytime from the order tracking page.",
+    "receipt_delivered_title": "🎁 Your codes are ready!",
+    "receipt_delivered_desc": "Copy the code and redeem it in your game or platform. The code hides automatically after the timer for your privacy.",
+    "receipt_countdown": "Code visible for {time}",
+    "receipt_expired": "The on-screen viewing time has passed for security — you can still retrieve it anytime from order tracking.",
+    "receipt_open_tracking": "Open order tracking",
+    "receipt_failed_title": "We couldn't confirm your transfer",
+    "receipt_failed_desc": "Check the amount or contact us on WhatsApp and we'll help right away.",
+    "track_copy_code": "Copy",
+    "track_copy_manual": "Code selected — press Ctrl+C to copy"
 }

@@ -425,7 +425,7 @@ async function handleTrackOrder() {
             const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
             const items = order.items.map(i => escapeHtml(i.name[lang] || i.name.ar)).join('، ');
             const codesHtml = (!isFailure && order.codes && order.codes.length)
-                ? `<div class="track-code-box"><span>${t('track_shipping_code')}</span><span class="track-code">${order.codes.map(escapeHtml).join('<br>')}</span></div>`
+                ? `<div class="track-code-box"><span class="track-code-label">${escapeHtml(t('track_shipping_code'))}</span>${order.codes.map(c => `<span class="track-code-row"><code class="track-code" dir="ltr">${escapeHtml(c)}</code><button type="button" class="track-copy-btn" data-code="${escapeHtml(c)}" title="${escapeHtml(t('track_copy_code'))}" aria-label="${escapeHtml(t('track_copy_code'))}"><i class="fas fa-copy"></i></button></span>`).join('')}</div>`
                 : '';
             return `
                 <div class="track-result-card">
@@ -443,6 +443,222 @@ async function handleTrackOrder() {
         results.innerHTML = `<p style="color:#e74c3c; text-align:center;">❌ ${t('auth_error_connection')}</p>`;
     }
 }
+
+// ======================================================
+//  💳 إيصال الطلب + استلام الأكواد لحظياً
+//  يعرض رقم الطلب، ينتظر تأكيد الأدمن بالاستطلاع، ثم
+//  يسلّم الأكواد مع زر نسخ وعدّاد يُخفيها بعد 15 دقيقة.
+//  الأكواد تبقى محفوظة في تتبع الطلب حتى بعد إغلاق الصفحة.
+// ======================================================
+const RECEIPT_CODE_TTL = 15 * 60 * 1000; // 15 دقيقة من لحظة التسليم
+let _receiptPollTimer = null;
+let _receiptCountdownTimer = null;
+let _receiptPollFn = null;
+let _receiptContext = null;
+
+function stopReceiptPolling() {
+    if (_receiptPollTimer) { clearInterval(_receiptPollTimer); _receiptPollTimer = null; }
+    _receiptPollFn = null;
+}
+
+function stopReceiptCountdown() {
+    if (_receiptCountdownTimer) { clearInterval(_receiptCountdownTimer); _receiptCountdownTimer = null; }
+}
+
+async function copyTextToClipboard(text) {
+    const str = String(text ?? '');
+    try {
+        await navigator.clipboard.writeText(str);
+        return true;
+    } catch (_e) {
+        const ta = document.createElement('textarea');
+        ta.value = str;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_e2) { ok = false; }
+        // أولوية النجاح: إن فشل التنفيذ نُبقي التحديد للنسخ اليدوي بـ Ctrl+C
+        if (!ok) {
+            const range = document.createRange();
+            range.selectNodeContents(ta);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            return false;
+        }
+        ta.remove();
+        return true;
+    }
+}
+
+function formatCountdown(ms) {
+    const total = Math.max(0, Math.ceil(ms / 1000));
+    const m = String(Math.floor(total / 60)).padStart(2, '0');
+    const s = String(total % 60).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+function renderReceiptCodes(order) {
+    const zone = document.getElementById('deliveredCodesZone');
+    const list = document.getElementById('receiptCodesList');
+    const countdownEl = document.getElementById('receiptCountdown');
+    const statusZone = document.getElementById('receiptStatusZone');
+    if (!zone || !list) return;
+
+    const codes = (order && order.codes && order.codes.length) ? order.codes : [];
+    if (!codes.length) return;
+
+    // بداية العدّاد = وقت اكتمال الطلب من الخادم (يثبت عبر إعادة فتح الصفحة)
+    const startMs = order.completedAt ? new Date(order.completedAt).getTime() : Date.now();
+    const endMs = startMs + RECEIPT_CODE_TTL;
+    const ttlKey = `joker:receipt:end:${order.orderId}`;
+    const stored = Number(sessionStorage.getItem(ttlKey) || 0);
+    const finalEnd = (stored && stored >= endMs - RECEIPT_CODE_TTL && stored <= endMs + RECEIPT_CODE_TTL) ? stored : endMs;
+    sessionStorage.setItem(ttlKey, String(finalEnd));
+
+    list.innerHTML = codes.map(code =>
+        `<div class="receipt-code-row">
+            <code dir="ltr">${escapeHtml(code)}</code>
+            <button type="button" class="receipt-copy-one" data-code="${escapeHtml(code)}" title="${escapeHtml(t('track_copy_code'))}" aria-label="${escapeHtml(t('track_copy_code'))}"><i class="fas fa-copy"></i></button>
+        </div>`).join('');
+
+    if (statusZone) statusZone.innerHTML = '';
+    zone.hidden = false;
+    zone.classList.remove('codes-hidden');
+    const trackBtn = document.getElementById('openTrackingBtn');
+    if (trackBtn) trackBtn.hidden = false;
+
+    stopReceiptCountdown();
+    const tick = () => {
+        const remain = finalEnd - Date.now();
+        if (remain <= 0) {
+            stopReceiptCountdown();
+            if (countdownEl) countdownEl.textContent = t('receipt_expired');
+            list.classList.add('codes-hidden');
+            list.querySelectorAll('code').forEach(c => { c.textContent = '••••••••'; });
+            return;
+        }
+        if (countdownEl) countdownEl.textContent = t('receipt_countdown').replace('{time}', formatCountdown(remain));
+    };
+    tick();
+    _receiptCountdownTimer = setInterval(tick, 1000);
+}
+
+function renderOrderReceipt({ email, orderId }) {
+    stopReceiptPolling();
+    stopReceiptCountdown();
+    _receiptContext = { email, orderId };
+
+    const titleEl = document.getElementById('modalProductTitle');
+    const codeEl = document.getElementById('generatedCode');
+    const statusZone = document.getElementById('receiptStatusZone');
+    const codesZone = document.getElementById('deliveredCodesZone');
+    const openTrackingBtn = document.getElementById('openTrackingBtn');
+
+    if (titleEl) titleEl.textContent = email || '';
+    if (codeEl) {
+        codeEl.textContent = orderId || '—';
+        codeEl.classList.remove('revealed');
+        requestAnimationFrame(() => codeEl.classList.add('revealed'));
+    }
+    if (statusZone) statusZone.innerHTML = '';
+    if (codesZone) { codesZone.hidden = true; codesZone.classList.remove('codes-hidden'); }
+    if (openTrackingBtn) openTrackingBtn.hidden = false;
+    openModal(document.getElementById('codeModal'));
+
+    if (statusZone) {
+        statusZone.innerHTML = `
+            <div class="receipt-waiting">
+                <span class="receipt-spinner"><i class="fas fa-circle-notch fa-spin"></i></span>
+                <p class="receipt-waiting-title">${escapeHtml(t('receipt_waiting_title'))}</p>
+                <p class="receipt-waiting-desc">${escapeHtml(t('receipt_waiting_desc'))}</p>
+            </div>`;
+    }
+
+    const poll = async () => {
+        try {
+            const res = await fetch('/api/track-order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, orderId })
+            });
+            const data = await res.json();
+            const order = data && data.orders && data.orders[0];
+            if (!order) return;
+            if (order.status === 'completed') {
+                stopReceiptPolling();
+                renderReceiptCodes(order);
+            } else if (order.status === 'failed' || order.status === 'refunded') {
+                stopReceiptPolling();
+                if (statusZone) {
+                    statusZone.innerHTML = `
+                        <div class="receipt-failed">
+                            <span class="receipt-failed-icon"><i class="fas fa-times-circle"></i></span>
+                            <p class="receipt-failed-title">${escapeHtml(t('receipt_failed_title'))}</p>
+                            <p class="receipt-failed-desc">${escapeHtml(t('receipt_failed_desc'))}</p>
+                        </div>`;
+                }
+            }
+        } catch (_e) { /* أي خطأ شبكة في جولة ما يُعاد في الجولة القادمة */ }
+    };
+
+    _receiptPollFn = poll;
+    poll();
+    _receiptPollTimer = setInterval(poll, 8000);
+}
+
+function openOrderTrackingFromReceipt() {
+    const ctx = _receiptContext;
+    stopReceiptPolling();
+    stopReceiptCountdown();
+    const trackModal = document.getElementById('trackOrderModal');
+    const emailInput = document.getElementById('trackEmailInput');
+    const orderInput = document.getElementById('trackOrderIdInput');
+    if (ctx) {
+        if (emailInput) emailInput.value = ctx.email;
+        if (orderInput) orderInput.value = ctx.orderId;
+    }
+    closeModal(document.getElementById('codeModal'));
+    if (trackModal) openModal(trackModal);
+    if (ctx) handleTrackOrder();
+}
+
+// تحديث فوري للإيصال المفتوح عند وصول إشعار WebSocket لطلبٍ معني
+window.addEventListener('joker-order-status', function(e) {
+    const ctx = _receiptContext;
+    const d = (e && e.detail) || {};
+    if (ctx && d.orderId && String(d.orderId).toUpperCase() === String(ctx.orderId).toUpperCase() && _receiptPollFn) {
+        _receiptPollFn();
+    }
+});
+
+// نسخ الأكواد من الإيصال أو نافذة التتبع (تفويض)
+document.addEventListener('click', function(e) {
+    const copyBtn = e.target.closest('.receipt-copy-one, .track-copy-btn');
+    if (copyBtn) {
+        const code = copyBtn.dataset.code || (copyBtn.closest('.receipt-code-row, .track-code-row')?.querySelector('code')?.textContent || '');
+        copyTextToClipboard(code).then(ok => {
+            if (ok) {
+                showToast(t('code_copied'), 'success');
+                const icon = copyBtn.querySelector('i');
+                if (icon) {
+                    icon.classList.replace('fa-copy', 'fa-check');
+                    setTimeout(() => { if (icon) icon.classList.replace('fa-check', 'fa-copy'); }, 1200);
+                }
+            } else {
+                showToast(t('track_copy_manual'), 'info');
+            }
+        });
+        return;
+    }
+    if (e.target.closest('#openTrackingBtn')) {
+        openOrderTrackingFromReceipt();
+    }
+});
 
 // ======================================================
 //  دالة تحديد الريجن وجلب روابط الأعلام المحلية
@@ -1520,32 +1736,22 @@ function setupEventListeners() {
     if (copyCodeBtn) {
         copyCodeBtn.addEventListener('click', function() {
             const codeText = document.getElementById('generatedCode').textContent;
-            navigator.clipboard.writeText(codeText).then(function() {
-                showToast(t('code_copied'), 'success');
+            copyTextToClipboard(codeText).then(ok => {
+                if (ok) showToast(t('code_copied'), 'success');
+                else showToast(t('track_copy_manual'), 'info');
             });
         });
     }
 
-    // عرض إيصال الطلب في مودال الكود بعد نجاح العملية
-    function renderCodeModalReceipt(result, onDone) {
-        const codeModalEl = document.getElementById('codeModal');
-        if (!codeModalEl) { if (onDone) onDone(); return; }
-
-        const titleEl = document.getElementById('modalProductTitle');
-        if (titleEl) {
-            titleEl.textContent = t('codeModal_confirm')
-                .replace('{orderId}', escapeHtml(result.orderId || ''));
-        }
-
-        const codeEl = document.getElementById('generatedCode');
-        if (codeEl) {
-            codeEl.textContent = result.orderId || '—';
-            codeEl.classList.remove('revealed');
-            requestAnimationFrame(() => codeEl.classList.add('revealed'));
-        }
-
-        openModal(codeModalEl);
-        if (onDone) onDone();
+    // إيقاف الاستطلاع/العدّاد عند إغلاق إيصال الطلب
+    const receiptOverlay = document.getElementById('codeModal');
+    if (receiptOverlay) {
+        receiptOverlay.addEventListener('click', function(e) {
+            if (e.target.closest('[data-close-modal]') || e.target === receiptOverlay) {
+                stopReceiptPolling();
+                stopReceiptCountdown();
+            }
+        });
     }
 
     // صائد ضغطات الكروت والدخول للسلة
@@ -1877,9 +2083,8 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                         window.open(result.stripeUrl, '_blank', 'noopener');
                         showToast(t('checkout_stripe_success'), 'success');
                     } else {
-                        renderCodeModalReceipt(result, () => {
-                            showToast(t('checkout_success'), 'success');
-                        });
+                        renderOrderReceipt({ email, orderId: result.orderId || '' });
+                        showToast(t('checkout_success'), 'success');
                     }
                 } else {
                     showToast(`❌ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');

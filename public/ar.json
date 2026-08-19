@@ -343,5 +343,18 @@
     "realtime_order_completed": "✅ اكتمل طلبك {orderId} — استلم كودك الآن!",
     "realtime_order_rejected": "❌ رُفض طلبك {orderId} — تم استرداد المبلغ.",
     "mobile_cart_label": "السلة",
-    "mobile_cart_checkout": "إتمام الشراء"
+    "mobile_cart_checkout": "إتمام الشراء",
+    "receipt_title": "🎉 تم استلام طلبك!",
+    "copy_order_id_btn": "نسخ رقم الطلب",
+    "receipt_waiting_title": "بانتظار تأكيد التحويل",
+    "receipt_waiting_desc": "سيظهر كودك هنا تلقائياً فور تأكيد فريقنا للتحويل. إغلاق هذه النافذة لا يفقد طلبك — تابع الطلب منه في أي وقت من صفحة تتبع الطلب.",
+    "receipt_delivered_title": "🎁 أكوادك جاهزة!",
+    "receipt_delivered_desc": "انسخ الكود والصقه في اللعبة أو المنصة. يُخفى الكود تلقائياً بعد انتهاء المؤقت حفاظاً على خصوصيتك.",
+    "receipt_countdown": "يُخفى الكود خلال {time}",
+    "receipt_expired": "انتهت مدة عرض الكود لأسباب أمنية — استرجعه في أي وقت من تتبع الطلب.",
+    "receipt_open_tracking": "فتح تتبع الطلب",
+    "receipt_failed_title": "لم نتمكن من تأكيد تحويلك",
+    "receipt_failed_desc": "تحقق من المبلغ أو تواصل معنا عبر الواتساب وسنساعدك فوراً.",
+    "track_copy_code": "نسخ",
+    "track_copy_manual": "تم تحديد الكود — اضغط Ctrl+C للنسخ"
 }

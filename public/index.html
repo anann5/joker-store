@@ -624,11 +624,11 @@
     </div>
 </div>
 
-<!-- مودال استلام الكود -->
+<!-- مودال استلام الكود / متابعة الطلب لحظياً -->
 <div class="modal-overlay" id="codeModal">
     <div class="delivery-container">
         <button class="close-modal-btn" id="closeCodeModal" data-close-modal>×</button>
-        <h3 data-i18n-key="purchase_success_title">🎉 تم الشراء بنجاح!</h3>
+        <h3 data-i18n-key="receipt_title">🎉 تم استلام طلبك!</h3>
         <p id="modalProductTitle" class="modal-product-title"></p>
         <div class="delivery-code-box code-reveal">
             <span class="code-spark" aria-hidden="true">✦</span>
@@ -636,9 +636,26 @@
             <p id="generatedCode" class="delivery-code">···</p>
             <span class="code-reveal-ring" aria-hidden="true"></span>
         </div>
-        <button id="copyCodeBtn" class="copy-code-btn" data-autofocus>
-            <i class="fas fa-copy"></i> <span data-i18n-key="copy_code_btn">نسخ الكود</span>
-        </button>
+
+        <!-- حالة الطلب: انتظار / تسليم / فشل -->
+        <div id="receiptStatusZone" class="receipt-status-zone" aria-live="polite"></div>
+
+        <!-- الأكواد المسلّمة -->
+        <div id="deliveredCodesZone" class="delivered-codes-zone" hidden>
+            <p class="receipt-codes-head" data-i18n-key="receipt_delivered_title">🎁 أكوادك جاهزة!</p>
+            <p class="receipt-codes-note" data-i18n-key="receipt_delivered_desc">انسخ الكود والصقه في اللعبة أو المنصة. يُخفى الكود تلقائياً بعد انتهاء المؤقت حفاظاً على خصوصيتك.</p>
+            <div id="receiptCodesList" class="receipt-codes-list"></div>
+            <p id="receiptCountdown" class="receipt-countdown"></p>
+        </div>
+
+        <div class="receipt-actions">
+            <button id="copyCodeBtn" class="copy-code-btn" data-autofocus>
+                <i class="fas fa-copy"></i> <span data-i18n-key="copy_order_id_btn">نسخ رقم الطلب</span>
+            </button>
+            <button id="openTrackingBtn" class="copy-code-btn receipt-track-btn" hidden>
+                <i class="fas fa-search"></i> <span data-i18n-key="receipt_open_tracking">فتح تتبع الطلب</span>
+            </button>
+        </div>
     </div>
 </div>
 
