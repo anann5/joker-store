@@ -34,7 +34,7 @@
         "name": "Joker Store",
         "description": "متجر بطاقات رقمية وألعاب — أكواد أصلية مضمونة وتوصيل فوري.",
         "image": "/image/logo.png",
-        "paymentAccepted": ["Jawwal Pay", "PalPay"],
+        "paymentAccepted": ["Jawwal Pay", "PalPay", "Reflect"],
         "currenciesAccepted": "ILS",
         "priceRange": "₪₪",
         "address": { "@type": "PostalAddress", "addressCountry": "PS" },
@@ -198,6 +198,25 @@
                 <h2 data-i18n-key="hero_slide3_title">ضمان استرجاع كامل</h2>
                 <p data-i18n-key="hero_slide3_sub">مشكلة مع الكود؟ نستبدله أو نعيد لك المبلغ فوراً.</p>
                 <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-shield-alt"></i> <span data-i18n-key="hero_cta_safe">اشحن بأمان</span></button>
+            </div>
+        </div>
+
+        <!-- مؤشرات الثقة أسفل الهيرو -->
+        <div class="hero-trust" role="list" aria-label="مؤشرات الثقة" data-i18n-aria="hero_trust_aria">
+            <div class="hero-trust-item" role="listitem">
+                <i class="fas fa-check-circle"></i>
+                <b>+2,500</b>
+                <span data-i18n-key="hero_stat_sales">عملية ناجحة</span>
+            </div>
+            <div class="hero-trust-item" role="listitem">
+                <i class="fas fa-headset"></i>
+                <b>24/7</b>
+                <span data-i18n-key="hero_stat_support">دعم متواصل</span>
+            </div>
+            <div class="hero-trust-item" role="listitem">
+                <i class="fas fa-undo-alt"></i>
+                <b>100%</b>
+                <span data-i18n-key="hero_stat_refund">ضمان استرداد</span>
             </div>
         </div>
     </div>
@@ -493,15 +512,22 @@
                         <label class="payment-option-label">
                             <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
                             <div class="payment-option-content">
-                                <i class="fas fa-mobile-alt" style="color: #ff9f43;"></i>
+                                <img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="26" height="26" loading="lazy" decoding="async">
                                 <span class="payment-option-text"><b data-i18n-key="pay_jawwal">جوال بي</b><small data-i18n-key="pay_jawwal_hint">حوالة فورية عبر جوال بي</small></span>
                             </div>
                         </label>
                         <label class="payment-option-label">
                             <input type="radio" name="payment_gateway" value="palpay">
                             <div class="payment-option-content">
-                                <i class="fas fa-university" style="color: #0072ff;"></i>
+                                <img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="26" height="26" loading="lazy" decoding="async">
                                 <span class="payment-option-text"><b data-i18n-key="pay_palpay">بال بي</b><small data-i18n-key="pay_palpay_hint">الدفع عبر محفظة بال بي</small></span>
+                            </div>
+                        </label>
+                        <label class="payment-option-label">
+                            <input type="radio" name="payment_gateway" value="refakt">
+                            <div class="payment-option-content">
+                                <img class="pay-tile" src="/image/pay/refakt.svg" alt="ريفلكت" width="26" height="26" loading="lazy" decoding="async">
+                                <span class="payment-option-text"><b data-i18n-key="pay_refakt">رفلكت</b><small data-i18n-key="pay_refakt_hint">ادفع عبر تطبيق رفلكت</small></span>
                             </div>
                         </label>
                         <label class="payment-option-label" id="stripePaymentOption" style="display:none;">
@@ -642,8 +668,9 @@
         <div class="payment-zone">
             <h4 data-i18n-key="pay_methods_title">طرق الدفع المتاحة</h4>
             <div class="payment-methods">
-                <div class="pay-item"><i class="fas fa-mobile-alt" style="color: #ff9f43;"></i> <span data-i18n-key="pay_jawwal">جوال بي</span></div>
-                <div class="pay-item"><i class="fas fa-university" style="color: #0072ff;"></i> <span data-i18n-key="pay_palpay">بال بي</span></div>
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_jawwal">جوال بي</span></div>
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_palpay">بال بي</span></div>
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/refakt.svg" alt="ريفلكت" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_refakt">ريفلكت</span></div>
             </div>
         </div>
         <div class="footer-social">
@@ -777,6 +804,34 @@
         </div>
     </div>
 </template>
+
+<!-- ======================================================
+     شريط السلة الثابت للجوال
+===================================================== -->
+<div class="mobile-cart-bar" id="mobileCartBar" aria-hidden="true">
+    <div class="mobile-cart-bar-info" id="mobileCartBarInfo" role="button" tabindex="0" aria-label="فتح السلة">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="mobile-cart-cnt" id="mobileCartCount">0</span>
+        <span class="mobile-cart-sep" aria-hidden="true">·</span>
+        <span class="mobile-cart-total" id="mobileCartTotal">0.00</span>
+        <span class="mobile-cart-label" data-i18n-key="mobile_cart_label">السلة</span>
+    </div>
+    <button type="button" class="mobile-cart-checkout" id="mobileCartCheckoutBtn" data-i18n-key="mobile_cart_checkout">إتمام الشراء</button>
+</div>
+
+<!-- زر العودة إلى الأعلى -->
+<button type="button" class="back-to-top-btn" id="backToTop" aria-label="العودة إلى الأعلى" data-i18n-aria="back_to_top" title="العودة إلى الأعلى" data-i18n-title="back_to_top">
+    <i class="fas fa-chevron-up"></i>
+</button>
+
+<!-- نبضة social proof: آخر العمليات الفعلية من السجل -->
+<div class="social-proof" id="socialProof" role="status" aria-live="polite" aria-hidden="true">
+    <i class="fas fa-bolt" aria-hidden="true"></i>
+    <div class="social-proof-body">
+        <b class="social-proof-name"></b>
+        <span class="social-proof-meta"></span>
+    </div>
+</div>
 
 <!-- ====================================================== -->
 <!-- ⏱️ عدّاد عرض اليوم + 🍔 قائمة الموبايل (سكربت خارجي للالتزام بـ CSP) -->

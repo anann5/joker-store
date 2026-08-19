@@ -275,7 +275,8 @@ function buildProductSeoMeta(product, queryLang, productId, origin, hreflangOrig
     const absoluteImage = imageSource.includes('://')
         ? imageSource
         : (baseUrl ? `${baseUrl}${imageSource.startsWith('/') ? '' : '/'}${imageSource}` : imageSource);
-    const price = Number(product.price) || 0;
+    const price = Number(product.price);
+    const hasValidPrice = Number.isFinite(price) && price > 0;
 
     const schema = {
         '@context': 'https://schema.org',
@@ -284,13 +285,13 @@ function buildProductSeoMeta(product, queryLang, productId, origin, hreflangOrig
         image: absoluteImage,
         description,
         sku: String(productId),
-        offers: {
+        offers: hasValidPrice ? {
             '@type': 'Offer',
             priceCurrency: siteSettings.currency.code,
             price,
             availability: 'https://schema.org/InStock',
             url: canonical
-        }
+        } : undefined
     };
     if (Number(product.rating) > 0) {
         schema.aggregateRating = {

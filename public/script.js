@@ -3,7 +3,7 @@ import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, setupReveal } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime } from './realtime.js';
 
@@ -60,10 +60,62 @@ async function updateTrustTicker() {
         if (data.success && data.orders.length > 0) {
             _lastTickerOrders = data.orders;
             renderTickerItems();
+            enqueueSocialProof();
         }
     } catch (_e) {
         // في حال الفشل نترك النص الافتراضي الجميل الذي وضعناه
     }
+}
+
+// ======================================================
+//  🔔 Social Proof — نبض اجتماعي حي (عمليات حقيقية من السجل)
+// ======================================================
+const _socialQueue = [];
+const _socialShown = new Set();
+let _socialTimer = null;
+
+function socialTimeAgo(ts) {
+    if (!ts) return t('social_proof_now');
+    const mins = Math.max(1, Math.round((Date.now() - ts) / 60000));
+    if (mins < 1) return t('social_proof_now');
+    if (mins < 60) return t('social_proof_mins').replace('{n}', String(mins));
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t('social_proof_hrs').replace('{n}', String(hours));
+    return t('social_proof_days').replace('{n}', String(Math.floor(hours / 24)));
+}
+
+function enqueueSocialProof() {
+    const chip = document.getElementById('socialProof');
+    if (!chip) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    _lastTickerOrders.forEach((o) => {
+        const key = String(o.orderId || `${o.productName}-${o.time || ''}`);
+        if (_socialShown.has(key)) return;
+        _socialShown.add(key);
+        _socialQueue.push({ name: o.productName || t('social_proof_product'), time: socialTimeAgo(o.time) });
+    });
+    if (_socialQueue.length && !_socialTimer) showNextSocialProof();
+}
+
+function showNextSocialProof() {
+    const chip = document.getElementById('socialProof');
+    if (!chip || _socialQueue.length === 0) return;
+    const item = _socialQueue.shift();
+    const nameEl = chip.querySelector('.social-proof-name');
+    const metaEl = chip.querySelector('.social-proof-meta');
+    if (!nameEl || !metaEl) return;
+    nameEl.textContent = item.name;
+    metaEl.textContent = t('social_proof_bought')
+        .replace('{name}', item.name)
+        .replace('{time}', item.time);
+    chip.classList.add('show');
+    chip.setAttribute('aria-hidden', 'false');
+    _socialTimer = setTimeout(() => {
+        chip.classList.remove('show');
+        chip.setAttribute('aria-hidden', 'true');
+        _socialTimer = null;
+        setTimeout(showNextSocialProof, 3500);
+    }, 5000);
 }
 
 // ======================================================
@@ -213,7 +265,7 @@ function applySiteConfig() {
     // وسائل الدفع: إن لم تُضبط أرقام الحسابات، نخفي خيارات الدفع تماماً (لا نعرض أرقاماً وهمية)
     const payment = siteConfig.payment || {};
     const paymentOptionsEl = document.querySelector('.payment-options');
-    const hasPaymentNumbers = Boolean(payment.jawwalNumber) || Boolean(payment.palpayNumber);
+    const hasPaymentNumbers = Boolean(payment.jawwalNumber) || Boolean(payment.palpayNumber) || Boolean(payment.refaktNumber);
     if (paymentOptionsEl && !hasPaymentNumbers) {
         paymentOptionsEl.style.display = 'none';
     }
@@ -455,6 +507,11 @@ export function selectCategory(categoryKey) {
             <div class="skeleton-img"></div>
             <div class="skeleton-line"></div>
             <div class="skeleton-line short"></div>
+            <div class="skeleton-price"></div>
+            <div class="skeleton-actions">
+                <div class="skeleton-btn"></div>
+                <div class="skeleton-btn slim"></div>
+            </div>
         </div>
     `).join('');
 
@@ -688,6 +745,11 @@ function renderSkeletonCards(container, count = 6) {
             <div class="skeleton-img"></div>
             <div class="skeleton-line"></div>
             <div class="skeleton-line short"></div>
+            <div class="skeleton-price"></div>
+            <div class="skeleton-actions">
+                <div class="skeleton-btn"></div>
+                <div class="skeleton-btn slim"></div>
+            </div>
         </div>
     `).join('');
 }
@@ -765,6 +827,7 @@ function renderProductCards(products, containerId) {
         }
         grid.appendChild(card);
     });
+    setupReveal(grid);
 }
 
 // ======================================================
@@ -777,6 +840,9 @@ function goBack() {
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.value = '';
     showAllCategories();
+    // العودة لأعلى الصفحة بعد إظهار الرئيسية
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
 /**
@@ -1352,6 +1418,8 @@ async function initializeApp() {
     initAuth(); 
     initRealtime(); // إشعارات لحظية لحالة الطلبات للمستخدمين المسجلين
     updateTrustTicker(); // تحديث شريط الثقة
+    setInterval(updateTrustTicker, 45000); // تحديث دوري للشريط + تغذية social proof
+    setupReveal(document); // ظهور متدرّج لعناوين الأقسام وبطاقاتها الثابتة
     renderPromotions(); // عرض قسم "عروض جاهزة الشحن"
 
     // ⚙️ جلب إعدادات الموقع (أرقام الدفع، السوشيال، الإحصائيات) قبل ربط الأحداث
@@ -1641,17 +1709,34 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
     // فتح السلة عبر زر الهيدر
     const cartHeaderBtn = document.getElementById('cartHeaderBtn');
+    const openPurchaseCheckout = function() {
+        // تحسين تجربة المستخدم: تعبئة الإيميل تلقائياً إذا كان مسجلاً دخوله
+        const loggedInUser = getCurrentUser();
+        const emailInput = document.getElementById('user-email');
+        if (loggedInUser && emailInput) {
+            emailInput.value = loggedInUser.email;
+        }
+        setCheckoutStep(1);
+        updateCartUI();
+        openModal(purchaseModal);
+    };
     if (cartHeaderBtn && purchaseModal) {
-        cartHeaderBtn.addEventListener('click', function() {
-            // تحسين تجربة المستخدم: تعبئة الإيميل تلقائياً إذا كان مسجلاً دخوله
-            const loggedInUser = getCurrentUser();
-            const emailInput = document.getElementById('user-email');
-            if (loggedInUser && emailInput) {
-                emailInput.value = loggedInUser.email;
+        cartHeaderBtn.addEventListener('click', openPurchaseCheckout);
+    }
+
+    // شريط السلة الثابت للجوال (زر إتمام الشراء + منطقة معلومات السلة)
+    const mobileCheckoutBtn = document.getElementById('mobileCartCheckoutBtn');
+    if (mobileCheckoutBtn && purchaseModal) {
+        mobileCheckoutBtn.addEventListener('click', openPurchaseCheckout);
+    }
+    const mobileBarInfo = document.getElementById('mobileCartBarInfo');
+    if (mobileBarInfo && purchaseModal) {
+        mobileBarInfo.addEventListener('click', openPurchaseCheckout);
+        mobileBarInfo.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openPurchaseCheckout();
             }
-            setCheckoutStep(1);
-            updateCartUI();
-            openModal(purchaseModal); 
         });
     }
 
@@ -1715,16 +1800,23 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         const payment = siteConfig?.payment || {};
         const jawwal = payment.jawwalNumber || '';
         const palpay = payment.palpayNumber || '';
+        const refakt = payment.refaktNumber || jawwal || '';
+        const num = '<span style="color: #fff; font-weight: bold; letter-spacing: 1px;">';
+        const foot = '<p style="margin: 5px 0; color: #b9bbbe;">';
         if (method === 'jawwal_pay') {
             instructionsZone.innerHTML = jawwal
-                ? `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> حساب جوال بي (Jawwal Pay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى الرقم التالي: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${jawwal}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب رقم العملية أو اسم المحول بالأسفل لتأكيد طلبك.</p>`
-                : `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> جوال بي (Jawwal Pay):</p><p style="margin: 5px 0; color: #b9bbbe;">سيتم تزويدك برقم الحساب بعد إرسال الطلب.</p>`;
+                ? `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_jawwal_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_to')} ${num}${jawwal}</span></p>${foot}${t('pay_inst_followup')}</p>`
+                : `<p style="margin: 0 0 8px 0; color: #ff9f43; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_jawwal_title')}</p>${foot}${t('pay_inst_later')}</p>`;
         } else if (method === 'palpay') {
             instructionsZone.innerHTML = palpay
-                ? `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> حساب بال بي (PalPay):</p><p style="margin: 5px 0;">الرجاء تحويل المبلغ إلى رقم المحفظة: <span style="color: #fff; font-weight: bold; letter-spacing: 1px;">${palpay}</span></p><p style="margin: 5px 0; color: #b9bbbe;">بعد التحويل، اكتب اسم حسابك أو رقم التحويل بالأسفل.</p>`
-                : `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> بال بي (PalPay):</p><p style="margin: 5px 0; color: #b9bbbe;">سيتم تزويدك برقم المحفظة بعد إرسال الطلب.</p>`;
+                ? `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> ${t('pay_inst_palpay_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${palpay}</span></p>${foot}${t('pay_inst_followup_palpay')}</p>`
+                : `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> ${t('pay_inst_palpay_title')}</p>${foot}${t('pay_inst_later')}</p>`;
         } else if (method === 'stripe') {
             instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #635bff; font-weight: bold;"><i class="fas fa-credit-card"></i> ${t('stripe_heading')}</p><p style="margin: 5px 0; color: #b9bbbe;">${t('stripe_desc')}</p>`;
+        } else if (method === 'refakt') {
+            instructionsZone.innerHTML = refakt
+                ? `<p style="margin: 0 0 8px 0; color: #12b489; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_reflect_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${refakt}</span></p>${foot}${t('pay_inst_followup')}</p>`
+                : `<p style="margin: 0 0 8px 0; color: #12b489; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_reflect_title')}</p>${foot}${t('pay_inst_later')}</p>`;
         }
     };
 
@@ -1814,6 +1906,20 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         const target = document.getElementById('mainCategories');
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+
+    // زر العودة إلى الأعلى
+    const backToTopBtn = document.getElementById('backToTop');
+    if (backToTopBtn) {
+        const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const onScroll = () => {
+            backToTopBtn.classList.toggle('is-visible', window.scrollY > 420);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+        backToTopBtn.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
+        });
+    }
 
     // أزرار الأمنيات (تفويض)
     document.addEventListener('click', function(e) {

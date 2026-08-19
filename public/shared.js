@@ -216,3 +216,44 @@ export function cartTotals(cartItems) {
 
     return { subtotal: roundMoney(subtotal), discount: roundMoney(discount), total: roundMoney(subtotal - discount) };
 }
+
+// ======================================================
+//  ✨ Reveal on scroll — ظهور متدرّج للبطاقات والأقسام
+//  عنصر لا يظهر أبداً قبل مرور شعاع التقاطع؛ عند عدم الدعم
+//  أو تقليل الحركة (reduced-motion) يبقى مرئياً.
+// ======================================================
+let _revealObserver = null;
+
+function _getRevealObserver() {
+    if (_revealObserver) return _revealObserver;
+    _revealObserver = new window.IntersectionObserver((entries) => {
+        entries.forEach((en) => {
+            if (en.isIntersecting) {
+                en.target.classList.add('in-view');
+                _revealObserver.unobserve(en.target);
+                const delay = parseFloat(en.target.style.getPropertyValue('--reveal-delay')) || 0;
+                setTimeout(() => en.target.classList.remove('js-reveal'), delay + 650);
+            }
+        });
+    }, { threshold: 0.08, rootMargin: '0px 0px -30px 0px' });
+    return _revealObserver;
+}
+
+/**
+ * مراقبة عناصر reveal داخل نطاق؛ تُستدعى كلما أُضيفت بطاقات/أقسام جديدة
+ * (بعد كل render) لالتقاط العناصر الجديدة بلا تكرار للمراقبة.
+ * @param {ParentNode} scope
+ */
+export function setupReveal(scope = document) {
+    if (!('IntersectionObserver' in window)) return;
+    const observer = _getRevealObserver();
+    const targets = scope.querySelectorAll('.product-item-card, .category-card, .section-header');
+    targets.forEach((el) => {
+        if (el.classList.contains('js-reveal') || el.classList.contains('in-view')) return;
+        el.classList.add('js-reveal');
+        const parent = el.parentElement;
+        const idx = parent ? Array.prototype.indexOf.call(parent.children, el) : 0;
+        el.style.setProperty('--reveal-delay', `${String(Math.min(idx, 10) * 60)}ms`);
+        observer.observe(el);
+    });
+}

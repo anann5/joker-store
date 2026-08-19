@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Jawwal Pay">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F7A3F"/>
+      <stop offset="1" stop-color="#0B5C2E"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#g)"/>
+  <path d="M0 0 L64 0 L64 34 C38 22 20 28 0 34 Z" fill="#ffffff" opacity="0.07"/>
+  <circle cx="32" cy="32" r="19" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="2.5"/>
+  <text x="32" y="33" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="800" fill="#ffffff" text-anchor="middle" dominant-baseline="central">J</text>
+</svg>

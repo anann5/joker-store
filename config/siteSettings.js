@@ -5,7 +5,8 @@ module.exports = {
     payment: {
         // أرقام حسابات الدفع — تُضبط في .env؛ تبقى فارغة (ويُخفى خيار الدفع) إن لم تُضبط
         jawwalNumber: process.env.JAWWAL_PAY_NUMBER || '',
-        palpayNumber: process.env.PALPAY_NUMBER || ''
+        palpayNumber: process.env.PALPAY_NUMBER || '',
+        refaktNumber: process.env.REFAKT_NUMBER || ''
     },
     currency: {
         // عملة المتجر (رمز العملة + رمز العرض) — تُعرض للواجهة لعرض الأسعار

@@ -165,7 +165,7 @@ exports.getLatestOrders = async (_req, res) => {
         const latestOrders = await Order.find({ status: 'completed' })
             .sort({ completedAt: -1 })
             .limit(5)
-            .select('orderId items.name');
+            .select('orderId items.name completedAt createdAt');
 
         const orders = latestOrders.map(order => {
             const firstName = order.items[0]?.name;
@@ -174,7 +174,8 @@ exports.getLatestOrders = async (_req, res) => {
                 : String(firstName || '');
             return {
                 orderId: order.orderId,
-                productName: productName || getLocalizedValue('منتج').ar
+                productName: productName || getLocalizedValue('منتج').ar,
+                time: order.completedAt || order.createdAt ? new Date(order.completedAt || order.createdAt).getTime() : null
             };
         });
         res.json({ success: true, orders });
@@ -212,7 +213,8 @@ exports.getSiteConfig = async (_req, res) => {
             return {
                 payment: {
                     jawwalNumber: siteSettings.payment.jawwalNumber,
-                    palpayNumber: siteSettings.payment.palpayNumber
+                    palpayNumber: siteSettings.payment.palpayNumber,
+                    refaktNumber: siteSettings.payment.refaktNumber
                 },
                 currency: siteSettings.currency,
                 social: siteSettings.social,

@@ -1,8 +1,9 @@
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, setupReveal } from './shared.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
 
 let toastContainer = null;
+let _bumpQty = null;
 
 /**
  * تهريب القيم لإدراجها بأمان في HTML (منع XSS).
@@ -169,6 +170,7 @@ export function showAllCategories() {
         card.querySelector('.enter-btn').dataset.category = key;
         grid.appendChild(card);
     });
+    setupReveal(grid);
 }
 
 /**
@@ -253,6 +255,7 @@ export function showProductDetails(product, currentCategory = '') {
                     relatedContainer.appendChild(card);
                 });
                 syncWishlistButtons();
+                setupReveal(relatedContainer);
             } else {
                 relatedContainer.parentElement.style.display = 'none';
             }
@@ -442,6 +445,32 @@ export function updateCartUI() {
 
     const totals = cartTotals(items);
     if (totalEl) totalEl.textContent = formatPrice(totals.total);
+
+    // شريط السلة الثابت للجوال
+    const mobileBar = document.getElementById('mobileCartBar');
+    if (mobileBar) {
+        const countEl = document.getElementById('mobileCartCount');
+        const totalElBar = document.getElementById('mobileCartTotal');
+        if (countEl) countEl.textContent = String(totalQty);
+        if (totalElBar) totalElBar.textContent = formatPrice(totals.total);
+        const hasItems = items.length > 0;
+        mobileBar.classList.toggle('bar-visible', hasItems);
+        mobileBar.setAttribute('aria-hidden', hasItems ? 'false' : 'true');
+        document.body.classList.toggle('mobile-cart-open', hasItems);
+    }
+
+    // نبضة "زد" عند إضافة عنصر: شارة الهيدر وعداد الشريط للجوال فقط عند زيادة العدد
+    if (_bumpQty !== null && totalQty > _bumpQty) {
+        ['cartCountBadge', 'mobileCartCount'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('bump');
+                void el.offsetWidth;
+                el.classList.add('bump');
+            }
+        });
+    }
+    _bumpQty = totalQty;
 
     // صف الخصم في الخطوة 1 (يظهر فقط عند وجود كود مطبّق)
     const cartDiscountRow = document.getElementById('cartDiscountRow');
