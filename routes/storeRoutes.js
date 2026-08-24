@@ -19,6 +19,21 @@ const trackOrderLimiter = rateLimit({
     message: 'محاولات كثيرة، يرجى الانتظار قليلاً.'
 });
 
+// ليميتر أقوى لكشف الأكواد (يُفعّل عند تقديم رقم طلب)
+const codeRevealLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: 'محاولات كثيرة لكشف الأكواد، يرجى الانتظار قليلاً.'
+});
+
+// Middleware: تطبيق ليميتر أقوى عند طلب كشف الأكواد (orderId)
+const conditionalCodeLimiter = (req, res, next) => {
+    if (req.body?.orderId) {
+        return codeRevealLimiter(req, res, next);
+    }
+    next();
+};
+
 // Route to get all categories
 router.get('/categories', storeController.getCategories);
 
@@ -32,7 +47,7 @@ router.get('/products/latest-orders', storeController.getLatestOrders);
 router.get('/site-config', storeController.getSiteConfig);
 
 // Route for guest order tracking by email
-router.post('/track-order', trackOrderLimiter, storeController.trackOrder);
+router.post('/track-order', trackOrderLimiter, conditionalCodeLimiter, storeController.trackOrder);
 
 // Route to get best-selling products
 router.get('/products/best-selling', storeController.getBestSellingProducts);

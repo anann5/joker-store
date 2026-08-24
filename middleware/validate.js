@@ -360,3 +360,50 @@ exports.updateCategorySchema = Joi.object({
 exports.deleteProductSchema = Joi.object({
     permanentDelete: Joi.boolean().default(false)
 });
+
+/**
+ * Middleware للتحقق من صحة معلمات المسار (req.params)
+ */
+exports.validateParams = (schema) => {
+    return (req, res, next) => {
+        const { error } = schema.validate(req.params, { abortEarly: false, allowUnknown: false });
+        if (error) {
+            const message = error.details.map(el => el.message).join(', ');
+            return res.status(400).json({ success: false, message: `معرف غير صالح: ${message}` });
+        }
+        next();
+    };
+};
+
+/**
+ * مخططات التحقق من معلمات المسار (MongoDB ObjectId)
+ */
+const mongoIdPattern = /^[a-fA-F0-9]{24}$/;
+
+exports.orderIdParamSchema = Joi.object({
+    orderId: Joi.string().pattern(mongoIdPattern).required().messages({
+        'string.pattern.base': 'رقم الطلب غير صالح',
+        'any.required': 'رقم الطلب مطلوب'
+    })
+});
+
+exports.categoryIdParamSchema = Joi.object({
+    categoryId: Joi.string().pattern(mongoIdPattern).required().messages({
+        'string.pattern.base': 'معرف الفئة غير صالح',
+        'any.required': 'معرف الفئة مطلوب'
+    })
+});
+
+exports.productIdParamSchema = Joi.object({
+    productId: Joi.string().pattern(mongoIdPattern).required().messages({
+        'string.pattern.base': 'معرف المنتج غير صالح',
+        'any.required': 'معرف المنتج مطلوب'
+    })
+});
+
+exports.promotionIdParamSchema = Joi.object({
+    promotionId: Joi.string().pattern(mongoIdPattern).required().messages({
+        'string.pattern.base': 'معرف العرض غير صالح',
+        'any.required': 'معرف العرض مطلوب'
+    })
+});

@@ -16,12 +16,17 @@ const upload = require('../middleware/upload');
 const {
     validate,
     validateLenient,
+    validateParams,
     manualAddProductSchema,
     createProductSchema,
     updateProductSchema,
     createCategorySchema,
     updateCategorySchema,
-    deleteProductSchema
+    deleteProductSchema,
+    orderIdParamSchema,
+    categoryIdParamSchema,
+    productIdParamSchema,
+    promotionIdParamSchema
 } = require('../middleware/validate');
 
 // تعريف ليميتر بسيط خاص بمسارات الأدمن لحمايتها
@@ -54,25 +59,25 @@ router.post('/inventory/add', validateLenient(manualAddProductSchema), productCo
 router.post('/inventory/create', validateLenient(createProductSchema), productController.createProduct);
 router.post('/inventory/add-manual', validateLenient(createProductSchema), productController.createProductWithManualCodes);
 router.post('/inventory/sync', productController.syncExternalProducts);
-router.get('/inventory/:productId', productController.getProduct);
-router.patch('/inventory/:productId/margin', validateLenient(updateProductSchema), productController.updateProductMargin);
-router.patch('/inventory/:productId', validateLenient(updateProductSchema), productController.updateProduct);
-router.post('/inventory/:productId/duplicate', productController.duplicateProduct);
-router.delete('/inventory/:productId', validate(deleteProductSchema), productController.deleteProduct);
+router.get('/inventory/:productId', validateParams(productIdParamSchema), productController.getProduct);
+router.patch('/inventory/:productId/margin', validateParams(productIdParamSchema), validateLenient(updateProductSchema), productController.updateProductMargin);
+router.patch('/inventory/:productId', validateParams(productIdParamSchema), validateLenient(updateProductSchema), productController.updateProduct);
+router.post('/inventory/:productId/duplicate', validateParams(productIdParamSchema), productController.duplicateProduct);
+router.delete('/inventory/:productId', validateParams(productIdParamSchema), validate(deleteProductSchema), productController.deleteProduct);
 router.get('/orders', orderController.getOrders);
-router.post('/orders/:orderId/approve', orderController.approveOrder);
-router.post('/orders/:orderId/reject', orderController.rejectOrder);
+router.post('/orders/:orderId/approve', validateParams(orderIdParamSchema), orderController.approveOrder);
+router.post('/orders/:orderId/reject', validateParams(orderIdParamSchema), orderController.rejectOrder);
 router.get('/reports', statsController.getReports);
 router.get('/pricing/compare', statsController.getLivePricing);
 router.get('/categories', categoryController.getCategories);
 router.post('/categories', validateLenient(createCategorySchema), categoryController.createCategory);
-router.patch('/categories/:categoryId', validateLenient(updateCategorySchema), categoryController.updateCategory);
-router.delete('/categories/:categoryId', categoryController.deleteCategory);
+router.patch('/categories/:categoryId', validateParams(categoryIdParamSchema), validateLenient(updateCategorySchema), categoryController.updateCategory);
+router.delete('/categories/:categoryId', validateParams(categoryIdParamSchema), categoryController.deleteCategory);
 router.get('/logs', logController.getLogs);
 router.get('/logs/export', logController.exportLogs);
 router.delete('/logs', logController.deleteAllLogs);
 router.delete('/logs/:logId', logController.deleteLog);
-router.get('/balances', statsController.getProviderBalances); // Added this route
+router.get('/balances', statsController.getProviderBalances);
 
 // المزودون والمزامنة (B2B) وأسعار الصرف
 router.get('/providers/status', providerController.getProviderStatus);
@@ -83,7 +88,7 @@ router.get('/providers/config', providerController.getProvidersConfig);
 // العروض/الخصومات (CRUD)
 router.get('/promotions', promotionController.getPromotions);
 router.post('/promotions', promotionController.createPromotion);
-router.patch('/promotions/:promotionId', promotionController.updatePromotion);
-router.delete('/promotions/:promotionId', promotionController.deletePromotion);
+router.patch('/promotions/:promotionId', validateParams(promotionIdParamSchema), promotionController.updatePromotion);
+router.delete('/promotions/:promotionId', validateParams(promotionIdParamSchema), promotionController.deletePromotion);
 
 module.exports = router;

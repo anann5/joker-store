@@ -124,7 +124,8 @@ exports.verifyUserSocket = async (socket, next) => {
 setInterval(() => {
     const now = Date.now();
     adminFailedAttempts.forEach((attempt, key) => {
-        if (attempt.lockedUntil && now <= attempt.lockedUntil + LOCKOUT_DURATION) {
+        // حذف المحاولات التي انتهى القفل فيها
+        if (attempt.lockedUntil && now > attempt.lockedUntil) {
             adminFailedAttempts.delete(key);
         }
     });

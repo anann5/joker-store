@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const CSRF_COOKIE_NAME = 'csrf_token';
 const CSRF_HEADER_NAME = 'x-csrf-token';
 const TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
+const MAX_CSRF_TOKENS = 10000;
 const csrfTokens = new Map();
 
 // Periodic cleanup of expired CSRF tokens to prevent unbounded memory growth.
@@ -14,6 +15,10 @@ setInterval(() => {
 }, 60 * 60 * 1000).unref();
 
 function issueToken(req, res) {
+    if (csrfTokens.size >= MAX_CSRF_TOKENS) {
+        return res.status(503).json({ success: false, message: 'Too many tokens, try later' });
+    }
+
     const token = crypto.randomBytes(24).toString('hex');
     const cookieOptions = {
         httpOnly: true,

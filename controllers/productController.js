@@ -68,7 +68,8 @@ exports.getProduct = async (req, res) => {
         if (!productId || typeof productId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(productId)) {
             return res.status(400).json({ success: false, message: 'معرف المنتج غير صالح' });
         }
-        const product = await Product.findById(productId);
+        const product = await Product.findById(productId)
+            .select('-codes -basePrice -providerOptions');
         if (!product) {
             return res.status(404).json({ success: false, message: 'المنتج غير موجود.' });
         }
@@ -462,10 +463,11 @@ exports.duplicateProduct = async (req, res) => {
             duplicatedProduct.productName.ar
         );
 
+        const { codes: _c, basePrice: _bp, providerOptions: _po, ...safeProduct } = duplicatedProduct.toObject();
         res.status(201).json({
             success: true,
             message: '✅ تم تكرار المنتج بنجاح!',
-            product: duplicatedProduct
+            product: safeProduct
         });
     } catch (err) {
         console.error('Duplicate product error:', err);
