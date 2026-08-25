@@ -2106,6 +2106,11 @@ margin-bottom: 14px;
 .promo-feedback[data-state="applied"] { color: var(--success, #2ecc71); }
 .promo-feedback[data-state="error"] { color: var(--danger, #e74c3c); }
 
+.loyalty-section { margin: 10px 0 4px; padding: 10px 12px; border-radius: var(--radius-sm); background: rgba(255, 215, 0, 0.07); border: 1px solid rgba(255, 215, 0, 0.18); }
+.loyalty-section[hidden] { display: none; }
+.loyalty-balance-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.82rem; font-weight: 700; color: var(--text-muted); gap: 8px; }
+.loyalty-discount-preview { color: var(--success, #2ecc71); }
+
 .cart-discount-row,
 .review-discount-row {
     font-size: 0.86rem;

@@ -105,4 +105,14 @@ router.post('/cart/track', storeController.trackCartSession);
 router.get('/loyalty/balance', verifyUserTokenOptional, storeController.getLoyaltyBalance);
 router.post('/loyalty/redeem', verifyUserTokenOptional, storeController.redeemLoyaltyPoints);
 
+// Review image upload (public, rate-limited)
+const upload = require('../middleware/upload');
+const uploadController = require('../controllers/uploadController');
+router.post('/upload/review-image', reviewLimiter, (req, res, next) => {
+    upload.single('image')(req, res, (err) => {
+        if (err) return res.status(400).json({ success: false, error: err.message || 'فشل الرفع' });
+        return uploadController.uploadImage(req, res, next);
+    });
+});
+
 module.exports = router;

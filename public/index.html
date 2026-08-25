@@ -111,6 +111,8 @@
             </div>
         </div>
 
+        <a href="/offers" class="header-btn" style="text-decoration:none;color:var(--text);background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.22);" title="العروض الخاصة"><i class="fas fa-fire" style="color:#ef4444;"></i> <span data-i18n-key="sub_footer_offers">العروض الخاصة</span></a>
+
         <div class="cart-icon-container" id="cartHeaderBtn" title="سلة المشتريات" data-i18n-title="cart_header_title">
             <i class="fas fa-shopping-cart"></i>
             <span id="cartCountBadge" class="cart-count-badge">0</span>
@@ -495,6 +497,19 @@
                     <button type="button" id="removePromoBtn" data-i18n-key="promo_remove" hidden>إزالة</button>
                 </div>
                 <p id="promoFeedback" class="promo-feedback" data-state="neutral" hidden></p>
+
+                <div id="loyaltySection" class="loyalty-section" hidden>
+                    <div class="loyalty-balance-row">
+                        <span><i class="fas fa-star" style="color:var(--gold);"></i> <span data-i18n-key="loyalty_balance">رصيدك</span>: <strong id="loyaltyBalance">0</strong> <span data-i18n-key="loyalty_points_unit">نقطة</span></span>
+                        <span id="loyaltyDiscountPreview" class="loyalty-discount-preview"></span>
+                    </div>
+                    <div class="promo-input-row loyalty-input-row">
+                        <input type="number" id="loyaltyRedeemInput" min="10" step="10" placeholder="10" aria-label="points">
+                        <button type="button" id="loyaltyRedeemBtn" data-i18n-key="loyalty_redeem_btn">استبدال</button>
+                        <button type="button" id="loyaltyRemoveBtn" data-i18n-key="promo_remove" hidden>إزالة</button>
+                    </div>
+                    <p id="loyaltyFeedback" class="promo-feedback" data-state="neutral" hidden></p>
+                </div>
             </div>
 
 <div class="cart-total-row">
@@ -834,6 +849,11 @@
                     <i class="far fa-star" data-star="5"></i>
                 </div>
                 <textarea data-review-comment placeholder="اكتب تعليقك (اختياري)" data-i18n-key="review_comment_placeholder" data-i18n-placeholder="true" maxlength="500" rows="2"></textarea>
+                <div class="review-images-row" style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;"><i class="fas fa-image"></i> <span data-i18n-key="review_images">إرفاق صور</span><input type="file" data-review-images accept="image/*" multiple hidden></label>
+                    <span style="font-size:0.75rem;color:var(--text-muted);" data-i18n-key="review_images_max">حد أقصى 3 صور</span>
+                </div>
+                <div data-review-images-preview style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
                 <button class="review-submit-btn" type="button" data-i18n-key="review_submit_btn">إرسال التقييم</button>
             </div>
         </div>

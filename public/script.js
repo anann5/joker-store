@@ -3,7 +3,7 @@ import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, setupReveal } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, getAppliedLoyalty, clearAppliedLoyalty, setPromoDiscounts, setupReveal } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime } from './realtime.js';
 
@@ -1152,6 +1152,16 @@ async function renderPromotions() {
         const lang = getCurrentLanguage();
         section.hidden = false;
         _promoProducts.clear();
+        // تعبئة خريطة الخصومات لشارة المنتج
+        {
+            const map = new Map();
+            promos.forEach(p => {
+                const pct = Number(p.discountPercent) || 0;
+                if (p.productId) map.set(String(p.productId), pct);
+                else if (p.products) p.products.forEach(pr => { if (pr._id) map.set(String(pr._id), pct); });
+            });
+            setPromoDiscounts(map);
+        }
 
         container.innerHTML = promos.map((promo, index) => {
             const title = promo.title?.[lang] || promo.title?.ar || '';
@@ -2050,12 +2060,14 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
             const appliedPromo = getAppliedPromo();
+            const appliedLoyalty = getAppliedLoyalty();
             const orderData = {
                 cartItems: cart.map(item => ({ id: item.id, qty: item.qty })),
                 customerEmail: email,
                 paymentGateway: gateway,
                 paymentRef: paymentRef,
-                ...(appliedPromo ? { promoCode: appliedPromo.code } : {})
+                ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
+                ...(appliedLoyalty ? { loyaltyPoints: appliedLoyalty.points } : {})
             };
 
             submitOrderBtn.disabled = true;
@@ -2078,6 +2090,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                     cart.length = 0; // تفريغ المصفوفة
                     localStorage.removeItem('joker_cart');
                     clearAppliedPromo(); // إزالة كود الخصم بعد إتمام الطلب
+                    clearAppliedLoyalty();
                     updateCartUI();
                     if (result.gateway === 'stripe' && result.stripeUrl) {
                         window.open(result.stripeUrl, '_blank', 'noopener');

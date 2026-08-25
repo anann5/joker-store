@@ -226,6 +226,7 @@ const initAdmin = async () => {
         { btn: 'inventoryTabBtn', section: 'inventorySection' },
         { btn: 'ordersTabBtn', section: 'ordersSection' },
         { btn: 'categoriesTabBtn', section: 'categoriesSection' },
+        { btn: 'abandonedTabBtn', section: 'abandonedSection' },
         { btn: 'reportsTabBtn', section: 'reportsSection' },
         { btn: 'pricingTabBtn', section: 'pricingSection' },
         { btn: 'logsTabBtn', section: 'logsSection' }
@@ -250,6 +251,7 @@ const initAdmin = async () => {
             else if (sectionId === 'inventorySection') loadInventory();
             else if (sectionId === 'ordersSection') loadRecentOrders();
             else if (sectionId === 'categoriesSection') loadCategories();
+            else if (sectionId === 'abandonedSection') loadAbandonedCarts();
             else if (sectionId === 'reportsSection') loadReports(_activeReportDays);
             else if (sectionId === 'pricingSection') loadLivePricing();
             else if (sectionId === 'logsSection') loadLogs();
@@ -1693,6 +1695,28 @@ async function deleteCategory(categoryId) {
 // ======================================================
 //  السجلات (Logs)
 // ======================================================
+
+async function loadAbandonedCarts() {
+    const tbody = document.getElementById('abandonedList');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>';
+    try {
+        const res = await fetch('/api/admin/abandoned-carts', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !data.carts || data.carts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">لا توجد سلال مهجورة</td></tr>';
+            return;
+        }
+        tbody.innerHTML = data.carts.map(c => {
+            const when = c.updatedAt ? new Date(c.updatedAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+            const items = (c.items || []).map(i => `${escapeHtml(i.productName || i.productId)} ×${i.qty}`).join('<br>') || '—';
+            return `<tr><td>${escapeHtml(c.email || '—')}</td><td style="font-size:0.82rem;">${items}</td><td>${Number(c.total||0).toFixed(2)} ₪</td><td style="font-size:0.82rem;">${escapeHtml(when)}</td></tr>`;
+        }).join('');
+    } catch (_err) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:20px;">فشل التحميل</td></tr>';
+    }
+}
+document.getElementById('refreshAbandonedBtn')?.addEventListener('click', loadAbandonedCarts);
 
 async function loadLogs() {
     const container = document.getElementById('logsContainer');

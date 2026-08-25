@@ -600,6 +600,32 @@ exports.createOrder = async (req, res) => {
             total = round2(total - discountAmount);
         }
 
+        // نقاط الولاء: 10 نقاط = 1₪
+        let loyaltyPointsUsed = 0;
+        let loyaltyDiscount = 0;
+        const rawLoyalty = req.body?.loyaltyPoints;
+        if (rawLoyalty !== undefined && rawLoyalty !== null && rawLoyalty !== '') {
+            const pts = Number.parseInt(rawLoyalty, 10);
+            if (!Number.isFinite(pts) || pts < 10) {
+                return res.status(400).json({ success: false, error: 'عدد نقاط الولاء غير صالح' });
+            }
+            if (!req.user?.userId) {
+                return res.status(401).json({ success: false, error: 'يجب تسجيل الدخول لاستخدام نقاط الولاء' });
+            }
+            const { User } = require('../models');
+            const loyaltyUser = await User.findById(req.user.userId).select('loyaltyPoints');
+            if (!loyaltyUser || (loyaltyUser.loyaltyPoints || 0) < pts) {
+                return res.status(400).json({ success: false, error: 'نقاط غير كافية' });
+            }
+            loyaltyPointsUsed = pts;
+            loyaltyDiscount = Math.round(pts * 0.10 * 100) / 100;
+            if (loyaltyDiscount >= total) loyaltyDiscount = round2(total - 0.5);
+            total = round2(total - loyaltyDiscount);
+            loyaltyUser.loyaltyPoints -= pts;
+            loyaltyUser.loyaltyHistory.push({ points: pts, type: 'redeemed', createdAt: new Date() });
+            await loyaltyUser.save();
+        }
+
         const orderId = uuidv4().split('-')[0].toUpperCase();
         const newOrder = new Order({
             orderId,
@@ -611,9 +637,11 @@ exports.createOrder = async (req, res) => {
             paymentRef,
             status: 'pending',
             userId: req.user?.userId || null,
-            discount: promoCode ? discountAmount : 0,
+            discount: round2(discountAmount + loyaltyDiscount),
             discountCode: promoCode || null,
-            discountPercent: promoCode ? promoPercent : 0
+            discountPercent: promoCode ? promoPercent : 0,
+            loyaltyPoints: loyaltyPointsUsed,
+            loyaltyDiscount
         });
 
         await newOrder.save();

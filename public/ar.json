@@ -376,6 +376,7 @@
     "loyalty_discount": "خصم مطبق",
     "loyalty_remaining": "النقاط المتبقية",
     "loyalty_insufficient": "نقاط غير كافية",
+    "loyalty_points_unit": "نقطة",
     "sub_footer_offers": "العروض الخاصة",
     "review_images": "إرفاق صور (اختياري)",
     "review_images_max": "حد أقصى 3 صور",

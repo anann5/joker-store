@@ -1,4 +1,4 @@
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, setupReveal } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
 
@@ -467,6 +467,7 @@ export function showProductDetails(product, currentCategory = '') {
                         <span class="review-date">${new Date(review.createdAt).toLocaleDateString(getCurrentLanguage() === 'en' ? 'en-US' : 'ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                     ${review.comment ? `<p class="review-comment">${escapeHtml(review.comment)}</p>` : ''}
+                    ${Array.isArray(review.images) && review.images.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${review.images.map(u => `<img src="${escapeHtml(u)}" alt="review" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">`).join('')}</div>` : ''}
                 </div>
             `).join('');
         } catch (_err) {
@@ -477,7 +478,34 @@ export function showProductDetails(product, currentCategory = '') {
     const reviewStars = view.querySelector('[data-review-stars]');
     const reviewComment = view.querySelector('[data-review-comment]');
     const reviewSubmitBtn = view.querySelector('.review-submit-btn');
+    const reviewImagesInput = view.querySelector('[data-review-images]');
+    const reviewImagesPreview = view.querySelector('[data-review-images-preview]');
     let selectedRating = 0;
+    let reviewImageUrls = [];
+    if (reviewImagesInput && reviewImagesPreview) {
+        reviewImagesInput.addEventListener('change', async () => {
+            const files = Array.from(reviewImagesInput.files || []).slice(0, 3);
+            reviewImagesPreview.innerHTML = '';
+            reviewImageUrls = [];
+            for (const f of files) {
+                if (!f.type.startsWith('image/')) continue;
+                const form = new FormData();
+                form.append('image', f);
+                try {
+                    const r = await fetch('/api/upload/review-image', { method: 'POST', body: form });
+                    const d = await r.json();
+                    if (d.success && d.url) {
+                        reviewImageUrls.push(d.url);
+                        const img = document.createElement('img');
+                        img.src = d.url;
+                        img.style.cssText = 'width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.12);';
+                        reviewImagesPreview.appendChild(img);
+                    }
+                } catch (_e) {}
+            }
+            if (reviewImageUrls.length >= 3) reviewImagesInput.value = '';
+        });
+    }
 
     const updateStarDisplay = () => {
         if (!reviewStars) return;
@@ -506,7 +534,7 @@ export function showProductDetails(product, currentCategory = '') {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rating: selectedRating, comment: reviewComment ? reviewComment.value : '' })
+                    body: JSON.stringify({ rating: selectedRating, comment: reviewComment ? reviewComment.value : '', images: reviewImageUrls })
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -514,6 +542,9 @@ export function showProductDetails(product, currentCategory = '') {
                     selectedRating = 0;
                     if (reviewStars) updateStarDisplay();
                     if (reviewComment) reviewComment.value = '';
+                    reviewImageUrls = [];
+                    if (reviewImagesPreview) reviewImagesPreview.innerHTML = '';
+                    if (reviewImagesInput) reviewImagesInput.value = '';
                     renderProductReviews(product.id);
                     const ratingZoneEl = view.querySelector('[data-rating]');
                     if (ratingZoneEl && data.rating) {
@@ -650,6 +681,24 @@ export function updateCartUI() {
 
     // عرض المنتجات المقترحة في السلة
     renderCartSuggestions();
+
+    // تحديث قسم نقاط الولاء
+    refreshLoyaltySection();
+
+    // تتبع السلة المهجورة (غير حرج)
+    try {
+        const emailEl = document.getElementById('user-email');
+        const email = emailEl ? emailEl.value.trim() : '';
+        const total = cartTotals(items).total;
+        if (items.length > 0) {
+            fetch('/api/cart/track', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: items.map(i => ({ productId: i.id, productName: i.name, qty: i.qty, price: i.price })), email: email || null, total })
+            }).catch(() => {});
+        }
+    } catch (_e) {}
 }
 
 async function renderCartSuggestions() {
@@ -701,6 +750,70 @@ async function renderCartSuggestions() {
         });
     } catch (_err) {
         container.style.display = 'none';
+    }
+}
+
+let _loyaltyFetched = false;
+let _loyaltyBalance = 0;
+let _loyaltyBound = false;
+
+export async function refreshLoyaltySection() {
+    const section = document.getElementById('loyaltySection');
+    const balEl = document.getElementById('loyaltyBalance');
+    const preview = document.getElementById('loyaltyDiscountPreview');
+    const input = document.getElementById('loyaltyRedeemInput');
+    const redeemBtn = document.getElementById('loyaltyRedeemBtn');
+    const removeBtn = document.getElementById('loyaltyRemoveBtn');
+    const feedback = document.getElementById('loyaltyFeedback');
+    if (!section) return;
+    try {
+        const res = await fetch('/api/loyalty/balance', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && data.success && typeof data.points === 'number') {
+            _loyaltyBalance = data.points;
+            _loyaltyFetched = true;
+            section.hidden = false;
+            if (balEl) balEl.textContent = String(data.points);
+            const applied = getAppliedLoyalty();
+            if (applied) {
+                if (preview) preview.textContent = `-${formatPrice(applied.discount)}`;
+                if (input) input.value = String(applied.points);
+                if (redeemBtn) redeemBtn.hidden = true;
+                if (removeBtn) removeBtn.hidden = false;
+                if (feedback) { feedback.hidden = false; feedback.textContent = t('loyalty_discount') + ': -' + formatPrice(applied.discount); feedback.dataset.state = 'success'; }
+            } else {
+                if (preview) preview.textContent = data.points >= 10 ? '(' + t('loyalty_min_redeem') + ')' : '';
+                if (redeemBtn) redeemBtn.hidden = false;
+                if (removeBtn) removeBtn.hidden = true;
+                if (feedback) feedback.hidden = true;
+            }
+        } else {
+            section.hidden = true;
+        }
+    } catch (_err) {
+        section.hidden = true;
+    }
+    if (!_loyaltyBound) {
+        _loyaltyBound = true;
+        const rBtn = document.getElementById('loyaltyRedeemBtn');
+        const rmBtn = document.getElementById('loyaltyRemoveBtn');
+        const inp = document.getElementById('loyaltyRedeemInput');
+        const fb = document.getElementById('loyaltyFeedback');
+        if (rBtn) rBtn.addEventListener('click', () => {
+            const pts = Number.parseInt(inp ? inp.value : '0', 10);
+            if (!Number.isFinite(pts) || pts < 10) { if (fb) { fb.hidden = false; fb.textContent = t('loyalty_min_redeem'); fb.dataset.state = 'error'; } return; }
+            if (pts > _loyaltyBalance) { if (fb) { fb.hidden = false; fb.textContent = t('loyalty_insufficient'); fb.dataset.state = 'error'; } return; }
+            const discount = Math.round(pts * 0.10 * 100) / 100;
+            setAppliedLoyalty({ points: pts, discount });
+            showToast(t('loyalty_discount') + ': -' + formatPrice(discount), 'success');
+            updateCartUI();
+        });
+        if (rmBtn) rmBtn.addEventListener('click', () => {
+            clearAppliedLoyalty();
+            if (inp) inp.value = '';
+            showToast(t('promo_remove'), 'info');
+            updateCartUI();
+        });
     }
 }
 

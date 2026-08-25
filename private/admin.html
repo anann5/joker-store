@@ -957,6 +957,7 @@
             <button class="tab-btn" id="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i> الطلبات</button>
             <button class="tab-btn" id="inventoryTabBtn"><i class="fas fa-boxes"></i> المخزون</button>
             <button class="tab-btn" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
+            <button class="tab-btn" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
             <button class="tab-btn" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
         </div>
 
@@ -1202,6 +1203,30 @@
                 <div class="reports-scroll" id="livePricingList">
                     <div style="text-align:center; padding:20px; color:var(--text-muted);">جاري تحميل الأسعار...</div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Abandoned Carts Section -->
+        <section id="abandonedSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-shopping-basket"></i> السلال المهجورة</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshAbandonedBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:10px;">سلال لم يكمل أصحابها الشراء لأكثر من ساعة — يمكن التواصل معهم عبر البريد.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>البريد</th>
+                            <th>المنتجات</th>
+                            <th>الإجمالي</th>
+                            <th>منذ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="abandonedList">
+                        <tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 

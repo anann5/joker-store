@@ -108,8 +108,12 @@ exports.checkoutSchema = Joi.object({
         .messages({
             'string.pattern.base': 'كود الخصم غير صالح'
         }),
+    loyaltyPoints: Joi.number().integer().min(10).max(100000).optional().messages({
+        'number.min': 'الحد الأدنى 10 نقاط',
+        'number.integer': 'النقاط يجب أن تكون رقماً صحيحاً'
+    }),
     paymentGateway: Joi.string()
-        .valid('jawwal_pay', 'palpay', 'stripe')
+        .valid('jawwal_pay', 'palpay', 'reflect', 'stripe')
         .required()
         .messages({
             'any.only': 'بوابة الدفع غير صالحة',

@@ -376,6 +376,7 @@
     "loyalty_discount": "Discount Applied",
     "loyalty_remaining": "Remaining Points",
     "loyalty_insufficient": "Insufficient points",
+    "loyalty_points_unit": "points",
     "sub_footer_offers": "Special Offers",
     "review_images": "Attach images (optional)",
     "review_images_max": "Maximum 3 images",

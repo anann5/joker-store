@@ -202,6 +202,8 @@ const orderSchema = new mongoose.Schema({
     discount: { type: Number, default: 0, min: 0 },
     discountCode: { type: String, default: null },
     discountPercent: { type: Number, default: 0 },
+    loyaltyPoints: { type: Number, default: 0, min: 0 },
+    loyaltyDiscount: { type: Number, default: 0, min: 0 },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date, default: null },
     failedAt: { type: Date, default: null }
@@ -316,7 +318,6 @@ const cartSessionSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 cartSessionSchema.index({ notified: 1, createdAt: -1 });
-cartSessionSchema.index({ sessionId: 1 });
 
 module.exports = {
     Product: mongoose.model('Product', productSchema),

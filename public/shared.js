@@ -108,6 +108,15 @@ export function resolveImageUrl(value) {
 // ======================================================
 
 export const bestSellerIds = new Set();
+export const promoDiscountMap = new Map();
+
+export function setPromoDiscounts(map) {
+    promoDiscountMap.clear();
+    if (map && typeof map === 'object') {
+        Object.entries(map).forEach(([k, v]) => promoDiscountMap.set(String(k), Number(v) || 0));
+        if (map instanceof Map) { map.forEach((v, k) => promoDiscountMap.set(String(k), Number(v) || 0)); }
+    }
+}
 
 export function isBestSeller(productId) {
     return bestSellerIds.has(String(productId ?? ''));
@@ -120,10 +129,18 @@ export function isBestSeller(productId) {
  */
 export function applyProductBadge(badgeEl, { productId, isNew = false } = {}) {
     if (!badgeEl) return;
+    const promoPct = productId ? Number(promoDiscountMap.get(String(productId)) || 0) : 0;
+    if (promoPct > 0) {
+        badgeEl.textContent = `-${promoPct}%`;
+        badgeEl.classList.add('promo-badge');
+        badgeEl.classList.remove('best-seller', 'new-arrival');
+        badgeEl.style.background = 'linear-gradient(135deg,#ef4444,#f97316)';
+        return;
+    }
     const isBest = productId !== null && productId !== undefined && bestSellerIds.has(String(productId));
     if (!isBest && !isNew) {
         badgeEl.textContent = '';
-        badgeEl.classList.remove('best-seller', 'new-arrival');
+        badgeEl.classList.remove('best-seller', 'new-arrival', 'promo-badge');
         return;
     }
     badgeEl.textContent = isBest ? t('best_badge') : t('new_badge');
@@ -137,6 +154,7 @@ export function applyProductBadge(badgeEl, { productId, isNew = false } = {}) {
 // ======================================================
 
 const PROMO_STORAGE_KEY = 'joker_applied_promo';
+const LOYALTY_STORAGE_KEY = 'joker_loyalty_applied';
 
 export function getAppliedPromo() {
     try {
@@ -163,6 +181,30 @@ export function setAppliedPromo(promo) {
 
 export function clearAppliedPromo() {
     localStorage.removeItem(PROMO_STORAGE_KEY);
+}
+
+export function getAppliedLoyalty() {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(LOYALTY_STORAGE_KEY));
+        return parsed && Number(parsed.points) > 0 ? parsed : null;
+    } catch (_e) {
+        return null;
+    }
+}
+
+export function setAppliedLoyalty({ points, discount }) {
+    const p = Number(points) || 0;
+    const d = Number(discount) || 0;
+    if (p >= 10 && d > 0) {
+        localStorage.setItem(LOYALTY_STORAGE_KEY, JSON.stringify({ points: p, discount: roundMoney(d) }));
+    } else {
+        clearAppliedLoyalty();
+    }
+    return getAppliedLoyalty();
+}
+
+export function clearAppliedLoyalty() {
+    localStorage.removeItem(LOYALTY_STORAGE_KEY);
 }
 
 function roundMoney(value) {
@@ -206,15 +248,17 @@ export function cartTotals(cartItems) {
         sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
 
     const promo = getAppliedPromo();
-    let discount = 0;
+    let promoDiscount = 0;
     if (promo && promo.percent > 0) {
-        // الكود لا يُقبل إلا عندما ينطبق على كل منتجات السلة (يُتحقق عند التطبيق)،
-        // لذا يطبّق الخادم النسبة على إجمالي الطلب — نطابق نفس السلوك هنا.
         const percent = Math.min(99, Math.max(1, Number(promo.percent) || 0));
-        discount = subtotal * percent / 100;
+        promoDiscount = subtotal * percent / 100;
     }
 
-    return { subtotal: roundMoney(subtotal), discount: roundMoney(discount), total: roundMoney(subtotal - discount) };
+    const loyalty = getAppliedLoyalty();
+    const loyaltyDiscount = loyalty ? Math.min(Number(loyalty.discount) || 0, subtotal - promoDiscount) : 0;
+
+    const totalDiscount = roundMoney(promoDiscount + loyaltyDiscount);
+    return { subtotal: roundMoney(subtotal), discount: totalDiscount, promoDiscount: roundMoney(promoDiscount), loyaltyDiscount: roundMoney(loyaltyDiscount), total: roundMoney(subtotal - totalDiscount) };
 }
 
 // ======================================================
