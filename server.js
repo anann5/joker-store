@@ -152,6 +152,20 @@ setInterval(async () => {
 }, LOW_STOCK_INTERVAL_HOURS * 60 * 60 * 1000);
 setTimeout(() => { checkLowStockAlert().catch(()=>{}); }, 45 * 1000);
 
+// متابعة السلال المهجورة وإرسال تذكير عبر البريد
+const { checkAbandonedCarts } = require('./controllers/helpers');
+let abandonedInFlight=false;
+setInterval(async()=>{
+    if(abandonedInFlight) return;
+    abandonedInFlight=true;
+    try{
+        const r=await checkAbandonedCarts();
+        if(r.sent>0) console.log(`📧 سلال مهجورة: تم إرسال ${r.sent} تذكير`);
+    }catch(e){ console.error('❌ سلال مهجورة فشل:', e.message); }
+    finally{ abandonedInFlight=false; }
+}, 6*60*60*1000);
+setTimeout(()=>{ checkAbandonedCarts().catch(()=>{}); }, 60*1000);
+
 const FINAL_PORT = process.env.PORT || 5850;
 // الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
 server.listen(FINAL_PORT, '::', () => {

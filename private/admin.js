@@ -1081,7 +1081,7 @@ async function loadRecentOrders() {
     const tbody = document.getElementById('ordersList');
     if (!tbody) return;
 
-    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> جاري جلب الفواتير...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="loading-cell"><span class="spinner"></span> جاري جلب الفواتير...</td></tr>`;
 
     try {
         const params = new URLSearchParams({ limit: '200' });
@@ -1101,7 +1101,7 @@ async function loadRecentOrders() {
         const data = await res.json();
 
         if (!data.success) {
-            tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل تحميل الطلبات.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="error-cell">❌ فشل تحميل الطلبات.</td></tr>`;
             return;
         }
 
@@ -1109,7 +1109,7 @@ async function loadRecentOrders() {
         renderOrders(_allOrdersCache);
 
     } catch (_err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
     }
 }
 
@@ -1136,7 +1136,7 @@ function renderOrders(orders) {
     if (!tbody) return;
 
     if (orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">لا توجد طلبات بهذه الحالة.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="loading-cell">لا توجد طلبات بهذه الحالة.</td></tr>`;
         return;
     }
 
@@ -1163,8 +1163,10 @@ function renderOrders(orders) {
                 ? `<button class="btn btn-secondary btn-sm" data-action="show-codes" data-order-id="${order.orderId}"><i class="fas fa-eye"></i> الأكواد</button>`
                 : '—');
 
+        const canBulk = status === 'pending';
         return `
             <tr>
+                <td><input type="checkbox" class="order-check" value="${escapeHtml(order.orderId)}" ${canBulk ? '' : 'disabled'}></td>
                 <td style="color:var(--primary);font-weight:700;">#${escapeHtml(order.orderId)}</td>
                 <td class="customer-name-cell">${escapeHtml(customerName)}</td>
                 <td class="customer-email-cell">${escapeHtml(email)}</td>
@@ -1175,7 +1177,63 @@ function renderOrders(orders) {
             </tr>
         `;
     }).join('');
+    bindOrdersBulkEvents();
 }
+
+function bindOrdersBulkEvents(){
+    const tbody=document.getElementById('ordersList');
+    const bar=document.getElementById('ordersBulkBar');
+    const countEl=document.getElementById('ordersBulkCount');
+    const selectAll=document.getElementById('ordersSelectAll');
+    if(!tbody||!bar) return;
+    const update=()=>{
+        const checks=[...tbody.querySelectorAll('.order-check:checked')];
+        const n=checks.length;
+        if(countEl) countEl.textContent=`${n} محدد`;
+        bar.hidden=n===0;
+        if(selectAll){
+            const all=[...tbody.querySelectorAll('.order-check:not([disabled])')];
+            selectAll.checked=all.length>0 && all.every(c=>c.checked);
+            selectAll.indeterminate=n>0 && n < all.length;
+        }
+    };
+    if(!tbody.dataset.bulkBound){
+        tbody.dataset.bulkBound='1';
+        tbody.addEventListener('change', (e)=>{ if(e.target.classList.contains('order-check')) update(); });
+    }
+    if(selectAll && !selectAll.dataset.bound){
+        selectAll.dataset.bound='1';
+        selectAll.addEventListener('change', ()=>{
+            const all=[...tbody.querySelectorAll('.order-check:not([disabled])')];
+            all.forEach(c=>c.checked=selectAll.checked);
+            update();
+        });
+    }
+    update();
+}
+async function handleBulkOrders(action){
+    const checks=[...document.querySelectorAll('#ordersList .order-check:checked')];
+    const ids=checks.map(c=>c.value);
+    if(ids.length===0) return;
+    if(!confirm(`${action==='approve'?'تأكيد':'رفض'} ${ids.length} طلب؟`)) return;
+    const btnId=action==='approve'?'bulkApproveBtn':'bulkRejectBtn';
+    const btn=document.getElementById(btnId);
+    if(btn) btn.disabled=true;
+    let ok=0, fail=0;
+    for(const id of ids){
+        try{
+            const csrfToken=await ensureAdminCsrfToken();
+            const res=await fetch(`/api/admin/orders/${id}/${action}`,{method:'POST',credentials:'include',headers:buildJsonHeaders({'X-CSRF-Token':csrfToken||''})});
+            const data=await res.json();
+            if(data.success) ok++; else fail++;
+        }catch(_e){ fail++; }
+    }
+    if(btn) btn.disabled=false;
+    showAdminToast(`تم ${action==='approve'?'تأكيد':'رفض'} ${ok} طلب${fail?`، فشل ${fail}`:''}`, fail?'error':'success');
+    loadRecentOrders(); loadDashboard();
+}
+document.getElementById('bulkApproveBtn')?.addEventListener('click',()=>handleBulkOrders('approve'));
+document.getElementById('bulkRejectBtn')?.addEventListener('click',()=>handleBulkOrders('reject'));
 
 async function approveOrder(orderId) {
     if (!confirm(`هل أنت متأكد من اعتماد الطلب #${orderId}؟`)) return;

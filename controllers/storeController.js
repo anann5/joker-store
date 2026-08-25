@@ -738,7 +738,11 @@ exports.searchAll = async (req, res) => {
         }
 
         const searchField = `productName.${lang}`;
-        const queryRegex = new RegExp(`^${escapeRegex(q.trim())}`, 'i');
+        // بحث يحتوي (contains) + تحمّل للأخطاء الإملائية البسيطة: همزة/تاء مربوطة/ياء
+        const normalized = q.trim().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+        const alt = escapeRegex(normalized);
+        const orig = escapeRegex(q.trim());
+        const queryRegex = new RegExp(`(${orig}|${alt})`, 'i');
         const query = {
             [searchField]: queryRegex,
             isActive: true

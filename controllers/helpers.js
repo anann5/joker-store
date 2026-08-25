@@ -181,3 +181,20 @@ exports.checkLowStockAlert = async () => {
     }).length;
     return { checked: products.length, lowCount, alerted };
 };
+
+exports.checkAbandonedCarts = async () => {
+    const { CartSession } = require('../models');
+    const { sendAbandonedCartEmail } = require('./notification');
+    const carts = await CartSession.find({ notified: false, email: { $ne: null }, updatedAt: { $lt: new Date(Date.now() - 60 * 60 * 1000) } }).limit(20).lean();
+    let sent = 0;
+    for (const c of carts) {
+        try {
+            const r = await sendAbandonedCartEmail(c);
+            if (!r.skipped) {
+                await CartSession.updateOne({ _id: c._id }, { $set: { notified: true } });
+                sent += 1;
+            }
+        } catch (_e) {}
+    }
+    return { checked: carts.length, sent };
+};

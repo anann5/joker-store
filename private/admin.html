@@ -1139,9 +1139,15 @@
                     <button class="filter-chip" data-status="failed">فشل</button>
                     <button class="filter-chip" data-status="refunded">مرفوض</button>
                 </div>
+                <div id="ordersBulkBar" style="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap;" hidden>
+                    <span id="ordersBulkCount" style="font-size:0.85rem;color:var(--text-muted);">0 محدد</span>
+                    <button class="btn btn-approve btn-sm" id="bulkApproveBtn"><i class="fas fa-check"></i> تأكيد المحدد</button>
+                    <button class="btn btn-reject btn-sm" id="bulkRejectBtn"><i class="fas fa-times"></i> رفض المحدد</button>
+                </div>
                 <table>
                     <thead>
                         <tr>
+                            <th><input type="checkbox" id="ordersSelectAll"></th>
                             <th>رقم الطلب</th>
                             <th>الزبون</th>
                             <th>البريد الإلكتروني</th>
@@ -1152,7 +1158,7 @@
                         </tr>
                     </thead>
                     <tbody id="ordersList">
-                        <tr><td colspan="7" class="loading-cell">جاري جلب الفواتير...</td></tr>
+                        <tr><td colspan="8" class="loading-cell">جاري جلب الفواتير...</td></tr>
                     </tbody>
                 </table>
             </div>

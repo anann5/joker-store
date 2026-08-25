@@ -616,6 +616,9 @@ nav a.active::after {
 .autocomplete-results.active {
     display: block;
 }
+.search-filters{ display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 0; }
+.search-filters[hidden]{ display:none; }
+.search-filters select{ background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; border-radius:999px; padding:6px 10px; font-size:0.78rem; min-width:90px; }
 
 .autocomplete-item {
     display: flex;

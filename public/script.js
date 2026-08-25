@@ -1893,14 +1893,32 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 const lang = getCurrentLanguage();
                 const lowerCaseQuery = query.toLowerCase();
 
-                // --- ✨ بحث موحد باللغة العربية والإنجليزية ---
-                const results = searchIndex.filter(product => {
+                // --- ✨ بحث موحد + فلترات فئة/سعر/تقييم ---
+                const catFilter=document.getElementById('searchFilterCategory')?.value||'';
+                const priceFilter=document.getElementById('searchFilterPrice')?.value||'';
+                const ratingFilter=parseFloat(document.getElementById('searchFilterRating')?.value||'');
+                const sortFilter=document.getElementById('searchFilterSort')?.value||'';
+                let results = searchIndex.filter(product => {
                     const nameAr = (product.productName.ar || '').toLowerCase();
                     const nameEn = (product.productName.en || '').toLowerCase();
                     const category = (product.category || '').toLowerCase();
-                    return nameAr.includes(lowerCaseQuery) || nameEn.includes(lowerCaseQuery) || category.includes(lowerCaseQuery);
-                }).slice(0, 10); // عرض أول 10 نتائج فقط
-
+                    const matchesText = nameAr.includes(lowerCaseQuery) || nameEn.includes(lowerCaseQuery) || category.includes(lowerCaseQuery);
+                    if(!matchesText) return false;
+                    if(catFilter && product.category!==catFilter) return false;
+                    const price=Number(product.price)||0;
+                    if(priceFilter){
+                        const [minStr,maxStr]=priceFilter.split('-');
+                        const min=minStr?parseFloat(minStr):0;
+                        const max=maxStr?parseFloat(maxStr):Infinity;
+                        if(price < min || price > max) return false;
+                    }
+                    if(!Number.isNaN(ratingFilter) && (Number(product.rating)||0) < ratingFilter) return false;
+                    return true;
+                });
+                if(sortFilter==='price_asc') results.sort((a,b)=>(Number(a.price)||0)-(Number(b.price)||0));
+                else if(sortFilter==='price_desc') results.sort((a,b)=>(Number(b.price)||0)-(Number(a.price)||0));
+                else if(sortFilter==='rating') results.sort((a,b)=>(Number(b.rating)||0)-(Number(a.rating)||0));
+                results=results.slice(0,10);
                 renderResults(results, lang, query);
             }, 300); // انتظار 300ms بعد توقف المستخدم عن الكتابة
         });
@@ -1922,6 +1940,37 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
     setupAutocomplete('searchInput', 'autocomplete-results');
     setupAutocomplete('searchInputMobile', 'autocomplete-results-mobile');
+    // فلترات البحث الذكي
+    (function initSearchFilters(){
+        const catSel=document.getElementById('searchFilterCategory');
+        const filtersWrap=document.getElementById('searchFilters');
+        const populateCats=()=>{
+            if(!catSel) return;
+            const cats=rawServerData.categories||{};
+            const existing=[...catSel.options].map(o=>o.value);
+            Object.entries(cats).forEach(([key,cat])=>{
+                if(existing.includes(key)) return;
+                const o=document.createElement('option'); o.value=key; o.textContent=cat.title||key; catSel.appendChild(o);
+            });
+        };
+        populateCats();
+        window.addEventListener('languageChanged', populateCats);
+        const showFilters=(show)=>{ if(filtersWrap) filtersWrap.hidden=!show; };
+        const triggerSearch=()=>{
+            const inp=document.getElementById('searchInput');
+            if(inp) inp.dispatchEvent(new Event('input'));
+            const inpM=document.getElementById('searchInputMobile');
+            if(inpM) inpM.dispatchEvent(new Event('input'));
+        };
+        ['searchFilterCategory','searchFilterPrice','searchFilterRating','searchFilterSort'].forEach(id=>{
+            const el=document.getElementById(id);
+            if(el) el.addEventListener('change', triggerSearch);
+        });
+        const inp=document.getElementById('searchInput');
+        if(inp){ inp.addEventListener('input',()=>{ const q=inp.value.trim(); showFilters(q.length>=2); }); }
+        const inpM=document.getElementById('searchInputMobile');
+        if(inpM){ inpM.addEventListener('input',()=>{ const q=inpM.value.trim(); showFilters(q.length>=2); }); }
+    })();
 
     // فتح السلة عبر زر الهيدر
     const cartHeaderBtn = document.getElementById('cartHeaderBtn');
