@@ -6131,7 +6131,7 @@ Code receipt flourish
 .back-to-top-btn {
     position: fixed;
     inset-inline-end: 24px;
-    bottom: 96px;
+    bottom: 108px;
     z-index: 9900;
     width: 46px;
     height: 46px;
@@ -6172,12 +6172,12 @@ Code receipt flourish
         width: 42px;
         height: 42px;
         inset-inline-end: 16px;
-        bottom: 78px;
+        bottom: 86px;
     }
 }
 
 body.mobile-cart-open .back-to-top-btn {
-    bottom: 142px;
+    bottom: 148px;
 }
 body.mobile-cart-open .whatsapp-float {
     bottom: 76px;
