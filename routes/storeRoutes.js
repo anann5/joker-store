@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const storeController = require('../controllers/storeController');
-const { verifyUserTokenOptional } = require('../middleware/authMiddleware');
+const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, checkoutSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
 
@@ -61,13 +61,13 @@ router.get('/products/related/:productId', storeController.getRelatedProducts);
 // Route to get a single public product by id (deep-link fallback when missing from search index)
 router.get('/products/item/:productId', storeController.getProductItem);
 
-// Route to submit a product review (rate 1-5 + optional comment)
+// Route to submit a product review — موثّق فقط بعد شراء مكتمل
 const reviewLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
     message: 'عدد التقييمات كبير جداً، يرجى المحاولة لاحقاً.'
 });
-router.post('/products/:productId/review', reviewLimiter, verifyUserTokenOptional, storeController.submitProductReview);
+router.post('/products/:productId/review', reviewLimiter, verifyUserToken, storeController.submitProductReview);
 
 // Route to fetch recent reviews for a product
 router.get('/products/:productId/reviews', storeController.getProductReviews);

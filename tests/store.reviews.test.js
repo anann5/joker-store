@@ -11,7 +11,7 @@ jest.mock('../models', () => ({
         findById: jest.fn(),
         find: jest.fn()
     },
-    Order: {},
+    Order: { exists: jest.fn() },
     Category: {}
 }));
 
@@ -21,6 +21,14 @@ const PRODUCT_ID = '507f191e810c19729de860ea';
 
 const app = express();
 app.use(express.json());
+// حقن مستخدم موثّق وشراء موثّق لمرور التحقق الحقيقي
+app.use('/api/products/:productId/review', (req, _res, next) => {
+    req.user = { email: 'verified-buyer@example.com', userId: '507f1f77bcf86cd799439011' };
+    next();
+});
+const { Order } = require('../models');
+Order.exists.mockResolvedValue(true);
+
 app.post('/api/products/:productId/review', storeController.submitProductReview);
 app.get('/api/products/:productId/reviews', storeController.getProductReviews);
 
@@ -46,6 +54,8 @@ function makeProduct(overrides = {}) {
 describe('POST /api/products/:productId/review', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        const { Order } = require('../models');
+        Order.exists.mockResolvedValue(true);
     });
 
     it('يحفظ التقييم ويعيد حساب المعدل وعدد المراجعات', async () => {

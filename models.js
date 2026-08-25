@@ -119,6 +119,7 @@ const productSchema = new mongoose.Schema({
             comment: { type: String, trim: true, default: '', maxlength: 500 },
             images: { type: [String], default: [] },
             reviewerEmail: { type: String, trim: true, default: null },
+            verified: { type: Boolean, default: false },
             createdAt: { type: Date, default: Date.now }
         }],
         default: []

@@ -36,6 +36,7 @@ function makeReview(overrides = {}) {
         rating: 5,
         comment: 'تجربة ممتازة',
         reviewerEmail: 'should-not-leak@test.com',
+        verified: true,
         createdAt: new Date('2026-08-01T10:00:00Z'),
         ...overrides
     };

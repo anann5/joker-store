@@ -464,6 +464,7 @@ export function showProductDetails(product, currentCategory = '') {
                 <div class="review-item">
                     <div class="review-meta">
                         ${renderRatingStars(review.rating, 0)}
+                        ${review.verified ? `<span style="background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.22);padding:2px 7px;border-radius:999px;font-size:0.72rem;font-weight:800;"><i class="fas fa-check-circle"></i> ${getCurrentLanguage()==='en'?'Verified Purchase':'شراء موثّق'}</span>` : ''}
                         <span class="review-date">${new Date(review.createdAt).toLocaleDateString(getCurrentLanguage() === 'en' ? 'en-US' : 'ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                     ${review.comment ? `<p class="review-comment">${escapeHtml(review.comment)}</p>` : ''}

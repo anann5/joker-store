@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const { Product, Order, Category, Promotion } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const siteSettings = require('../config/siteSettings');
@@ -806,12 +807,31 @@ exports.submitProductReview = async (req, res) => {
             return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
         }
 
+        // تحقق شراء حقيقي: يجب تسجيل الدخول وامتلاك طلب مكتمل لنفس المنتج
+        const reviewerEmail = req.user?.email ? String(req.user.email).toLowerCase().trim() : null;
+        const reviewerUserId = req.user?.userId || null;
+        if (!reviewerEmail && !reviewerUserId) {
+            return res.status(401).json({ success: false, error: 'يجب تسجيل الدخول وشراء المنتج لتقييمه' });
+        }
+        const hasPurchase = await Order.exists({
+            status: 'completed',
+            $or: [
+                ...(reviewerEmail ? [{ buyerEmail: reviewerEmail }] : []),
+                ...(reviewerUserId ? [{ userId: reviewerUserId }] : [])
+            ],
+            'items.productId': new mongoose.Types.ObjectId(productId)
+        });
+        if (!hasPurchase) {
+            return res.status(403).json({ success: false, error: 'التقييم متاح فقط للعملاء الذين اشتروا هذا المنتج (شراء موثّق)' });
+        }
+
         product.reviews = Array.isArray(product.reviews) ? product.reviews : [];
         product.reviews.push({
             rating,
             comment,
             images: reviewImages,
-            reviewerEmail: req.user?.email || null,
+            reviewerEmail,
+            verified: true,
             createdAt: new Date()
         });
         // نُبقي المخزون تحت حد معقول ونتخلص من الأقدم أولاً
@@ -855,6 +875,8 @@ exports.getProductReviews = async (req, res) => {
             .map(review => ({
                 rating: review.rating,
                 comment: review.comment || '',
+                images: Array.isArray(review.images) ? review.images : [],
+                verified: !!review.verified,
                 createdAt: review.createdAt
             }));
 
@@ -887,9 +909,10 @@ exports.getTestimonials = async (_req, res) => {
                 const localizedProductName = getLocalizedValue(product.productName);
                 const reviews = Array.isArray(product.reviews) ? product.reviews : [];
                 for (const review of reviews) {
+                    if (!review.verified) continue; // ثقة حقيقية: شهادات من شراء موثّق فقط
                     const rating = Number(review.rating) || 0;
                     if (rating < 1 || rating > 5) continue;
-                    if (!review.createdAt) continue; // لا تاريخ صريح → نتخطى المراجعة ولا نلفّق تاريخاً
+                    if (!review.createdAt) continue;
                     const reviewDate = new Date(review.createdAt);
                     if (!(reviewDate instanceof Date) || Number.isNaN(reviewDate.getTime())) continue;
                     collected.push({
@@ -897,6 +920,7 @@ exports.getTestimonials = async (_req, res) => {
                         rating,
                         comment: typeof review.comment === 'string' ? review.comment.trim() : '',
                         images: Array.isArray(review.images) ? review.images : [],
+                        verified: true,
                         createdAt: reviewDate
                     });
                 }
