@@ -6130,8 +6130,8 @@ Code receipt flourish
    =================================================== */
 .back-to-top-btn {
     position: fixed;
-    inset-inline-end: 18px;
-    bottom: 18px;
+    inset-inline-end: 24px;
+    bottom: 96px;
     z-index: 9900;
     width: 46px;
     height: 46px;
@@ -6171,12 +6171,16 @@ Code receipt flourish
     .back-to-top-btn {
         width: 42px;
         height: 42px;
-        inset-inline-end: 14px;
+        inset-inline-end: 16px;
+        bottom: 78px;
     }
 }
 
 body.mobile-cart-open .back-to-top-btn {
-    bottom: 82px;
+    bottom: 142px;
+}
+body.mobile-cart-open .whatsapp-float {
+    bottom: 76px;
 }
 
 @media (prefers-reduced-motion: reduce) {

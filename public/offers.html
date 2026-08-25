@@ -1,46 +1,89 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/image/logo.png" />
+    <link rel="apple-touch-icon" href="/image/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="canonical" href="/offers" />
     <title>العروض الخاصة | Joker Store</title>
-    <meta name="description" content="اكتشف أفضل العروض والخصومات الحالية في متجر Joker Store. أكواد أصلية بأسعار مميزة.">
-    <link rel="canonical" href="/offers">
-    <link rel="stylesheet" href="/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <meta name="description" content="اكتشف أفضل العروض والخصومات الحالية في متجر Joker Store. أكواد أصلية بأسعار مميزة." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="style.css?v=4.1" />
 </head>
 <body>
-    <div class="page-shell">
-        <header class="main-header">
-            <a href="/" class="logo"><img src="/image/logo.png" alt="Joker Store"></a>
-            <nav><a href="/" data-i18n-key="nav_home">الرئيسية</a></nav>
-        </header>
+    <header class="sub-header">
+        <div class="header-container">
+            <a href="/" class="logo-zone" title="العودة للرئيسية">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <img src="/image/logo.png" alt="Logo" class="header-image" />
+            </a>
+            <nav>
+                <a href="/" data-i18n-key="nav_home"><i class="fas fa-home" style="margin-inline-end:6px;"></i>الرئيسية</a>
+                <a href="/offers" class="active" data-i18n-key="sub_footer_offers"><i class="fas fa-fire" style="margin-inline-end:6px;color:#ef4444;"></i>العروض الخاصة</a>
+            </nav>
+            <div class="header-controls">
+                <button id="lang-switcher" class="header-btn" title="Switch Language"><i class="fas fa-globe"></i><span>EN</span></button>
+            </div>
+        </div>
+    </header>
 
-        <section class="hero" style="padding:60px 20px;text-align:center;">
-            <h1 style="font-size:2.2rem;margin-bottom:10px;"><i class="fas fa-fire" style="color:var(--primary-neon);"></i> <span data-i18n-key="offers_title">العروض الخاصة</span></h1>
-            <p style="color:var(--text-muted);font-size:1.1rem;" data-i18n-key="offers_subtitle">اكتشف أفضل الخصومات والحالات المتاحة الآن</p>
-        </section>
+    <main class="sub-page-main">
+        <div class="sub-page-hero">
+            <h1><i class="fas fa-fire" style="color:#ef4444;"></i> <span data-i18n-key="offers_title">العروض الخاصة</span></h1>
+            <p data-i18n-key="offers_subtitle">اكتشف أفضل الخصومات والحالات المتاحة الآن</p>
+        </div>
 
-        <div id="offersContainer" class="products-grid" style="max-width:1100px;margin:0 auto;padding:0 16px 60px;">
+        <div id="offersContainer" class="products-grid" style="max-width:1100px;margin:0 auto;padding:0 0 40px;">
             <div class="loader-container" style="grid-column:1/-1;text-align:center;padding:60px 0;">
                 <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:var(--primary-neon);"></i>
             </div>
         </div>
-    </div>
 
+        <div style="text-align:center; margin-top:10px;">
+            <a href="/" class="enter-btn"><i class="fas fa-store"></i> العودة للمتجر</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <p class="footer-slogan" data-i18n-key="footer_slogan">بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.</p>
+            </div>
+            <hr class="footer-divider">
+            <div class="footer-links">
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
+                <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
+                <a href="/offers" data-i18n-key="sub_footer_offers">العروض الخاصة</a>
+                <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
+                <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
+            </div>
+            <p class="copyright" data-i18n-key="copyright_text">© 2026 Joker Store — جميع الحقوق محفوظة</p>
+        </div>
+    </footer>
+
+    <a id="whatsappFloatBtn" href="#" target="_blank" rel="noopener" class="whatsapp-float" title="تواصل معنا عبر واتساب" style="display:none;"><i class="fab fa-whatsapp"></i></a>
+    <button type="button" class="back-to-top-btn" id="backToTop" aria-label="العودة إلى الأعلى" title="العودة إلى الأعلى"><i class="fas fa-arrow-up"></i></button>
+
+    <script type="module" src="sub-page.js"></script>
     <script type="module">
-        import { t, getCurrentLanguage } from '/i18n.js';
-
+        import { getCurrentLanguage } from '/i18n.js';
         async function loadOffers() {
             const container = document.getElementById('offersContainer');
             try {
                 const res = await fetch('/api/promotions');
                 const data = await res.json();
                 if (!data.success || !data.promotions || data.promotions.length === 0) {
-                    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--text-muted);"><i class="fas fa-tag" style="font-size:3rem;margin-bottom:16px;display:block;opacity:0.3;"></i><p data-i18n_key="offers_empty">لا توجد عروض نشطة حالياً</p></div>`;
+                    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--text-muted);"><i class="fas fa-tag" style="font-size:3rem;margin-bottom:16px;display:block;opacity:0.3;"></i><p>لا توجد عروض نشطة حالياً</p></div>`;
                     return;
                 }
-
                 const lang = getCurrentLanguage();
                 container.innerHTML = data.promotions.map(promo => {
                     const title = promo.title?.[lang] || promo.title?.ar || '';
@@ -48,15 +91,14 @@
                     const discount = promo.discountPercent || 0;
                     const expiresAt = promo.expiresAt ? new Date(promo.expiresAt) : null;
                     const products = promo.products || [];
-
                     return `
                         <div class="product-item-card" style="grid-column:1/-1;margin-bottom:20px;">
                             <div style="padding:24px;">
-                                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-                                    <span style="background:var(--primary-neon);color:#000;padding:6px 14px;border-radius:20px;font-weight:900;font-size:1.1rem;">-${discount}%</span>
-                                    <h3 style="margin:0;font-size:1.3rem;">${escapeHtml(title)}</h3>
+                                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+                                    <span style="background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;padding:6px 14px;border-radius:20px;font-weight:900;font-size:1.1rem;">-${discount}%</span>
+                                    <h3 style="margin:0;font-size:1.25rem;color:#fff;">${escapeHtml(title)}</h3>
                                 </div>
-                                ${desc ? `<p style="color:var(--text-muted);margin-bottom:12px;">${escapeHtml(desc)}</p>` : ''}
+                                ${desc ? `<p style="color:var(--text-muted);margin-bottom:12px;line-height:1.6;">${escapeHtml(desc)}</p>` : ''}
                                 ${expiresAt ? `<p style="color:var(--danger);font-size:0.85rem;margin-bottom:16px;"><i class="fas fa-clock"></i> ينتهي: ${expiresAt.toLocaleDateString('ar-EG')}</p>` : ''}
                                 ${products.length > 0 ? `
                                     <div class="products-grid" style="gap:12px;">
@@ -67,10 +109,10 @@
                                                 <div class="product-item-card" data-product-id="${p._id}" style="cursor:pointer;">
                                                     <img src="${p.image || '/image/logo.png'}" alt="${escapeHtml(name)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-md);">
                                                     <div style="padding:10px;">
-                                                        <div style="font-size:0.85rem;font-weight:700;margin-bottom:4px;">${escapeHtml(name)}</div>
+                                                        <div style="font-size:0.85rem;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(name)}</div>
                                                         <div style="display:flex;gap:8px;align-items:center;">
-                                                            <span style="color:var(--primary-neon);font-weight:900;">${salePrice.toFixed(2)} ₪</span>
-                                                            ${p.price !== salePrice ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.8rem;">${p.price.toFixed(2)} ₪</span>` : ''}
+                                                            <span style="color:var(--primary-neon);font-weight:900;">${Number(salePrice).toFixed(2)} ₪</span>
+                                                            ${p.price !== salePrice ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.8rem;">${Number(p.price).toFixed(2)} ₪</span>` : ''}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -82,18 +124,20 @@
                         </div>
                     `;
                 }).join('');
+                container.querySelectorAll('[data-product-id]').forEach(el => {
+                    el.addEventListener('click', () => { window.location.href = '/product/' + el.dataset.productId; });
+                });
             } catch (_err) {
                 container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--danger);">❌ فشل تحميل العروض</div>`;
             }
         }
-
-        function escapeHtml(str) {
-            const div = document.createElement('div');
-            div.textContent = str || '';
-            return div.innerHTML;
-        }
-
+        function escapeHtml(str) { const d=document.createElement('div'); d.textContent=str||''; return d.innerHTML; }
         loadOffers();
+        // back-to-top visibility
+        const btt=document.getElementById('backToTop');
+        if(btt){ window.addEventListener('scroll',()=>{ if(window.scrollY>300) btt.classList.add('is-visible'); else btt.classList.remove('is-visible'); }); btt.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'})); }
+        // whatsapp link from site-config
+        fetch('/api/site-config').then(r=>r.json()).then(d=>{ const wa=d?.siteConfig?.social?.whatsapp; const btn=document.getElementById('whatsappFloatBtn'); if(wa&&btn){ btn.href='https://wa.me/'+String(wa).replace(/[^0-9]/g,''); btn.style.display='flex'; } }).catch(()=>{});
     </script>
 </body>
 </html>
