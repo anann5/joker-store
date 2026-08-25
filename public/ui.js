@@ -365,6 +365,20 @@ export function showProductDetails(product, currentCategory = '') {
         stockBadge.classList.toggle('out-of-stock', Number(product.availableStock) <= 0);
         if (!stockText) stockBadge.style.display = 'none';
     }
+    const lastUpdateEl = view.querySelector('[data-last-update]');
+    if (lastUpdateEl && product.updatedAt) {
+        const diff = Date.now() - new Date(product.updatedAt).getTime();
+        const mins = Math.floor(diff / 60000);
+        const hours = Math.floor(mins / 60);
+        const days = Math.floor(hours / 24);
+        const lang = getCurrentLanguage();
+        let txt = '';
+        if (days > 0) txt = lang === 'en' ? `Updated ${days}d ago` : `آخر تحديث: منذ ${days} يوم`;
+        else if (hours > 0) txt = lang === 'en' ? `Updated ${hours}h ago` : `آخر تحديث: منذ ${hours} ساعة`;
+        else if (mins > 0) txt = lang === 'en' ? `Updated ${mins}m ago` : `آخر تحديث: منذ ${mins} دقيقة`;
+        else txt = lang === 'en' ? 'Updated just now' : 'آخر تحديث: الآن';
+        lastUpdateEl.textContent = txt;
+    }
 
     // عرض الوصف الحقيقي من قاعدة البيانات (إن وُجد)
     const descriptionEl = view.querySelector('[data-detail-description]');

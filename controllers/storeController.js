@@ -80,7 +80,8 @@ function toPublicProduct(product) {
             ? null
             : (Array.isArray(source.codes)
                 ? source.codes.filter(code => code.status === 'available').length
-                : null)
+                : null),
+        updatedAt: source.updatedAt || null
     };
 }
 

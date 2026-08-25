@@ -136,14 +136,19 @@ function formatItem(item, categoryKey, region) {
 
     return {
         id: item._id || item.id,
-        name: item.name, // الخادم يرسل الاسم المترجم جاهزاً في حقل 'name'
+        name: item.name,
         description: item.description ? (item.description[getCurrentLanguage()] || item.description.en || item.description.ar || '') : '',
         price: (typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0).toFixed(0),
         region: region,
+        category: categoryKey,
         image: imageUrl,
         rating: typeof item.rating === 'number' ? item.rating : 0,
         reviewsCount: typeof item.reviewsCount === 'number' ? item.reviewsCount : 0,
-        availableStock: (item.availableStock === null || item.availableStock === undefined) ? null : Number(item.availableStock)
+        availableStock: (item.availableStock === null || item.availableStock === undefined) ? null : Number(item.availableStock),
+        updatedAt: item.updatedAt || null,
+        totalSold: Number(item.totalSold || 0),
+        isSubscription: !!item.isSubscription,
+        subscriptionType: item.subscriptionType || null
     };
 }
 
