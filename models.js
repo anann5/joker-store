@@ -76,6 +76,7 @@ const productSchema = new mongoose.Schema({
         en: { type: String, default: 'No description is available for this product at the moment.' }
     },
     image: { type: String, default: '' },
+    images: { type: [String], default: [] },
     codes: { type: [codeSchema], default: [] },
     isExternal: { type: Boolean, default: false },
     externalId: { type: String, default: null },

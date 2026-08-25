@@ -483,6 +483,10 @@
                 </button>
 
                 <div id="cartItemsList"></div>
+                <div id="cartSuggested" class="cart-suggested" style="display:none;">
+                    <h4 style="margin:12px 0 8px;font-size:0.9rem;color:var(--primary-neon);"><i class="fas fa-magic"></i> <span data-i18n-key="suggested_products">منتجات قد تعجبك</span></h4>
+                    <div id="cartSuggestedList" class="cart-suggested-list"></div>
+                </div>
 
                 <div class="promo-input-row">
                     <label for="promoCodeInput" class="promo-input-label" data-i18n-key="promo_label">كود الخصم</label>
@@ -764,7 +768,11 @@
 <template id="product-details-template">
     <div class="product-detail-container">
         <div class="detail-media">
-            <img src="" class="detail-img" width="400" height="400" decoding="async">
+            <div class="detail-main-img-wrapper">
+                <img src="" class="detail-img" width="400" height="400" decoding="async">
+                <button type="button" class="detail-zoom-btn" data-zoom-btn aria-label="تكبير الصورة"><i class="fas fa-search-plus"></i></button>
+            </div>
+            <div class="detail-thumbnails" data-thumbnails></div>
         </div>
         <div class="detail-info">
             <h2 class="product-name"></h2>
@@ -778,7 +786,34 @@
                 <p>🛡️ <b data-i18n-key="detail_guarantee_label">الضمان:</b> <span data-i18n-key="detail_guarantee_text">ضمان Joker Store لعمل الكود بشكل فوري.</span></p>
                 <p style="margin-top:20px; color:var(--primary-neon);" data-i18n-key="detail_note">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
             </div>
+            <!-- شريط الثقة -->
+            <div class="product-trust-bar" data-trust-bar>
+                <div class="trust-item" data-trust-sold><i class="fas fa-fire"></i> <span data-trust-sold-text></span></div>
+                <div class="trust-item"><i class="fas fa-shield-alt"></i> <span data-i18n-key="detail_guarantee_badge">ضمان استرجاع</span></div>
+                <div class="trust-item"><i class="fas fa-bolt"></i> <span data-i18n-key="detail.instant_badge">توصيل فوري</span></div>
+            </div>
+            <!-- مواصفات المنتج -->
+            <div class="product-specs" data-product-specs>
+                <div class="spec-row" data-spec-region>
+                    <span class="spec-label" data-i18n-key="spec_region">المنطقة</span>
+                    <span class="spec-value" data-spec-region-value></span>
+                </div>
+                <div class="spec-row" data-spec-category>
+                    <span class="spec-label" data-i18n-key="spec_category">الفئة</span>
+                    <span class="spec-value" data-spec-category-value></span>
+                </div>
+                <div class="spec-row" data-spec-type>
+                    <span class="spec-label" data-i18n-key="spec_type">النوع</span>
+                    <span class="spec-value" data-spec-type-value></span>
+                </div>
+            </div>
+            <div class="detail-stock" data-stock-badge></div>
             <div class="price-tag product-price"></div>
+            <div class="qty-selector">
+                <button type="button" class="qty-btn qty-dec" data-qty-dec aria-label="تقليل الكمية">−</button>
+                <input type="number" class="qty-input" value="1" min="1" max="10" data-qty-input aria-label="الكمية">
+                <button type="button" class="qty-btn qty-inc" data-qty-inc aria-label="زيادة الكمية">+</button>
+            </div>
             <button class="buy-btn">
                 <i class="fas fa-shopping-cart"></i> <span data-i18n-key="buy_now_btn">إضافة للسلة وإتمام الشراء</span>
             </button>
@@ -848,6 +883,14 @@
         <b class="social-proof-name"></b>
         <span class="social-proof-meta"></span>
     </div>
+</div>
+
+<!-- Lightbox overlay لعرض الصور بحجم كامل -->
+<div class="lightbox-overlay" id="lightboxOverlay" role="dialog" aria-hidden="true">
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="إغلاق"><i class="fas fa-times"></i></button>
+    <button type="button" class="lightbox-prev" data-lightbox-prev aria-label="الصورة السابقة"><i class="fas fa-chevron-left"></i></button>
+    <button type="button" class="lightbox-next" data-lightbox-next aria-label="الصورة التالية"><i class="fas fa-chevron-right"></i></button>
+    <img src="" class="lightbox-img" data-lightbox-img alt="">
 </div>
 
 <!-- ====================================================== -->

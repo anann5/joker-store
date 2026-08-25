@@ -4,6 +4,11 @@ const providerSync = require('../providers/sync');
 const currency = require('../providers/currency');
 const pricing = require('../providers/pricing');
 
+function getLocalizedValue(value, fallback = '') {
+    if (!value || typeof value !== 'object') return value || fallback;
+    return value.ar || value.en || fallback;
+}
+
 const ALLOWED_CATEGORIES = ['gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
     'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
     'itunes', 'razer_gold', 'amazon', 'steam'];
@@ -476,6 +481,43 @@ exports.duplicateProduct = async (req, res) => {
 };
 
 /**
+ * تحديث جماعي لعدة منتجات (سعر، حالة، هامش).
+ */
+exports.bulkUpdateProducts = async (req, res) => {
+    try {
+        const { productIds, updates } = req.body;
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.status(400).json({ success: false, message: 'حدد منتجات للتحديث' });
+        }
+        if (productIds.length > 50) {
+            return res.status(400).json({ success: false, message: 'الحد الأقصى 50 منتج لكل عملية' });
+        }
+
+        const allowedUpdates = {};
+        if (updates.price !== undefined) allowedUpdates.price = Number(updates.price);
+        if (updates.profitMargin !== undefined) allowedUpdates.profitMargin = Number(updates.profitMargin);
+        if (updates.isActive !== undefined) allowedUpdates.isActive = Boolean(updates.isActive);
+        if (updates.category !== undefined) allowedUpdates.category = updates.category;
+
+        if (Object.keys(allowedUpdates).length === 0) {
+            return res.status(400).json({ success: false, message: 'لا توجد حقول للتحديث' });
+        }
+        allowedUpdates.updatedAt = new Date();
+
+        const result = await Product.updateMany(
+            { _id: { $in: productIds } },
+            { $set: allowedUpdates }
+        );
+
+        await createLog('تحديث جماعي', `تم تحديث ${result.modifiedCount} منتج`, req);
+        res.json({ success: true, message: `تم تحديث ${result.modifiedCount} منتج`, modifiedCount: result.modifiedCount });
+    } catch (err) {
+        console.error('Bulk update error:', err);
+        res.status(500).json({ success: false, error: 'فشل التحديث الجماعي' });
+    }
+};
+
+/**
  * جلب إحصاءات المخزون
  */
 exports.getStockStats = async (req, res) => {
@@ -512,6 +554,32 @@ exports.getStockStats = async (req, res) => {
         });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب إحصاءات المخزون.' });
+    }
+};
+
+/**
+ * جلب المنتجات ذات المخزون المنخفض (أقل من 5 قطع).
+ */
+exports.getLowStockProducts = async (req, res) => {
+    try {
+        const products = await Product.find({ isActive: true, isExternal: false })
+            .select('productName image category codes')
+            .limit(100);
+
+        const lowStock = products.filter(p => {
+            const available = p.codes ? p.codes.filter(c => c.status === 'available').length : 0;
+            return available > 0 && available < 5;
+        }).map(p => ({
+            _id: p._id,
+            name: getLocalizedValue(p.productName),
+            image: p.image || '',
+            category: p.category,
+            stock: p.codes ? p.codes.filter(c => c.status === 'available').length : 0
+        }));
+
+        res.json({ success: true, products: lowStock });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب المنتجات المنخفضة المخزون' });
     }
 };
 

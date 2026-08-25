@@ -267,11 +267,79 @@ export function showProductDetails(product, currentCategory = '') {
 
     const view = template.content.cloneNode(true);
 
-    // ملء القالب ببيانات المنتج
+    // ملء القالب ببيانات المنتج — صور متعددة + Lightbox
+    const allImages = (product.images && product.images.length > 0) ? product.images : [product.image || ''];
+    const resolvedImages = allImages.map(img => resolveImageUrl(img) || resolveImageUrl(`image/${currentCategory || 'all'}.png`)).filter(Boolean);
+    if (resolvedImages.length === 0) resolvedImages.push('/image/logo.png');
+
     const detailImgElement = view.querySelector('.detail-img');
-    detailImgElement.src = resolveImageUrl(product.image) || resolveImageUrl(`image/${currentCategory || 'all'}.png`);
-    detailImgElement.onerror = () => { detailImgElement.src = '/image/logo.png'; }; // Fallback image
+    detailImgElement.src = resolvedImages[0];
+    detailImgElement.onerror = () => { detailImgElement.src = '/image/logo.png'; };
     view.querySelector('.detail-img').alt = product.name;
+
+    // عرض thumbnails إذا كانت هناك أكثر من صورة
+    const thumbnailsContainer = view.querySelector('[data-thumbnails]');
+    let currentImageIndex = 0;
+    if (thumbnailsContainer && resolvedImages.length > 1) {
+        resolvedImages.forEach((src, idx) => {
+            const thumb = document.createElement('img');
+            thumb.src = src;
+            thumb.className = 'detail-thumbnail' + (idx === 0 ? ' active' : '');
+            thumb.alt = `${product.name} ${idx + 1}`;
+            thumb.loading = 'lazy';
+            thumb.addEventListener('click', () => {
+                currentImageIndex = idx;
+                detailImgElement.src = src;
+                thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((t, i) => t.classList.toggle('active', i === idx));
+            });
+            thumbnailsContainer.appendChild(thumb);
+        });
+    } else if (thumbnailsContainer) {
+        thumbnailsContainer.style.display = 'none';
+    }
+
+    // زر التكبير — Lightbox
+    const zoomBtn = view.querySelector('[data-zoom-btn]');
+    if (zoomBtn) {
+        zoomBtn.addEventListener('click', () => {
+            const overlay = document.getElementById('lightboxOverlay');
+            const lbImg = overlay.querySelector('[data-lightbox-img]');
+            lbImg.src = resolvedImages[currentImageIndex];
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+
+            const closeBtn = overlay.querySelector('[data-lightbox-close]');
+            const prevBtn = overlay.querySelector('[data-lightbox-prev]');
+            const nextBtn = overlay.querySelector('[data-lightbox-next]');
+
+            const closeLightbox = () => {
+                overlay.classList.remove('active');
+                overlay.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            };
+            const showImage = (idx) => {
+                currentImageIndex = (idx + resolvedImages.length) % resolvedImages.length;
+                lbImg.src = resolvedImages[currentImageIndex];
+                if (thumbnailsContainer) {
+                    thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((t, i) => t.classList.toggle('active', i === currentImageIndex));
+                }
+                detailImgElement.src = resolvedImages[currentImageIndex];
+            };
+
+            closeBtn.onclick = closeLightbox;
+            prevBtn.onclick = () => showImage(currentImageIndex - 1);
+            nextBtn.onclick = () => showImage(currentImageIndex + 1);
+            overlay.onclick = (e) => { if (e.target === overlay) closeLightbox(); };
+            document.onkeydown = (e) => {
+                if (!overlay.classList.contains('active')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') showImage(currentImageIndex - 1);
+                if (e.key === 'ArrowRight') showImage(currentImageIndex + 1);
+            };
+        });
+    }
+
     view.querySelector('.product-name').textContent = product.name;
     view.querySelector('.product-price').textContent = formatPrice(product.price);
     const ratingZone = view.querySelector('[data-rating]');
@@ -289,19 +357,83 @@ export function showProductDetails(product, currentCategory = '') {
         regionSpan.textContent = product.region;
     }
 
+    // عرض مؤشر المخزون
+    const stockBadge = view.querySelector('[data-stock-badge]');
+    if (stockBadge) {
+        const stockText = renderStockBadge(product.availableStock);
+        stockBadge.textContent = stockText;
+        stockBadge.classList.toggle('out-of-stock', Number(product.availableStock) <= 0);
+        if (!stockText) stockBadge.style.display = 'none';
+    }
+
     // عرض الوصف الحقيقي من قاعدة البيانات (إن وُجد)
     const descriptionEl = view.querySelector('[data-detail-description]');
     if (descriptionEl && product.description && product.description.trim()) {
         descriptionEl.textContent = product.description;
     }
+
+    // شريط الثقة — عدد مرات البيع
+    const trustSoldText = view.querySelector('[data-trust-sold-text]');
+    if (trustSoldText) {
+        const sold = product.totalSold || 0;
+        if (sold > 0) {
+            const lang = getCurrentLanguage();
+            trustSoldText.textContent = lang === 'ar'
+                ? `تم بيع ${sold} مرة`
+                : `Sold ${sold} times`;
+        } else {
+            const trustSold = view.querySelector('[data-trust-sold]');
+            if (trustSold) trustSold.style.display = 'none';
+        }
+    }
+
+    // مواصفات المنتج
+    const specRegionValue = view.querySelector('[data-spec-region-value]');
+    if (specRegionValue) specRegionValue.textContent = product.region || '—';
+    const specCategoryValue = view.querySelector('[data-spec-category-value]');
+    if (specCategoryValue) {
+        const lang = getCurrentLanguage();
+        const categories = { ps: 'PlayStation', xbox: 'Xbox', nintendo: 'Nintendo', steam: 'Steam', pubg: 'PUBG', freefire: 'Free Fire', mobilelegends: 'Mobile Legends', roblox: 'Roblox', valorant: 'Valorant', leagueoflegends: 'League of Legends', spotify: 'Spotify', netflix: 'Netflix', itunes: 'iTunes', google: 'Google Play', amazon: 'Amazon', other: lang === 'ar' ? 'أخرى' : 'Other' };
+        specCategoryValue.textContent = categories[product.category] || product.category || '—';
+    }
+    const specTypeValue = view.querySelector('[data-spec-type-value]');
+    if (specTypeValue) {
+        const lang = getCurrentLanguage();
+        if (product.isSubscription) {
+            const subTypes = { fixed: lang === 'ar' ? 'اشتراك ثابت' : 'Fixed Subscription', recurring: lang === 'ar' ? 'اشتراك متجدد' : 'Recurring Subscription' };
+            specTypeValue.textContent = subTypes[product.subscriptionType] || (lang === 'ar' ? 'اشتراك' : 'Subscription');
+        } else {
+            specTypeValue.textContent = lang === 'ar' ? 'كود شحن' : 'Gift Code';
+        }
+    }
+    // إخفاء صفوف فارغة
+    ['region', 'category', 'type'].forEach(key => {
+        const row = view.querySelector(`[data-spec-${key}]`);
+        const val = view.querySelector(`[data-spec-${key}-value]`);
+        if (row && val && (!val.textContent || val.textContent === '—')) row.style.display = 'none';
+    });
     
+    // منطق اختيار الكمية
+    const qtyInput = view.querySelector('[data-qty-input]');
+    const qtyDec = view.querySelector('[data-qty-dec]');
+    const qtyInc = view.querySelector('[data-qty-inc]');
+    if (qtyDec && qtyInc && qtyInput) {
+        qtyDec.addEventListener('click', () => {
+            const cur = parseInt(qtyInput.value, 10) || 1;
+            if (cur > 1) qtyInput.value = cur - 1;
+        });
+        qtyInc.addEventListener('click', () => {
+            const cur = parseInt(qtyInput.value, 10) || 1;
+            if (cur < 10) qtyInput.value = cur + 1;
+        });
+    }
+
     // إضافة منطق لزر "إضافة للسلة"
     const buyButton = view.querySelector('.buy-btn');
     buyButton.addEventListener('click', async () => {
-        // هنا يجب استيراد دالة addToCart من cart.js
-        // ونفترض أنها موجودة في النطاق
         const { addToCart } = await import('./cart.js');
-        addToCart(product);
+        const qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
+        addToCart(product, qty);
     });
 
     // إضافة منطق لزر "مشاركة المنتج"
@@ -515,6 +647,61 @@ export function updateCartUI() {
     }
 
     bindCartListEvents(list);
+
+    // عرض المنتجات المقترحة في السلة
+    renderCartSuggestions();
+}
+
+async function renderCartSuggestions() {
+    const container = document.getElementById('cartSuggested');
+    const list = document.getElementById('cartSuggestedList');
+    if (!container || !list) return;
+
+    const items = JSON.parse(localStorage.getItem('joker_cart') || '[]');
+    if (items.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    try {
+        const { fetchSuggestedProducts } = await import('./cart.js');
+        const suggested = await fetchSuggestedProducts();
+        if (suggested.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        const lang = getCurrentLanguage();
+        list.innerHTML = suggested.map(product => {
+            const name = product.productName?.[lang] || product.productName?.ar || '';
+            const img = resolveImageUrl(product.image) || '/image/logo.png';
+            return `
+                <div class="cart-suggested-item" data-suggested-id="${product._id}">
+                    <img src="${img}" alt="${escapeHtml(name)}" loading="lazy">
+                    <span class="suggested-name">${escapeHtml(name)}</span>
+                    <span class="suggested-price">${formatPrice(product.price)}</span>
+                    <button class="suggested-add" data-add-suggested="${product._id}" data-name="${escapeHtml(name)}" data-price="${product.price}" data-image="${escapeHtml(product.image || '')}">+</button>
+                </div>
+            `;
+        }).join('');
+        container.style.display = '';
+
+        // ربط أزرار الإضافة
+        list.querySelectorAll('[data-add-suggested]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const { addToCart } = await import('./cart.js');
+                addToCart({
+                    id: btn.dataset.addSuggested,
+                    name: btn.dataset.name,
+                    price: Number(btn.dataset.price),
+                    image: btn.dataset.image
+                }, 1);
+            });
+        });
+    } catch (_err) {
+        container.style.display = 'none';
+    }
 }
 
 // ربط أزرار الكمية والحذف داخل قائمة السلة (تفويض، مع منع التكرار)

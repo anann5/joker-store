@@ -1035,9 +1035,16 @@
                         <span id="soundIcon" class="fas fa-volume-up" style="color: var(--accent);"></span>
                     </div>
                 </div>
+                <div id="bulkActionsBar" style="display:none;padding:10px 14px;background:rgba(0,229,255,0.08);border-radius:var(--radius-md);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <span id="bulkSelectedCount" style="font-size:0.85rem;color:#fff;">0 منتج محدد</span>
+                    <button class="btn btn-sm btn-approve" data-bulk-action="activate"><i class="fas fa-check"></i> تفعيل</button>
+                    <button class="btn btn-sm btn-reject" data-bulk-action="deactivate"><i class="fas fa-ban"></i> تعطيل</button>
+                    <button class="btn btn-sm btn-secondary" data-bulk-action="set-price"><i class="fas fa-dollar-sign"></i> تعديل السعر</button>
+                </div>
                 <table>
                     <thead>
                         <tr>
+                            <th style="width:36px;"><input type="checkbox" id="selectAllProducts" title="تحديد الكل"></th>
                             <th>اسم المنتج</th>
                             <th>الفئة</th>
                             <th>المنطقة</th>
@@ -1065,7 +1072,15 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="section-title">سجل عمليات وفواتير الزبائن</h2>
-                    <button class="btn btn-secondary btn-sm" id="refreshOrdersBtn"><i class="fas fa-redo"></i> تحديث</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary btn-sm" id="exportOrdersBtn"><i class="fas fa-download"></i> تصدير CSV</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshOrdersBtn"><i class="fas fa-redo"></i> تحديث</button>
+                    </div>
+                </div>
+                <div class="orders-search-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <input type="text" id="ordersSearchInput" placeholder="بحث بالبريد أو رقم الطلب..." style="flex:1;min-width:200px;padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                    <input type="date" id="ordersDateFrom" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                    <input type="date" id="ordersDateTo" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
                 </div>
                 <div class="order-filter-bar" id="orderFilterBar">
                     <button class="filter-chip active" data-status="all">الكل</button>

@@ -352,6 +352,24 @@ const initAdmin = async () => {
         });
     });
 
+    // Orders search + date filters
+    const ordersSearchInput = document.getElementById('ordersSearchInput');
+    if (ordersSearchInput) {
+        let searchTimeout;
+        ordersSearchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadRecentOrders(), 400);
+        });
+    }
+    const ordersDateFrom = document.getElementById('ordersDateFrom');
+    const ordersDateTo = document.getElementById('ordersDateTo');
+    if (ordersDateFrom) ordersDateFrom.addEventListener('change', () => loadRecentOrders());
+    if (ordersDateTo) ordersDateTo.addEventListener('change', () => loadRecentOrders());
+
+    // Export orders CSV
+    const exportOrdersBtn = document.getElementById('exportOrdersBtn');
+    if (exportOrdersBtn) exportOrdersBtn.addEventListener('click', exportOrdersCSV);
+
     // === Categories ===
     const addCategoryBtn = document.getElementById('addCategoryBtn');
     if (addCategoryBtn) addCategoryBtn.addEventListener('click', openAddCategoryModal);
@@ -371,6 +389,21 @@ const initAdmin = async () => {
     if (exportLogs) exportLogs.addEventListener('click', () => { window.location.href = '/api/admin/logs/export'; });
     if (clearLogs) clearLogs.addEventListener('click', clearAllLogs);
 
+    // === Bulk inventory actions ===
+    const selectAllCb = document.getElementById('selectAllProducts');
+    if (selectAllCb) {
+        selectAllCb.addEventListener('change', () => {
+            document.querySelectorAll('.product-checkbox').forEach(cb => { cb.checked = selectAllCb.checked; });
+            updateBulkActionsBar();
+        });
+    }
+    document.addEventListener('change', (e) => {
+        if (e.target.classList.contains('product-checkbox')) updateBulkActionsBar();
+    });
+    document.querySelectorAll('[data-bulk-action]').forEach(btn => {
+        btn.addEventListener('click', () => handleBulkAction(btn.dataset.bulkAction));
+    });
+
     // === Load initial data ===
     loadDashboard();
     setInterval(loadDashboard, 60000);
@@ -385,6 +418,55 @@ if (document.readyState === 'loading') {
 // ======================================================
 //  مُساعدات عامة
 // ======================================================
+
+function getSelectedProductIds() {
+    return [...document.querySelectorAll('.product-checkbox:checked')].map(cb => cb.dataset.productId);
+}
+
+function updateBulkActionsBar() {
+    const bar = document.getElementById('bulkActionsBar');
+    const countEl = document.getElementById('bulkSelectedCount');
+    const selected = getSelectedProductIds();
+    if (bar) bar.style.display = selected.length > 0 ? 'flex' : 'none';
+    if (countEl) countEl.textContent = `${selected.length} منتج محدد`;
+}
+
+async function handleBulkAction(action) {
+    const ids = getSelectedProductIds();
+    if (ids.length === 0) return;
+
+    if (action === 'activate' || action === 'deactivate') {
+        if (!confirm(action === 'activate' ? `تفعيل ${ids.length} منتج؟` : `تعطيل ${ids.length} منتج؟`)) return;
+        await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/inventory/bulk', {
+            method: 'POST', credentials: 'include', headers: buildJsonHeaders(),
+            body: JSON.stringify({ productIds: ids, updates: { isActive: action === 'activate' } })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message}`, 'success');
+            loadInventory();
+        } else {
+            showAdminToast(`❌ ${data.message || 'فشل التحديث'}`, 'error');
+        }
+    } else if (action === 'set-price') {
+        const price = prompt(`أدخل السعر الجديد للمنتجات المحددة (${ids.length}):`);
+        if (price === null || isNaN(Number(price))) return;
+        await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/inventory/bulk', {
+            method: 'POST', credentials: 'include', headers: buildJsonHeaders(),
+            body: JSON.stringify({ productIds: ids, updates: { price: Number(price) } })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message}`, 'success');
+            loadInventory();
+        } else {
+            showAdminToast(`❌ ${data.message || 'فشل التحديث'}`, 'error');
+        }
+    }
+    updateBulkActionsBar();
+}
 
 function updateSoundIcon() {
     const icon = document.getElementById('soundIcon');
@@ -450,9 +532,37 @@ async function loadDashboard() {
         // Providers status
         loadProviderStatus();
 
+        // Low stock alerts
+        loadLowStockAlerts();
+
     } catch (_err) {
         showAdminToast('❌ فشل تحميل الإحصائيات', 'error');
     }
+}
+
+async function loadLowStockAlerts() {
+    try {
+        const res = await fetch('/api/admin/inventory/low-stock', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success || !data.products || data.products.length === 0) return;
+
+        const container = document.getElementById('recentOrdersList');
+        if (!container) return;
+
+        const alertHtml = `
+            <div class="low-stock-alert" style="margin-top:16px;padding:14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:var(--radius-md);">
+                <h4 style="color:#e74c3c;margin:0 0 10px;font-size:0.95rem;"><i class="fas fa-exclamation-triangle"></i> تنبيه مخزون منخفض (${data.products.length})</h4>
+                ${data.products.map(p => `
+                    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                        <img src="${escapeHtml(p.image || '/image/logo.png')}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;" onerror="this.src='/image/logo.png'">
+                        <span style="flex:1;font-size:0.85rem;">${escapeHtml(p.name)}</span>
+                        <span style="color:#e74c3c;font-weight:700;font-size:0.82rem;">متبقي ${p.stock}</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', alertHtml);
+    } catch (_err) { /* silent */ }
 }
 
 // ======================================================
@@ -611,6 +721,7 @@ function renderInventoryRow(item) {
 
     return `
         <tr>
+            <td><input type="checkbox" class="product-checkbox" data-product-id="${item._id}"></td>
             <td class="product-name-cell">${nameAr}
                 ${nameEn ? `<div class="product-name-secondary">${nameEn}</div>` : ''}
             </td>
@@ -810,7 +921,16 @@ async function loadRecentOrders() {
     tbody.innerHTML = `<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> جاري جلب الفواتير...</td></tr>`;
 
     try {
-        const res = await fetch('/api/admin/orders?limit=200', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const params = new URLSearchParams({ limit: '200' });
+        if (_ordersFilter && _ordersFilter !== 'all') params.set('status', _ordersFilter);
+        const searchVal = document.getElementById('ordersSearchInput')?.value?.trim();
+        if (searchVal) params.set('search', searchVal);
+        const dateFrom = document.getElementById('ordersDateFrom')?.value;
+        const dateTo = document.getElementById('ordersDateTo')?.value;
+        if (dateFrom) params.set('from', dateFrom);
+        if (dateTo) params.set('to', dateTo);
+
+        const res = await fetch(`/api/admin/orders?${params}`, { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         if (res.status === 401 || res.status === 403) {
             window.location.href = '/login.html';
             return;
@@ -832,8 +952,20 @@ async function loadRecentOrders() {
 
 function filterOrders(status) {
     _ordersFilter = status;
-    const filtered = status === 'all' ? _allOrdersCache : _allOrdersCache.filter(o => o.status === status);
-    renderOrders(filtered);
+    loadRecentOrders();
+}
+
+function exportOrdersCSV() {
+    const params = new URLSearchParams();
+    if (_ordersFilter && _ordersFilter !== 'all') params.set('status', _ordersFilter);
+    const searchVal = document.getElementById('ordersSearchInput')?.value?.trim();
+    if (searchVal) params.set('search', searchVal);
+    const dateFrom = document.getElementById('ordersDateFrom')?.value;
+    const dateTo = document.getElementById('ordersDateTo')?.value;
+    if (dateFrom) params.set('from', dateFrom);
+    if (dateTo) params.set('to', dateTo);
+
+    window.open(`/api/admin/orders/export?${params}`, '_blank');
 }
 
 function renderOrders(orders) {

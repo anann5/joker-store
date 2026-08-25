@@ -86,6 +86,9 @@ router.post('/promotions/validate', promoValidateLimiter, storeController.valida
 // Route to fetch site-wide customer testimonials (latest product reviews)
 router.get('/testimonials', storeController.getTestimonials);
 
+// Route for suggested products based on cart contents
+router.post('/products/suggested', storeController.getSuggestedProducts);
+
 // Route to get products by category — MUST be last (catch-all with :categoryKey)
 router.get('/products/:categoryKey', storeController.getProductsByCategory);
 

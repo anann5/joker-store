@@ -67,6 +67,9 @@ function toPublicProduct(product) {
         region: source.region,
         price: source.price,
         image: source.image || '',
+        images: (Array.isArray(source.images) && source.images.length > 0)
+            ? source.images
+            : (source.image ? [source.image] : []),
         isSubscription: Boolean(source.isSubscription),
         subscriptionType: source.subscriptionType,
         subscriptionDuration: source.subscriptionDuration,
@@ -336,6 +339,33 @@ exports.getBestSellingProducts = async (req, res) => {
 };
 
 /**
+ * اقتراح منتجات بناءً على منتجات موجودة في السلة (من نفس الفئة + الأكثر مبيعاً).
+ */
+exports.getSuggestedProducts = async (req, res) => {
+    try {
+        const { productIds = [] } = req.body;
+        if (!Array.isArray(productIds) || productIds.length === 0) {
+            return res.json({ success: true, products: [] });
+        }
+
+        // جلب الفئات للمنتجات في السلة
+        const cartProducts = await Product.find({ _id: { $in: productIds }, isActive: true }).select('category');
+        const categories = [...new Set(cartProducts.map(p => p.category).filter(Boolean))];
+
+        // اقتراح منتجات من نفس الفئة + الأكثر مبيعاً + تستبعد المنتجات في السلة
+        const suggested = await Product.find({
+            isActive: true,
+            category: { $in: categories },
+            _id: { $nin: productIds }
+        }).sort({ reviewsCount: -1, rating: -1 }).limit(6);
+
+        res.json({ success: true, products: suggested.map(toPublicProduct) });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل في جلب المنتجات المقترحة' });
+    }
+};
+
+/**
  * جلب أحدث المنتجات المضافة إلى المتجر.
  */
 exports.getNewlyAddedProducts = async (req, res) => {
@@ -395,7 +425,23 @@ exports.getProductItem = async (req, res) => {
         if (!product) {
             return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
         }
-        return res.json({ success: true, product: toPublicProduct(product) });
+        const publicProduct = toPublicProduct(product);
+
+        // حساب عدد مرات بيع هذا المنتج
+        try {
+            const { Order: OrderModel } = require('../models');
+            const salesResult = await OrderModel.aggregate([
+                { $match: { status: 'completed' } },
+                { $unwind: '$items' },
+                { $match: { 'items.productId': product._id } },
+                { $group: { _id: null, totalSold: { $sum: '$items.qty' } } }
+            ]);
+            publicProduct.totalSold = salesResult.length > 0 ? salesResult[0].totalSold : 0;
+        } catch (_e) {
+            publicProduct.totalSold = 0;
+        }
+
+        return res.json({ success: true, product: publicProduct });
     } catch (_err) {
         return res.status(500).json({ success: false, error: 'فشل في جلب المنتج' });
     }
@@ -652,7 +698,7 @@ exports.validatePromoCode = async (req, res) => {
  */
 exports.searchAll = async (req, res) => {
     try {
-        const { q, lang = 'ar' } = req.query;
+        const { q, lang = 'ar', category, minPrice, maxPrice, minRating, sort } = req.query;
         if (typeof q !== 'string' || q.trim().length < 2) {
             return res.json({ success: true, products: [], categories: [] });
         }
@@ -664,12 +710,27 @@ exports.searchAll = async (req, res) => {
         }
 
         const searchField = `productName.${lang}`;
-        // بحث بادئة (^): متوافق مع الفهرسة السريعة وطبيعة الإكمال التلقائي في الواجهة
         const queryRegex = new RegExp(`^${escapeRegex(q.trim())}`, 'i');
-        const products = await Product.find({
+        const query = {
             [searchField]: queryRegex,
             isActive: true
-        }).limit(10);
+        };
+
+        if (category) query.category = category;
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = Number(minPrice);
+            if (maxPrice) query.price.$lte = Number(maxPrice);
+        }
+        if (minRating) query.rating = { $gte: Number(minRating) };
+
+        let sortOption = { createdAt: -1 };
+        if (sort === 'price_asc') sortOption = { price: 1 };
+        else if (sort === 'price_desc') sortOption = { price: -1 };
+        else if (sort === 'rating') sortOption = { rating: -1 };
+        else if (sort === 'popular') sortOption = { reviewsCount: -1 };
+
+        const products = await Product.find(query).sort(sortOption).limit(20);
 
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (_err) {

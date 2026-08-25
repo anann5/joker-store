@@ -228,6 +228,7 @@ exports.manualAddProductSchema = Joi.object({
         en: Joi.string().allow('').optional()
     }).optional(),
     image: Joi.string().trim().max(500).allow('').optional(),
+    images: Joi.array().max(10).items(Joi.string().trim().max(500)).optional(),
     codes: Joi.array().max(500).items(codeListItem).optional(),
     isExternal: Joi.boolean().optional(),
     externalId: Joi.string().allow('', null).trim().max(100).optional(),
@@ -260,6 +261,7 @@ exports.createProductSchema = Joi.object({
         en: Joi.string().allow('').optional()
     }).optional(),
     image: Joi.string().allow('', null).trim().max(500).optional(),
+    images: Joi.array().max(10).items(Joi.string().trim().max(500)).optional(),
     manualCodes: Joi.array().max(500).items(codeListItem).optional(),
     codes: Joi.array().max(500).items(codeListItem).optional(),
     isExternal: Joi.boolean().optional(),
@@ -291,6 +293,7 @@ exports.updateProductSchema = Joi.object({
         en: Joi.string().allow('').optional()
     }).optional(),
     image: Joi.string().allow('', null).trim().max(500).optional(),
+    images: Joi.array().max(10).items(Joi.string().trim().max(500)).optional(),
     isExternal: Joi.boolean().optional(),
     externalId: Joi.string().allow('', null).trim().max(100).optional(),
     profitMargin: marginField,

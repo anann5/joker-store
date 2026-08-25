@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const helmet = require('helmet');
+const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const adminRoutes = require('./routes/adminRoutes');
@@ -150,7 +151,23 @@ const homePageHandler = (req, res, next) => {
     }
 };
 app.get('/', homePageHandler);
-app.use(express.static(path.join(__dirname, 'public')));
+
+// ضغط الاستجابات (gzip/brotli) لتقليل حجم النقل
+app.use(compression());
+
+// Cache headers للملفات الثابتة
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '7d',
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html') || filePath.endsWith('.htm')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        } else if (/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
+        } else if (/\.(css|js)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        }
+    }
+}));
 // عميل socket.io يُخدم محلياً (تطابق الإصدار مع الخادم + لا اعتماد على CDN خارجي).
 // يُخفى تحت /vendor بدلاً من /socket.io لأن خادم Socket.IO (بإعداد serveClient:false)
 // يعترض أي طلب يبدأ بـ /socket.io ويرد 400 — فكان العميل يُحمَّل فاشلاً دائماً.

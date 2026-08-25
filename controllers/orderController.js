@@ -82,13 +82,80 @@ exports.getOrders = async (req, res) => {
         const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
         const skip = (page - 1) * limit;
 
+        const query = {};
+        if (req.query.status && req.query.status !== 'all') {
+            query.status = req.query.status;
+        }
+        if (req.query.search) {
+            const search = req.query.search.trim();
+            query.$or = [
+                { buyerEmail: { $regex: search, $options: 'i' } },
+                { orderId: { $regex: search, $options: 'i' } }
+            ];
+        }
+        if (req.query.from || req.query.to) {
+            query.createdAt = {};
+            if (req.query.from) query.createdAt.$gte = new Date(req.query.from);
+            if (req.query.to) query.createdAt.$lte = new Date(req.query.to + 'T23:59:59.999Z');
+        }
+
         const [orders, total] = await Promise.all([
-            Order.find().sort({ createdAt: -1 }).skip(skip).limit(limit),
-            Order.countDocuments()
+            Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit),
+            Order.countDocuments(query)
         ]);
         res.json({ success: true, orders, total, page, limit });
     } catch (_err) {
         res.status(500).json({ success: false, message: 'فشل جلب الطلبات' });
+    }
+};
+
+exports.exportOrdersCSV = async (req, res) => {
+    try {
+        const query = {};
+        if (req.query.status && req.query.status !== 'all') {
+            query.status = req.query.status;
+        }
+        if (req.query.search) {
+            const search = req.query.search.trim();
+            query.$or = [
+                { buyerEmail: { $regex: search, $options: 'i' } },
+                { orderId: { $regex: search, $options: 'i' } }
+            ];
+        }
+        if (req.query.from || req.query.to) {
+            query.createdAt = {};
+            if (req.query.from) query.createdAt.$gte = new Date(req.query.from);
+            if (req.query.to) query.createdAt.$lte = new Date(req.query.to + 'T23:59:59.999Z');
+        }
+
+        const orders = await Order.find(query).sort({ createdAt: -1 }).limit(5000);
+
+        const escapeCSV = (val) => {
+            const str = String(val ?? '');
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return '"' + str.replace(/"/g, '""') + '"';
+            }
+            return str;
+        };
+
+        const header = 'Order ID,Email,Status,Price,Currency,Payment Gateway,Items,Created At';
+        const rows = orders.map(o => [
+            escapeCSV(o.orderId),
+            escapeCSV(o.buyerEmail),
+            escapeCSV(o.status),
+            escapeCSV(o.price),
+            escapeCSV(o.priceCurrency || 'ILS'),
+            escapeCSV(o.paymentGateway || ''),
+            escapeCSV((o.items || []).map(i => `${i.name?.ar || i.name?.en || ''} x${i.qty}`).join('; ')),
+            escapeCSV(o.createdAt?.toISOString())
+        ].join(','));
+
+        const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
+        res.send(csv);
+    } catch (_err) {
+        res.status(500).json({ success: false, message: 'فشل تصدير الطلبات' });
     }
 };
 

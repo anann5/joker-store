@@ -10,18 +10,19 @@ export let cart = JSON.parse(localStorage.getItem('joker_cart')) || [];
 /**
  * يضيف منتجاً إلى السلة أو يزيد كميته.
  * @param {object} product - المنتج المراد إضافته.
+ * @param {number} qty - الكمية المطلوبة (افتراضي 1).
  */
-export function addToCart(product) {
+export function addToCart(product, qty = 1) {
     const existingItem = cart.find(item => item.id === product.id);
     
     if (existingItem) {
-        existingItem.qty += 1;
+        existingItem.qty += qty;
     } else {
         cart.push({
             id: product.id,
             name: product.name,
             price: product.price,
-            qty: 1
+            qty: qty
         });
     }
     
@@ -80,5 +81,24 @@ export function decreaseQuantity(index) {
         }
         localStorage.setItem('joker_cart', JSON.stringify(cart));
         updateCartUI();
+    }
+}
+
+/**
+ * جلب منتجات مقترحة بناءً على محتويات السلة.
+ */
+export async function fetchSuggestedProducts() {
+    if (cart.length === 0) return [];
+    try {
+        const productIds = cart.map(item => item.id);
+        const res = await fetch('/api/products/suggested', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productIds })
+        });
+        const data = await res.json();
+        return data.success ? (data.products || []) : [];
+    } catch (_err) {
+        return [];
     }
 }
