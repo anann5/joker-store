@@ -29,6 +29,16 @@ const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true, select: false },
     balance: { type: Number, default: 0, min: 0 },
+    loyaltyPoints: { type: Number, default: 0, min: 0 },
+    loyaltyHistory: {
+        type: [{
+            points: { type: Number, required: true },
+            type: { type: String, enum: ['earned', 'redeemed'], required: true },
+            orderId: { type: mongoose.Schema.Types.ObjectId, default: null },
+            createdAt: { type: Date, default: Date.now }
+        }],
+        default: []
+    },
     // سلة المستخدم السحابية — تُزامن بين الأجهزة بعد تسجيل الدخول
     cart: {
         type: [{
@@ -107,6 +117,7 @@ const productSchema = new mongoose.Schema({
         type: [{
             rating: { type: Number, required: true, min: 1, max: 5 },
             comment: { type: String, trim: true, default: '', maxlength: 500 },
+            images: { type: [String], default: [] },
             reviewerEmail: { type: String, trim: true, default: null },
             createdAt: { type: Date, default: Date.now }
         }],
@@ -287,6 +298,26 @@ categorySchema.index({ isActive: 1, order: 1 });
 // سجل النشاطات: يُفرز بـ createdAt في لوحة التحكم ويُحذف الأقدم عبر deleteMany
 logSchema.index({ createdAt: -1 });
 
+const cartSessionSchema = new mongoose.Schema({
+    sessionId: { type: String, required: true, unique: true },
+    email: { type: String, default: null },
+    items: {
+        type: [{
+            productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+            productName: { type: String, default: '' },
+            qty: { type: Number, default: 1 },
+            price: { type: Number, default: 0 }
+        }],
+        default: []
+    },
+    total: { type: Number, default: 0 },
+    notified: { type: Boolean, default: false },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+cartSessionSchema.index({ notified: 1, createdAt: -1 });
+cartSessionSchema.index({ sessionId: 1 });
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Category: mongoose.model('Category', categorySchema),
@@ -295,5 +326,6 @@ module.exports = {
     User: mongoose.model('User', userSchema),
     ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema),
     AdminSession: mongoose.model('AdminSession', adminSessionSchema),
-    Promotion: mongoose.model('Promotion', promotionSchema)
+    Promotion: mongoose.model('Promotion', promotionSchema),
+    CartSession: mongoose.model('CartSession', cartSessionSchema)
 };

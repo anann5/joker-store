@@ -6,6 +6,7 @@
     <title>لوحة تحكم JOKER STORE 🔒</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
     <style>
         :root {
@@ -994,6 +995,17 @@
                 </div>
             </div>
 
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+                <div class="card" style="padding:16px;">
+                    <h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--primary-neon);"><i class="fas fa-chart-line"></i> المبيعات (7 أيام)</h3>
+                    <canvas id="salesChart" height="200"></canvas>
+                </div>
+                <div class="card" style="padding:16px;">
+                    <h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--primary-neon);"><i class="fas fa-chart-pie"></i> المبيعات حسب الفئة</h3>
+                    <canvas id="categoryChart" height="200"></canvas>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <h2 class="section-title"><i class="fas fa-server"></i> المزودون والمزامنة (B2B)</h2>
@@ -1040,6 +1052,31 @@
                     <button class="btn btn-sm btn-approve" data-bulk-action="activate"><i class="fas fa-check"></i> تفعيل</button>
                     <button class="btn btn-sm btn-reject" data-bulk-action="deactivate"><i class="fas fa-ban"></i> تعطيل</button>
                     <button class="btn btn-sm btn-secondary" data-bulk-action="set-price"><i class="fas fa-dollar-sign"></i> تعديل السعر</button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <input type="text" id="inventorySearchInput" placeholder="بحث بالاسم..." style="flex:1;min-width:180px;padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                    <select id="inventoryCategoryFilter" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                        <option value="">كل الفئات</option>
+                        <option value="pubg">PUBG</option>
+                        <option value="fortnite">Fortnite</option>
+                        <option value="playstation">PlayStation</option>
+                        <option value="xbox">Xbox</option>
+                        <option value="steam">Steam</option>
+                        <option value="nintendo">Nintendo</option>
+                        <option value="freefire">Free Fire</option>
+                        <option value="mobilelegends">Mobile Legends</option>
+                        <option value="spotify">Spotify</option>
+                        <option value="netflix">Netflix</option>
+                        <option value="amazon">Amazon</option>
+                        <option value="google">Google Play</option>
+                        <option value="itunes">iTunes</option>
+                    </select>
+                    <select id="inventoryStockFilter" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                        <option value="">كل المخزون</option>
+                        <option value="in_stock">متوفر</option>
+                        <option value="low_stock">مخزون منخفض</option>
+                        <option value="out_of_stock">نفذ</option>
+                    </select>
                 </div>
                 <table>
                     <thead>

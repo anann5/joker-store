@@ -404,6 +404,17 @@ const initAdmin = async () => {
         btn.addEventListener('click', () => handleBulkAction(btn.dataset.bulkAction));
     });
 
+    // === Inventory search + filters ===
+    const invSearch = document.getElementById('inventorySearchInput');
+    const invCatFilter = document.getElementById('inventoryCategoryFilter');
+    const invStockFilter = document.getElementById('inventoryStockFilter');
+    if (invSearch) {
+        let invTimeout;
+        invSearch.addEventListener('input', () => { clearTimeout(invTimeout); invTimeout = setTimeout(filterInventory, 300); });
+    }
+    if (invCatFilter) invCatFilter.addEventListener('change', filterInventory);
+    if (invStockFilter) invStockFilter.addEventListener('change', filterInventory);
+
     // === Load initial data ===
     loadDashboard();
     setInterval(loadDashboard, 60000);
@@ -490,6 +501,82 @@ function closeModal(modal) {
 //  DASHBOARD — لوحة الإحصائيات
 // ======================================================
 
+let salesChartInstance = null;
+let categoryChartInstance = null;
+
+async function renderDashboardCharts() {
+    try {
+        const res = await fetch('/api/admin/reports', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) return;
+
+        const salesCanvas = document.getElementById('salesChart');
+        const catCanvas = document.getElementById('categoryChart');
+        if (!salesCanvas || !catCanvas) return;
+
+        // Sales line chart (last 7 days)
+        const daily = data.reports?.dailySales || data.dailySales || [];
+        const labels = daily.map(d => {
+            const dt = new Date(d.date);
+            return `${dt.getMonth()+1}/${dt.getDate()}`;
+        });
+        const salesValues = daily.map(d => d.revenue || d.total || 0);
+
+        if (salesChartInstance) salesChartInstance.destroy();
+        salesChartInstance = new Chart(salesCanvas, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'المبيعات (₪)',
+                    data: salesValues,
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0,255,136,0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00ff88'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
+                scales: {
+                    x: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+
+        // Category doughnut chart
+        const catSales = data.reports?.categorySales || data.categorySales || [];
+        const catLabels = catSales.map(c => c._id || c.category || 'Other');
+        const catValues = catSales.map(c => c.total || c.revenue || 0);
+        const catColors = ['#00ff88', '#00c8ff', '#ff6b6b', '#ffd93d', '#a855f7', '#ff9f43', '#6bcb77', '#4d96ff', '#ff6348', '#1dd1a1', '#f368e0', '#ff9f43'];
+
+        if (categoryChartInstance) categoryChartInstance.destroy();
+        categoryChartInstance = new Chart(catCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: catLabels,
+                datasets: [{
+                    data: catValues,
+                    backgroundColor: catColors.slice(0, catLabels.length),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#aaa', font: { size: 10 }, padding: 8 } }
+                }
+            }
+        });
+    } catch (_err) {
+        // Charts are optional — silent fail
+    }
+}
+
 async function loadDashboard() {
     try {
         const res = await fetch('/api/admin/dashboard', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
@@ -534,6 +621,9 @@ async function loadDashboard() {
 
         // Low stock alerts
         loadLowStockAlerts();
+
+        // Render dashboard charts
+        renderDashboardCharts();
 
     } catch (_err) {
         showAdminToast('❌ فشل تحميل الإحصائيات', 'error');
@@ -743,6 +833,41 @@ function updateInventoryFooter(hasMore) {
     const footer = document.getElementById('inventoryFooter');
     if (!footer) return;
     footer.style.display = hasMore ? '' : 'none';
+}
+
+function filterInventory() {
+    const search = (document.getElementById('inventorySearchInput')?.value || '').trim().toLowerCase();
+    const category = document.getElementById('inventoryCategoryFilter')?.value || '';
+    const stockFilter = document.getElementById('inventoryStockFilter')?.value || '';
+
+    let filtered = _allProducts;
+    if (search) {
+        filtered = filtered.filter(p => {
+            const name = (p.productName?.ar || p.productName?.en || '').toLowerCase();
+            return name.includes(search);
+        });
+    }
+    if (category) {
+        filtered = filtered.filter(p => p.category === category);
+    }
+    if (stockFilter) {
+        filtered = filtered.filter(p => {
+            const available = p.codes ? p.codes.filter(c => c.status === 'available').length : 0;
+            if (stockFilter === 'in_stock') return available >= 10;
+            if (stockFilter === 'low_stock') return available > 0 && available < 10;
+            if (stockFilter === 'out_of_stock') return available === 0;
+            return true;
+        });
+    }
+
+    const tbody = document.getElementById('inventoryList');
+    if (!tbody) return;
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">لا توجد نتائج مطابقة.</td></tr>`;
+    } else {
+        tbody.innerHTML = filtered.map(renderInventoryRow).join('');
+    }
+    updateInventoryFooter(false);
 }
 
 async function loadInventory() {

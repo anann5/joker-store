@@ -764,6 +764,11 @@ exports.submitProductReview = async (req, res) => {
             return res.status(400).json({ success: false, error: 'التعليق قصير جداً (3 أحرف على الأقل)' });
         }
 
+        // صور التقييم (حد أقصى 3 روابط)
+        const reviewImages = Array.isArray(req.body?.images)
+            ? req.body.images.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 3)
+            : [];
+
         const product = await Product.findById(productId);
         if (!product || !product.isActive) {
             return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
@@ -773,6 +778,7 @@ exports.submitProductReview = async (req, res) => {
         product.reviews.push({
             rating,
             comment,
+            images: reviewImages,
             reviewerEmail: req.user?.email || null,
             createdAt: new Date()
         });
@@ -858,6 +864,7 @@ exports.getTestimonials = async (_req, res) => {
                         productName: localizedProductName,
                         rating,
                         comment: typeof review.comment === 'string' ? review.comment.trim() : '',
+                        images: Array.isArray(review.images) ? review.images : [],
                         createdAt: reviewDate
                     });
                 }
@@ -870,6 +877,115 @@ exports.getTestimonials = async (_req, res) => {
         res.json({ success: true, testimonials });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل في جلب تقييمات العملاء' });
+    }
+};
+
+// ============ Cart Abandonment Tracking ============
+const { CartSession } = require('../models');
+const crypto = require('crypto');
+
+exports.trackCartSession = async (req, res) => {
+    try {
+        const { items, email, total } = req.body;
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, error: 'السلة فارغة' });
+        }
+
+        const sessionId = req.cookies?.cart_session || crypto.randomUUID();
+        await CartSession.findOneAndUpdate(
+            { sessionId },
+            {
+                email: email || null,
+                items: items.map(i => ({
+                    productId: i.productId,
+                    productName: i.productName || '',
+                    qty: i.qty || 1,
+                    price: i.price || 0
+                })),
+                total: total || 0,
+                updatedAt: new Date()
+            },
+            { upsert: true, new: true }
+        );
+
+        res.cookie('cart_session', sessionId, {
+            httpOnly: true,
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            sameSite: 'lax'
+        });
+
+        res.json({ success: true });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل حفظ السلة' });
+    }
+};
+
+exports.getAbandonedCarts = async (req, res) => {
+    try {
+        const carts = await CartSession.find({
+            notified: false,
+            updatedAt: { $lt: new Date(Date.now() - 60 * 60 * 1000) }
+        }).sort({ updatedAt: -1 }).limit(50).lean();
+
+        res.json({ success: true, carts });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب السلals المهجورة' });
+    }
+};
+
+// ============ Loyalty Points ============
+exports.getLoyaltyBalance = async (req, res) => {
+    try {
+        if (!req.user?.userId) {
+            return res.status(401).json({ success: false, error: 'غير مصرح' });
+        }
+        const { User } = require('../models');
+        const user = await User.findById(req.user.userId).select('loyaltyPoints loyaltyHistory').lean();
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        res.json({
+            success: true,
+            points: user.loyaltyPoints || 0,
+            history: (user.loyaltyHistory || []).slice(-20)
+        });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب نقاط الولاء' });
+    }
+};
+
+exports.redeemLoyaltyPoints = async (req, res) => {
+    try {
+        if (!req.user?.userId) {
+            return res.status(401).json({ success: false, error: 'غير مصرح' });
+        }
+        const { points } = req.body;
+        if (!Number.isFinite(points) || points < 10) {
+            return res.status(400).json({ success: false, error: 'الحد الأدنى 10 نقاط' });
+        }
+
+        const { User } = require('../models');
+        const user = await User.findById(req.user.userId).select('loyaltyPoints');
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
+        }
+        if ((user.loyaltyPoints || 0) < points) {
+            return res.status(400).json({ success: false, error: 'نقاط غير كافية' });
+        }
+
+        // 1 نقطة = 0.10₪
+        const discount = Math.round(points * 0.10 * 100) / 100;
+        user.loyaltyPoints -= points;
+        user.loyaltyHistory.push({
+            points,
+            type: 'redeemed',
+            createdAt: new Date()
+        });
+        await user.save();
+
+        res.json({ success: true, discount, remaining: user.loyaltyPoints });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل استبدال النقاط' });
     }
 };
 

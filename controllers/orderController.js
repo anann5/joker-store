@@ -277,6 +277,25 @@ exports.approveOrder = async (req, res) => {
         order.completedAt = new Date();
         await order.save();
 
+        // نقاط الولاء: 1 نقطة لكل 10₪
+        if (order.userId) {
+            const pointsEarned = Math.floor((order.totalPrice || 0) / 10);
+            if (pointsEarned > 0) {
+                const User = require('../models').User;
+                await User.findByIdAndUpdate(order.userId, {
+                    $inc: { loyaltyPoints: pointsEarned },
+                    $push: {
+                        loyaltyHistory: {
+                            points: pointsEarned,
+                            type: 'earned',
+                            orderId: order._id,
+                            createdAt: new Date()
+                        }
+                    }
+                });
+            }
+        }
+
         await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
         await sendOrderConfirmationEmail(order);
 

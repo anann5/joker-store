@@ -108,6 +108,7 @@ export default [
         updateCartUI: 'readonly',
         showToast: 'readonly',
         initToastContainer: 'readonly',
+        Chart: 'readonly',
       },
     },
     rules: {
@@ -139,6 +140,25 @@ export default [
       'no-shadow': 'warn',
       'prefer-template': 'warn',
       'prefer-destructuring': 'warn',
+    },
+  },
+  // === Service Worker (browser worker globals) ===
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        clients: 'readonly',
+        importScripts: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'error',
+      'no-unused-vars': 'off',
     },
   },
 ];

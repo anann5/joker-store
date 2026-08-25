@@ -707,6 +707,7 @@
             <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
             <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
             <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
+            <a href="/offers" data-i18n-key="sub_footer_offers">العروض الخاصة</a>
             <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
         </div>
         <p class="copyright" data-i18n-key="copyright_text">© 2026 Joker Store — جميع الحقوق محفوظة</p>
@@ -897,6 +898,12 @@
 <!-- ⏱️ عدّاد عرض اليوم + 🍔 قائمة الموبايل (سكربت خارجي للالتزام بـ CSP) -->
 <!-- ====================================================== -->
 <script src="/countdown-menu.js?v=4.1" defer></script>
-
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+    }
+</script>
 </body>
 </html>

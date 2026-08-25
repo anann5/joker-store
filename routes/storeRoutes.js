@@ -98,4 +98,11 @@ router.post('/checkout', checkoutLimiter, verifyUserTokenOptional, validate(chec
 // Route for smart search (autocomplete)
 router.get('/search', storeController.searchAll);
 
+// Cart abandonment tracking
+router.post('/cart/track', storeController.trackCartSession);
+
+// Loyalty points
+router.get('/loyalty/balance', verifyUserTokenOptional, storeController.getLoyaltyBalance);
+router.post('/loyalty/redeem', verifyUserTokenOptional, storeController.redeemLoyaltyPoints);
+
 module.exports = router;

@@ -208,6 +208,8 @@ app.get('/health', (req, res) => {
 app.get('/robots.txt', seoController.robotsTxt);
 app.get('/sitemap.xml', seoController.sitemapXml);
 app.get('/api/products/schema/:productId', seoController.productSchema);
+app.get('/api/products/faq-schema', seoController.faqSchema);
+app.get('/api/products/breadcrumb/:productId', seoController.breadcrumbSchema);
 
 app.get('/privacy', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
@@ -223,6 +225,10 @@ app.get('/contact', (req, res) => {
 
 app.get('/about', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'about.html'));
+});
+
+app.get('/offers', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'offers.html'));
 });
 
 app.get('/faq', (req, res) => {

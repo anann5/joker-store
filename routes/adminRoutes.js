@@ -94,4 +94,8 @@ router.post('/promotions', promotionController.createPromotion);
 router.patch('/promotions/:promotionId', validateParams(promotionIdParamSchema), promotionController.updatePromotion);
 router.delete('/promotions/:promotionId', validateParams(promotionIdParamSchema), promotionController.deletePromotion);
 
+// Abandoned carts
+const storeController = require('../controllers/storeController');
+router.get('/abandoned-carts', storeController.getAbandonedCarts);
+
 module.exports = router;

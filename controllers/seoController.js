@@ -7,7 +7,8 @@ const STATIC_PAGES = [
     { path: 'faq', ar: 'الأسئلة الشائعة', en: 'FAQ' },
     { path: 'contact', ar: 'تواصل معنا', en: 'Contact' },
     { path: 'privacy', ar: 'سياسة الخصوصية', en: 'Privacy Policy' },
-    { path: 'terms', ar: 'الشروط والأحكام', en: 'Terms' }
+    { path: 'terms', ar: 'الشروط والأحكام', en: 'Terms' },
+    { path: 'offers', ar: 'العروض الخاصة', en: 'Special Offers' }
 ];
 
 /**
@@ -158,3 +159,68 @@ function xmlEscape(value) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&apos;');
 }
+
+/**
+ * JSON-LD FAQPage schema لصفحة الأسئلة الشائعة.
+ */
+exports.faqSchema = (_req, res) => {
+    const faqItems = [
+        { q: 'كيف أستلم الكود؟', a: 'يتم إرسال الكود فوراً بعد تأكيد الدفع عبر البريد الإلكتروني أو من صفحة تتبع الطلب.' },
+        { q: 'هل الأكواد أصلية؟', a: 'نعم، جميع أكوادنا أصلية ومضمونة 100% مع ضمان استرجاع.' },
+        { q: 'ما هي طرق الدفع المتاحة؟', a: 'نقبل Jawwal Pay، PalPay، Reflect، وStripe.' },
+        { q: 'كم يستغرق التوصيل؟', a: 'التوصيل فوري بعد تأكيد الدفع من قبل الإدارة.' },
+        { q: 'هل يمكنني استرجاع المبلغ؟', a: 'نعم، في حالة عدم عمل الكود يتم استرجاع المبلغ بالكامل.' }
+    ];
+
+    const schema = {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        'mainEntity': faqItems.map(item => ({
+            '@type': 'Question',
+            'name': item.q,
+            'acceptedAnswer': {
+                '@type': 'Answer',
+                'text': item.a
+            }
+        }))
+    };
+
+    res.json({ success: true, schema });
+};
+
+/**
+ * JSON-LD BreadcrumbList schema لصفحة منتج.
+ */
+exports.breadcrumbSchema = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const baseUrl = getBaseUrl();
+        const items = [
+            { name: 'الرئيسية', url: baseUrl || '/' }
+        ];
+
+        if (productId && /^[a-fA-F0-9]{24}$/.test(productId)) {
+            const product = await Product.findById(productId).select('category productName').lean();
+            if (product) {
+                const catNames = { pubg: 'PUBG', fortnite: 'Fortnite', playstation: 'PlayStation', xbox: 'Xbox', steam: 'Steam', nintendo: 'Nintendo', freefire: 'Free Fire', mobilelegends: 'Mobile Legends', spotify: 'Spotify', netflix: 'Netflix', amazon: 'Amazon', google: 'Google Play', itunes: 'iTunes' };
+                items.push({ name: catNames[product.category] || product.category, url: `${baseUrl}/?category=${product.category}` });
+                items.push({ name: product.productName.ar || product.productName.en || 'المنتج', url: `${baseUrl}/product/${productId}` });
+            }
+        }
+
+        const schema = {
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            'itemListElement': items.map((item, idx) => ({
+                '@type': 'ListItem',
+                'position': idx + 1,
+                'name': item.name,
+                'item': item.url
+            }))
+        };
+
+        res.json({ success: true, schema });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل توليد BreadcrumbList' });
+    }
+};
