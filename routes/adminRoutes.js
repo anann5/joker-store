@@ -98,4 +98,8 @@ router.delete('/promotions/:promotionId', validateParams(promotionIdParamSchema)
 const storeController = require('../controllers/storeController');
 router.get('/abandoned-carts', storeController.getAbandonedCarts);
 
+// Health dashboard
+const healthController = require('../controllers/healthController');
+router.get('/health', healthController.getHealth);
+
 module.exports = router;

@@ -624,6 +624,9 @@ async function loadDashboard() {
         // Low stock alerts
         loadLowStockAlerts();
 
+        // Health dashboard
+        loadHealth();
+
         // Render dashboard charts
         renderDashboardCharts();
 
@@ -656,6 +659,39 @@ async function loadLowStockAlerts() {
         container.insertAdjacentHTML('beforeend', alertHtml);
     } catch (_err) { /* silent */ }
 }
+
+async function loadHealth() {
+    const grid = document.getElementById('healthGrid');
+    const mini = document.getElementById('healthProvidersMini');
+    if (!grid) return;
+    try {
+        const res = await fetch('/api/admin/health', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !data.health) throw new Error('no health');
+        const h = data.health;
+        const cards = [
+            { icon: '🟢', label: 'الحالة', value: h.status === 'healthy' ? 'سليم' : 'متدهور', color: h.status === 'healthy' ? '#22c55e' : '#ef4444' },
+            { icon: '⏱️', label: 'مدة التشغيل', value: h.uptime },
+            { icon: '🧠', label: 'الذاكرة', value: `${h.memory.heapUsed}/${h.memory.heapTotal} MB` },
+            { icon: '🗄️', label: 'قاعدة البيانات', value: h.db, color: h.db === 'connected' ? '#22c55e' : '#ef4444' },
+            { icon: '⏳', label: 'طلبات معلقة', value: String(h.orders.pending) },
+            { icon: '📦', label: 'مخزون منخفض', value: `${h.inventory.lowStockCount} / نفاد ${h.inventory.outOfStockCount}`, color: h.inventory.lowStockCount > 0 ? '#f59e0b' : '#22c55e' }
+        ];
+        grid.innerHTML = cards.map(c => `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:1.1rem;">${c.icon}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin:4px 0 2px;">${c.label}</div>
+            <div style="font-weight:800;font-size:0.9rem;color:${c.color || '#fff'};">${escapeHtml(c.value)}</div>
+        </div>`).join('');
+        if (mini) {
+            if (h.providers && h.providers.length > 0) {
+                mini.innerHTML = h.providers.map(p => `${escapeHtml(p.name)}: ${p.error ? '<span style="color:#ef4444;">⚠️ ' + escapeHtml(p.error) + '</span>' : '<span style="color:#22c55e;">' + escapeHtml(String(p.balance ?? '—')) + ' ' + escapeHtml(p.currency) + '</span>'}`).join(' &nbsp;|&nbsp; ');
+            } else mini.textContent = 'لا يوجد مزودون معدون';
+        }
+    } catch (_err) {
+        if (grid) grid.innerHTML = '<div style="text-align:center;color:var(--danger);">فشل تحميل صحة النظام</div>';
+    }
+}
+document.getElementById('refreshHealthBtn')?.addEventListener('click', loadHealth);
 
 // ======================================================
 //  PROVIDERS — المزودون والمزامنة وأسعار الصرف

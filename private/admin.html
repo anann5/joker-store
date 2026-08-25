@@ -1007,6 +1007,17 @@
                 </div>
             </div>
 
+            <div class="card" id="healthCard" style="border-left:4px solid var(--primary-neon);">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-heartbeat"></i> صحة النظام</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshHealthBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div id="healthGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
+                    <div style="text-align:center;padding:16px;color:var(--text-muted);">جاري التحميل...</div>
+                </div>
+                <div id="healthProvidersMini" style="margin-top:12px;font-size:0.82rem;color:var(--text-muted);"></div>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <h2 class="section-title"><i class="fas fa-server"></i> المزودون والمزامنة (B2B)</h2>

@@ -129,3 +129,55 @@ exports.checkProviderBalancesAlert = async () => {
 
     return { checked: results.length, alerted };
 };
+
+const lowStockAlertState = new Map();
+
+/**
+ * فحص المخزون المنخفض وإرسال تنبيه تيليجرام عند هبوط أي منتج تحت العتبة.
+ * لا يكرر التنبيه لنفس المنتج قبل مرور LOW_STOCK_REALERT_HOURS ساعات.
+ * @returns {Promise<{checked:number, lowCount:number, alerted:number}>}
+ */
+exports.checkLowStockAlert = async () => {
+    const threshold = Number.parseInt(process.env.LOW_STOCK_THRESHOLD, 10) || 5;
+    const reAlertMs = (Number.parseFloat(process.env.LOW_STOCK_REALERT_HOURS) || 24) * 60 * 60 * 1000;
+    const now = Date.now();
+    const { Product } = require('../models');
+    const products = await Product.find({ isActive: true, isExternal: false }).select('productName codes category').lean();
+    let alerted = 0;
+    const msgs = [];
+    for (const p of products) {
+        const available = Array.isArray(p.codes) ? p.codes.filter(c => c.status === 'available').length : 0;
+        const key = String(p._id);
+        if (available === 0 || available >= threshold) {
+            lowStockAlertState.delete(key);
+            if (available === 0) {
+                const last = lowStockAlertState.get(`${key}:out`) || 0;
+                if (now - last > reAlertMs) {
+                    lowStockAlertState.set(`${key}:out`, now);
+                    const name = p.productName?.ar || p.productName?.en || key;
+                    msgs.push(`🔴 *نفاد مخزون*\n📦 *المنتج:* ${name}\n🏷️ *الفئة:* ${p.category || '—'}\n📉 *المتبقي:* 0`);
+                    alerted += 1;
+                }
+            }
+            continue;
+        }
+        const last = lowStockAlertState.get(key) || 0;
+        if (now - last > reAlertMs) {
+            lowStockAlertState.set(key, now);
+            const name = p.productName?.ar || p.productName?.en || key;
+            msgs.push(`⚠️ *مخزون منخفض*\n📦 *المنتج:* ${name}\n🏷️ *الفئة:* ${p.category || '—'}\n📉 *المتبقي:* ${available} (عتبة ${threshold})`);
+            alerted += 1;
+        }
+    }
+    if (msgs.length > 0) {
+        const chunkSize = 6;
+        for (let i = 0; i < msgs.length; i += chunkSize) {
+            await exports.sendTelegramAlert(msgs.slice(i, i + chunkSize).join('\n\n'));
+        }
+    }
+    const lowCount = products.filter(p => {
+        const a = Array.isArray(p.codes) ? p.codes.filter(c => c.status === 'available').length : 0;
+        return a > 0 && a < threshold;
+    }).length;
+    return { checked: products.length, lowCount, alerted };
+};

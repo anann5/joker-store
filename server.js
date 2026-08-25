@@ -137,6 +137,21 @@ if (hasConfiguredProviders) {
     }, Math.max(10, Number.parseInt(process.env.INITIAL_SYNC_DELAY_SEC, 10) || 30) * 1000);
 }
 
+// فحص دوري للمخزون المنخفض مع تنبيه تيليجرام
+const { checkLowStockAlert } = require('./controllers/helpers');
+const LOW_STOCK_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.LOW_STOCK_CHECK_INTERVAL_HOURS, 10) || 6);
+let lowStockInFlight = false;
+setInterval(async () => {
+    if (lowStockInFlight) return;
+    lowStockInFlight = true;
+    try {
+        const r = await checkLowStockAlert();
+        if (r.alerted > 0) console.log(`⚠️ تنبيه مخزون منخفض: ${r.alerted} منتج (من ${r.checked})`);
+    } catch (e) { console.error('❌ فحص المخزون المنخفض فشل:', e.message); }
+    finally { lowStockInFlight = false; }
+}, LOW_STOCK_INTERVAL_HOURS * 60 * 60 * 1000);
+setTimeout(() => { checkLowStockAlert().catch(()=>{}); }, 45 * 1000);
+
 const FINAL_PORT = process.env.PORT || 5850;
 // الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
 server.listen(FINAL_PORT, '::', () => {
