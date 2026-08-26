@@ -118,6 +118,30 @@
             align-items: center;
             gap: 6px;
             font-size: 0.85rem;
+            position: relative;
+        }
+
+        .tab-btn[data-tooltip]:after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--card-bg);
+            color: var(--text-color);
+            padding: 5px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+
+        .tab-btn:hover[data-tooltip]:after {
+            opacity: 1;
+            visibility: visible;
         }
 
         .tab-btn.active {
@@ -953,13 +977,13 @@
 
         <!-- Navigation Tabs -->
         <div class="nav-tabs">
-            <button class="tab-btn active" id="dashboardTabBtn"><i class="fas fa-chart-pie"></i> لوحة الإحصائيات</button>
-            <button class="tab-btn" id="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i> الطلبات</button>
-            <button class="tab-btn" id="inventoryTabBtn"><i class="fas fa-boxes"></i> المخزون</button>
-            <button class="tab-btn" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
-            <button class="tab-btn" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
-            <button class="tab-btn" id="usersTabBtn"><i class="fas fa-users"></i> المستخدمون</button>
-            <button class="tab-btn" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
+            <button class="tab-btn active" data-tooltip="لوحة الإحصائيات" id="dashboardTabBtn"><i class="fas fa-chart-pie"></i> لوحة الإحصائيات</button>
+            <button class="tab-btn" data-tooltip="الطلبات" id="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i> الطلبات</button>
+            <button class="tab-btn" data-tooltip="المخزون" id="inventoryTabBtn"><i class="fas fa-boxes"></i> المخزون</button>
+            <button class="tab-btn" data-tooltip="الأقسام" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
+            <button class="tab-btn" data-tooltip="سلال مهجورة" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
+            <button class="tab-btn" data-tooltip="المستخدمون" id="usersTabBtn"><i class="fa fa-users"></i> المستخدمون</button>
+            <button class="tab-btn" data-tooltip="السجلات" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
         </div>
 
         <!-- Dashboard Section -->
@@ -1026,12 +1050,15 @@
                 <div class="card-header">
                     <h2 class="section-title"><i class="fas fa-server"></i> المزودون والمزامنة (B2B)</h2>
                     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <button class="btn btn-approve btn-sm" id="providerSyncBtn"><i class="fas fa-sync-alt"></i> مزامنة الآن</button>
-                        <button class="btn btn-secondary btn-sm" id="refreshRatesBtn"><i class="fas fa-coins"></i> تحديث أسعار الصرف</button>
+                        <button class="btn btn-approve btn-sm" id="providerSyncBtn" data-tooltip="مزامنة الأسعار من جميع المزودين"><i class="fas fa-sync-alt"></i> مزامنة الآن</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshRatesBtn" data-tooltip="تحديث أسعار الصرف الحالية"><i class="fas fa-coins"></i> تحديث أسعار الصرف</button>
                     </div>
                 </div>
                 <div id="providersStatusList">
                     <div style="text-align:center; padding:20px; color:var(--text-muted);">جاري تحميل حالة المزودين...</div>
+                </div>
+                <div id="lastSyncInfo" style="margin-top:12px; padding:8px 12px; background:rgba(162,0,255,0.08); border-radius:8px; font-size:0.82rem; color:var(--text-muted); display:none;">
+                    <i class="fas fa-sync" style="color:var(--primary); margin-right:4px;"></i> آخر مزامنة: <span id="lastSyncTime">--</span>
                 </div>
             </div>
 
@@ -1051,12 +1078,12 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="section-title">المخزون الحالي بالمتجر</h2>
-                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                        <button class="btn btn-secondary btn-sm" id="exportCsvBtn"><i class="fas fa-download"></i> تصدير CSV</button>
-                        <button class="btn btn-secondary btn-sm" id="importCsvBtn"><i class="fas fa-upload"></i> استيراد CSV</button>
-                        <button class="btn" id="refreshBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
-                        <button class="btn btn-approve" id="addManualBtn"><i class="fas fa-plus"></i> إضافة منتج</button>
-                        <span class="toggle-switch">
+<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                         <button class="btn btn-secondary btn-sm" id="exportCsvBtn" data-tooltip="تصدير منتجات المتجر إلى ملف CSV"><i class="fas fa-download"></i> تصدير CSV</button>
+                         <button class="btn btn-secondary btn-sm" id="importCsvBtn" data-tooltip="استيراد منتجات من ملف CSV"><i class="fas fa-upload"></i> استيراد CSV</button>
+                         <button class="btn" id="refreshBtn" data-tooltip="تحديث قائمة المنتجات"><i class="fas fa-sync-alt"></i> تحديث</button>
+                         <button class="btn btn-approve" id="addManualBtn" data-tooltip="إضافة منتج يدوي مع أكواد"><i class="fas fa-plus"></i> إضافة منتج</button>
+                         <span class="toggle-switch">
                             <input type="checkbox" id="soundToggle" checked>
                             <span class="slider"></span>
                         </span>
@@ -1125,10 +1152,10 @@
             <div class="card">
                 <div class="card-header">
                     <h2 class="section-title">سجل عمليات وفواتير الزبائن</h2>
-                    <div style="display:flex;gap:8px;">
-                        <button class="btn btn-secondary btn-sm" id="exportOrdersBtn"><i class="fas fa-download"></i> تصدير CSV</button>
-                        <button class="btn btn-secondary btn-sm" id="refreshOrdersBtn"><i class="fas fa-redo"></i> تحديث</button>
-                    </div>
+<div style="display:flex;gap:8px;">
+                         <button class="btn btn-secondary btn-sm" id="exportOrdersBtn" data-tooltip="تصدير الفواتير إلى ملف CSV"><i class="fas fa-download"></i> تصدير CSV</button>
+                         <button class="btn btn-secondary btn-sm" id="refreshOrdersBtn" data-tooltip="تحديث قائمة الفواتير"><i class="fas fa-redo"></i> تحديث</button>
+                     </div>
                 </div>
                 <div class="orders-search-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
                     <input type="text" id="ordersSearchInput" placeholder="بحث بالبريد أو رقم الطلب..." style="flex:1;min-width:200px;padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
@@ -1136,17 +1163,17 @@
                     <input type="date" id="ordersDateTo" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
                 </div>
                 <div class="order-filter-bar" id="orderFilterBar">
-                    <button class="filter-chip active" data-status="all">الكل</button>
-                    <button class="filter-chip" data-status="pending">معلق</button>
-                    <button class="filter-chip" data-status="processing">قيد التنفيذ</button>
-                    <button class="filter-chip" data-status="completed">مكتمل</button>
-                    <button class="filter-chip" data-status="failed">فشل</button>
-                    <button class="filter-chip" data-status="refunded">مرفوض</button>
+                    <button class="filter-chip active" data-tooltip="الكل" data-status="all">الكل</button>
+                    <button class="filter-chip" data-tooltip="معلق" data-status="pending">معلق</button>
+                    <button class="filter-chip" data-tooltip="قيد التنفيذ" data-status="processing">قيد التنفيذ</button>
+                    <button class="filter-chip" data-tooltip="مكتمل" data-status="completed">مكتمل</button>
+                    <button class="filter-chip" data-tooltip="فشل" data-status="failed">فشل</button>
+                    <button class="filter-chip" data-tooltip="مرفوض" data-status="refunded">مرفوض</button>
                 </div>
                 <div id="ordersBulkBar" style="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap;" hidden>
                     <span id="ordersBulkCount" style="font-size:0.85rem;color:var(--text-muted);">0 محدد</span>
-                    <button class="btn btn-approve btn-sm" id="bulkApproveBtn"><i class="fas fa-check"></i> تأكيد المحدد</button>
-                    <button class="btn btn-reject btn-sm" id="bulkRejectBtn"><i class="fas fa-times"></i> رفض المحدد</button>
+                    <button class="btn btn-approve btn-sm" id="bulkApproveBtn" data-tooltip="تأكيد الاختيارSelected"><i class="fas fa-check"></i> تأكيد المحدد</button>
+                    <button class="btn btn-reject btn-sm" id="bulkRejectBtn" data-tooltip="رفض الطلبات المحددة"><i class="fas fa-times"></i> رفض المحدد</button>
                 </div>
                 <table>
                     <thead>

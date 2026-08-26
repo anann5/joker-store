@@ -44,7 +44,7 @@ app.use(helmet({
             // Strict script policy: no 'unsafe-inline'. All JS is external
             // (admin bootstrap was moved to public/admin-boot.js, socket.io client
             // is served locally from node_modules/socket.io/client-dist).
-            scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
+            scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com', 'https://cdn.jsdelivr.net'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: ["'self'"],

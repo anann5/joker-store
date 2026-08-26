@@ -640,6 +640,15 @@ async function loadDashboard() {
 async function loadLowStockAlerts() {
     try {
         const res = await fetch('/api/admin/inventory/low-stock', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        if (res.status === 401) {
+            // non‑authorized → redirect to login (will be handled by redirect function elsewhere)
+            showAdminToast('❌ sesión expirada, إعادة تسجيل الدخول', 'error');
+            return;
+        }
+        if (res.status !== 200) {
+            showAdminToast(`❌ فشل جلب تنبيهات المخزون: ${res.status}`, 'error');
+            return;
+        }
         const data = await res.json();
         if (!data.success || !data.products || data.products.length === 0) return;
 
@@ -737,6 +746,7 @@ function providerStatusRow(provider) {
 
 async function loadProviderStatus() {
     const container = document.getElementById('providersStatusList');
+    const lastSyncInfo = document.getElementById('lastSyncInfo');
     if (!container) return;
 
     try {
@@ -744,6 +754,7 @@ async function loadProviderStatus() {
         const data = await res.json();
         if (!data.success) {
             container.innerHTML = '<div style="padding:14px;color:var(--danger);">فشل تحميل حالة المزودين</div>';
+            if (lastSyncInfo) lastSyncInfo.style.display = 'none';
             return;
         }
 
@@ -761,10 +772,21 @@ async function loadProviderStatus() {
                 <div style="padding:14px;color:var(--text-muted);">
                     لا يوجد مزودون مُعدّون. أضف <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">PROVIDERS_COUNT</code> ومفاتيح API في ملف <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">.env</code>.
                 </div>`;
+            if (lastSyncInfo) lastSyncInfo.style.display = 'none';
             return;
         }
 
         container.innerHTML = `${fxLine}${data.providers.map(providerStatusRow).join('')}`;
+        
+        // Update last sync timestamp
+        if (data.lastSyncAt) {
+            if (lastSyncInfo) {
+                lastSyncInfo.style.display = 'block';
+                document.getElementById('lastSyncTime').textContent = new Date(data.lastSyncAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+            }
+        } else {
+            if (lastSyncInfo) lastSyncInfo.style.display = 'none';
+        }
     } catch (_err) {
         container.innerHTML = '<div style="padding:14px;color:var(--danger);">فشل تحميل حالة المزودين</div>';
     }
@@ -782,6 +804,11 @@ async function runProviderSync() {
         const data = await res.json();
         if (data.success) {
             showAdminToast(`✅ تمت المزامنة: ${data.totalCreated} جديد، ${data.totalUpdated} محدث`, 'success');
+            // Update last sync timestamp
+            if (data.lastSyncAt) {
+                document.getElementById('lastSyncTime').textContent = new Date(data.lastSyncAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+                document.getElementById('lastSyncInfo').style.display = 'block';
+            }
         } else {
             showAdminToast(`❌ ${data.error || 'فشلت المزامنة'}`, 'error');
         }
@@ -1009,7 +1036,7 @@ async function editProduct(productId) {
             const allData = await fetch('/api/admin/inventory?limit=200', { credentials: 'include', headers: { 'Content-Type': 'application/json' } }).then(r => r.json());
             const allProducts = Array.isArray(allData) ? allData : (allData.products || []);
             const product = allProducts.find(p => p._id === productId);
-            if (!product) return alert('❌ لم يتم العثور على المنتج');
+            if (!product) return showAdminToast('❌ لم يتم العثور على المنتج', 'error');
             fillEditProductForm(product);
             return;
         }
@@ -1017,7 +1044,7 @@ async function editProduct(productId) {
         fillEditProductForm(data);
 
     } catch (_err) {
-        alert('❌ فشل تحميل بيانات المنتج');
+        showAdminToast('❌ فشل تحميل بيانات المنتج', 'error');
     }
 }
 
@@ -1037,10 +1064,10 @@ async function deleteProduct(productId) {
             showAdminToast('🗑️ تم حذف المنتج بنجاح', 'success');
             loadInventory();
         } else {
-            alert(`❌ ${data.message || 'فشل الحذف'}`);
+            showAdminToast(`❌ ${data.message || 'فشل الحذف'}`, 'error');
         }
     } catch (_err) {
-        alert('❌ فشل الاتصال بالسيرفر');
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
     }
 }
 
@@ -1077,10 +1104,10 @@ async function saveProductEdit() {
             closeModal(document.getElementById('editModal'));
             loadInventory();
         } else {
-            alert(`❌ ${data.message || 'فشل التحديث'}`);
+            showAdminToast(`❌ ${data.message || 'فشل التحديث'}`, 'error');
         }
     } catch (_err) {
-        alert('❌ فشل الاتصال بالسيرفر');
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
     }
 }
 
