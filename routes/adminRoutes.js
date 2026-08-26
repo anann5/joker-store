@@ -54,6 +54,7 @@ router.get('/dashboard', statsController.getStats);
 router.get('/inventory', productController.getInventory);
 router.get('/inventory/stats', productController.getStockStats);
 router.get('/inventory/export', productController.exportProductsCSV);
+router.get('/inventory/low-stock', productController.getLowStockProducts);
 router.post('/inventory/import', productController.importProductsCSV);
 router.post('/inventory/add', validateLenient(manualAddProductSchema), productController.addProductManual);
 router.post('/inventory/create', validateLenient(createProductSchema), productController.createProduct);
@@ -65,7 +66,6 @@ router.patch('/inventory/:productId/margin', validateParams(productIdParamSchema
 router.patch('/inventory/:productId', validateParams(productIdParamSchema), validateLenient(updateProductSchema), productController.updateProduct);
 router.post('/inventory/:productId/duplicate', validateParams(productIdParamSchema), productController.duplicateProduct);
 router.delete('/inventory/:productId', validateParams(productIdParamSchema), validate(deleteProductSchema), productController.deleteProduct);
-router.get('/inventory/low-stock', productController.getLowStockProducts);
 router.get('/orders', orderController.getOrders);
 router.get('/orders/export', orderController.exportOrdersCSV);
 router.post('/orders/:orderId/approve', validateParams(orderIdParamSchema), orderController.approveOrder);

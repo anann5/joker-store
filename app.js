@@ -189,6 +189,11 @@ app.get('/admin.js', verifyAdminToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'private', 'admin.js'));
 });
 
+app.get('/admin-style.css', verifyAdminToken, (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(__dirname, 'private', 'admin-style.css'));
+});
+
 app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
