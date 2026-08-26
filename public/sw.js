@@ -1,4 +1,4 @@
-const CACHE_NAME = 'joker-store-v3';
+const CACHE_NAME = 'joker-store-v4';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
