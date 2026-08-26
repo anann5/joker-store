@@ -8,6 +8,10 @@ const adapter = require('../providers/adapter');
 // الحقول التي يعتمد عليها المحول (balanceUrl, itemsUrl, purchaseUrl...)
 exports.externalProviders = registry.getProviders();
 
+function mdEscape(text) {
+    return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
 // Helper function to create logs
 exports.createLog = async (action, details, req, targetId = null, targetName = null) => {
     try {
@@ -48,8 +52,7 @@ exports.sendTelegramAlert = async (message) => {
         const status = error.response?.status;
         const resp = error.response?.data;
         if (status === 400) {
-            // إعادة محاولة بدون تنسيق — غالباً بسبب حرف Markdown غير مهرّب في اسم منتج
-            console.warn('⚠️ تيليجرام 400 (Markdown) — إعادة إرسال كنص عادي:', resp?.description || error.message);
+            // إعادة محاولة صامتة بدون تنسيق — غالباً بسبب حرف Markdown في اسم منتج
             try {
                 await axios.post(url, { chat_id: telegramChatId, text: message }, { timeout: 8000 });
                 return;
@@ -106,8 +109,8 @@ exports.checkProviderBalancesAlert = async () => {
                 alerted += 1;
                 alertsToSend.push(
                     `🛑 *مزود غير متصل*\n`
-                    + `🏢 *المزود:* ${result.name}\n`
-                    + `🚫 *السبب:* ${result.error}`
+                    + `🏢 *المزود:* ${mdEscape(result.name)}\n`
+                    + `🚫 *السبب:* ${mdEscape(result.error)}`
                 );
             }
             balanceAlertState.delete(result.name);
@@ -125,9 +128,9 @@ exports.checkProviderBalancesAlert = async () => {
             alerted += 1;
             alertsToSend.push(
                 `⚠️ *رصيد مزود منخفض*\n`
-                + `🏢 *المزود:* ${result.name}\n`
-                + `💳 *الرصيد المتبقي:* \`${result.balance} ${result.currency}\`\n`
-                + `📉 *العتبة:* ${threshold} ${result.currency}`
+                + `🏢 *المزود:* ${mdEscape(result.name)}\n`
+                + `💳 *الرصيد المتبقي:* \`${mdEscape(result.balance)} ${mdEscape(result.currency)}\`\n`
+                + `📉 *العتبة:* ${mdEscape(threshold)} ${mdEscape(result.currency)}`
             );
         }
     }
@@ -161,8 +164,8 @@ exports.checkLowStockAlert = async () => {
                 const last = lowStockAlertState.get(`${key}:out`) || 0;
                 if (now - last > reAlertMs) {
                     lowStockAlertState.set(`${key}:out`, now);
-                    const name = p.productName?.ar || p.productName?.en || key;
-                    msgs.push(`🔴 *نفاد مخزون*\n📦 *المنتج:* ${name}\n🏷️ *الفئة:* ${p.category || '—'}\n📉 *المتبقي:* 0`);
+                    const name = mdEscape(p.productName?.ar || p.productName?.en || key);
+                    msgs.push(`🔴 *نفاد مخزون*\n📦 *المنتج:* ${name}\n🏷️ *الفئة:* ${mdEscape(p.category || '—')}\n📉 *المتبقي:* 0`);
                     alerted += 1;
                 }
             }
@@ -171,8 +174,8 @@ exports.checkLowStockAlert = async () => {
         const last = lowStockAlertState.get(key) || 0;
         if (now - last > reAlertMs) {
             lowStockAlertState.set(key, now);
-            const name = p.productName?.ar || p.productName?.en || key;
-            msgs.push(`⚠️ *مخزون منخفض*\n📦 *المنتج:* ${name}\n🏷️ *الفئة:* ${p.category || '—'}\n📉 *المتبقي:* ${available} (عتبة ${threshold})`);
+            const name = mdEscape(p.productName?.ar || p.productName?.en || key);
+            msgs.push(`⚠️ *مخزون منخفض*\n📦 *المنتج:* ${name}\n🏷️ *الفئة:* ${mdEscape(p.category || '—')}\n📉 *المتبقي:* ${mdEscape(available)} (عتبة ${mdEscape(threshold)})`);
             alerted += 1;
         }
     }
