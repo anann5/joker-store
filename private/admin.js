@@ -170,6 +170,9 @@ const initAdmin = async () => {
         else if (action === 'delete-product') deleteProduct(id);
         else if (action === 'edit-category') editCategory(id);
         else if (action === 'delete-category') deleteCategory(id);
+        else if (action === 'edit-promo') editPromo(btn.getAttribute('data-promo-id'));
+        else if (action === 'delete-promo') deletePromotion(btn.getAttribute('data-promo-id'));
+        else if (action === 'remove-extra-image') removeExtraImage(parseInt(btn.getAttribute('data-index'), 10));
         else if (action === 'close-modal') { const m = btn.closest('.modal-overlay'); if (m) m.remove(); }
     });
 
@@ -230,7 +233,8 @@ const initAdmin = async () => {
         { btn: 'usersTabBtn', section: 'usersSection' },
         { btn: 'reportsTabBtn', section: 'reportsSection' },
         { btn: 'pricingTabBtn', section: 'pricingSection' },
-        { btn: 'logsTabBtn', section: 'logsSection' }
+        { btn: 'logsTabBtn', section: 'logsSection' },
+        { btn: 'promotionsTabBtn', section: 'promotionsSection' }
     ];
 
     tabs.forEach(({ btn: btnId, section: sectionId }) => {
@@ -257,6 +261,7 @@ const initAdmin = async () => {
             else if (sectionId === 'reportsSection') loadReports(_activeReportDays);
             else if (sectionId === 'pricingSection') loadLivePricing();
             else if (sectionId === 'logsSection') loadLogs();
+            else if (sectionId === 'promotionsSection') loadPromotions();
         });
     });
 
@@ -327,6 +332,10 @@ const initAdmin = async () => {
     if (cancelEditBtn) cancelEditBtn.onclick = () => closeModal(document.getElementById('editModal'));
     if (closeEditBtn) closeEditBtn.onclick = () => closeModal(document.getElementById('editModal'));
 
+    // Extra images
+    const addExtraImageBtn = document.getElementById('addExtraImageBtn');
+    if (addExtraImageBtn) addExtraImageBtn.addEventListener('click', addExtraImage);
+
     // Export CSV
     const exportCsvBtn = document.getElementById('exportCsvBtn');
     if (exportCsvBtn) exportCsvBtn.addEventListener('click', () => { window.location.href = '/api/admin/inventory/export'; });
@@ -393,6 +402,18 @@ const initAdmin = async () => {
     if (exportLogs) exportLogs.addEventListener('click', () => { window.location.href = '/api/admin/logs/export'; });
     if (clearLogs) clearLogs.addEventListener('click', clearAllLogs);
 
+    // === Promotions ===
+    const addPromoBtn = document.getElementById('addPromoBtn');
+    const refreshPromosBtn = document.getElementById('refreshPromosBtn');
+    const closePromoModalBtn = document.getElementById('closePromoModalBtn');
+    const cancelPromoBtn = document.getElementById('cancelPromoBtn');
+    const savePromoBtn = document.getElementById('savePromoBtn');
+    if (addPromoBtn) addPromoBtn.addEventListener('click', () => openPromoModal());
+    if (refreshPromosBtn) refreshPromosBtn.addEventListener('click', loadPromotions);
+    if (closePromoModalBtn) closePromoModalBtn.addEventListener('click', closePromoModal);
+    if (cancelPromoBtn) cancelPromoBtn.addEventListener('click', closePromoModal);
+    if (savePromoBtn) savePromoBtn.addEventListener('click', savePromotion);
+
     // === Bulk inventory actions ===
     const selectAllCb = document.getElementById('selectAllProducts');
     if (selectAllCb) {
@@ -421,6 +442,7 @@ const initAdmin = async () => {
 
     // === Load initial data ===
     loadDashboard();
+    populateCategoryDatalist();
     setInterval(loadDashboard, 60000);
 };
 
@@ -642,7 +664,7 @@ async function loadLowStockAlerts() {
         const res = await fetch('/api/admin/inventory/low-stock', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
         if (res.status === 401) {
             // non‑authorized → redirect to login (will be handled by redirect function elsewhere)
-            showAdminToast('❌ sesión expirada, إعادة تسجيل الدخول', 'error');
+            showAdminToast('❌ انتهت الجلسة، يرجى إعادة تسجيل الدخول', 'error');
             return;
         }
         if (res.status !== 200) {
@@ -668,7 +690,10 @@ async function loadLowStockAlerts() {
             </div>
         `;
         container.insertAdjacentHTML('beforeend', alertHtml);
-    } catch (_err) { /* silent */ }
+    } catch (_err) {
+        console.error('loadLowStockAlerts:', _err);
+        container.insertAdjacentHTML('beforeend', '');
+    }
 }
 
 async function loadHealth() {
@@ -1005,6 +1030,37 @@ async function loadMoreInventory() {
     }
 }
 
+// ======================================================
+//  إدارة المنتجات — الصور المتعددة
+// ======================================================
+let _editExtraImages = [];
+
+function renderEditExtraImages() {
+    const container = document.getElementById('editImagesList');
+    if (!container) return;
+    container.innerHTML = _editExtraImages.map((url, i) => `
+        <div style="position:relative;display:inline-block;">
+            <img src="${escapeHtml(url)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #333;">
+            <button type="button" class="btn btn-reject btn-sm" data-action="remove-extra-image" data-index="${i}" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;padding:0;font-size:0.65rem;border-radius:50%;line-height:1;">&times;</button>
+        </div>
+    `).join('');
+}
+
+function addExtraImage() {
+    const input = document.getElementById('editNewImageUrl');
+    if (!input) return;
+    const url = input.value.trim();
+    if (!url) return;
+    _editExtraImages.push(url);
+    input.value = '';
+    renderEditExtraImages();
+}
+
+function removeExtraImage(index) {
+    _editExtraImages.splice(index, 1);
+    renderEditExtraImages();
+}
+
 function fillEditProductForm(product) {
     document.getElementById('editId').value = product._id;
     document.getElementById('editName').value = product.productName?.en || product.productName;
@@ -1023,6 +1079,8 @@ function fillEditProductForm(product) {
     }
     const imageFile = document.getElementById('editProductImage');
     if (imageFile) imageFile.value = '';
+    _editExtraImages = Array.isArray(product.images) ? [...product.images] : [];
+    renderEditExtraImages();
     openModal(document.getElementById('editModal'));
 }
 
@@ -1083,7 +1141,7 @@ async function saveProductEdit() {
             document.getElementById('editProductImage'),
             (document.getElementById('editImageUrl') || {}).value || ''
         );
-        const payload = { price, profitMargin: margin, image };
+        const payload = { price, profitMargin: margin, image, images: _editExtraImages };
         if (ratingInput) {
             const rating = parseFloat(ratingInput.value);
             payload.rating = Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : 0;
@@ -1578,6 +1636,20 @@ async function loadCategories() {
     }
 }
 
+async function populateCategoryDatalist() {
+    const datalist = document.getElementById('categoryList');
+    if (!datalist) return;
+    try {
+        const res = await fetch('/api/admin/categories', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success || !data.categories) return;
+        datalist.innerHTML = data.categories.map(c => {
+            const name = c.slug || c.title?.ar || '';
+            return `<option value="${escapeHtml(name)}"></option>`;
+        }).join('');
+    } catch (_) { /* silently use hardcoded fallback */ }
+}
+
 // ======================================================
 //  تقرير الأرباح (يومي + حسب القسم + حسب المزود)
 // ======================================================
@@ -1768,6 +1840,7 @@ async function saveCategoryHandler() {
             showAdminToast(`✅ ${data.message}`, 'success');
             closeModal(document.getElementById('categoryModal'));
             loadCategories();
+            populateCategoryDatalist();
         } else {
             showAdminToast(`❌ ${data.message}`, 'error');
         }
@@ -1820,6 +1893,7 @@ async function deleteCategory(categoryId) {
         if (data.success) {
             showAdminToast('🗑️ تم حذف القسم', 'success');
             loadCategories();
+            populateCategoryDatalist();
         } else {
             showAdminToast(`❌ ${data.message}`, 'error');
         }
@@ -1914,6 +1988,224 @@ async function clearAllLogs() {
         } else {
             showAdminToast('❌ فشل مسح السجلات', 'error');
         }
+    } catch (_) {
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
+    }
+}
+
+// === Promotions ===
+let _promoSearchTimeout = null;
+
+function openPromoModal(promo = null) {
+    const modal = document.getElementById('promoModal');
+    const title = document.getElementById('promoModalTitle');
+    const editId = document.getElementById('promoEditId');
+    const titleAr = document.getElementById('promoTitleAr');
+    const titleEn = document.getElementById('promoTitleEn');
+    const descAr = document.getElementById('promoDescAr');
+    const discount = document.getElementById('promoDiscount');
+    const expires = document.getElementById('promoExpires');
+    const code = document.getElementById('promoCode');
+    const active = document.getElementById('promoActive');
+    const productSearch = document.getElementById('promoProductSearch');
+    const productLabel = document.getElementById('promoProductLabel');
+    const productId = document.getElementById('promoProductId');
+    const category = document.getElementById('promoCategory');
+
+    if (promo) {
+        title.innerHTML = '<i class="fas fa-edit"></i> تعديل العرض';
+        editId.value = promo._id;
+        titleAr.value = promo.title?.ar || '';
+        titleEn.value = promo.title?.en || '';
+        descAr.value = promo.description?.ar || '';
+        discount.value = promo.discountPercent || '';
+        if (promo.expiresAt) {
+            const d = new Date(promo.expiresAt);
+            expires.value = d.toISOString().slice(0, 16);
+        }
+        code.value = promo.code || '';
+        active.value = promo.isActive ? 'true' : 'false';
+        if (promo.productId) {
+            productId.value = promo.productId;
+            productLabel.textContent = promo.title?.ar || promo.productId;
+            productLabel.style.display = 'block';
+            productSearch.style.display = 'none';
+        } else {
+            productId.value = '';
+            productLabel.style.display = 'none';
+            productSearch.style.display = '';
+        }
+        category.value = promo.category || '';
+    } else {
+        title.innerHTML = '<i class="fas fa-tags"></i> عرض جديد';
+        editId.value = '';
+        titleAr.value = '';
+        titleEn.value = '';
+        descAr.value = '';
+        discount.value = '';
+        expires.value = '';
+        code.value = '';
+        active.value = 'true';
+        productId.value = '';
+        productLabel.style.display = 'none';
+        productSearch.style.display = '';
+        productSearch.value = '';
+        category.value = '';
+    }
+    modal.classList.add('active');
+}
+
+function closePromoModal() {
+    document.getElementById('promoModal').classList.remove('active');
+}
+
+async function loadPromotions() {
+    const container = document.getElementById('promosContainer');
+    if (!container) return;
+
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);"><span class="spinner"></span> جاري تحميل العروض...</div>';
+
+    try {
+        const res = await fetch('/api/admin/promotions', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success || !data.promotions) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد عروض</div>';
+            return;
+        }
+
+        const { promotions } = data;
+        if (promotions.length === 0) {
+            container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد عروض بعد. أضف عرضاً جديداً!</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="overflow-x:auto;">
+                <table class="data-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>العنوان</th>
+                            <th>الخصم</th>
+                            <th>الكود</th>
+                            <th>النطاق</th>
+                            <th>الحالة</th>
+                            <th>تاريخ الانتهاء</th>
+                            <th>إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${promotions.map(p => {
+                            const now = new Date();
+                            const exp = new Date(p.expiresAt);
+                            const isExpired = exp < now;
+                            const statusClass = (!p.isActive || isExpired) ? 'status-cancelled' : 'status-approved';
+                            const statusText = (!p.isActive) ? 'معطّل' : (isExpired ? 'منتهي' : 'مفعّل');
+                            const scope = p.productId ? 'منتج محدد' : (p.category ? `قسم: ${escapeHtml(p.category)}` : 'عام');
+                            const expStr = exp.toLocaleDateString('ar-EG', { dateStyle: 'medium' });
+                            return `
+                                <tr>
+                                    <td><strong>${escapeHtml(p.title?.ar || '')}</strong></td>
+                                    <td><span style="color:var(--primary-neon);font-weight:700;">${p.discountPercent}%</span></td>
+                                    <td>${p.code ? `<code style="background:rgba(0,200,150,0.15);padding:2px 8px;border-radius:4px;color:var(--accent-green);">${escapeHtml(p.code)}</code>` : '—'}</td>
+                                    <td>${escapeHtml(scope)}</td>
+                                    <td><span class="order-status ${statusClass}">${statusText}</span></td>
+                                    <td>${escapeHtml(expStr)}</td>
+                                    <td>
+                                        <button class="btn btn-secondary btn-sm" data-action="edit-promo" data-promo-id="${p._id}" data-tooltip="تعديل"><i class="fas fa-edit"></i></button>
+                                        <button class="btn btn-reject btn-sm" data-action="delete-promo" data-promo-id="${p._id}" data-tooltip="حذف"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (_) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">فشل تحميل العروض</div>';
+    }
+}
+
+async function savePromotion() {
+    const editId = document.getElementById('promoEditId').value;
+    const titleAr = document.getElementById('promoTitleAr').value.trim();
+    const titleEn = document.getElementById('promoTitleEn').value.trim();
+    const descAr = document.getElementById('promoDescAr').value.trim();
+    const discount = parseInt(document.getElementById('promoDiscount').value, 10);
+    const expires = document.getElementById('promoExpires').value;
+    const code = document.getElementById('promoCode').value.trim();
+    const active = document.getElementById('promoActive').value === 'true';
+    const productId = document.getElementById('promoProductId').value.trim();
+    const category = document.getElementById('promoCategory').value.trim();
+
+    if (!titleAr) return showAdminToast('❌ العنوان بالعربية مطلوب', 'error');
+    if (!discount || discount < 1 || discount > 99) return showAdminToast('❌ نسبة الخصم يجب أن تكون بين 1 و 99', 'error');
+    if (!expires) return showAdminToast('❌ تاريخ الانتهاء مطلوب', 'error');
+    if (!productId && !category) return showAdminToast('❌ حدد منتجاً أو قسماً', 'error');
+
+    const body = {
+        title: { ar: titleAr, en: titleEn },
+        description: { ar: descAr },
+        discountPercent: discount,
+        expiresAt: new Date(expires).toISOString(),
+        code: code || undefined,
+        isActive: active,
+        productId: productId || undefined,
+        category: category || undefined
+    };
+
+    const isEdit = !!editId;
+    const method = isEdit ? 'PATCH' : 'POST';
+    const url = isEdit ? `/api/admin/promotions/${editId}` : '/api/admin/promotions';
+
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch(url, {
+            method,
+            credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(isEdit ? '✅ تم تعديل العرض' : '✅ تم إنشاء العرض', 'success');
+            closePromoModal();
+            loadPromotions();
+        } else {
+            showAdminToast(`❌ ${data.message || 'فشل حفظ العرض'}`, 'error');
+        }
+    } catch (_) {
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
+    }
+}
+
+async function deletePromotion(promoId) {
+    if (!confirm('هل أنت متأكد من حذف هذا العرض؟')) return;
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch(`/api/admin/promotions/${promoId}`, {
+            method: 'DELETE', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast('🗑️ تم حذف العرض', 'success');
+            loadPromotions();
+        } else {
+            showAdminToast('❌ فشل حذف العرض', 'error');
+        }
+    } catch (_) {
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
+    }
+}
+
+async function editPromo(promoId) {
+    try {
+        const res = await fetch('/api/admin/promotions', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const data = await res.json();
+        if (!data.success) return showAdminToast('❌ فشل جلب بيانات العرض', 'error');
+        const promo = data.promotions.find(p => p._id === promoId);
+        if (!promo) return showAdminToast('❌ العرض غير موجود', 'error');
+        openPromoModal(promo);
     } catch (_) {
         showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
     }

@@ -7,950 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="style.css">
-    <style>
-        :root {
-            --bg-color: #0b0c10;
-            --card-bg: #1f2833;
-            --primary: #a200ff;
-            --primary-hover: #7b00cc;
-            --text-color: #c5c6c7;
-            --accent: #45f3ff;
-            --danger: #ff3333;
-            --success: #00ffcc;
-            --warning: #ffaa00;
-            --text-muted: #9ca3af;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary-neon: #00f2fe;
-            --secondary-neon: #0072ff;
-            --accent-orange: #ff9f43;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Cairo', sans-serif;
-            background: linear-gradient(135deg, #0a0a19 0%, #0f0820 40%, #140823 100%);
-            color: var(--text-color);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1300px;
-            margin: 0 auto;
-        }
-
-        /* ===== Header ===== */
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            position: relative;
-        }
-
-        header h1 {
-            color: #fff;
-            font-size: 1.8rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        header h1 span {
-            color: var(--primary);
-            text-shadow: 0 0 15px rgba(162, 0, 255, 0.5);
-        }
-
-        .admin-meta {
-            margin-top: 12px;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .logout-btn {
-            background: rgba(255, 51, 51, 0.15);
-            color: var(--danger);
-            border: 1px solid rgba(255, 51, 51, 0.3);
-            padding: 6px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: all 0.3s;
-        }
-
-        .logout-btn:hover {
-            background: rgba(255, 51, 51, 0.3);
-            box-shadow: 0 0 15px rgba(255, 51, 51, 0.4);
-        }
-
-        /* ===== Tabs & Nav ===== */
-        .nav-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 25px;
-            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
-            padding-bottom: 8px;
-            flex-wrap: wrap;
-        }
-
-        .tab-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: var(--text-color);
-            padding: 10px 18px;
-            border-radius: 10px;
-            cursor: pointer;
-            font-family: 'Cairo', sans-serif;
-            font-weight: 600;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.85rem;
-            position: relative;
-        }
-
-        .tab-btn[data-tooltip]:after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: -30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--card-bg);
-            color: var(--text-color);
-            padding: 5px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s;
-            z-index: 100;
-        }
-
-        .tab-btn:hover[data-tooltip]:after {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .tab-btn.active {
-            background: var(--primary);
-            border-color: var(--primary);
-            color: #fff;
-            box-shadow: 0 0 20px rgba(162, 0, 255, 0.4);
-        }
-
-        .tab-btn:hover:not(.active) {
-            background: rgba(162, 0, 255, 0.1);
-            border-color: rgba(162, 0, 255, 0.3);
-        }
-
-        /* ===== Dashboard Stats ===== */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 25px;
-        }
-
-        .stat-card {
-            background: rgba(31, 40, 51, 0.8);
-            border: 1px solid rgba(162, 0, 255, 0.15);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(162, 0, 255, 0.2);
-        }
-
-        .stat-card .stat-icon {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .stat-card .stat-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #fff;
-        }
-
-        .stat-card .stat-label {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-top: 4px;
-        }
-
-        .stat-card.stat-revenue { border-color: rgba(0, 242, 254, 0.3); }
-        .stat-card.stat-revenue .stat-value { color: var(--primary-neon); }
-        .stat-card.stat-orders { border-color: rgba(162, 0, 255, 0.3); }
-        .stat-card.stat-orders .stat-value { color: var(--primary); }
-        .stat-card.stat-pending { border-color: rgba(255, 170, 0, 0.3); }
-        .stat-card.stat-pending .stat-value { color: var(--warning); }
-        .stat-card.stat-profit { border-color: rgba(0, 255, 204, 0.3); }
-        .stat-card.stat-profit .stat-value { color: var(--success); }
-        .stat-card.stat-today { border-color: rgba(255, 159, 67, 0.3); }
-        .stat-card.stat-today .stat-value { color: var(--accent-orange); }
-        .stat-card.stat-provider { border-color: rgba(69, 243, 255, 0.3); }
-        .stat-card.stat-provider .stat-value { color: var(--accent); font-size: 1.2rem; }
-
-        /* ===== Recent Orders on Dashboard ===== */
-        .recent-orders-scroll {
-            max-height: 350px;
-            overflow-y: auto;
-        }
-
-        .recent-orders-scroll::-webkit-scrollbar {
-            width: 5px;
-        }
-
-        .recent-orders-scroll::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.05);
-            border-radius: 10px;
-        }
-
-        .recent-orders-scroll::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 10px;
-        }
-
-        .mini-order-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            transition: background 0.2s;
-            font-size: 0.85rem;
-        }
-
-        .reports-summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 12px;
-            margin: 12px 0;
-        }
-
-        .reports-summary .stat-card {
-            padding: 14px;
-        }
-
-        .reports-summary .stat-value {
-            font-size: 1.3rem;
-        }
-
-        .reports-sub-title {
-            margin: 16px 0 8px;
-            font-size: 1rem;
-            color: var(--primary-neon);
-        }
-
-        .reports-scroll {
-            max-height: 420px;
-            overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.06);
-            border-radius: 10px;
-        }
-
-        .reports-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-
-        .reports-table th,
-        .reports-table td {
-            padding: 8px 12px;
-            text-align: right;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            white-space: nowrap;
-        }
-
-        .reports-table th {
-            background: rgba(162, 0, 255, 0.08);
-            color: var(--accent);
-            position: sticky;
-            top: 0;
-        }
-
-        .reports-table tr:hover td {
-            background: rgba(255,255,255,0.03);
-        }
-
-        .pricing-row-low {
-            background: rgba(220, 53, 69, 0.10) !important;
-        }
-
-        .pricing-row-zero {
-            background: rgba(220, 53, 69, 0.22) !important;
-        }
-
-        .mini-order-row:hover {
-            background: rgba(162, 0, 255, 0.06);
-        }
-
-        .mini-order-row .order-email {
-            color: var(--accent);
-            font-weight: 600;
-            flex: 1;
-        }
-
-        .mini-order-row .order-amount {
-            color: var(--primary-neon);
-            font-weight: 700;
-            margin: 0 15px;
-        }
-
-        .mini-order-row .order-date {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-        }
-
-        .mini-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        /* ===== Cards & Tables ===== */
-        .card {
-            background: rgba(31, 40, 51, 0.7);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(162, 0, 255, 0.1);
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
-            margin-bottom: 25px;
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-            flex-wrap: wrap;
-            gap: 12px;
-        }
-
-        .section-title {
-            color: #fff;
-            border-right: 4px solid var(--primary);
-            padding-right: 12px;
-            font-size: 1.3rem;
-            font-weight: 700;
-        }
-
-        .btn {
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 9px 18px;
-            border-radius: 8px;
-            font-size: 0.88rem;
-            font-weight: bold;
-            cursor: pointer;
-            font-family: 'Cairo', sans-serif;
-            transition: all 0.25s;
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            text-decoration: none;
-        }
-
-        .btn:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 0 15px rgba(162, 0, 255, 0.35);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid var(--border-color);
-            color: var(--text-muted);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.12);
-            color: var(--text-color);
-        }
-
-        .btn-reject {
-            background: linear-gradient(135deg, #ff4757, #e74c3c);
-            color: white;
-            box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
-        }
-
-        .btn-reject:hover {
-            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
-        }
-
-        .btn-approve {
-            background: linear-gradient(135deg, #2ecc71, #27ae60);
-            color: white;
-            box-shadow: 0 0 10px rgba(46, 204, 113, 0.3);
-        }
-
-        .btn-approve:hover {
-            box-shadow: 0 0 20px rgba(46, 204, 113, 0.5);
-        }
-
-        .btn-sm {
-            padding: 5px 12px;
-            font-size: 0.8rem;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 12px;
-            font-size: 0.9rem;
-            overflow: hidden;
-            border-radius: 10px;
-        }
-
-        thead th {
-            background: rgba(0, 0, 0, 0.3);
-            color: #fff;
-            padding: 12px 15px;
-            text-align: right;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 0.8rem;
-        }
-
-        td {
-            padding: 12px 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-            text-align: right;
-        }
-
-        tbody tr:hover {
-            background: rgba(162, 0, 255, 0.04);
-        }
-
-        /* ===== Status Badges ===== */
-        .badge {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            white-space: nowrap;
-        }
-
-        .badge-accent {
-            background: rgba(69, 243, 255, 0.12);
-            color: var(--accent);
-            border: 1px solid rgba(69, 243, 255, 0.2);
-        }
-
-        .badge-success {
-            background: rgba(0, 255, 204, 0.12);
-            color: var(--success);
-            border: 1px solid rgba(0, 255, 204, 0.2);
-        }
-
-        .badge-warning {
-            background: rgba(255, 170, 0, 0.12);
-            color: var(--warning);
-            border: 1px solid rgba(255, 170, 0, 0.3);
-        }
-
-        .badge-danger {
-            background: rgba(255, 51, 51, 0.12);
-            color: var(--danger);
-            border: 1px solid rgba(255, 51, 51, 0.3);
-        }
-
-        /* ===== Action Icons ===== */
-        .action-icon {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.05rem;
-            margin-left: 8px;
-            transition: transform 0.2s, color 0.3s;
-            padding: 4px 6px;
-            border-radius: 4px;
-        }
-
-        .btn-edit {
-            color: var(--accent);
-        }
-
-        .btn-delete {
-            color: var(--danger);
-        }
-
-        .action-icon:hover {
-            transform: scale(1.15);
-        }
-
-        .action-btns-group {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-        }
-
-        /* ===== Modals ===== */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(7, 7, 13, 0.88);
-            backdrop-filter: blur(10px);
-            z-index: 999;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.3s ease-in-out;
-            opacity: 0;
-            overflow-y: auto;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-            opacity: 1;
-        }
-
-        .modal-content {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 15px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 0 40px rgba(162, 0, 255, 0.3);
-            width: 100%;
-            max-width: 560px;
-            margin: 20px;
-            position: relative;
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-
-        .close-modal-btn {
-            position: absolute;
-            top: 18px;
-            inset-inline-end: 22px;
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            font-size: 28px;
-            cursor: pointer;
-            line-height: 1;
-            transition: all 0.3s;
-        }
-
-        .close-modal-btn:hover {
-            color: var(--primary-neon);
-            transform: rotate(90deg);
-        }
-
-        .modal-title {
-            margin-top: 0;
-            color: var(--primary);
-            margin-bottom: 22px;
-            font-size: 1.3rem;
-            text-align: center;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            color: #fff;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 11px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border-color);
-            background: rgba(0, 0, 0, 0.3);
-            color: #fff;
-            font-family: 'Cairo', sans-serif;
-            font-size: 0.95rem;
-            outline: none;
-            transition: all 0.3s;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary-neon);
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.3);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 18px;
-        }
-
-        .form-row-full {
-            grid-column: 1 / -1;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 22px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon));
-            color: #0a0a19;
-            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 25px rgba(0, 242, 254, 0.6);
-        }
-
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 45px;
-            height: 24px;
-        }
-
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.1);
-            transition: 0.4s;
-            border-radius: 24px;
-            border: 1px solid var(--border-color);
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background: var(--text-muted);
-            transition: 0.4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon));
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(21px);
-        }
-
-        /* ===== Stock & Price Cells ===== */
-        .stock-status {
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-
-        .stock-available {
-            color: #2ecc71;
-        }
-
-        .stock-low {
-            color: var(--accent-orange);
-        }
-
-        .stock-empty {
-            color: var(--danger);
-        }
-
-        .stock-external {
-            color: #9b59b6;
-        }
-
-        .price-normal {
-            color: var(--text-muted);
-        }
-
-        .price-low-profit {
-            color: var(--danger);
-            font-weight: bold;
-        }
-
-        .product-name-cell {
-            font-weight: bold;
-            color: #fff;
-        }
-        .product-name-secondary {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .price-cell {
-            color: var(--accent);
-            font-weight: bold;
-        }
-
-        .customer-name-cell {
-            font-weight: 600;
-            color: #fff;
-        }
-
-        .customer-email-cell {
-            color: var(--accent);
-            font-weight: bold;
-        }
-
-        .loading-cell {
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        .error-cell {
-            text-align: center;
-            color: var(--danger);
-        }
-
-        /* ===== Hidden utility ===== */
-        .hidden {
-            display: none !important;
-        }
-
-        /* ===== Loading Spinner ===== */
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: var(--primary-neon);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* ===== Responsive ===== */
-        @media (max-width: 768px) {
-            .form-row { grid-template-columns: 1fr; }
-            .controls { flex-direction: column; align-items: flex-start; }
-            header h1 { font-size: 1.5rem; }
-        }
-    }
-
-    /* Loading Overlay */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: var(--bg-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        opacity: 1;
-        transition: opacity 0.5s ease;
-    }
-
-    .loading-overlay.hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    .loading-content {
-        text-align: center;
-    }
-
-    .spinner {
-        width: 60px;
-        height: 60px;
-        border: 3px solid rgba(162, 0, 255, 0.2);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-
-    .loading-text {
-        font-family: 'Poppins', sans-serif;
-    }
-
-    .gradient-text {
-        font-size: 2rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--primary), var(--accent));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        display: block;
-        margin-bottom: 8px;
-    }
-
-    .loading-subtitle {
-        color: var(--text-color);
-        font-size: 0.9rem;
-        opacity: 0.7;
-    }
-
-    /* Toast Notification */
-    .admin-toast {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        background: rgba(31, 40, 51, 0.95);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(162, 0, 255, 0.3);
-        border-radius: 12px;
-        padding: 16px 24px;
-        color: #fff;
-        font-family: 'Cairo', sans-serif;
-        font-size: 0.9rem;
-        z-index: 99999;
-        opacity: 0;
-        transform: translateY(20px);
-        transition: all 0.4s;
-        box-shadow: 0 8px 30px rgba(0,0,0,0.5);
-    }
-
-    .admin-toast.show {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    .admin-toast.toast-success { border-color: var(--success); }
-    .admin-toast.toast-error { border-color: var(--danger); }
-    .admin-toast.toast-warning { border-color: var(--warning); }
-
-    /* Logs viewer */
-    .log-entry {
-        padding: 8px 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.03);
-        font-size: 0.82rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .log-entry:hover { background: rgba(162,0,255,0.04); }
-
-    .log-action {
-        color: var(--primary-neon);
-        font-weight: 600;
-        min-width: 90px;
-    }
-
-    .log-details {
-        flex: 1;
-        color: var(--text-muted);
-    }
-
-    .log-time {
-        color: rgba(255,255,255,0.3);
-        font-size: 0.75rem;
-        min-width: 70px;
-        text-align: left;
-    }
-
-    /* New order notification badge */
-    .notif-badge {
-        position: absolute;
-        top: -5px;
-        right: -5px;
-        background: var(--danger);
-        color: #fff;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        font-size: 0.7rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-    }
-
-    .tab-btn-wrapper {
-        position: relative;
-    }
-
-    /* Quick filter for orders */
-    .order-filter-bar {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 15px;
-        flex-wrap: wrap;
-    }
-
-    .filter-chip {
-        padding: 5px 14px;
-        border-radius: 20px;
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.1);
-        color: var(--text-muted);
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-family: 'Cairo', sans-serif;
-        transition: all 0.2s;
-    }
-
-    .filter-chip.active {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: #fff;
-    }
-
-    /* New order highlight animation */
-    @keyframes newOrderFlash {
-        0% { background: rgba(0, 242, 254, 0.2); }
-        100% { background: transparent; }
-    }
-
-    .new-order-row {
-        animation: newOrderFlash 2s ease-out;
-    }
-
-</style>
+    <link rel="stylesheet" href="admin-style.css">
+</head>
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -984,6 +42,7 @@
             <button class="tab-btn" data-tooltip="سلال مهجورة" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
             <button class="tab-btn" data-tooltip="المستخدمون" id="usersTabBtn"><i class="fa fa-users"></i> المستخدمون</button>
             <button class="tab-btn" data-tooltip="السجلات" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
+            <button class="tab-btn" data-tooltip="العروض والكوبونات" id="promotionsTabBtn"><i class="fas fa-tags"></i> العروض</button>
         </div>
 
         <!-- Dashboard Section -->
@@ -1317,6 +376,22 @@
                 </div>
             </div>
         </section>
+
+        <!-- Promotions Section -->
+        <section id="promotionsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-tags"></i> العروض والخصومات</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-primary btn-sm" id="addPromoBtn"><i class="fas fa-plus"></i> عرض جديد</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshPromosBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                    </div>
+                </div>
+                <div id="promosContainer">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري تحميل العروض...</div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- Import CSV Modal -->
@@ -1375,6 +450,14 @@
                     <input type="file" id="editProductImage" accept="image/*" class="form-control">
                 </div>
                 <input type="text" id="editImageUrl" class="form-control" placeholder="https://... أو /uploads/xxx.png" style="margin-top:6px;">
+                <div id="editExtraImages" style="margin-top:8px;">
+                    <label style="font-size:0.82rem;color:var(--text-muted);">صور إضافية</label>
+                    <div id="editImagesList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+                    <div style="display:flex;gap:6px;margin-top:6px;">
+                        <input type="text" id="editNewImageUrl" class="form-control" placeholder="رابط الصورة الجديدة" style="flex:1;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="addExtraImageBtn"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelEditBtn">إلغاء</button>
@@ -1516,6 +599,68 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
             <div class="modal-actions">
                 <button class="btn btn-secondary" id="cancelCategoryBtn">إلغاء</button>
                 <button class="btn btn-primary" id="saveCategoryBtn"><i class="fas fa-save"></i> حفظ القسم</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة/تعديل عرض -->
+    <div class="modal-overlay" id="promoModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closePromoModalBtn">&times;</button>
+            <h3 class="modal-title" id="promoModalTitle"><i class="fas fa-tags"></i> عرض جديد</h3>
+            <input type="hidden" id="promoEditId">
+            <div class="form-group">
+                <label>العنوان بالعربية *</label>
+                <input type="text" id="promoTitleAr" class="form-control" maxlength="100" placeholder="مثال: خصم 20% على بطاقة ستيم">
+            </div>
+            <div class="form-group">
+                <label>العنوان بالإنجليزية</label>
+                <input type="text" id="promoTitleEn" class="form-control" maxlength="100" placeholder="مثال: 20% off Steam Card">
+            </div>
+            <div class="form-group">
+                <label>الوصف بالعربية</label>
+                <textarea id="promoDescAr" class="form-control" rows="2" maxlength="300" placeholder="تفاصيل العرض"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>نسبة الخصم (%) *</label>
+                    <input type="number" id="promoDiscount" class="form-control" min="1" max="99" placeholder="20">
+                </div>
+                <div class="form-group">
+                    <label>تاريخ الانتهاء *</label>
+                    <input type="datetime-local" id="promoExpires" class="form-control">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>كود الخصم (اختياري)</label>
+                    <input type="text" id="promoCode" class="form-control" maxlength="20" placeholder="SAVE20" style="text-transform:uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>الحالة</label>
+                    <select id="promoActive" class="form-control">
+                        <option value="true">مفعّل</option>
+                        <option value="false">معطّل</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>نطاق العرض *</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="promoProductSearch" class="form-control" placeholder="ابحث عن منتج..." autocomplete="off">
+                        <div id="promoProductDropdown" style="display:none;position:absolute;background:#1a1a2e;border:1px solid #333;border-radius:8px;max-height:150px;overflow-y:auto;width:calc(100% - 32px);z-index:10;"></div>
+                        <input type="hidden" id="promoProductId">
+                        <small id="promoProductLabel" style="color:var(--primary-neon);display:none;"></small>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="promoCategory" class="form-control" placeholder="أو اسم القسم (مثلاً: steam)">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelPromoBtn">إلغاء</button>
+                <button class="btn btn-primary" id="savePromoBtn"><i class="fas fa-save"></i> حفظ العرض</button>
             </div>
         </div>
     </div>
