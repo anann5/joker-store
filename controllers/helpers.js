@@ -30,10 +30,10 @@ exports.getSafeBaseHost = (req) => {
     return String((req && req.get && req.get('host')) || '').replace(/[^a-zA-Z0-9.:[\]-]/g, '');
 };
 
-// Helper function to send Telegram alerts
+// Helper function to send Telegram alerts — يتحمّل أخطاء Markdown ويعيد المحاولة كنص عادي
 exports.sendTelegramAlert = async (message) => {
-    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
-    const telegramChatId = process.env.TELEGRAM_CHAT_ID;
+    const telegramBotToken = String(process.env.TELEGRAM_BOT_TOKEN || '').trim();
+    const telegramChatId = String(process.env.TELEGRAM_CHAT_ID || '').trim();
 
     if (!telegramBotToken || !telegramChatId) {
         console.warn('⚠️ لم يتم إعداد توكن بوت التلجرام أو معرف الدردشة. لن يتم إرسال التنبيهات.');
@@ -41,17 +41,24 @@ exports.sendTelegramAlert = async (message) => {
     }
 
     const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+    const payload = { chat_id: telegramChatId, text: message, parse_mode: 'Markdown' };
     try {
-        await axios.post(url, {
-            chat_id: telegramChatId,
-            text: message,
-            parse_mode: 'Markdown'
-        }, {
-            // مهلة صارمة: لا نسمح لمكالمة تيليغرام متعثرة بتعليق معالجة الطلبات/الدخول
-            timeout: 8000
-        });
+        await axios.post(url, payload, { timeout: 8000 });
     } catch (error) {
-        console.error('⚠️ فشل إرسال تنبيه تلجرام:', error.message);
+        const status = error.response?.status;
+        const resp = error.response?.data;
+        if (status === 400) {
+            // إعادة محاولة بدون تنسيق — غالباً بسبب حرف Markdown غير مهرّب في اسم منتج
+            console.warn('⚠️ تيليجرام 400 (Markdown) — إعادة إرسال كنص عادي:', resp?.description || error.message);
+            try {
+                await axios.post(url, { chat_id: telegramChatId, text: message }, { timeout: 8000 });
+                return;
+            } catch (retryErr) {
+                console.error('⚠️ فشل إرسال تنبيه تلجرام (حتى كنص عادي):', retryErr.response?.data?.description || retryErr.message);
+                return;
+            }
+        }
+        console.error('⚠️ فشل إرسال تنبيه تلجرام:', resp?.description || error.message);
     }
 };
 

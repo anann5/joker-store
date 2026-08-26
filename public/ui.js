@@ -584,11 +584,57 @@ export function showProductDetails(product, currentCategory = '') {
     // بعد عرض المنتج، نقوم بجلب وعرض المنتجات ذات الصلة
     renderRelatedProducts(product.id);
 
+    // حفظ في شوهد مؤخراً (حقيقي — localStorage فقط)
+    try { addRecentlyViewed(product); } catch(_e) {}
+    renderRecentlyViewed();
+
     // تحديث عنوان الرابط ليتوافق مع المنتج (رابط قابل للمشاركة/الفهرسة)
     if (history.replaceState && product.id) {
         history.replaceState(null, '', `/product/${product.id}`);
     }
 }
+
+const RECENT_KEY='joker_recently_viewed';
+const RECENT_MAX=8;
+export function addRecentlyViewed(product){
+    if(!product||!product.id) return;
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'); }catch(_e){ arr=[]; }
+    arr=arr.filter(p=>String(p.id)!==String(product.id));
+    arr.unshift({ id:product.id, name:product.name, price:product.price, image:product.image, category:product.category||'' });
+    if(arr.length>RECENT_MAX) arr=arr.slice(0,RECENT_MAX);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(arr));
+}
+export function renderRecentlyViewed(){
+    const section=document.getElementById('recentlyViewedSection');
+    const grid=document.getElementById('recentlyViewedGrid');
+    if(!section||!grid) return;
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'); }catch(_e){ arr=[]; }
+    if(arr.length===0){ section.hidden=true; return; }
+    section.hidden=false;
+    const tpl=document.getElementById('product-card-template');
+    if(!tpl){ grid.innerHTML=''; return; }
+    grid.innerHTML='';
+    arr.forEach((item,idx)=>{
+        const card=tpl.content.cloneNode(true);
+        const el=card.querySelector('.product-item-card');
+        if(!el) return;
+        el.dataset.productId=item.id;
+        el.style.setProperty('--i', String(idx));
+        const img=card.querySelector('.card-inner-img');
+        if(img){ img.src=resolveImageUrl(item.image)||'/image/logo.png'; img.alt=item.name||''; bindCardImageState(img); }
+        const title=card.querySelector('.card-title'); if(title) title.textContent=item.name||'';
+        const priceEl=card.querySelector('.card-price'); if(priceEl) priceEl.textContent=formatPrice(item.price||0);
+        const wish=card.querySelector('[data-wishlist-btn]'); if(wish) wish.dataset.productId=item.id;
+        const quick=card.querySelector('[data-quick-add]'); if(quick) quick.dataset.productId=item.id;
+        const badge=card.querySelector('.product-badge'); if(badge) applyProductBadge(badge,{productId:item.id});
+        const ratingEl=card.querySelector('[data-rating]'); if(ratingEl) ratingEl.innerHTML='';
+        grid.appendChild(card);
+    });
+    syncWishlistButtons();
+    setupReveal(grid);
+}
+if(document.readyState!=='loading') setTimeout(()=>{ try{renderRecentlyViewed();}catch(_e){} }, 600);
+else document.addEventListener('DOMContentLoaded', ()=>{ try{renderRecentlyViewed();}catch(_e){} });
 
 // تحديث واجهة السلة: العدّاد + قائمة العناصر + المجموع الإجمالي
 export function updateCartUI() {

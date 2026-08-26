@@ -227,6 +227,7 @@ const initAdmin = async () => {
         { btn: 'ordersTabBtn', section: 'ordersSection' },
         { btn: 'categoriesTabBtn', section: 'categoriesSection' },
         { btn: 'abandonedTabBtn', section: 'abandonedSection' },
+        { btn: 'usersTabBtn', section: 'usersSection' },
         { btn: 'reportsTabBtn', section: 'reportsSection' },
         { btn: 'pricingTabBtn', section: 'pricingSection' },
         { btn: 'logsTabBtn', section: 'logsSection' }
@@ -252,6 +253,7 @@ const initAdmin = async () => {
             else if (sectionId === 'ordersSection') loadRecentOrders();
             else if (sectionId === 'categoriesSection') loadCategories();
             else if (sectionId === 'abandonedSection') loadAbandonedCarts();
+            else if (sectionId === 'usersSection') loadUsers();
             else if (sectionId === 'reportsSection') loadReports(_activeReportDays);
             else if (sectionId === 'pricingSection') loadLivePricing();
             else if (sectionId === 'logsSection') loadLogs();
@@ -692,6 +694,17 @@ async function loadHealth() {
     }
 }
 document.getElementById('refreshHealthBtn')?.addEventListener('click', loadHealth);
+document.getElementById('backupBtn')?.addEventListener('click', async()=>{
+    try{
+        const res=await fetch('/api/admin/backup',{credentials:'include'});
+        const data=await res.json();
+        if(!data.success) throw new Error(data.error||'فشل');
+        const blob=new Blob([JSON.stringify(data.backup,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a'); a.href=url; a.download=`joker-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
+        showAdminToast('✅ تم تنزيل النسخة الاحتياطية','success');
+    }catch(_e){ showAdminToast('❌ فشل النسخ الاحتياطي','error'); }
+});
 
 // ======================================================
 //  PROVIDERS — المزودون والمزامنة وأسعار الصرف
@@ -1143,7 +1156,7 @@ function renderOrders(orders) {
     tbody.innerHTML = orders.map(order => {
         const customerName = order.buyerEmail?.split('@')[0] || 'زبون';
         const email = order.buyerEmail || order.email || '—';
-        const items = order.items && order.items.length > 0
+        const itemsBase = order.items && order.items.length > 0
             ? order.items.map(i => {
                 const itemName = (i.name && typeof i.name === 'object')
                     ? (i.name.ar || i.name.en || '')
@@ -1152,6 +1165,8 @@ function renderOrders(orders) {
                 return `${escapeHtml(itemName)} (×${qty})`;
             }).join('، ')
             : escapeHtml(order.productName || '—');
+        const proofLink = order.paymentProofUrl ? ` <a href="${escapeHtml(order.paymentProofUrl)}" target="_blank" rel="noopener" style="color:var(--primary-neon);font-size:0.8rem;text-decoration:underline;"><i class="fas fa-image"></i> إثبات</a>` : '';
+        const items = itemsBase + proofLink;
         const total = order.price || order.totalAmount || 0;
         const status = order.status || 'pending';
         const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : status === 'refunded' ? 'badge-danger' : 'badge-danger');
@@ -1811,6 +1826,19 @@ async function loadAbandonedCarts() {
     }
 }
 document.getElementById('refreshAbandonedBtn')?.addEventListener('click', loadAbandonedCarts);
+
+async function loadUsers(){
+    const tbody=document.getElementById('usersList');
+    if(!tbody) return;
+    tbody.innerHTML='<tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>';
+    try{
+        const res=await fetch('/api/admin/users',{credentials:'include'});
+        const data=await res.json();
+        if(!data.success || !data.users || data.users.length===0){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">لا يوجد مستخدمون</td></tr>'; return; }
+        tbody.innerHTML=data.users.map(u=>`<tr><td>${escapeHtml(u.email)}</td><td>${Number(u.balance||0).toFixed(2)} ₪</td><td style="color:#f59e0b;font-weight:800;">${Number(u.loyaltyPoints||0)}</td><td style="font-size:0.82rem;">${u.createdAt?new Date(u.createdAt).toLocaleDateString('ar-EG'): '—'}</td></tr>`).join('');
+    }catch(_e){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--danger);padding:20px;">فشل التحميل</td></tr>'; }
+}
+document.getElementById('refreshUsersBtn')?.addEventListener('click', loadUsers);
 
 async function loadLogs() {
     const container = document.getElementById('logsContainer');

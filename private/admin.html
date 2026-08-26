@@ -958,6 +958,7 @@
             <button class="tab-btn" id="inventoryTabBtn"><i class="fas fa-boxes"></i> المخزون</button>
             <button class="tab-btn" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
             <button class="tab-btn" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
+            <button class="tab-btn" id="usersTabBtn"><i class="fas fa-users"></i> المستخدمون</button>
             <button class="tab-btn" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
         </div>
 
@@ -1010,7 +1011,10 @@
             <div class="card" id="healthCard" style="border-left:4px solid var(--primary-neon);">
                 <div class="card-header">
                     <h2 class="section-title"><i class="fas fa-heartbeat"></i> صحة النظام</h2>
-                    <button class="btn btn-secondary btn-sm" id="refreshHealthBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary btn-sm" id="backupBtn"><i class="fas fa-download"></i> نسخ احتياطي</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshHealthBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                    </div>
                 </div>
                 <div id="healthGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
                     <div style="text-align:center;padding:16px;color:var(--text-muted);">جاري التحميل...</div>
@@ -1241,6 +1245,29 @@
                         </tr>
                     </thead>
                     <tbody id="abandonedList">
+                        <tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="usersSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-users"></i> المستخدمون ونقاط الولاء</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshUsersBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>البريد</th>
+                            <th>الرصيد</th>
+                            <th>النقاط</th>
+                            <th>تاريخ التسجيل</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
                         <tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>
                     </tbody>
                 </table>

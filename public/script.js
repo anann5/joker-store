@@ -228,6 +228,7 @@ async function showWishlist() {
 //  ⚙️ إعدادات الموقع (أرقام الدفع، روابط التواصل، الإحصائيات)
 // ======================================================
 let siteConfig = null;
+let paymentProofUrl = null;
 
 async function fetchSiteConfig() {
     try {
@@ -309,6 +310,24 @@ function applySiteConfig() {
         homeStatsStrip.hidden = false;
     } else if (homeStatsStrip) {
         homeStatsStrip.hidden = true;
+    }
+
+    const analytics = siteConfig.analytics || {};
+    if (analytics.gaId && !document.querySelector('script[data-ga]')) {
+        const s1 = document.createElement('script');
+        s1.async = true; s1.dataset.ga = '1';
+        s1.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(analytics.gaId)}`;
+        document.head.appendChild(s1);
+        const s2 = document.createElement('script');
+        s2.dataset.ga = '1';
+        s2.textContent = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${analytics.gaId.replace(/'/g,"\\'")}');`;
+        document.head.appendChild(s2);
+    }
+    if (analytics.metaPixelId && !document.querySelector('script[data-meta-pixel]')) {
+        const s = document.createElement('script');
+        s.dataset.metaPixel = '1';
+        s.textContent = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${analytics.metaPixelId.replace(/'/g,"\\'")}');fbq('track','PageView');`;
+        document.head.appendChild(s);
     }
 }
 
@@ -1976,6 +1995,31 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         const inpM=document.getElementById('searchInputMobile');
         if(inpM){ inpM.addEventListener('input',()=>{ const q=inpM.value.trim(); showFilters(q.length>=2); }); }
     })();
+    // إثبات الدفع — معاينة الصورة
+    (function initPaymentProof(){
+        const input=document.getElementById('paymentProofInput');
+        const preview=document.getElementById('paymentProofPreview');
+        const img=document.getElementById('paymentProofImg');
+        const removeBtn=document.getElementById('removeProofBtn');
+        if(!input) return;
+        input.addEventListener('change', async()=>{
+            const file=input.files?.[0];
+            if(!file || !file.type.startsWith('image/')) return;
+            if(file.size>5*1024*1024){ showToast('حجم الصورة كبير (5MB max)','error'); input.value=''; return; }
+            const form=new FormData(); form.append('image', file);
+            try{
+                const res=await fetch('/api/upload/review-image',{method:'POST', body:form});
+                const data=await res.json();
+                if(data.success && data.url){
+                    paymentProofUrl=data.url;
+                    if(img) img.src=data.url;
+                    if(preview) preview.style.display='flex';
+                    showToast('تم رفع صورة الإثبات','success');
+                }else{ showToast(data.error||'فشل الرفع','error'); }
+            }catch(_e){ showToast('فشل الرفع','error'); }
+        });
+        if(removeBtn) removeBtn.addEventListener('click',()=>{ paymentProofUrl=null; if(preview) preview.style.display='none'; if(img) img.src=''; input.value=''; });
+    })();
 
     // فتح السلة عبر زر الهيدر
     const cartHeaderBtn = document.getElementById('cartHeaderBtn');
@@ -2120,6 +2164,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 customerEmail: email,
                 paymentGateway: gateway,
                 paymentRef: paymentRef,
+                ...(paymentProofUrl ? { paymentProofUrl } : {}),
                 ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
                 ...(appliedLoyalty ? { loyaltyPoints: appliedLoyalty.points } : {})
             };
@@ -2145,6 +2190,10 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                     localStorage.removeItem('joker_cart');
                     clearAppliedPromo(); // إزالة كود الخصم بعد إتمام الطلب
                     clearAppliedLoyalty();
+                    paymentProofUrl=null;
+                    const ppPreview=document.getElementById('paymentProofPreview'); if(ppPreview) ppPreview.style.display='none';
+                    const ppImg=document.getElementById('paymentProofImg'); if(ppImg) ppImg.src='';
+                    const ppInput=document.getElementById('paymentProofInput'); if(ppInput) ppInput.value='';
                     updateCartUI();
                     if (result.gateway === 'stripe' && result.stripeUrl) {
                         window.open(result.stripeUrl, '_blank', 'noopener');

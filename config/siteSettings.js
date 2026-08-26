@@ -19,5 +19,9 @@ module.exports = {
         telegram: process.env.TELEGRAM_LINK || '',
         instagram: process.env.INSTAGRAM_LINK || '',
         tiktok: process.env.TIKTOK_LINK || ''
+    },
+    analytics: {
+        gaId: process.env.GA_MEASUREMENT_ID || '',
+        metaPixelId: process.env.META_PIXEL_ID || ''
     }
 };

@@ -132,6 +132,9 @@ exports.checkoutSchema = Joi.object({
                 'string.min': 'رقم العملية/الاسم قصير جداً',
                 'any.required': 'رقم العملية/الاسم مطلوب'
             })
+    }),
+    paymentProofUrl: Joi.string().trim().max(500).allow('', null).optional().messages({
+        'string.max': 'رابط إثبات الدفع طويل جداً'
     })
 });
 

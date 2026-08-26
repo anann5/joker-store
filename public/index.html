@@ -370,6 +370,14 @@
             </div>
         </section>
 
+        <!-- شوهد مؤخراً — حقيقي -->
+        <section class="info-section auto-section" id="recentlyViewedSection" hidden>
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-history"></i> <span>شوهد مؤخراً</span></h2>
+            </div>
+            <div class="products-grid auto-products-grid" id="recentlyViewedGrid"></div>
+        </section>
+
         <!-- كيف أطلب؟ -->
         <section class="info-section" id="howItWorks">
             <h2 class="section-title"><i class="fas fa-rocket"></i> <span data-i18n-key="how_title">كيف أطلب؟ 3 خطوات فقط</span></h2>
@@ -570,6 +578,14 @@
                 <div class="form-group">
                     <label for="paymentRefInput" data-i18n-key="payment_ref_label">رقم العملية / اسم المحوّل</label>
                     <input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label for="paymentProofInput" style="font-size:0.82rem;color:var(--text-muted);">إرفاق صورة الإثبات (اختياري)</label>
+                    <input type="file" id="paymentProofInput" accept="image/*" style="margin-top:6px;display:block;">
+                    <div id="paymentProofPreview" style="margin-top:8px;display:none;align-items:center;gap:8px;">
+                        <img id="paymentProofImg" style="max-width:180px;max-height:120px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);object-fit:cover;" alt="proof">
+                        <button type="button" id="removeProofBtn" class="btn btn-secondary btn-sm">إزالة</button>
+                    </div>
                 </div>
             </div>
         </div>

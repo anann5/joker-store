@@ -180,6 +180,15 @@ exports.login = async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(password, adminHash);
+        // 2FA اختياري: إن ضُبط ADMIN_2FA_CODE يجب إرسال totp مطابق
+        const required2FA = String(process.env.ADMIN_2FA_CODE || '').trim();
+        if (isMatch && required2FA) {
+            const provided = String(req.body?.totp || '').trim();
+            if (provided !== required2FA) {
+                logSecurityEvent('ADMIN_2FA_FAILED', 'رمز تحقق ثنائي خاطئ', req);
+                return res.status(401).json({ success: false, message: 'رمز التحقق الثنائي غير صحيح' });
+            }
+        }
         if (isMatch) {
             adminFailedAttempts.delete(attemptKey);
 

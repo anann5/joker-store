@@ -198,6 +198,7 @@ const orderSchema = new mongoose.Schema({
     },
     paymentGateway: { type: String, default: 'manual' },
     paymentRef: { type: String, default: null },
+    paymentProofUrl: { type: String, default: null },
     stripePaymentIntentId: { type: String, default: null },
     // خصم رموز العروض (اختياري) — يُسجّل على مستوى الطلب فقط
     discount: { type: Number, default: 0, min: 0 },

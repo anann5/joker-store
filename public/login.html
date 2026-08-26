@@ -79,6 +79,7 @@
         <h2>دخول المسؤول</h2>
         <form id="loginForm">
             <input type="password" id="adminPassword" placeholder="أدخل كلمة مرور الإدارة" required>
+            <input type="text" id="adminTotp" placeholder="رمز التحقق الثنائي (إن وُجد)" inputmode="numeric" autocomplete="one-time-code" style="display:none;">
             <button type="submit" class="login-btn">🔓 دخول للوحة التحكم</button>
         </form>
         <p id="errorMsg" class="error-message"></p>

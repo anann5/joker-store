@@ -223,6 +223,7 @@ exports.getSiteConfig = async (_req, res) => {
                 },
                 currency: siteSettings.currency,
                 social: siteSettings.social,
+                analytics: siteSettings.analytics,
                 stripe: { enabled: stripeController.isStripeEnabled() },
                 stats: {
                     orders: aggregate.completed,
@@ -517,7 +518,8 @@ exports.getActivePromotions = async (_req, res) => {
 
 exports.createOrder = async (req, res) => {
     try {
-        const { cartItems, customerEmail, paymentGateway, paymentRef, promoCode: rawPromoCode } = req.body;
+        const { cartItems, customerEmail, paymentGateway, paymentRef, paymentProofUrl: rawProofUrl, promoCode: rawPromoCode } = req.body;
+        const paymentProofUrl = typeof rawProofUrl === 'string' && rawProofUrl.trim() && (/^\/uploads\//.test(rawProofUrl.trim()) || /^https?:\/\//.test(rawProofUrl.trim())) ? rawProofUrl.trim().slice(0,500) : null;
         if (paymentGateway === 'stripe' && !stripeController.isStripeEnabled()) {
             return res.status(400).json({ success: false, error: 'الدفع بالبطاقة غير مفعل حالياً.' });
         }
@@ -637,6 +639,7 @@ exports.createOrder = async (req, res) => {
             buyerEmail: String(customerEmail).toLowerCase().trim(),
             paymentGateway,
             paymentRef,
+            paymentProofUrl,
             status: 'pending',
             userId: req.user?.userId || null,
             discount: round2(discountAmount + loyaltyDiscount),

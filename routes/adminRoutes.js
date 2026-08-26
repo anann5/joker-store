@@ -102,4 +102,27 @@ router.get('/abandoned-carts', storeController.getAbandonedCarts);
 const healthController = require('../controllers/healthController');
 router.get('/health', healthController.getHealth);
 
+// Users + loyalty
+router.get('/users', async (req, res) => {
+    try {
+        const { User } = require('../models');
+        const users = await User.find().select('email loyaltyPoints balance createdAt').sort({ createdAt: -1 }).limit(200).lean();
+        res.json({ success: true, users });
+    } catch (_e) { res.status(500).json({ success: false, error: 'فشل جلب المستخدمين' }); }
+});
+
+// Backup export (real data)
+router.get('/backup', async (req, res) => {
+    try {
+        const { Product, Order, User, Category } = require('../models');
+        const [products, orders, users, categories] = await Promise.all([
+            Product.find().lean(),
+            Order.find().sort({ createdAt: -1 }).limit(1000).lean(),
+            User.find().select('-passwordHash').lean(),
+            Category.find().lean()
+        ]);
+        res.json({ success: true, backup: { products, orders, users, categories, at: new Date().toISOString() } });
+    } catch (_e) { res.status(500).json({ success: false, error: 'فشل التصدير' }); }
+});
+
 module.exports = router;
