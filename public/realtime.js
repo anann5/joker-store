@@ -81,6 +81,22 @@ export function initRealtime() {
     return socket;
 }
 
+let publicSocket = null;
+export function initPublicPulse(){
+    if(typeof window==='undefined' || !window.io) return null;
+    if(publicSocket) return publicSocket;
+    publicSocket = window.io(window.location.origin, { transports:['websocket','polling'], reconnection:true, reconnectionDelay:5000 });
+    publicSocket.on('order_completed', (payload)=>{
+        const name = payload?.productName ? String(payload.productName).slice(0,40) : t('social_proof_product');
+        // احترام تفضيل تقليل الحركة — لا نبض إن طلبه المستخدم
+        if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        showToast(`${t('social_proof_now')} — ${name}`, 'success');
+    });
+    publicSocket.on('disconnect', ()=>{});
+    publicSocket.on('connect_error', ()=>{});
+    return publicSocket;
+}
+
 /**
  * إغلاق الاتصال الحالي (يُستدعى عند تسجيل الخروج).
  */

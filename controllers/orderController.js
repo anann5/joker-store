@@ -314,6 +314,13 @@ exports.approveOrder = async (req, res) => {
                     status: 'completed'
                 });
             }
+            // نبض اجتماعي حقيقي مجهول — لكل زوار الموقع عند كل طلب مكتمل
+            if (typeof io.emit === 'function') {
+                io.emit('order_completed', {
+                    productName: order.productName,
+                    time: Date.now()
+                });
+            }
         }
 
         return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });

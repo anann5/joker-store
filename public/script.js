@@ -5,7 +5,7 @@ import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
 import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, getAppliedLoyalty, clearAppliedLoyalty, setPromoDiscounts, setupReveal } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
-import { initRealtime } from './realtime.js';
+import { initRealtime, initPublicPulse } from './realtime.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
@@ -1667,6 +1667,7 @@ async function initializeApp() {
 
     initAuth(); 
     initRealtime(); // إشعارات لحظية لحالة الطلبات للمستخدمين المسجلين
+    initPublicPulse(); // نبض حي حقيقي — طلب مكتمل يظهر لكل الزوار فوراً
     updateTrustTicker(); // تحديث شريط الثقة
     setInterval(updateTrustTicker, 45000); // تحديث دوري للشريط + تغذية social proof
     setupReveal(document); // ظهور متدرّج لعناوين الأقسام وبطاقاتها الثابتة
