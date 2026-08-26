@@ -997,7 +997,7 @@ exports.getAbandonedCarts = async (req, res) => {
 exports.getLoyaltyBalance = async (req, res) => {
     try {
         if (!req.user?.userId) {
-            return res.status(401).json({ success: false, error: 'غير مصرح' });
+            return res.json({ success: false, points: 0, history: [], error: 'غير مسجل' });
         }
         const { User } = require('../models');
         const user = await User.findById(req.user.userId).select('loyaltyPoints loyaltyHistory').lean();
