@@ -1,4 +1,4 @@
-const CACHE_NAME = 'joker-store-v1';
+const CACHE_NAME = 'joker-store-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -6,8 +6,7 @@ const STATIC_ASSETS = [
     '/shared.js',
     '/app.js',
     '/i18n.js',
-    '/image/logo.png',
-    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
+    '/image/logo.png'
 ];
 
 self.addEventListener('install', event => {
@@ -28,16 +27,13 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
-
-    // Network-first for API calls
+    if (url.origin !== self.location.origin) return;
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(event.request).catch(() => caches.match(event.request))
         );
         return;
     }
-
-    // Cache-first for static assets
     event.respondWith(
         caches.match(event.request).then(cached => {
             if (cached) return cached;
