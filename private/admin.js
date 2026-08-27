@@ -8,6 +8,14 @@ let adminCsrfToken = null;
 let _allOrdersCache = [];
 let _allProducts = [];
 let _allCategories = [];
+
+function resolveImageUrl(value) {
+    const src = String(value ?? '').trim();
+    if (!src) return '';
+    if (/^https?:\/\//i.test(src) || /^data:/i.test(src) || src.startsWith('/')) return src;
+    if (src.includes('/')) return `/${src}`;
+    return `/image/${src}`;
+}
 let _activeReportDays = 30;
 let CURRENCY_SYMBOL = '₪';
 
@@ -690,7 +698,7 @@ async function loadLowStockAlerts() {
                 <h4 style="color:#e74c3c;margin:0 0 10px;font-size:0.95rem;"><i class="fas fa-exclamation-triangle"></i> تنبيه مخزون منخفض (${data.products.length})</h4>
                 ${data.products.map(p => `
                     <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                        <img src="${escapeHtml(p.image || '/image/logo.png')}" data-fallback="/image/logo.png" style="width:32px;height:32px;border-radius:6px;object-fit:cover;">
+                        <img src="${escapeHtml(resolveImageUrl(p.image) || '/image/logo.png')}" data-fallback="/image/logo.png" style="width:32px;height:32px;border-radius:6px;object-fit:cover;">
                         <span style="flex:1;font-size:0.85rem;">${escapeHtml(p.name)}</span>
                         <span style="color:#e74c3c;font-weight:700;font-size:0.82rem;">متبقي ${p.stock}</span>
                     </div>
@@ -1048,7 +1056,7 @@ function renderEditExtraImages() {
     if (!container) return;
     container.innerHTML = _editExtraImages.map((url, i) => `
         <div style="position:relative;display:inline-block;">
-            <img src="${escapeHtml(url)}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #333;">
+            <img src="${escapeHtml(resolveImageUrl(url))}" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid #333;">
             <button type="button" class="btn btn-reject btn-sm" data-action="remove-extra-image" data-index="${i}" style="position:absolute;top:-4px;right:-4px;width:18px;height:18px;padding:0;font-size:0.65rem;border-radius:50%;line-height:1;">&times;</button>
         </div>
     `).join('');
@@ -1082,7 +1090,7 @@ function fillEditProductForm(product) {
     document.getElementById('editImageUrl').value = imageUrl;
     const preview = document.getElementById('editImagePreview');
     if (preview) {
-        preview.src = imageUrl;
+        preview.src = resolveImageUrl(imageUrl);
         preview.style.display = imageUrl ? 'inline-block' : 'none';
     }
     const imageFile = document.getElementById('editProductImage');
@@ -1875,7 +1883,7 @@ async function editCategory(categoryId) {
         document.getElementById('categoryImage').value = cat.image || '';
         const categoryImagePreview = document.getElementById('categoryImagePreview');
         if (categoryImagePreview) {
-            categoryImagePreview.src = cat.image || '';
+            categoryImagePreview.src = resolveImageUrl(cat.image) || '';
             categoryImagePreview.style.display = cat.image ? 'inline-block' : 'none';
         }
         const categoryImageFile = document.getElementById('categoryImageFile');
