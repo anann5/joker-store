@@ -1,4 +1,4 @@
-const CACHE_NAME = 'joker-store-v4';
+const CACHE_NAME = 'joker-store-v5';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -32,7 +32,20 @@ self.addEventListener('fetch', event => {
     if (url.origin !== self.location.origin) return;
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
-            fetch(event.request).catch(() => caches.match(event.request))
+            fetch(event.request)
+                .then(response => {
+                    if (response.ok && event.request.method === 'GET') {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    return caches.match(event.request).then(cached => cached || new Response(
+                        JSON.stringify({ success: false, error: 'Offline' }),
+                        { status: 503, headers: { 'Content-Type': 'application/json' } }
+                    ));
+                })
         );
         return;
     }
@@ -45,6 +58,11 @@ self.addEventListener('fetch', event => {
                     caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                 }
                 return response;
+            }).catch(() => {
+                if (event.request.destination === 'image') {
+                    return caches.match('/image/logo.png');
+                }
+                return new Response('Offline', { status: 503 });
             });
         })
     );
