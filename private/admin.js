@@ -176,6 +176,14 @@ const initAdmin = async () => {
         else if (action === 'close-modal') { const m = btn.closest('.modal-overlay'); if (m) m.remove(); }
     });
 
+    // Fallback image handler for CSP-safe onerror replacement
+    document.addEventListener('error', (e) => {
+        const img = e.target;
+        if (img.tagName === 'IMG' && img.dataset.fallback && img.src !== img.dataset.fallback) {
+            img.src = img.dataset.fallback;
+        }
+    }, true);
+
     // === Logout: يُربط أولاً قبل أي طلب شبكة حتى يعمل الزر دائماً ===
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
@@ -682,7 +690,7 @@ async function loadLowStockAlerts() {
                 <h4 style="color:#e74c3c;margin:0 0 10px;font-size:0.95rem;"><i class="fas fa-exclamation-triangle"></i> تنبيه مخزون منخفض (${data.products.length})</h4>
                 ${data.products.map(p => `
                     <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                        <img src="${escapeHtml(p.image || '/image/logo.png')}" style="width:32px;height:32px;border-radius:6px;object-fit:cover;" onerror="this.src='/image/logo.png'">
+                        <img src="${escapeHtml(p.image || '/image/logo.png')}" data-fallback="/image/logo.png" style="width:32px;height:32px;border-radius:6px;object-fit:cover;">
                         <span style="flex:1;font-size:0.85rem;">${escapeHtml(p.name)}</span>
                         <span style="color:#e74c3c;font-weight:700;font-size:0.82rem;">متبقي ${p.stock}</span>
                     </div>
