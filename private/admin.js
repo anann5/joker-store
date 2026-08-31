@@ -708,7 +708,8 @@ async function loadLowStockAlerts() {
         container.insertAdjacentHTML('beforeend', alertHtml);
     } catch (_err) {
         console.error('loadLowStockAlerts:', _err);
-        container.insertAdjacentHTML('beforeend', '');
+        const fallbackContainer = document.getElementById('recentOrdersList');
+        if (fallbackContainer) fallbackContainer.insertAdjacentHTML('beforeend', '');
     }
 }
 
@@ -2010,7 +2011,7 @@ async function clearAllLogs() {
 }
 
 // === Promotions ===
-let _promoSearchTimeout = null;
+const _promoSearchTimeout = null;
 
 function openPromoModal(promo = null) {
     const modal = document.getElementById('promoModal');

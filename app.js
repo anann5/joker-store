@@ -30,6 +30,9 @@ const forceHttps = process.env.FORCE_HTTPS !== '0' &&
 
 app.use((req, res, next) => {
     if (forceHttps && req.headers['x-forwarded-proto'] !== 'https' && req.headers['x-forwarded-proto'] !== 'https,http') {
+        const hostHeader = String(req.get('host') || '');
+        const isLocalhost = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(hostHeader);
+        if (isLocalhost) return next();
         // نستخدم نطاقاً آمناً (SITE_URL الثابت أو Host منظّف) — يمنع حقن الروابط عبر Host header
         const host = getSafeBaseHost(req);
         if (host) return res.redirect(301, `https://${host}${req.url}`);
@@ -47,7 +50,20 @@ app.use(helmet({
             scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com', 'https://cdn.jsdelivr.net'],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
-            connectSrc: ["'self'", 'https://cdn.jsdelivr.net'],
+            connectSrc: (() => {
+                const list = ["'self'", 'https://cdn.jsdelivr.net'];
+                try {
+                    const siteOrigin = new URL(String(process.env.SITE_URL || '').trim()).origin;
+                    if (siteOrigin && !list.includes(siteOrigin)) list.push(siteOrigin);
+                } catch (_) {}
+                // السماح لـ localhost أثناء التطوير (عند فتح الموقع عبر SITE_URL)
+                if (process.env.NODE_ENV !== 'production') {
+                    list.push('http://localhost:10000', 'http://127.0.0.1:10000', 'ws://localhost:10000', 'ws://127.0.0.1:10000');
+                }
+                // Socket.IO يعمل عبر wss على Render
+                list.push('wss://joker-store.onrender.com', 'https://joker-store.onrender.com');
+                return [...new Set(list)];
+            })(),
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
