@@ -56,8 +56,8 @@ app.use(helmet({
                     const siteOrigin = new URL(String(process.env.SITE_URL || '').trim()).origin;
                     if (siteOrigin && !list.includes(siteOrigin)) list.push(siteOrigin);
                 } catch (_) {}
-                // السماح لـ localhost أثناء التطوير (عند فتح الموقع عبر SITE_URL)
-                if (process.env.NODE_ENV !== 'production') {
+                // السماح لـ localhost أثناء التطوير
+                if (!forceHttps) {
                     list.push('http://localhost:10000', 'http://127.0.0.1:10000', 'ws://localhost:10000', 'ws://127.0.0.1:10000');
                 }
                 // Socket.IO يعمل عبر wss على Render
