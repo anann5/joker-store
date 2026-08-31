@@ -171,6 +171,18 @@ app.use(compression());
 
 app.get('/', homePageHandler);
 
+// تقديم WebP تلقائياً إذا كان المتصفح يدعمه وملف .webp موجود
+app.use((req, res, next) => {
+    const accept = req.headers.accept || '';
+    if (accept.includes('image/webp') && req.path.endsWith('.png')) {
+        const webpPath = path.join(__dirname, 'public', req.path.replace(/\.png$/i, '.webp'));
+        if (fs.existsSync(webpPath)) {
+            req.url = req.url.replace(/\.png$/i, '.webp');
+        }
+    }
+    next();
+});
+
 // Cache headers للملفات الثابتة
 app.use(express.static(path.join(__dirname, 'public'), {
     maxAge: '7d',
