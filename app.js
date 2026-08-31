@@ -166,10 +166,10 @@ const homePageHandler = (req, res, next) => {
         next(err);
     }
 };
-app.get('/', homePageHandler);
-
-// ضغط الاستجابات (gzip/brotli) لتقليل حجم النقل
+// ضغط الاستجابات (gzip/brotli) لتقليل حجم النقل — قبل homePageHandler ليُضغط HTML أيضاً
 app.use(compression());
+
+app.get('/', homePageHandler);
 
 // Cache headers للملفات الثابتة
 app.use(express.static(path.join(__dirname, 'public'), {

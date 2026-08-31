@@ -5,7 +5,7 @@ const STATIC_ASSETS = [
     '/index.html',
     '/style.css',
     '/shared.js',
-    '/app.js',
+    '/script.js',
     '/i18n.js',
     '/image/logo.png'
 ];

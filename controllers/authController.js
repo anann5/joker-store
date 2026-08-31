@@ -267,10 +267,11 @@ exports.logout = async (req, res) => {
         }
     }
 
-    const isLocalhost = req.hostname === 'localhost' ||
+    const isLocalhost = process.env.NODE_ENV !== 'production' && (
+                        req.hostname === 'localhost' ||
                         req.hostname === '127.0.0.1' ||
                         req.headers['x-forwarded-host']?.includes('localhost') ||
-                        req.headers['x-forwarded-host']?.includes('127.0.0.1');
+                        req.headers['x-forwarded-host']?.includes('127.0.0.1'));
 
     res.clearCookie('admin_token', {
         path: '/',
