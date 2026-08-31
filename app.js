@@ -82,6 +82,15 @@ app.use(helmet({
     xssFilter: true,
     noSniff: true,
     frameguard: { action: 'deny' },
+    permissionsPolicy: {
+        features: {
+            camera: ["'none'"],
+            microphone: ["'none'"],
+            geolocation: ["'none'"],
+            payment: ["'self'"],
+            usb: ["'none'"]
+        }
+    },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginEmbedderPolicy: false

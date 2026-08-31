@@ -87,7 +87,8 @@ exports.getOrders = async (req, res) => {
             query.status = req.query.status;
         }
         if (req.query.search) {
-            const search = req.query.search.trim();
+            const rawSearch = req.query.search.trim().slice(0, 100);
+            const search = rawSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
                 { buyerEmail: { $regex: search, $options: 'i' } },
                 { orderId: { $regex: search, $options: 'i' } }
@@ -116,7 +117,8 @@ exports.exportOrdersCSV = async (req, res) => {
             query.status = req.query.status;
         }
         if (req.query.search) {
-            const search = req.query.search.trim();
+            const rawSearch = req.query.search.trim().slice(0, 100);
+            const search = rawSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query.$or = [
                 { buyerEmail: { $regex: search, $options: 'i' } },
                 { orderId: { $regex: search, $options: 'i' } }

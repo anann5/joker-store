@@ -53,11 +53,11 @@ exports.sitemapXml = async (_req, res) => {
   </url>`);
         });
 
-        // الأقسام
+        // الأقسام — روابط قابلة للزحف (query param بدلاً من hash)
         categories.forEach((cat) => {
             urls.push(`
   <url>
-    <loc>${xmlEscape(`${baseUrl}/#category-${cat.key}`)}</loc>
+    <loc>${xmlEscape(`${baseUrl}/?category=${encodeURIComponent(cat.key)}`)}</loc>
     <lastmod>${now}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
