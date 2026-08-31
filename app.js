@@ -35,7 +35,7 @@ app.use((req, res, next) => {
         if (isLocalhost) return next();
         // نستخدم نطاقاً آمناً (SITE_URL الثابت أو Host منظّف) — يمنع حقن الروابط عبر Host header
         const host = getSafeBaseHost(req);
-        if (host) return res.redirect(301, `https://${host}${req.url}`);
+        if (host) return res.redirect(302, `https://${host}${req.url}`);
     }
     next();
 });
