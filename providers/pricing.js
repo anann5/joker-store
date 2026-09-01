@@ -22,6 +22,13 @@
 const DEFAULT_MARGIN = Number.parseFloat(process.env.DEFAULT_PROFIT_MARGIN);
 const PRICE_MAX_CHANGE_RATIO = Number.parseFloat(process.env.PRICE_MAX_CHANGE_RATIO);
 
+// حواجز الأمان لتقلّب أسعار المزودين وسعر الصرف
+const SAFE_FX_BUFFER = Math.max(0, Number.parseFloat(process.env.SAFE_FX_BUFFER) || 0.02); // 2% إذا عملة المزود ≠ عملة المتجر
+const SAFE_VOLATILITY_BUFFER = Math.max(0, Number.parseFloat(process.env.SAFE_VOLATILITY_BUFFER) || 0.05); // 5% عند تقلّب >10%
+const SAFE_VOLATILITY_THRESHOLD = Math.max(0, Number.parseFloat(process.env.SAFE_VOLATILITY_THRESHOLD) || 0.10); // 10%
+const SAFE_MIN_ABSOLUTE_PROFIT = Math.max(0, Number.parseFloat(process.env.SAFE_MIN_ABSOLUTE_PROFIT) || 5); // 5₪ حد أدنى ربح مطلق
+const STORE_CURRENCY_SAFE = String(process.env.STORE_CURRENCY || 'ILS').toUpperCase();
+
 /**
  * طبقات الربح الثابت (قابلة للضبط من البيئة).
  * تُحسب حسب سعر الشراء (السعر الأساسي).
@@ -112,6 +119,36 @@ function getMarginForProduct(product, provider) {
 }
 
 /**
+ * هامش آمن: نفس getMarginForProduct + حواجز FX والتقلّب.
+ * - إذا عملة المزود ≠ عملة المتجر → +SAFE_FX_BUFFER
+ * - إذا تغيّر basePrice > SAFE_VOLATILITY_THRESHOLD عن السعر القديم → +SAFE_VOLATILITY_BUFFER
+ * يعيد المضاعف الآمن (مثلاً 1.15 → 1.22) أو null.
+ */
+function getSafeMarginForProduct(product, provider, { newBasePrice, oldBasePrice, providerCurrency } = {}) {
+    const baseMargin = getMarginForProduct(product, provider);
+    let ratio = baseMargin;
+    // إذا لا يوجد هامش مضبوط، نحسب من الطبقات كنسبة
+    if (ratio == null && newBasePrice != null) {
+        const base = Number(newBasePrice);
+        const profit = tierProfit(base);
+        if (profit != null && base > 0) ratio = (base + profit) / base;
+    }
+    if (ratio == null) return null;
+    let safeRatio = ratio;
+    const provCurr = String(providerCurrency || provider?.currency || '').toUpperCase();
+    if (provCurr && provCurr !== STORE_CURRENCY_SAFE) {
+        safeRatio += SAFE_FX_BUFFER;
+    }
+    if (oldBasePrice != null && newBasePrice != null) {
+        const change = Math.abs(Number(newBasePrice) - Number(oldBasePrice)) / Number(oldBasePrice || 1);
+        if (Number.isFinite(change) && change > SAFE_VOLATILITY_THRESHOLD) {
+            safeRatio += SAFE_VOLATILITY_BUFFER;
+        }
+    }
+    return safeRatio;
+}
+
+/**
  * تقريب إلى أعلى رقم ينتهي بـ 0 أو 5 (لا يقل أبداً عن القيمة).
  * مثال: 11 → 15، 62 → 65، 88 → 90.
  */
@@ -143,9 +180,16 @@ function computeSellingPrice({ basePrice, margin }) {
         raw = base + profit;
     }
 
+    // حد أدنى ربح مطلق (يحمي من تآكل الربح عند تقريب 0/5)
+    if (SAFE_MIN_ABSOLUTE_PROFIT > 0 && raw - base < SAFE_MIN_ABSOLUTE_PROFIT) {
+        raw = base + SAFE_MIN_ABSOLUTE_PROFIT;
+    }
+
     const nearest = roundWhole(raw);
     // لا نبيع بدون ربح: إن حذف التقريب الربح، قرّب لأعلى
     if (nearest <= base) return ceilWhole(raw);
+    // تأكيد الحد الأدنى بعد التقريب أيضاً
+    if (nearest - base < SAFE_MIN_ABSOLUTE_PROFIT) return ceilWhole(base + SAFE_MIN_ABSOLUTE_PROFIT);
     return nearest;
 }
 
@@ -175,11 +219,15 @@ function isSuspicious(newBase, oldBase, maxChangeRatio = PRICE_MAX_CHANGE_RATIO)
 module.exports = {
     computeSellingPrice,
     getMarginForProduct,
+    getSafeMarginForProduct,
     priceChangeRatio,
     isSuspicious,
     categoryMargin,
     normalizeMargin,
     roundWhole,
     ceilWhole,
-    tierProfit
+    tierProfit,
+    SAFE_FX_BUFFER,
+    SAFE_VOLATILITY_BUFFER,
+    SAFE_MIN_ABSOLUTE_PROFIT
 };

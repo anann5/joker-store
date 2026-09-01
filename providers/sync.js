@@ -31,8 +31,13 @@ async function applyItem(product, provider, item) {
         throw new Error(`تغيّر مريب في السعر (${product.lastProviderPrice} → ${roundedBase})؛ أبقيت السعر القديم`);
     }
 
-    const margin = pricing.getMarginForProduct(product, provider);
-    const newPrice = pricing.computeSellingPrice({ basePrice: roundedBase, margin });
+    const safeMargin = pricing.getSafeMarginForProduct(product, provider, {
+        newBasePrice: roundedBase,
+        oldBasePrice: product.lastProviderPrice || product.basePrice,
+        providerCurrency: item.currency
+    });
+    const effectiveMargin = safeMargin != null ? safeMargin : pricing.getMarginForProduct(product, provider);
+    const newPrice = pricing.computeSellingPrice({ basePrice: roundedBase, margin: effectiveMargin });
     if (newPrice == null) {
         throw new Error(`سعر بيع غير صالح للمنتج ${item.id}`);
     }
