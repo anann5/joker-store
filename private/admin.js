@@ -705,6 +705,7 @@ async function loadLowStockAlerts() {
                 `).join('')}
             </div>
         `;
+        container.querySelectorAll('.low-stock-alert').forEach(el => el.remove());
         container.insertAdjacentHTML('beforeend', alertHtml);
     } catch (_err) {
         console.error('loadLowStockAlerts:', _err);
