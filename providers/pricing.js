@@ -180,17 +180,13 @@ function computeSellingPrice({ basePrice, margin }) {
         raw = base + profit;
     }
 
-    // حد أدنى ربح مطلق (يحمي من تآكل الربح عند تقريب 0/5)
+    // حد أدنى ربح مطلق (يحمي من تآكل الربح عند التقريب)
     if (SAFE_MIN_ABSOLUTE_PROFIT > 0 && raw - base < SAFE_MIN_ABSOLUTE_PROFIT) {
         raw = base + SAFE_MIN_ABSOLUTE_PROFIT;
     }
 
-    const nearest = roundWhole(raw);
-    // لا نبيع بدون ربح: إن حذف التقريب الربح، قرّب لأعلى
-    if (nearest <= base) return ceilWhole(raw);
-    // تأكيد الحد الأدنى بعد التقريب أيضاً
-    if (nearest - base < SAFE_MIN_ABSOLUTE_PROFIT) return ceilWhole(base + SAFE_MIN_ABSOLUTE_PROFIT);
-    return nearest;
+    // تقريب دائماً للأعلى إلى 0/5 (لا يُخفض السعر أبداً)
+    return ceilWhole(raw);
 }
 
 /**

@@ -26,7 +26,7 @@ export function getCurrency() {
  */
 export function formatPrice(value) {
     const numeric = Number(value);
-    const amount = Number.isFinite(numeric) ? (Math.round(numeric / 5) * 5).toString() : '0';
+    const amount = Number.isFinite(numeric) ? (Math.ceil(numeric / 5) * 5).toString() : '0';
     return `${amount} ${symbol}`;
 }
 
