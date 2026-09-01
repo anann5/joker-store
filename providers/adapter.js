@@ -135,8 +135,10 @@ function normalizeItem(provider, raw) {
     const stock = stockRaw == null || stockRaw === '' ? null : Number(stockRaw);
     const descriptionRaw = resolvePath(raw, fields.description);
 
+    const rawId = resolvePath(raw, fields.id);
+    const normalizedId = rawId != null && String(rawId).trim() !== '' ? String(rawId).trim() : null;
     return {
-        id: String(resolvePath(raw, fields.id)),
+        id: normalizedId || null,
         name: {
             ar: nameAr || name || '',
             en: nameEn || name || ''

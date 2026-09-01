@@ -287,8 +287,8 @@ exports.createProductWithManualCodes = async (req, res) => {
             image,
             codes,
             isExternal,
-            profitMargin: parseFloat(profitMargin) || 1.10,
-            profitMarginOverride: Boolean(profitMargin && parseFloat(profitMargin) >= 1),
+            profitMargin: pricing.normalizeMargin(profitMargin) || 1.10,
+            profitMarginOverride: Boolean(pricing.normalizeMargin(profitMargin) >= 1),
             basePrice: basePrice || 0,
             currentProvider: provider || 'Local',
             isSubscription,
@@ -361,13 +361,19 @@ exports.updateProduct = async (req, res) => {
 
         allowedFields.forEach(field => {
             if (updates[field] !== undefined) {
-                product[field] = updates[field];
+                if (field === 'profitMargin') {
+                    const normalized = pricing.normalizeMargin(updates[field]);
+                    if (normalized) product[field] = normalized;
+                } else {
+                    product[field] = updates[field];
+                }
             }
         });
 
         // ضبط الهامش يدوياً يقفل التجاوز التلقائي من المزامنة
         if (updates.profitMargin !== undefined) {
-            product.profitMarginOverride = true;
+            const normalized = pricing.normalizeMargin(updates.profitMargin);
+            product.profitMarginOverride = Boolean(normalized && normalized >= 1);
         }
 
         // أي تعديل يدوي على السعر يُعتبر بعملة المتجر الحالية

@@ -112,11 +112,13 @@ async function getRate(from, to) {
     const manual = manualRates()[`${fromC}_${toC}`];
     if (Number.isFinite(manual) && manual > 0) return manual;
 
-    const usdBase = { ...manualRatesToUsdBase(), ...(cachedUsdRates || {}) };
+    const manualUsd = manualRatesToUsdBase();
+    const usdBase = { ...(cachedUsdRates || {}), ...manualUsd };
     let rates = usdBase;
     if (!(fromC in rates) || !(toC in rates)) {
         try {
-            rates = { ...usdBase, ...(await getUsdRates()) };
+            const apiRates = await getUsdRates();
+            rates = { ...apiRates, ...manualUsd };
         } catch (err) {
             throw new Error(`لا يوجد سعر صرف متاح للتحويل ${fromC} → ${toC}: ${err.message}`);
         }

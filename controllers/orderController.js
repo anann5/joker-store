@@ -67,7 +67,13 @@ async function buyExternalCodes(product, quantity) {
                 basePrice: candidate.basePrice
             });
         } catch (err) {
-            const isClientFailure = err.response?.status >= 400 && err.response?.status < 500;
+            const status = err.response?.status;
+            const isClientFailure = Number.isFinite(status) && status >= 400 && status < 500;
+            // 404/400 يعني المنتج غير موجود عند هذا المزود → جرّب المزود التالي، باقي 4xx جرّب أيضاً بدلاً من إيقاف السلسلة
+            if (isClientFailure && status !== 401 && status !== 403 && status !== 429) {
+                lastError = err;
+                continue;
+            }
             if (isClientFailure) throw err;
             lastError = err;
         }
