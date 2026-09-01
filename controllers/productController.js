@@ -1,5 +1,6 @@
 const { Product } = require('../models');
 const { createLog } = require('./helpers');
+const { clearStorefrontCache } = require('./storeController');
 const providerSync = require('../providers/sync');
 const currency = require('../providers/currency');
 const pricing = require('../providers/pricing');
@@ -311,6 +312,7 @@ exports.createProductWithManualCodes = async (req, res) => {
             productName.ar || productName.en
         );
 
+        clearStorefrontCache();
         res.status(201).json({
             success: true,
             message: `✅ تم إنشاء المنتج بنجاح! (${codes.length} كود مضافة)`,
@@ -389,6 +391,7 @@ exports.updateProduct = async (req, res) => {
         product.updatedAt = new Date();
         await product.save();
 
+        clearStorefrontCache();
         await createLog(
             'تعديل منتج',
             `تم تحديث المنتج: ${product.productName.ar || product.productName.en}`,
@@ -428,6 +431,7 @@ exports.deleteProduct = async (req, res) => {
             await createLog('إلغاء تفعيل منتج', `تم إلغاء تفعيل المنتج: ${productName}`, req, productId, productName);
         }
 
+        clearStorefrontCache();
         res.json({ success: true, message: `✅ ${permanentDelete ? 'تم حذف المنتج نهائياً' : 'تم إلغاء تفعيل المنتج'}!` });
     } catch (err) {
         console.error('Delete product error:', err);

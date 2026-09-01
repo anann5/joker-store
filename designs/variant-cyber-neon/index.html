@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOKER STORE — Cyber Neon Grid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&family=Poppins:wght@700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root{
+  --bg:#070A14;
+  --bg2:#0A0E18;
+  --surface:#122040;
+  --surface2:#14203A;
+  --surface-glass:rgba(18,32,64,0.72);
+  --cyan:#00E5FF;
+  --cyan2:#00C8FF;
+  --magenta:#FF2E93;
+  --magenta2:#FF1A6B;
+  --gold:#FFC93C;
+  --gold2:#FFB800;
+  --text:#FFFFFF;
+  --muted:#9AA0B5;
+  --muted2:#6B728E;
+  --border:rgba(0,229,255,0.14);
+  --border2:rgba(255,46,147,0.14);
+  --grid:rgba(0,229,255,0.07);
+  --radius:14px;
+  --radius-sm:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Cairo',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  line-height:1.6;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+img{display:block;max-width:100%}
+/* Grid background */
+.bg-grid{
+  position:fixed;inset:0;z-index:-2;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+    radial-gradient(1200px 600px at 50% -10%, rgba(0,229,255,0.12), transparent 60%),
+    radial-gradient(900px 500px at 90% 30%, rgba(255,46,147,0.10), transparent 60%),
+    radial-gradient(800px 600px at 10% 80%, rgba(0,229,255,0.08), transparent 60%),
+    linear-gradient(180deg, var(--bg) 0%, #0A1024 100%);
+  background-size: 42px 42px, 42px 42px, auto, auto, auto, auto;
+}
+.grain{
+  position:fixed;inset:0;z-index:-1;opacity:0.035;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+}
+/* Scrollbar */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:#0A0E18}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--cyan),var(--magenta));border-radius:999px}
+/* Top bar */
+.topbar{
+  background:linear-gradient(90deg, rgba(0,229,255,0.12), rgba(255,46,147,0.12));
+  border-bottom:1px solid var(--border);
+  font-size:12px; letter-spacing:0.4px;
+  color:var(--muted);
+  padding:7px 0;
+  backdrop-filter:blur(8px);
+}
+.topbar-inner{max-width:1280px;margin:0 auto;padding:0 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.topbar a{color:var(--cyan);font-weight:800}
+.topbar .dot{width:6px;height:6px;background:var(--cyan);border-radius:50%;box-shadow:0 0 8px var(--cyan);display:inline-block;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+/* Header */
+.header{
+  position:sticky;top:0;z-index:40;
+  background:rgba(7,10,20,0.85);
+  backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--border);
+}
+.header-inner{max-width:1280px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:18px}
+.logo{
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.logo-mark{
+  width:42px;height:42px;background:linear-gradient(135deg,var(--cyan),var(--magenta));
+  display:grid;place-items:center;transform:rotate(0deg);
+  clip-path:polygon(12% 0, 100% 0, 88% 100%, 0 100%);
+  box-shadow:0 0 18px rgba(0,229,255,0.5), 0 0 28px rgba(255,46,147,0.3);
+  position:relative;
+}
+.logo-mark span{font-family:'Poppins',sans-serif;font-weight:800;font-size:18px;letter-spacing:-1px;color:#0A0E18}
+.logo-text{line-height:1}
+.logo-text strong{font-family:'Poppins',sans-serif;font-weight:800;font-size:18px;letter-spacing:1.5px;display:block}
+.logo-text em{font-style:normal;font-size:10px;letter-spacing:3px;color:var(--cyan);font-family:'JetBrains Mono',monospace}
+.nav{flex:1;display:flex;justify-content:center;gap:6px}
+.nav a{
+  padding:8px 14px;font-size:13px;font-weight:800;letter-spacing:0.5px;
+  color:var(--muted);border:1px solid transparent;position:relative;transition:.2s;
+}
+.nav a.active,.nav a:hover{color:var(--cyan);border-color:var(--border);background:rgba(0,229,255,0.06);box-shadow:inset 0 0 12px rgba(0,229,255,0.08)}
+.nav a.active::after{content:'';position:absolute;bottom:-1px;left:20%;right:20%;height:2px;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.header-actions{display:flex;align-items:center;gap:10px}
+.icon-btn{
+  width:42px;height:42px;display:grid;place-items:center;
+  background:rgba(20,32,58,0.9);border:1px solid var(--border);color:var(--text);position:relative;transition:.2s;
+}
+.icon-btn:hover{border-color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,0.25);transform:translateY(-1px)}
+.icon-btn.magenta:hover{border-color:var(--magenta);box-shadow:0 0 14px rgba(255,46,147,0.25)}
+.badge{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 5px;background:var(--magenta);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;border-radius:999px;box-shadow:0 0 10px var(--magenta);font-family:'Space Grotesk',monospace}
+.lang{
+  display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);background:rgba(20,32,58,0.9);font-size:12px;font-weight:800;letter-spacing:1px;
+}
+.lang b{color:var(--cyan)}
+.hamburger{display:none;width:42px;height:42px;background:transparent;border:1px solid var(--border);color:#fff;display:none;place-items:center}
+
+/* Hero slider */
+.hero{max-width:1280px;margin:18px auto 0;padding:0 20px}
+.hero-wrap{
+  position:relative;overflow:hidden;
+  background:linear-gradient(135deg, rgba(20,32,58,0.9) 0%, rgba(10,14,24,0.9) 60%, rgba(20,32,58,0.85) 100%);
+  border:1px solid var(--border);
+  min-height:440px;
+  display:grid;
+}
+.hero-grid{
+  position:absolute;inset:0;opacity:0.5;
+  background:
+    linear-gradient(rgba(0,229,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.06) 1px, transparent 1px);
+  background-size:36px 36px;
+}
+.hero-slide{display:none;grid-template-columns:1.1fr 0.9fr;gap:20px;align-items:center;padding:36px 36px 32px;position:relative;z-index:1;min-height:440px}
+.hero-slide.active{display:grid;animation:fadeUp .6s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.hero-label{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--cyan);
+  border:1px solid rgba(0,229,255,0.25);padding:6px 10px;background:rgba(0,229,255,0.08);
+}
+.hero-label i{color:var(--magenta)}
+.hero h1{
+  font-size:44px;line-height:1.05;font-weight:900;letter-spacing:-1px;margin:14px 0 12px;
+  text-shadow:0 0 20px rgba(0,229,255,0.25);
+}
+.hero h1 span.grad{
+  background:linear-gradient(90deg,var(--cyan),var(--magenta));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero h1 span.outline{
+  -webkit-text-stroke:1px rgba(255,255,255,0.9);color:transparent;
+}
+.hero p{color:var(--muted);font-size:14px;max-width:520px;line-height:1.7}
+.hero-ctas{display:flex;gap:12px;margin-top:20px;flex-wrap:wrap}
+.btn-primary{
+  background:linear-gradient(90deg,var(--cyan),#00B8FF);color:#0A0E18;font-weight:900;font-size:14px;letter-spacing:0.6px;
+  padding:14px 26px;border:none;position:relative;overflow:hidden;box-shadow:0 0 20px rgba(0,229,255,0.4);transition:.2s;
+  display:inline-flex;align-items:center;gap:10px;
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(0,229,255,0.5)}
+.btn-primary.magenta{background:linear-gradient(90deg,var(--magenta),#FF3D8B);color:#fff;box-shadow:0 0 20px rgba(255,46,147,0.4)}
+.btn-ghost{
+  background:transparent;border:1px solid var(--border);color:#fff;padding:13px 22px;font-weight:800;font-size:13px;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:8px;backdrop-filter:blur(6px);transition:.2s;
+}
+.btn-ghost:hover{border-color:var(--cyan);background:rgba(0,229,255,0.08)}
+.hero-stats{display:flex;gap:18px;margin-top:22px;flex-wrap:wrap}
+.hero-stat{display:flex;align-items:center;gap:10px}
+.hero-stat b{font-family:'Space Grotesk',monospace;font-size:20px;font-weight:700;color:var(--cyan)}
+.hero-stat span{font-size:11px;color:var(--muted);line-height:1.2}
+.hero-visual{position:relative;display:grid;place-items:center;min-height:360px}
+.hero-cards{position:relative;width:340px;height:340px}
+.float-card{
+  position:absolute;background:rgba(18,32,58,0.95);border:1px solid var(--border);backdrop-filter:blur(12px);
+  box-shadow:0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(0,229,255,0.15);
+  padding:14px;display:flex;flex-direction:column;gap:10px;
+}
+.float-card.c1{width:200px;inset:30px auto auto 10px;transform:rotate(-4deg);z-index:2}
+.float-card.c2{width:190px;inset:90px 10px auto auto;transform:rotate(5deg);z-index:1;border-color:rgba(255,46,147,0.2);box-shadow:0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(255,46,147,0.15)}
+.float-card.c3{width:220px;inset:auto 40px 20px auto;transform:rotate(-2deg);z-index:3}
+.card-top{display:flex;justify-content:space-between;align-items:center}
+.card-top small{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.5px;color:var(--muted)}
+.card-top i{width:28px;height:28px;display:grid;place-items:center;background:var(--cyan);color:#0A0E18;font-size:13px}
+.float-card.c2 .card-top i{background:var(--magenta);color:#fff}
+.price-row{display:flex;align-items:baseline;gap:8px}
+.price-row b{font-family:'Space Grotesk',monospace;font-size:22px;font-weight:700}
+.price-row s{font-family:'Space Grotesk',monospace;font-size:12px;color:var(--muted)}
+.badge-gold{font-size:10px;font-weight:800;background:var(--gold);color:#0A0E18;padding:3px 6px;letter-spacing:0.5px}
+.progress{height:4px;background:rgba(255,255,255,0.08);overflow:hidden}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--magenta));width:72%}
+.hero-dots{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3}
+.hero-dots button{width:26px;height:3px;background:rgba(255,255,255,0.2);border:none;transition:.3s}
+.hero-dots button.active{width:36px;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.hero-arrows{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:center;pointer-events:none;padding:0 10px;z-index:3}
+.hero-arrows button{pointer-events:auto;width:38px;height:38px;background:rgba(10,14,24,0.8);border:1px solid var(--border);color:#fff;display:grid;place-items:center;backdrop-filter:blur(6px);transition:.2s}
+.hero-arrows button:hover{border-color:var(--cyan);color:var(--cyan)}
+
+/* Search + filters */
+.search-section{max-width:1280px;margin:14px auto 0;padding:0 20px}
+.search-bar{
+  display:flex;gap:12px;align-items:center;
+  background:rgba(18,32,58,0.7);border:1px solid var(--border);backdrop-filter:blur(12px);
+  padding:10px;
+}
+.search-input{flex:1;display:flex;align-items:center;gap:12px;background:rgba(7,10,20,0.6);border:1px solid rgba(255,255,255,0.06);padding:12px 16px}
+.search-input i{color:var(--muted)}
+.search-input input{flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:'Cairo',sans-serif;font-size:14px}
+.search-input input::placeholder{color:var(--muted2)}
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filter-pill{padding:10px 16px;font-size:13px;font-weight:800;border:1px solid var(--border);background:transparent;color:var(--muted);transition:.2s;white-space:nowrap}
+.filter-pill.active{background:var(--cyan);color:#0A0E18;border-color:var(--cyan);box-shadow:0 0 14px rgba(0,229,255,0.35)}
+.filter-pill:hover{border-color:var(--cyan);color:var(--cyan)}
+.filter-pill.active:hover{color:#0A0E18}
+.sort{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.sort select{background:rgba(7,10,20,0.6);border:1px solid var(--border);color:#fff;padding:8px 10px;font-family:'Cairo',sans-serif;font-size:12px;outline:none}
+
+/* Categories */
+.section{max-width:1280px;margin:36px auto 0;padding:0 20px}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.section-head h2{font-size:26px;font-weight:900;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px}
+.section-head h2 i{color:var(--cyan);font-size:18px}
+.section-head h2 em{font-style:normal;color:var(--muted);font-weight:700;font-size:13px;letter-spacing:0.5px}
+.section-head p{color:var(--muted);font-size:13px;max-width:420px}
+.link-more{font-size:12px;font-weight:800;letter-spacing:1px;color:var(--cyan);display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);padding:8px 12px;background:rgba(0,229,255,0.06)}
+.categories{ display:grid;grid-template-columns:repeat(5,1fr);gap:12px }
+.cat-card{
+  background:var(--surface-glass);border:1px solid var(--border);backdrop-filter:blur(10px);
+  padding:18px 16px;position:relative;overflow:hidden;transition:.25s;cursor:pointer;
+}
+.cat-card::before{
+  content:'';position:absolute;inset:0;opacity:0;transition:.3s;
+  background:linear-gradient(135deg, rgba(0,229,255,0.10), transparent 60%);
+}
+.cat-card:hover{transform:translateY(-4px);border-color:rgba(0,229,255,0.35);box-shadow:0 12px 30px rgba(0,0,0,0.4), 0 0 20px rgba(0,229,255,0.15)}
+.cat-card:hover::before{opacity:1}
+.cat-card.magenta:hover{border-color:rgba(255,46,147,0.35);box-shadow:0 12px 30px rgba(0,0,0,0.4), 0 0 20px rgba(255,46,147,0.15)}
+.cat-icon{
+  width:56px;height:56px;display:grid;place-items:center;font-size:24px;margin-bottom:14px;
+  background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.25);color:var(--cyan);position:relative;
+}
+.cat-card.magenta .cat-icon{background:rgba(255,46,147,0.10);border-color:rgba(255,46,147,0.25);color:var(--magenta)}
+.cat-card.gold .cat-icon{background:rgba(255,201,60,0.10);border-color:rgba(255,201,60,0.25);color:var(--gold)}
+.cat-card h3{font-size:15px;font-weight:900;margin-bottom:4px}
+.cat-card p{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px;min-height:32px}
+.cat-meta{display:flex;justify-content:space-between;align-items:center;font-family:'Space Grotesk',monospace;font-size:11px;color:var(--muted)}
+.cat-meta b{color:var(--cyan);font-size:12px}
+.cat-card.magenta .cat-meta b{color:var(--magenta)}
+.cat-card.gold .cat-meta b{color:var(--gold)}
+
+/* Neon border trace effect */
+.trace{position:relative}
+.trace::after{
+  content:'';position:absolute;inset:-1px;
+  background:conic-gradient(from var(--angle,0deg), var(--cyan), var(--magenta), var(--cyan));
+  opacity:0;transition:.3s;z-index:-1;
+}
+.trace:hover::after{opacity:1;animation:rotate 2s linear infinite}
+@property --angle { syntax:'<angle>'; initial-value:0deg; inherits:false }
+@keyframes rotate{to{--angle:360deg}}
+
+/* Product grid */
+.product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.prod-card{
+  background:rgba(18,32,58,0.72);border:1px solid var(--border);backdrop-filter:blur(10px);
+  overflow:hidden;position:relative;transition:.25s;display:flex;flex-direction:column;
+}
+.prod-card:hover{transform:translateY(-5px);border-color:rgba(0,229,255,0.28);box-shadow:0 16px 40px rgba(0,0,0,0.45), 0 0 22px rgba(0,229,255,0.12)}
+.prod-top{position:relative;height:148px;background:linear-gradient(135deg, #0E1A36 0%, #1A2B5A 100%);overflow:hidden;display:grid;place-items:center;padding:16px}
+.prod-top::before{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(rgba(0,229,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.06) 1px, transparent 1px);
+  background-size:22px 22px;
+}
+.prod-art{
+  width:110px;height:88px;background:linear-gradient(135deg, rgba(0,229,255,0.15), rgba(255,46,147,0.12));
+  border:1px solid rgba(255,255,255,0.08);display:grid;place-items:center;position:relative;z-index:1;
+  box-shadow:0 10px 30px rgba(0,0,0,0.4);
+}
+.prod-art i{font-size:36px;color:#fff;filter:drop-shadow(0 0 10px rgba(0,229,255,0.5))}
+.prod-badge{position:absolute;top:10px;left:10px;z-index:2;font-size:10px;font-weight:900;letter-spacing:0.7px;padding:5px 7px;display:inline-flex;align-items:center;gap:4px}
+.badge-hot{background:var(--magenta);color:#fff;box-shadow:0 0 12px rgba(255,46,147,0.5)}
+.badge-new{background:var(--cyan);color:#0A0E18;box-shadow:0 0 12px rgba(0,229,255,0.5)}
+.badge-sale{background:var(--gold);color:#0A0E18}
+.wish{position:absolute;top:10px;right:10px;z-index:2;width:32px;height:32px;display:grid;place-items:center;background:rgba(10,14,24,0.8);border:1px solid rgba(255,255,255,0.08);color:#fff;backdrop-filter:blur(6px);transition:.2s}
+.wish:hover{color:var(--magenta);border-color:var(--magenta)}
+.prod-body{padding:14px 14px 12px;flex:1;display:flex;flex-direction:column;gap:8px}
+.prod-body h4{font-size:13.5px;font-weight:800;line-height:1.4;min-height:38px}
+.prod-meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace}
+.prod-meta i{color:var(--gold)}
+.prod-prices{display:flex;align-items:center;gap:8px;margin-top:2px}
+.prod-prices b{font-family:'Space Grotesk',monospace;font-size:18px;color:var(--cyan)}
+.prod-prices s{font-family:'Space Grotesk',monospace;font-size:11px;color:var(--muted)}
+.prod-prices .off{font-size:10px;font-weight:800;background:rgba(255,46,147,0.15);color:var(--magenta);padding:3px 6px;border:1px solid rgba(255,46,147,0.25)}
+.prod-actions{display:flex;gap:8px;margin-top:8px}
+.btn-cart{flex:1;background:linear-gradient(90deg,var(--cyan),#00B8FF);color:#0A0E18;border:none;padding:10px;font-weight:900;font-size:12px;letter-spacing:0.5px;display:flex;align-items:center;justify-content:center;gap:6px;transition:.2s}
+.btn-cart:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.btn-eye{width:38px;height:38px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);color:var(--muted);transition:.2s}
+.btn-eye:hover{color:var(--cyan);border-color:var(--cyan)}
+.stock{height:4px;background:rgba(255,255,255,0.08);margin-top:8px;overflow:hidden}
+.stock i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--gold));}
+
+/* Promo banner */
+.promo{
+  margin-top:18px;
+  background:linear-gradient(90deg, rgba(0,229,255,0.12) 0%, rgba(255,46,147,0.12) 100%), linear-gradient(135deg, #0E1A36, #1A1240);
+  border:1px solid var(--border);position:relative;overflow:hidden;
+  display:grid;grid-template-columns:1.2fr auto;gap:20px;align-items:center;padding:18px 20px;
+}
+.promo::before{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg, transparent 0 40px, rgba(0,229,255,0.04) 40px 41px);
+}
+.promo > *{position:relative;z-index:1}
+.promo h3{font-size:22px;font-weight:900;display:flex;align-items:center;gap:10px}
+.promo h3 i{color:var(--gold)}
+.promo p{font-size:13px;color:var(--muted);margin-top:4px}
+.countdown{display:flex;gap:8px;align-items:center}
+.cd-box{min-width:62px;background:rgba(7,10,20,0.8);border:1px solid var(--border);padding:10px 8px;text-align:center;backdrop-filter:blur(6px)}
+.cd-box b{font-family:'Space Grotesk',monospace;font-size:20px;display:block;line-height:1;color:var(--cyan)}
+.cd-box span{font-size:10px;letter-spacing:1px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.cd-sep{color:var(--cyan);font-weight:900}
+
+/* Testimonials */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.testi{
+  background:var(--surface-glass);border:1px solid var(--border);backdrop-filter:blur(10px);padding:18px;position:relative;transition:.2s;
+}
+.testi:hover{border-color:rgba(255,46,147,0.22);box-shadow:0 10px 30px rgba(0,0,0,0.35)}
+.testi-head{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+.avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-weight:900;font-family:'Poppins',sans-serif;color:#fff;flex-shrink:0;border:2px solid rgba(255,255,255,0.1);box-shadow:0 0 12px rgba(0,229,255,0.3)}
+.avatar.a1{background:linear-gradient(135deg,#00E5FF,#7B61FF)}
+.avatar.a2{background:linear-gradient(135deg,#FF2E93,#FF7A00)}
+.avatar.a3{background:linear-gradient(135deg,#FFC93C,#FF2E93)}
+.testi h4{font-size:13px;font-weight:900}
+.testi small{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.stars{color:var(--gold);font-size:12px;letter-spacing:1px;margin-bottom:10px}
+.testi p{font-size:13px;color:var(--muted);line-height:1.7}
+.quote{position:absolute;top:14px;left:14px;font-size:28px;color:rgba(0,229,255,0.15);font-family:serif}
+
+/* How it works */
+.steps{ display:grid;grid-template-columns:repeat(3,1fr);gap:14px; position:relative}
+.steps::before{content:'';position:absolute;top:36px;left:12%;right:12%;height:1px;background:repeating-linear-gradient(90deg, var(--border) 0 8px, transparent 8px 12px);z-index:0}
+.step{
+  background:var(--surface-glass);border:1px solid var(--border);backdrop-filter:blur(10px);padding:20px;text-align:center;position:relative;z-index:1;transition:.2s;
+}
+.step:hover{border-color:rgba(0,229,255,0.25);transform:translateY(-3px)}
+.step-num{width:56px;height:56px;margin:0 auto 14px;display:grid;place-items:center;font-family:'Space Grotesk',monospace;font-weight:700;font-size:18px;background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.25);color:var(--cyan);position:relative}
+.step:nth-child(2) .step-num{background:rgba(255,46,147,0.10);border-color:rgba(255,46,147,0.25);color:var(--magenta)}
+.step:nth-child(3) .step-num{background:rgba(255,201,60,0.10);border-color:rgba(255,201,60,0.25);color:var(--gold)}
+.step h4{font-size:15px;font-weight:900;margin-bottom:6px}
+.step p{font-size:12px;color:var(--muted);line-height:1.7}
+
+/* Guarantee */
+.guarantee{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.g-card{
+  background:linear-gradient(180deg, rgba(18,32,58,0.9), rgba(10,14,24,0.9));border:1px solid var(--border);padding:18px;display:flex;gap:14px;align-items:flex-start;transition:.2s;
+}
+.g-card:hover{border-color:rgba(0,229,255,0.25);box-shadow:0 8px 24px rgba(0,0,0,0.3)}
+.g-icon{width:44px;height:44px;display:grid;place-items:center;flex-shrink:0;background:rgba(0,229,255,0.10);border:1px solid rgba(0,229,255,0.2);color:var(--cyan);font-size:18px}
+.g-card:nth-child(2) .g-icon{color:var(--magenta);background:rgba(255,46,147,0.10);border-color:rgba(255,46,147,0.2)}
+.g-card:nth-child(3) .g-icon{color:var(--gold);background:rgba(255,201,60,0.10);border-color:rgba(255,201,60,0.2)}
+.g-card:nth-child(4) .g-icon{color:#7BFF9E;background:rgba(123,255,158,0.10);border-color:rgba(123,255,158,0.2)}
+.g-card h4{font-size:13px;font-weight:900;margin-bottom:4px}
+.g-card p{font-size:11px;color:var(--muted);line-height:1.6}
+
+/* Footer */
+.footer{margin-top:44px;background:rgba(7,10,20,0.92);border-top:1px solid var(--border);backdrop-filter:blur(12px)}
+.footer-inner{max-width:1280px;margin:0 auto;padding:28px 20px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1.2fr;gap:24px}
+.footer h5{font-size:13px;font-weight:900;letter-spacing:0.6px;margin-bottom:12px;color:#fff}
+.footer p,.footer a{font-size:12.5px;color:var(--muted);line-height:1.8}
+.footer a:hover{color:var(--cyan)}
+.footer-links{display:flex;flex-direction:column;gap:6px}
+.newsletter{display:flex;gap:8px;margin-top:10px}
+.newsletter input{flex:1;background:rgba(255,255,255,0.06);border:1px solid var(--border);padding:10px 12px;color:#fff;outline:none;font-family:'Cairo',sans-serif;font-size:12px}
+.newsletter button{background:var(--cyan);color:#0A0E18;border:none;padding:10px 16px;font-weight:900;font-size:12px}
+.social{display:flex;gap:8px;margin-top:14px}
+.social a{width:38px;height:38px;display:grid;place-items:center;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);transition:.2s}
+.social a:hover{color:var(--cyan);border-color:var(--cyan);background:rgba(0,229,255,0.08)}
+.payment{ display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pay{ min-width:48px;height:30px;display:grid;place-items:center;background:#fff;color:#0A0E18;font-family:'Space Grotesk',monospace;font-weight:700;font-size:10px;letter-spacing:0.5px;border-radius:4px;padding:0 8px}
+.pay.visa{ background:#fff; color:#1A1F71}
+.pay.mc{ background:linear-gradient(90deg,#EB001B 50%, #F79E1B 50%); color:#fff; text-shadow:0 1px 2px rgba(0,0,0,0.4)}
+.footer-bottom{max-width:1280px;margin:0 auto;padding:14px 20px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted2);font-family:'JetBrains Mono',monospace}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(3,6,16,0.72);backdrop-filter:blur(8px);display:none;place-items:center;z-index:60;padding:20px}
+.modal-overlay.open{display:grid}
+.modal{
+  width:min(560px,100%);background:linear-gradient(180deg, #122040, #0A0E18);border:1px solid var(--border);
+  box-shadow:0 30px 80px rgba(0,0,0,0.6), 0 0 30px rgba(0,229,255,0.12);overflow:hidden;animation:fadeUp .3s ease;
+}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--border);background:rgba(0,229,255,0.06)}
+.modal-head h3{font-size:14px;font-weight:900;letter-spacing:0.5px}
+.modal-head button{width:32px;height:32px;display:grid;place-items:center;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:#fff}
+.modal-body{padding:18px;display:grid;grid-template-columns:140px 1fr;gap:18px}
+.modal-art{height:140px;background:linear-gradient(135deg, #0E1A36, #1E2F6A);border:1px solid var(--border);display:grid;place-items:center}
+.modal-art i{font-size:42px;color:var(--cyan);filter:drop-shadow(0 0 12px var(--cyan))}
+.modal-info h4{font-size:16px;font-weight:900;margin-bottom:6px}
+.modal-info p{font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:12px}
+.modal-prices{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.modal-prices b{font-family:'Space Grotesk',monospace;font-size:22px;color:var(--cyan)}
+.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:100%;background:linear-gradient(180deg, #0F1B36, #070A14);border-left:1px solid var(--border);z-index:70;transform:translateX(100%);transition:.35s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-20px 0 50px rgba(0,0,0,0.6)}
+html[dir="rtl"] .cart-drawer{right:auto;left:0;transform:translateX(-100%);border-left:none;border-right:1px solid var(--border)}
+.cart-drawer.open{transform:translateX(0)}
+.drawer-head{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:rgba(0,229,255,0.06)}
+.drawer-body{flex:1;padding:16px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.cart-item{display:flex;gap:12px;padding:12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);align-items:center}
+.cart-item-art{width:56px;height:56px;background:linear-gradient(135deg,#0E1A36,#1E2F6A);display:grid;place-items:center;flex-shrink:0;border:1px solid var(--border)}
+.cart-item-art i{color:var(--cyan)}
+.cart-item h5{font-size:12px;font-weight:800}
+.cart-item small{font-size:11px;color:var(--muted);font-family:'Space Grotesk',monospace}
+.qty{display:flex;align-items:center;gap:8px;margin-top:6px}
+.qty button{width:24px;height:24px;display:grid;place-items:center;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:#fff;font-size:11px}
+.drawer-foot{padding:16px;border-top:1px solid var(--border);background:rgba(7,10,20,0.8);display:grid;gap:10px}
+.drawer-foot .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+.drawer-foot .row b{font-family:'Space Grotesk',monospace;color:var(--cyan);font-size:16px}
+
+/* Toast */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);background:#0F1B36;border:1px solid var(--cyan);color:#fff;padding:12px 18px;font-size:13px;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(0,229,255,0.25);z-index:80;opacity:0;transition:.35s;display:flex;align-items:center;gap:10px}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast i{color:var(--cyan)}
+
+/* Responsive */
+@media (max-width:1100px){
+  .categories{grid-template-columns:repeat(3,1fr)}
+  .product-grid{grid-template-columns:repeat(3,1fr)}
+  .guarantee{grid-template-columns:repeat(2,1fr)}
+  .footer-inner{grid-template-columns:1fr 1fr}
+}
+@media (max-width:760px){
+  .topbar-inner{justify-content:center;text-align:center}
+  .nav{display:none}
+  .hamburger{display:grid}
+  .header-inner{gap:10px}
+  .hero-slide{grid-template-columns:1fr;padding:22px 18px}
+  .hero-visual{display:none}
+  .hero h1{font-size:32px}
+  .search-bar{flex-direction:column;align-items:stretch}
+  .sort{margin-left:0}
+  .categories{grid-template-columns:repeat(2,1fr)}
+  .product-grid{grid-template-columns:repeat(2,1fr)}
+  .testi-grid{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr}
+  .steps::before{display:none}
+  .promo{grid-template-columns:1fr}
+  .guarantee{grid-template-columns:1fr}
+  .footer-inner{grid-template-columns:1fr}
+  .modal-body{grid-template-columns:1fr}
+  .hero{margin-top:10px}
+}
+@media (max-width:480px){
+  .categories{grid-template-columns:1fr}
+  .product-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="grain"></div>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="dot"></span>
+      <span>توصيل فوري خلال <b style="color:var(--cyan)">60 ثانية</b> • دعم 24/7 على واتساب</span>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <span><i class="fa-solid fa-bolt" style="color:var(--gold)"></i> خصم 20% على شحن PUBG هذا الأسبوع</span>
+      <a href="#promo">استفد الآن ←</a>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-mark"><span>JK</span></div>
+      <div class="logo-text">
+        <strong>JOKER STORE</strong>
+        <em>GEAR • CHARGE • PLAY</em>
+      </div>
+    </a>
+    <nav class="nav">
+      <a class="active" href="#">الرئيسية</a>
+      <a href="#categories">المتجر</a>
+      <a href="#bestselling">الأكثر مبيعاً</a>
+      <a href="#how">كيف نعمل</a>
+      <a href="#">اتصل بنا</a>
+    </nav>
+    <div class="header-actions">
+      <button class="lang" id="langToggle"><i class="fa-solid fa-globe" style="color:var(--muted)"></i> <span data-ar="العربية" data-en="English">العربية</span> <b>AR</b></button>
+      <button class="icon-btn"><i class="fa-regular fa-user"></i></button>
+      <button class="icon-btn magenta" id="openCart"><i class="fa-solid fa-bag-shopping"></i><span class="badge" id="cartCount">2</span></button>
+      <button class="hamburger" id="hamburger"><i class="fa-solid fa-bars"></i></button>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-wrap">
+    <div class="hero-grid"></div>
+    <!-- slide 1 -->
+    <div class="hero-slide active" data-slide="0">
+      <div>
+        <div class="hero-label"><i class="fa-solid fa-gamepad"></i> JOKER STORE — المتجر الأول للجيمرز في فلسطين</div>
+        <h1>اشحن لعبتك<br><span class="grad">في ثواني</span> <span class="outline">بـسعر</span><br>ينافس الجميع.</h1>
+        <p>بطاقات PUBG و Steam و PlayStation و Google Play توصلك كود فوري على الواتساب. دفع آمن، تسليم تلقائي، ودعم يرد عليك حتى الساعة 3 الفجر.</p>
+        <div class="hero-ctas">
+          <a href="#categories" class="btn-primary"><i class="fa-solid fa-bolt"></i> تسوق الآن — ابدأ من 10₪</a>
+          <a href="#" class="btn-ghost"><i class="fa-solid fa-play"></i> شاهد كيف تعمل</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><b>+48k</b><span>عملية<br>ناجحة</span></div>
+          <div class="hero-stat"><b>4.9<i class="fa-solid fa-star" style="color:var(--gold);font-size:12px"></i></b><span>تقييم<br>العملاء</span></div>
+          <div class="hero-stat"><b>60s</b><span>متوسط<br>التسليم</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="hero-cards">
+          <div class="float-card c1">
+            <div class="card-top"><small>PUBG MOBILE • 8100 UC</small><i class="fa-solid fa-fire"></i></div>
+            <div style="height:78px;background:linear-gradient(135deg,#0B1E3A,#1E3A8A);display:grid;place-items:center;border:1px solid rgba(255,255,255,0.06)"><i class="fa-solid fa-crosshairs" style="font-size:34px;color:var(--cyan);filter:drop-shadow(0 0 10px var(--cyan))"></i></div>
+            <div class="price-row"><b>299₪</b><s>340₪</s><span class="badge-gold">-12%</span></div>
+            <div class="progress"><i style="width:84%"></i></div>
+            <small style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">847 تم بيعها هذا الأسبوع • باقي 43</small>
+          </div>
+          <div class="float-card c2">
+            <div class="card-top"><small>STEAM WALLET • $50</small><i class="fa-brands fa-steam"></i></div>
+            <div style="height:60px;background:linear-gradient(135deg,#1a1a2e,#16213e);display:grid;place-items:center;border:1px solid rgba(255,255,255,0.06)"><i class="fa-brands fa-steam" style="font-size:28px;color:#fff"></i></div>
+            <div class="price-row"><b>189₪</b><s>210₪</s></div>
+            <small style="font-size:10px;color:var(--muted)">كود فوري • ضمان استرداد</small>
+          </div>
+          <div class="float-card c3">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <small style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted)">PLAYSTATION PLUS • 12M</small><span style="background:var(--gold);color:#0A0E18;font-size:10px;font-weight:900;padding:2px 6px">الأكثر طلباً</span>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+              <div style="width:48px;height:48px;background:var(--cyan);display:grid;place-items:center;flex-shrink:0"><i class="fa-brands fa-playstation" style="font-size:22px;color:#0A0E18"></i></div>
+              <div><b style="font-family:'Space Grotesk',monospace;font-size:18px">149₪</b><div style="font-size:10px;color:var(--muted)">شامل الضريبة • تفعيل فوري</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- slide 2 -->
+    <div class="hero-slide" data-slide="1">
+      <div>
+        <div class="hero-label"><i class="fa-solid fa-bag-shopping" style="color:var(--magenta)"></i> عروض بلايستيشن و اكس بوكس</div>
+        <h1>بطاقات <span class="grad">ستيم و PSN</span><br>بأرخص سعر<br><span style="font-size:28px;color:var(--muted);font-weight:800">+ هدية 5% رصيد إضافي</span></h1>
+        <p>اشحن محفظتك واشترِ ألعابك المفضلة بدون فيزا. كود أصلي 100%، يصل خلال دقيقة، مع فاتورة إلكترونية.</p>
+        <div class="hero-ctas">
+          <a href="#categories" class="btn-primary magenta"><i class="fa-solid fa-gift"></i> استكشف العروض</a>
+          <a href="#" class="btn-ghost">قارن الأسعار</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><b>100%</b><span>أكواد<br>أصلية</span></div>
+          <div class="hero-stat"><b>12k</b><span>عميل<br>سعيد</span></div>
+          <div class="hero-stat"><b>24/7</b><span>دعم<br>فوري</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div style="width:360px;height:280px;background:linear-gradient(135deg, rgba(255,46,147,0.15), rgba(0,229,255,0.1));border:1px solid var(--border);display:grid;place-items:center;position:relative;backdrop-filter:blur(8px)">
+          <div style="position:absolute;inset:0;background:linear-gradient(rgba(255,46,147,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,46,147,0.06) 1px, transparent 1px);background-size:24px 24px;"></div>
+          <div style="text-align:center;position:relative;z-index:1">
+            <div style="width:120px;height:76px;background:#fff;display:grid;place-items:center;margin:0 auto 14px;box-shadow:0 12px 30px rgba(0,0,0,0.4)"><span style="font-family:'Poppins',sans-serif;font-weight:800;color:#0A0E18;letter-spacing:1px">STEAM $100</span></div>
+            <div style="font-family:'Space Grotesk',monospace;font-size:32px;font-weight:700;color:var(--magenta)">$100 <span style="font-size:16px;color:var(--muted)">→ 369₪</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace">STEAM • PSN • XBOX • NINTENDO</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- slide 3 -->
+    <div class="hero-slide" data-slide="2">
+      <div>
+        <div class="hero-label" style="border-color:rgba(255,201,60,0.3);color:var(--gold)"><i class="fa-solid fa-fire" style="color:var(--gold)"></i> عروض الأسبوع المجنونة — حتى 30%</div>
+        <h1>عروض <span style="color:var(--gold)">تكسّر</span> السوق<br>كل <span class="grad">خميس وجمعة.</span></h1>
+        <p>تابعنا على إنستغرام وتيليجرام عشان ما تفوّت السحب الأسبوعي على 660 شدة مجاناً. كوبون JOKER10 يخصم 10% إضافي.</p>
+        <div class="hero-ctas">
+          <a href="#promo" class="btn-primary" style="background:linear-gradient(90deg,var(--gold),#FF9F1C);box-shadow:0 0 20px rgba(255,201,60,0.4)"><i class="fa-solid fa-clock"></i> العروض تنتهي خلال 02:14:33</a>
+          <a href="#" class="btn-ghost">انسخ الكوبون</a>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div style="width:340px;height:300px;position:relative;display:grid;place-items:center">
+          <div style="position:absolute;width:220px;height:220px;border:1px dashed rgba(255,201,60,0.3);border-radius:50%;animation:spin 12s linear infinite"></div>
+          <div style="width:180px;height:180px;background:radial-gradient(circle at 30% 30%, #FFC93C, #FF6B00);display:grid;place-items:center;transform:rotate(-8deg);box-shadow:0 20px 50px rgba(255,201,60,0.35);border:3px solid rgba(255,255,255,0.9)">
+            <div style="text-align:center;transform:rotate(8deg)"><div style="font-family:'Poppins',sans-serif;font-weight:900;font-size:46px;color:#0A0E18;line-height:1">30%</div><div style="font-size:12px;font-weight:900;letter-spacing:2px;color:#0A0E18">OFF WEEKEND</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-dots">
+      <button class="active" data-dot="0"></button>
+      <button data-dot="1"></button>
+      <button data-dot="2"></button>
+    </div>
+    <div class="hero-arrows">
+      <button id="prevSlide"><i class="fa-solid fa-chevron-right"></i></button>
+      <button id="nextSlide"><i class="fa-solid fa-chevron-left"></i></button>
+    </div>
+  </div>
+</section>
+
+<!-- Search -->
+<section class="search-section">
+  <div class="search-bar">
+    <div class="search-input">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" placeholder="ابحث عن لعبة، بطاقة، أو رصيد...  مثلاً: PUBG 8100 أو Steam $50">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);background:rgba(255,255,255,0.06);padding:4px 6px;border:1px solid var(--border)">⌘ K</span>
+    </div>
+    <div class="filters">
+      <button class="filter-pill active">الكل</button>
+      <button class="filter-pill">الأكثر مبيعاً 🔥</button>
+      <button class="filter-pill">جديد ✨</button>
+      <button class="filter-pill">عروض %</button>
+      <button class="filter-pill">أكواد فورية ⚡</button>
+    </div>
+    <div class="sort">
+      <span>ترتيب حسب:</span>
+      <select><option>الأكثر شعبية</option><option>السعر: من الأقل</option><option>السعر: من الأعلى</option><option>الأحدث</option></select>
+    </div>
+  </div>
+</section>
+
+<!-- Categories -->
+<section class="section" id="categories">
+  <div class="section-head">
+    <div>
+      <h2><i class="fa-solid fa-table-cells-large"></i> تسوق حسب المنصة <em>/ Shop by Platform</em></h2>
+      <p>اختر منصتك المفضلة واكتشف كل البطاقات والأرصدة المتاحة بأسعار لا تُنافس</p>
+    </div>
+    <a href="#" class="link-more">عرض كل التصنيفات <i class="fa-solid fa-arrow-left"></i></a>
+  </div>
+  <div class="categories">
+    <div class="cat-card trace">
+      <div class="cat-icon"><i class="fa-solid fa-crosshairs"></i></div>
+      <h3>PUBG Mobile</h3>
+      <p>شدات مباشرة على الـ ID خلال 60 ثانية</p>
+      <div class="cat-meta"><span>12 منتج</span><b>ابتداءً من 9₪</b></div>
+    </div>
+    <div class="cat-card magenta trace">
+      <div class="cat-icon"><i class="fa-brands fa-steam"></i></div>
+      <h3>Steam Wallet</h3>
+      <p>رصيد ستيم $5 حتى $100 كود فوري</p>
+      <div class="cat-meta"><span>8 منتجات</span><b>ابتداءً من 19₪</b></div>
+    </div>
+    <div class="cat-card trace">
+      <div class="cat-icon"><i class="fa-brands fa-playstation"></i></div>
+      <h3>PlayStation</h3>
+      <p>PSN و Plus اشتراكات وبطاقات هدايا</p>
+      <div class="cat-meta"><span>10 منتجات</span><b>ابتداءً من 39₪</b></div>
+    </div>
+    <div class="cat-card gold trace">
+      <div class="cat-icon"><i class="fa-brands fa-google-play"></i></div>
+      <h3>Google Play</h3>
+      <p>رصيد جوجل بلاي لكل التطبيقات والألعاب</p>
+      <div class="cat-meta"><span>6 منتجات</span><b>ابتداءً من 15₪</b></div>
+    </div>
+    <div class="cat-card magenta trace">
+      <div class="cat-icon"><i class="fa-solid fa-gamepad"></i></div>
+      <h3>eFootball • Xbox</h3>
+      <p>كوينز و Game Pass وبطاقات متنوعة</p>
+      <div class="cat-meta"><span>9 منتجات</span><b>ابتداءً من 25₪</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- Best selling -->
+<section class="section" id="bestselling">
+  <div class="section-head">
+    <div>
+      <h2><i class="fa-solid fa-fire" style="color:var(--magenta)"></i> الأكثر مبيعاً هذا الأسبوع</h2>
+      <p>منتجات يثق بها آلاف اللاعبين — تسليم فوري وضمان ذهبي</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="icon-btn" style="width:36px;height:36px"><i class="fa-solid fa-chevron-right"></i></button>
+      <button class="icon-btn" style="width:36px;height:36px"><i class="fa-solid fa-chevron-left"></i></button>
+    </div>
+  </div>
+  <div class="product-grid">
+    <article class="prod-card trace">
+      <div class="prod-top">
+        <span class="prod-badge badge-hot"><i class="fa-solid fa-fire"></i> الأكثر مبيعاً</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art"><i class="fa-solid fa-crosshairs"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>PUBG Mobile — 8100 UC + 1300 هدية</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.9 (1,243) • <span>تسليم فوري ⚡</span></div>
+        <div class="prod-prices"><b>299₪</b><s>340₪</s><span class="off">-12%</span></div>
+        <div class="stock"><i style="width:84%"></i></div>
+        <small style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">متبقي 43 كود • 847 مباعة</small>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+    <article class="prod-card trace">
+      <div class="prod-top" style="background:linear-gradient(135deg,#1a1a2e,#0f3460)">
+        <span class="prod-badge badge-new">جديد</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art" style="background:linear-gradient(135deg,#1a1a2e,#16213e)"><i class="fa-brands fa-steam"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>Steam Wallet — $50 رصيد فوري</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.8 (892) • كود أصلي</div>
+        <div class="prod-prices"><b>189₪</b><s>210₪</s><span class="off">-10%</span></div>
+        <div class="stock"><i style="width:62%;background:linear-gradient(90deg,var(--magenta),var(--cyan))"></i></div>
+        <small style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">متبقي 112 كود</small>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+    <article class="prod-card trace">
+      <div class="prod-top" style="background:linear-gradient(135deg,#0f1b36,#1e3a5f)">
+        <span class="prod-badge badge-sale">عرض -18%</span>
+        <button class="wish" style="color:var(--magenta)"><i class="fa-solid fa-heart"></i></button>
+        <div class="prod-art" style="background:linear-gradient(135deg,#0f1b36,#1b2a5a)"><i class="fa-brands fa-playstation"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>PlayStation Plus — 12 شهر + ألعاب مجانية</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.9 (654) • تفعيل فوري</div>
+        <div class="prod-prices"><b>149₪</b><s>182₪</s></div>
+        <div class="stock"><i style="width:91%"></i></div>
+        <small style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">متبقي 18 كود فقط!</small>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+    <article class="prod-card trace">
+      <div class="prod-top" style="background:linear-gradient(135deg,#1a2a1a,#2d4a22)">
+        <span class="prod-badge badge-hot">محدود</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art" style="background:linear-gradient(135deg,#1a2a1a,#2d4a22)"><i class="fa-brands fa-google-play"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>Google Play — $25 رصيد متجر</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.7 (421) • لكل التطبيقات</div>
+        <div class="prod-prices"><b>95₪</b><s>105₪</s></div>
+        <div class="stock"><i style="width:48%;background:linear-gradient(90deg,var(--gold),var(--magenta))"></i></div>
+        <small style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">متبقي 76 كود</small>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Second row / newly added -->
+  <div class="section-head" style="margin-top:28px">
+    <div>
+      <h2><i class="fa-solid fa-sparkles" style="color:var(--cyan)"></i> وصل حديثاً</h2>
+      <p>أحدث البطاقات المضافة — كن أول من يجربها</p>
+    </div>
+    <a href="#" class="link-more">عرض الكل <i class="fa-solid fa-arrow-left"></i></a>
+  </div>
+  <div class="product-grid">
+    <article class="prod-card">
+      <div class="prod-top" style="background:linear-gradient(135deg,#1a1240,#2a1a6a)">
+        <span class="prod-badge badge-new">جديد</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art" style="background:linear-gradient(135deg,#1a1240,#2a1a6a)"><i class="fa-solid fa-futbol"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>eFootball 2025 — 3000 كوينز</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 5.0 (87) • جديد</div>
+        <div class="prod-prices"><b>129₪</b><s>149₪</s><span class="off">-13%</span></div>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+    <article class="prod-card">
+      <div class="prod-top" style="background:linear-gradient(135deg,#0e2a22,#1a4a3a)">
+        <span class="prod-badge badge-new">جديد</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art" style="background:linear-gradient(135deg,#0e2a22,#1a4a3a)"><i class="fa-brands fa-xbox"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>Xbox Game Pass — 3 أشهر Ultimate</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.8 (312) • 100+ لعبة</div>
+        <div class="prod-prices"><b>89₪</b><s>119₪</s></div>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+    <article class="prod-card">
+      <div class="prod-top" style="background:linear-gradient(135deg,#2a1a1a,#5a1a1a)">
+        <span class="prod-badge badge-sale">خصم 15%</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art" style="background:linear-gradient(135deg,#2a1a1a,#5a1a1a)"><i class="fa-solid fa-gift"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>Netflix Premium — 12 شهر 4K</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.6 (203) • حساب خاص</div>
+        <div class="prod-prices"><b>199₪</b><s>235₪</s></div>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+    <article class="prod-card">
+      <div class="prod-top" style="background:linear-gradient(135deg,#0e1a36,#1a3a4a)">
+        <span class="prod-badge badge-hot">الأكثر طلباً</span>
+        <button class="wish"><i class="fa-regular fa-heart"></i></button>
+        <div class="prod-art"><i class="fa-solid fa-mobile-screen"></i></div>
+      </div>
+      <div class="prod-body">
+        <h4>Free Fire — 2180 جوهرة</h4>
+        <div class="prod-meta"><i class="fa-solid fa-star"></i> 4.9 (534) • فوري</div>
+        <div class="prod-prices"><b>79₪</b><s>95₪</s><span class="off">-17%</span></div>
+        <div class="prod-actions">
+          <button class="btn-cart" onclick="addToCart()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-eye" onclick="openModal()"><i class="fa-regular fa-eye"></i></button>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- Promo -->
+<section class="section" id="promo">
+  <div class="promo">
+    <div>
+      <h3><i class="fa-solid fa-bolt"></i> عروض نهاية الأسبوع — خصم إضافي 10% بكود <span style="background:var(--gold);color:#0A0E18;padding:2px 8px;font-family:'JetBrains Mono',monospace;font-size:14px">JOKER10</span></h3>
+      <p>العرض ساري حتى نفاد الكمية أو حتى نهاية العد التنازلي. لا تفوّت أقوى أسعار السنة على شدات PUBG وبطاقات ستيم.</p>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="countdown">
+        <div class="cd-box"><b id="cd-h">02</b><span>ساعة</span></div>
+        <span class="cd-sep">:</span>
+        <div class="cd-box"><b id="cd-m">14</b><span>دقيقة</span></div>
+        <span class="cd-sep">:</span>
+        <div class="cd-box"><b id="cd-s">33</b><span>ثانية</span></div>
+      </div>
+      <button class="btn-primary" style="background:linear-gradient(90deg,var(--gold),#FF8A00);box-shadow:0 0 18px rgba(255,201,60,0.4)">تسوق العروض الآن</button>
+    </div>
+  </div>
+</section>
+
+<!-- Testimonials -->
+<section class="section">
+  <div class="section-head">
+    <div>
+      <h2><i class="fa-solid fa-comment-dots" style="color:var(--cyan)"></i> آراء اللاعبين</h2>
+      <p>أكثر من 48,000 عملية ناجحة وتقييم 4.9 من 5</p>
+    </div>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);border:1px solid var(--border);padding:6px 10px;background:rgba(0,229,255,0.06)">موثق عبر واتساب وتيليجرام ✓</span>
+  </div>
+  <div class="testi-grid">
+    <div class="testi">
+      <span class="quote">“</span>
+      <div class="testi-head">
+        <div class="avatar a1">A</div>
+        <div><h4>أحمد — نابلس</h4><small>PUBG 8100 UC • منذ يومين</small></div>
+      </div>
+      <div class="stars">★★★★★ <span style="color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace">5.0</span></div>
+      <p>“طلبت 8100 شدة وصلتني خلال دقيقة على الـ ID، بدون أي مشاكل. خدمة أسطورية والدعم رد عليّ فوراً على الواتساب.”</p>
+    </div>
+    <div class="testi">
+      <span class="quote">“</span>
+      <div class="testi-head">
+        <div class="avatar a2">M</div>
+        <div><h4>محمد — الخليل</h4><small>Steam $50 • منذ أسبوع</small></div>
+      </div>
+      <div class="stars">★★★★★ <span style="color:var(--muted);font-size:11px">5.0</span></div>
+      <p>“أرخص سعر لقيته للستيم، والكود اشتغل مباشرة. صرت زبون دائم، كل شهر أشحن من جوكر ستور.”</p>
+    </div>
+    <div class="testi">
+      <span class="quote">“</span>
+      <div class="testi-head">
+        <div class="avatar a3">S</div>
+        <div><h4>سارة — رام الله</h4><small>PS Plus 12M • منذ 3 أيام</small></div>
+      </div>
+      <div class="stars">★★★★★ <span style="color:var(--muted);font-size:11px">5.0</span></div>
+      <p>“كنت خايفة من الشراء أونلاين بس التجربة كانت ممتازة. كود أصلي وتفعيل فوري، شكراً جوكر!”</p>
+    </div>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section" id="how">
+  <div class="section-head">
+    <div>
+      <h2><i class="fa-solid fa-route" style="color:var(--gold)"></i> كيف تطلب؟ — 3 خطوات فقط</h2>
+      <p>من اختيار البطاقة حتى وصول الكود — كل شيء تلقائي وسريع</p>
+    </div>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <h4>اختر بطاقتك</h4>
+      <p>تصفح المتجر واختر البطاقة أو الرصيد. أضف للسلة وحدد الكمية.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <h4>ادفع بأمان</h4>
+      <p>ادفع عبر PalPay أو بطاقة أو تحويل بنكي. دفع مشفّر 100% وآمن.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <h4>استلم فوراً</h4>
+      <p>يوصلك الكود على واتساب وتيليجرام خلال 60 ثانية مع فاتورة.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Guarantee -->
+<section class="section">
+  <div class="guarantee">
+    <div class="g-card">
+      <div class="g-icon"><i class="fa-solid fa-bolt"></i></div>
+      <div><h4>تسليم فوري 60 ثانية</h4><p>نظام تلقائي يرسل الكود فور تأكيد الدفع، حتى في عطلة نهاية الأسبوع.</p></div>
+    </div>
+    <div class="g-card">
+      <div class="g-icon"><i class="fa-solid fa-shield-halved"></i></div>
+      <div><h4>دفع آمن ومشفّر</h4><p>PalPay وبطاقات عالمية بحماية 3D Secure وتشفير كامل لبياناتك.</p></div>
+    </div>
+    <div class="g-card">
+      <div class="g-icon"><i class="fa-solid fa-headset"></i></div>
+      <div><h4>دعم 24/7 حقيقي</h4><p>فريق يرد على واتساب وتيليجرام في أقل من 3 دقائق، كل يوم.</p></div>
+    </div>
+    <div class="g-card">
+      <div class="g-icon"><i class="fa-solid fa-rotate-left"></i></div>
+      <div><h4>ضمان استرداد ذهبي</h4><p>إذا لم يعمل الكود، نستبدله فوراً أو نعيد المبلغ كاملاً خلال 24 ساعة.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="logo-mark" style="width:36px;height:36px"><span style="font-size:14px">JK</span></div>
+        <strong style="font-family:'Poppins',sans-serif;letter-spacing:1px">JOKER STORE</strong>
+      </div>
+      <p>المتجر الأول لشحن الألعاب وبطاقات الهدايا في فلسطين. نوفر أكواد أصلية، تسليم فوري، ودعم يليق بالجيمرز.</p>
+      <div class="social">
+        <a href="#"><i class="fa-brands fa-instagram"></i></a>
+        <a href="#"><i class="fa-brands fa-telegram"></i></a>
+        <a href="#"><i class="fa-brands fa-tiktok"></i></a>
+        <a href="#"><i class="fa-brands fa-whatsapp"></i></a>
+        <a href="#"><i class="fa-brands fa-discord"></i></a>
+      </div>
+    </div>
+    <div>
+      <h5>المتجر</h5>
+      <div class="footer-links">
+        <a href="#">PUBG Mobile</a>
+        <a href="#">Steam Wallet</a>
+        <a href="#">PlayStation Store</a>
+        <a href="#">Google Play</a>
+        <a href="#">eFootball • Free Fire</a>
+        <a href="#">كل المنتجات</a>
+      </div>
+    </div>
+    <div>
+      <h5>المساعدة</h5>
+      <div class="footer-links">
+        <a href="#">كيف أستلم الكود؟</a>
+        <a href="#">طرق الدفع</a>
+        <a href="#">سياسة الاسترداد</a>
+        <a href="#">تتبع الطلب</a>
+        <a href="#">اتصل بنا</a>
+      </div>
+    </div>
+    <div>
+      <h5>اشترك واربح 10% خصم</h5>
+      <p>سجل بريدك ووصلك كوبون ترحيبي + عروض حصرية كل أسبوع.</p>
+      <div class="newsletter">
+        <input type="email" placeholder="بريدك الإلكتروني">
+        <button>اشتراك</button>
+      </div>
+      <div class="payment">
+        <span class="pay visa">VISA</span>
+        <span class="pay mc">MC</span>
+        <span class="pay">PalPay</span>
+        <span class="pay" style="background:var(--cyan);color:#0A0E18">APPLE PAY</span>
+      </div>
+      <p style="font-size:10px;margin-top:8px;font-family:'JetBrains Mono',monospace">🔒 دفع آمن ومشفّر • 3D Secure</p>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 JOKER STORE — جميع الحقوق محفوظة • صُنع للجيمرز في فلسطين 🇵🇸</span>
+    <span style="display:flex;gap:14px"><a href="#">الخصوصية</a> <a href="#">الشروط</a> <span style="color:var(--cyan)">● متصل الآن</span></span>
+  </div>
+</footer>
+
+<!-- Quick view modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3><i class="fa-solid fa-eye" style="color:var(--cyan)"></i> معاينة سريعة — PUBG Mobile 8100 UC</h3>
+      <button onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-art"><i class="fa-solid fa-crosshairs"></i></div>
+      <div class="modal-info">
+        <h4>PUBG Mobile — 8100 UC + 1300 هدية</h4>
+        <p>شدات مباشرة على الـ ID الخاص بك خلال 60 ثانية. يعمل على جميع السيرفرات. كود آمن 100% مع ضمان استبدال فوري.</p>
+        <div class="modal-prices"><b>299₪</b><s style="color:var(--muted);font-family:'Space Grotesk',monospace">340₪</s><span style="background:var(--magenta);color:#fff;font-size:11px;font-weight:800;padding:4px 6px">وفّر 41₪</span></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" style="flex:1;justify-content:center" onclick="addToCart();closeModal()"><i class="fa-solid fa-bag-shopping"></i> أضف للسلة</button>
+          <button class="btn-ghost" onclick="closeModal()">إغلاق</button>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <span style="font-size:11px;border:1px solid var(--border);padding:4px 8px;color:var(--muted)"><i class="fa-solid fa-bolt" style="color:var(--cyan)"></i> تسليم فوري</span>
+          <span style="font-size:11px;border:1px solid var(--border);padding:4px 8px;color:var(--muted)"><i class="fa-solid fa-shield" style="color:var(--gold)"></i> ضمان ذهبي</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cart drawer -->
+<div class="cart-drawer" id="cartDrawer">
+  <div class="drawer-head">
+    <h3 style="font-size:14px;font-weight:900"><i class="fa-solid fa-bag-shopping" style="color:var(--cyan)"></i> سلة التسوق — <span id="drawerCount">2</span> منتجات</h3>
+    <button onclick="closeCart()" style="width:32px;height:32px;display:grid;place-items:center;background:rgba(255,255,255,0.06);border:1px solid var(--border);color:#fff"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="drawer-body">
+    <div class="cart-item">
+      <div class="cart-item-art"><i class="fa-solid fa-crosshairs"></i></div>
+      <div style="flex:1">
+        <h5>PUBG Mobile — 8100 UC</h5>
+        <small>299₪ × 1</small>
+        <div class="qty"><button>-</button><span style="font-family:'Space Grotesk',monospace;font-size:13px;min-width:20px;text-align:center">1</span><button>+</button></div>
+      </div>
+      <b style="font-family:'Space Grotesk',monospace;color:var(--cyan)">299₪</b>
+    </div>
+    <div class="cart-item">
+      <div class="cart-item-art"><i class="fa-brands fa-steam"></i></div>
+      <div style="flex:1">
+        <h5>Steam Wallet — $50</h5>
+        <small>189₪ × 1</small>
+        <div class="qty"><button>-</button><span style="font-family:'Space Grotesk',monospace;font-size:13px;min-width:20px;text-align:center">1</span><button>+</button></div>
+      </div>
+      <b style="font-family:'Space Grotesk',monospace;color:var(--cyan)">189₪</b>
+    </div>
+    <div style="background:rgba(255,201,60,0.08);border:1px dashed rgba(255,201,60,0.3);padding:12px;display:flex;gap:10px;align-items:center">
+      <i class="fa-solid fa-tag" style="color:var(--gold)"></i>
+      <input type="text" placeholder="كود الخصم JOKER10" style="flex:1;background:transparent;border:none;outline:none;color:#fff;font-family:'JetBrains Mono',monospace;font-size:12px">
+      <button style="background:var(--gold);color:#0A0E18;border:none;padding:6px 12px;font-weight:800;font-size:11px">تطبيق</button>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <div class="row"><span>المجموع</span><span style="font-family:'Space Grotesk',monospace">488₪</span></div>
+    <div class="row"><span>الخصم (JOKER10)</span><span style="color:var(--gold)">-48₪</span></div>
+    <div class="row" style="font-weight:900;color:#fff;border-top:1px solid var(--border);padding-top:10px"><span>الإجمالي</span><b>440₪</b></div>
+    <button class="btn-primary" style="width:100%;justify-content:center;margin-top:6px;box-shadow:0 0 18px rgba(0,229,255,0.3)">متابعة الدفع الآمن <i class="fa-solid fa-lock"></i></button>
+    <small style="text-align:center;color:var(--muted);font-size:10px;font-family:'JetBrains Mono',monospace">🔒 دفع مشفّر • PalPay • Visa • Apple Pay</small>
+  </div>
+</div>
+
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i> <span>تمت الإضافة للسلة بنجاح!</span></div>
+
+<script>
+// slider
+let current=0, total=3, timer;
+const slides=document.querySelectorAll('.hero-slide');
+const dots=document.querySelectorAll('.hero-dots button');
+function show(n){
+  current=(n+total)%total;
+  slides.forEach((s,i)=>s.classList.toggle('active',i===current));
+  dots.forEach((d,i)=>d.classList.toggle('active',i===current));
+}
+function next(){ show(current+1) }
+function prev(){ show(current-1) }
+document.getElementById('nextSlide').onclick=()=>{next();reset()}
+document.getElementById('prevSlide').onclick=()=>{prev();reset()}
+dots.forEach(d=>d.onclick=()=>{show(+d.dataset.dot);reset()})
+function reset(){ clearInterval(timer); timer=setInterval(next,5200) }
+timer=setInterval(next,5200);
+
+// countdown
+let h=2,m=14,s=33;
+setInterval(()=>{
+  if(s>0) s--; else if(m>0){m--;s=59} else if(h>0){h--;m=59;s=59}
+  document.getElementById('cd-h').textContent=String(h).padStart(2,'0');
+  document.getElementById('cd-m').textContent=String(m).padStart(2,'0');
+  document.getElementById('cd-s').textContent=String(s).padStart(2,'0');
+},1000);
+
+// modals
+function openModal(){ document.getElementById('modal').classList.add('open') }
+function closeModal(){ document.getElementById('modal').classList.remove('open') }
+document.getElementById('modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal() })
+function openCart(){ document.getElementById('cartDrawer').classList.add('open') }
+function closeCart(){ document.getElementById('cartDrawer').classList.remove('open') }
+document.getElementById('openCart').onclick=openCart;
+
+// cart
+let count=2;
+function addToCart(){
+  count++;
+  document.getElementById('cartCount').textContent=count;
+  document.getElementById('drawerCount').textContent=count;
+  const t=document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// lang toggle RTL/LTR
+let isRTL=true;
+document.getElementById('langToggle').onclick=()=>{
+  isRTL=!isRTL;
+  document.documentElement.dir=isRTL?'rtl':'ltr';
+  document.documentElement.lang=isRTL?'ar':'en';
+  const span=document.querySelector('#langToggle span');
+  const b=document.querySelector('#langToggle b');
+  if(isRTL){ span.textContent='العربية'; b.textContent='AR'; }
+  else { span.textContent='English'; b.textContent='EN'; }
+};
+
+// filter pills
+document.querySelectorAll('.filter-pill').forEach(p=>{
+  p.onclick=()=>{
+    document.querySelectorAll('.filter-pill').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+  }
+})
+
+// parallax grid
+let ticking=false;
+window.addEventListener('scroll',()=>{
+  if(!ticking){
+    requestAnimationFrame(()=>{
+      const y=window.scrollY*0.08;
+      document.querySelector('.bg-grid').style.transform=`translateY(${y}px)`;
+      ticking=false;
+    });
+    ticking=true;
+  }
+})
+
+// spin keyframes
+const style=document.createElement('style');
+style.textContent='@keyframes spin{to{transform:rotate(360deg)}}';
+document.head.appendChild(style);
+</script>
+</body>
+</html>

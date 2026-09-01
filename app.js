@@ -66,7 +66,7 @@ app.use(helmet({
             })(),
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             objectSrc: ["'none'"],
-            mediaSrc: ["'self'"],
+            mediaSrc: ["'self'", 'https://assets.mixkit.co'],
             frameSrc: ["'self'"],
             frameAncestors: ["'self'"],
             baseUri: ["'self'"],

@@ -7,8 +7,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="admin-style.css">
-</head>
+    <link rel="stylesheet" href="/admin-style.css">
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -41,6 +40,8 @@
             <button class="tab-btn" data-tooltip="الأقسام" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
             <button class="tab-btn" data-tooltip="سلال مهجورة" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
             <button class="tab-btn" data-tooltip="المستخدمون" id="usersTabBtn"><i class="fa fa-users"></i> المستخدمون</button>
+            <button class="tab-btn" data-tooltip="التقارير" id="reportsTabBtn"><i class="fas fa-chart-line"></i> التقارير</button>
+            <button class="tab-btn" data-tooltip="التسعير الحي" id="pricingTabBtn"><i class="fas fa-dollar-sign"></i> التسعير</button>
             <button class="tab-btn" data-tooltip="السجلات" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
             <button class="tab-btn" data-tooltip="العروض والكوبونات" id="promotionsTabBtn"><i class="fas fa-tags"></i> العروض</button>
         </div>
@@ -193,11 +194,11 @@
                         </tr>
                     </thead>
                     <tbody id="inventoryList">
-                        <tr><td colspan="6" class="loading-cell">جاري تحميل المنتجات...</td></tr>
+                        <tr><td colspan="7" class="loading-cell">جاري تحميل المنتجات...</td></tr>
                     </tbody>
                     <tfoot id="inventoryFooter" style="display:none;">
                         <tr>
-                            <td colspan="6" style="text-align:center; padding:12px;">
+                            <td colspan="7" style="text-align:center; padding:12px;">
                                 <button class="btn btn-secondary btn-sm" id="loadMoreInventoryBtn"><i class="fas fa-plus"></i> عرض المزيد</button>
                             </td>
                         </tr>

@@ -1,5 +1,6 @@
 const { Category } = require('../models');
 const { createLog } = require('./helpers');
+const { clearStorefrontCache } = require('./storeController');
 
 exports.getCategories = async (req, res) => {
     try {
@@ -41,6 +42,7 @@ exports.createCategory = async (req, res) => {
             order: order || 0
         });
         await category.save();
+        clearStorefrontCache();
         await createLog('إضافة قسم', `تم إضافة قسم: ${titleAr}`, req, category._id, titleAr);
         res.status(201).json({ success: true, message: '✅ تم إضافة القسم بنجاح', category });
     } catch (err) {
@@ -66,6 +68,7 @@ exports.updateCategory = async (req, res) => {
         if (updates.key) category.key = updates.key;
 
         await category.save();
+        clearStorefrontCache();
         await createLog('تعديل قسم', `تم تعديل القسم: ${category.title.ar}`, req, category._id, category.title.ar);
         res.json({ success: true, message: '✅ تم تحديث القسم بنجاح', category });
     } catch (err) {
@@ -80,6 +83,7 @@ exports.deleteCategory = async (req, res) => {
         if (!category) {
             return res.status(404).json({ success: false, message: 'القسم غير موجود' });
         }
+        clearStorefrontCache();
         await createLog('حذف قسم', `تم حذف القسم: ${category.title.ar}`, req, categoryId, category.title.ar);
         res.json({ success: true, message: '✅ تم حذف القسم بنجاح' });
     } catch (err) {

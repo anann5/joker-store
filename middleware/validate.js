@@ -391,7 +391,7 @@ exports.validateParams = (schema) => {
 const mongoIdPattern = /^[a-fA-F0-9]{24}$/;
 
 exports.orderIdParamSchema = Joi.object({
-    orderId: Joi.string().pattern(mongoIdPattern).required().messages({
+    orderId: Joi.string().pattern(/^[A-Z0-9]{6,12}$/i).required().messages({
         'string.pattern.base': 'رقم الطلب غير صالح',
         'any.required': 'رقم الطلب مطلوب'
     })

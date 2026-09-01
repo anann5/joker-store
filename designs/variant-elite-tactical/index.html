@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JOKER STORE — ELITE TACTICAL UNIT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&family=Rajdhani:wght@600;700&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0B0C;
+  --surface:#1A1D1F;
+  --surface-2:#212427;
+  --surface-3:#2A2E31;
+  --gold:#C5A15B;
+  --gold-light:#F0D08A;
+  --gold-dim:#8A7650;
+  --gold-mid:#D4B878;
+  --red:#D42A2A;
+  --olive:#3E4A2E;
+  --olive-light:#5A6B42;
+  --text:#E8E6E1;
+  --muted:#8A8D93;
+  --muted-2:#5C5F66;
+  --line:rgba(197,161,91,0.14);
+  --line-strong:rgba(197,161,91,0.28);
+  --cut:14px;
+  --radius:0;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Tajawal',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  line-height:1.6;
+}
+/* carbon + grid texture */
+body::before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:-2;
+  background:
+    linear-gradient(rgba(197,161,91,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197,161,91,0.035) 1px, transparent 1px),
+    radial-gradient(ellipse 900px 600px at 70% 0%, rgba(197,161,91,0.07), transparent 60%),
+    radial-gradient(ellipse 600px 400px at 10% 80%, rgba(212,42,42,0.04), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 3px);
+  background-size:40px 40px, 40px 40px, auto, auto, auto;
+}
+body::after{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;z-index:-1;opacity:0.035;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+}
+/* utilities */
+.en{font-family:'Barlow Condensed','Rajdhani',sans-serif;letter-spacing:0.06em}
+.mono{font-family:'JetBrains Mono',monospace}
+.tight{letter-spacing:-0.02em}
+.upper{text-transform:uppercase}
+.chamfer{
+  clip-path:polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+.chamfer-sm{--cut:10px;clip-path:polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut))}
+.chamfer-lg{--cut:18px;clip-path:polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut))}
+.gold-grad{background:linear-gradient(135deg,var(--gold-light) 0%,var(--gold) 45%,var(--gold-dim) 100%)}
+.gold-text{background:linear-gradient(135deg,var(--gold-light),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.bevel{position:relative;border:1px solid rgba(197,161,91,0.35)}
+.bevel::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 45%, rgba(0,0,0,0.35) 100%);
+  clip-path:inherit;
+}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font-family:inherit}
+.container{width:min(1280px,92vw);margin-inline:auto}
+
+/* top ticker */
+.ticker{
+  background:#0F1112;border-bottom:1px solid var(--line);
+  font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--muted);overflow:hidden;white-space:nowrap;
+  font-family:'JetBrains Mono',monospace;
+}
+.ticker-inner{display:flex;align-items:center;gap:28px;padding:7px 0;animation:tickerMove 30s linear infinite}
+.ticker b{color:var(--gold);font-weight:700}
+.ticker .dot{width:6px;height:6px;background:var(--red);box-shadow:0 0 8px var(--red);display:inline-block;transform:rotate(45deg)}
+@keyframes tickerMove{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* header */
+.header{
+  position:sticky;top:0;z-index:50;
+  background:rgba(11,11,12,0.92);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.header-top{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 0;gap:20px;
+}
+.logo{
+  display:flex;align-items:center;gap:12px;
+}
+.logo-mark{
+  width:44px;height:44px;background:var(--surface-2);border:1px solid var(--line-strong);
+  display:grid;place-items:center;position:relative;
+}
+.logo-mark svg{width:26px;height:26px}
+.logo-type{line-height:1}
+.logo-type strong{
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;letter-spacing:0.08em;
+  display:block;color:var(--text);
+}
+.logo-type strong span{color:var(--gold)}
+.logo-type em{
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.28em;color:var(--muted);
+  font-style:normal;display:block;margin-top:2px;
+}
+.nav{display:flex;align-items:center;gap:6px}
+.nav a{
+  font-size:13px;font-weight:700;letter-spacing:0.06em;padding:8px 14px;
+  color:var(--muted);transition:.2s;border:1px solid transparent;
+}
+.nav a:hover,.nav a.active{color:var(--text);border-color:var(--line);background:rgba(197,161,91,0.06)}
+.nav a.active{color:var(--gold)}
+.header-actions{display:flex;align-items:center;gap:10px}
+.search-trigger,.icon-btn{
+  width:40px;height:40px;display:grid;place-items:center;
+  background:var(--surface-2);border:1px solid var(--line);cursor:pointer;transition:.2s;
+}
+.search-trigger:hover,.icon-btn:hover{border-color:var(--gold);color:var(--gold)}
+.cart-btn{
+  display:flex;align-items:center;gap:10px;padding:0 14px;height:40px;
+  background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#0B0B0C;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.08em;font-size:13px;
+  border:none;cursor:pointer;transition:.2s;
+}
+.cart-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.cart-count{background:#0B0B0C;color:var(--gold-light);font-family:'JetBrains Mono',monospace;font-size:11px;padding:2px 6px;min-width:20px;text-align:center}
+.mobile-toggle{display:none;width:40px;height:40px;background:var(--surface-2);border:1px solid var(--line);place-items:center;cursor:pointer}
+
+/* hero */
+.hero{
+  position:relative;overflow:hidden;
+  border-bottom:1px solid var(--line);
+  background:
+    linear-gradient(90deg, var(--bg) 0%, rgba(11,11,12,0.95) 55%, rgba(26,29,31,0.85) 100%);
+}
+.hero-grid{
+  display:grid;grid-template-columns:1.05fr 0.95fr;gap:0;align-items:stretch;
+  min-height:620px;
+}
+.hero-content{padding:56px 0 48px;position:relative;z-index:2}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:10px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
+  color:var(--gold);border:1px solid rgba(197,161,91,0.25);padding:6px 12px;background:rgba(197,161,91,0.06);
+}
+.eyebrow i{width:7px;height:7px;background:var(--red);display:block;box-shadow:0 0 10px var(--red);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.hero h1{
+  font-size:clamp(36px,5vw,62px);font-weight:900;line-height:0.92;margin:18px 0 14px;
+  letter-spacing:-0.03em;
+}
+.hero h1 .line1{color:var(--text);display:block}
+.hero h1 .line2{color:var(--gold);display:block;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.04em}
+.hero h1 .line3{
+  display:block;font-family:'Barlow Condensed',sans-serif;font-weight:800;
+  font-size:0.42em;letter-spacing:0.22em;color:var(--muted);margin-top:8px;
+}
+.hero-desc{color:var(--muted);font-size:15px;max-width:520px;line-height:1.8;margin-bottom:22px}
+.hero-stats{display:flex;gap:18px;margin-bottom:26px;flex-wrap:wrap}
+.stat-box{
+  background:var(--surface);border:1px solid var(--line);padding:12px 16px;min-width:118px;
+  border-inline-start:3px solid var(--gold);
+}
+.stat-box b{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;display:block;line-height:1;color:var(--text)}
+.stat-box span{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--muted);text-transform:uppercase}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:10px;
+  background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#0B0B0C;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.08em;font-size:15px;
+  padding:14px 26px;border:none;cursor:pointer;transition:.2s;
+}
+.btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 8px 24px rgba(197,161,91,0.25)}
+.btn-ghost{
+  display:inline-flex;align-items:center;gap:10px;
+  background:transparent;color:var(--text);border:1px solid rgba(232,230,225,0.18);
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.08em;font-size:14px;padding:13px 22px;cursor:pointer;transition:.2s;
+}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);background:rgba(197,161,91,0.06)}
+.hero-trust{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;
+}
+.hero-trust b{color:var(--text)}
+.hero-trust .sep{width:1px;height:16px;background:var(--line)}
+
+/* hero visual */
+.hero-visual{position:relative;display:flex;align-items:center;justify-content:center;padding:28px 0 28px 24px}
+.operator-frame{
+  position:relative;width:100%;max-width:520px;height:560px;
+  background:linear-gradient(180deg, #1E2224 0%, #121416 100%);
+  border:1px solid rgba(197,161,91,0.2);overflow:hidden;
+  --cut:18px;
+}
+.operator-frame::before{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(rgba(197,161,91,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197,161,91,0.06) 1px, transparent 1px);
+  background-size:28px 28px;opacity:0.5;
+}
+.corner{position:absolute;width:18px;height:18px;border:2px solid var(--gold);z-index:3}
+.corner.tl{top:10px;right:10px;border-bottom:none;border-left:none}
+.corner.tr{top:10px;left:10px;border-bottom:none;border-right:none}
+.corner.bl{bottom:10px;right:10px;border-top:none;border-left:none}
+.corner.br{bottom:10px;left:10px;border-top:none;border-right:none}
+.scan-line{
+  position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg, transparent, var(--gold-light), transparent);
+  box-shadow:0 0 12px var(--gold);opacity:0.9;
+  animation:scan 3.2s ease-in-out infinite;z-index:4;
+}
+@keyframes scan{0%{top:12%}50%{top:86%}100%{top:12%}}
+.operator-svg{position:absolute;inset:0;display:grid;place-items:center;z-index:2}
+.op-badge{
+  position:absolute;top:18px;left:18px;z-index:5;
+  background:var(--gold);color:#0B0B0C;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.12em;
+  padding:6px 10px;display:flex;align-items:center;gap:6px;
+}
+.op-badge i{width:8px;height:8px;background:#0B0B0C;display:block;transform:rotate(45deg)}
+.op-info{
+  position:absolute;bottom:0;left:0;right:0;z-index:5;
+  background:rgba(11,11,12,0.92);border-top:1px solid rgba(197,161,91,0.25);
+  padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  backdrop-filter:blur(6px);
+}
+.op-info strong{font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:0.08em;color:var(--gold-light)}
+.op-info span{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em}
+.price-tag{
+  background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#0B0B0C;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;padding:6px 12px;
+}
+.ranks{
+  position:absolute;right:-8px;top:50%;transform:translateY(-50%);z-index:6;
+  display:flex;flex-direction:column;gap:8px;
+}
+.rank{
+  width:38px;height:38px;background:var(--surface-2);border:1px solid var(--line);
+  display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:var(--gold);
+  box-shadow:4px 4px 0 rgba(0,0,0,0.4);
+}
+.rank.active{background:var(--gold);color:#0B0B0C;border-color:var(--gold-light)}
+
+/* search bar */
+.search-section{padding:22px 0;background:var(--surface);border-bottom:1px solid var(--line)}
+.search-wrap{
+  display:flex;gap:12px;align-items:center;
+  background:var(--bg);border:1px solid var(--line);padding:8px;
+}
+.search-wrap input{
+  flex:1;background:transparent;border:none;outline:none;color:var(--text);
+  font-family:'Tajawal',sans-serif;font-size:15px;padding:8px 12px;
+}
+.search-wrap input::placeholder{color:var(--muted-2)}
+.search-meta{
+  display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);
+  padding-inline:10px;border-inline-start:1px solid var(--line);white-space:nowrap;
+}
+.search-btn{
+  background:var(--gold);color:#0B0B0C;border:none;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.08em;
+  padding:12px 22px;cursor:pointer;transition:.2s;white-space:nowrap;
+}
+.search-btn:hover{background:var(--gold-light)}
+.filter-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.06em;
+  padding:6px 12px;border:1px solid var(--line);background:transparent;color:var(--muted);
+  cursor:pointer;transition:.2s;
+}
+.chip:hover,.chip.active{border-color:var(--gold);color:var(--gold);background:rgba(197,161,91,0.08)}
+.chip.active{background:var(--gold);color:#0B0B0C;border-color:var(--gold)}
+
+/* categories dog tags */
+.section{padding:44px 0}
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.section-head h2{
+  font-size:28px;font-weight:900;letter-spacing:-0.02em;line-height:1;
+  display:flex;align-items:center;gap:12px;
+}
+.section-head h2 i{width:4px;height:28px;background:var(--gold);display:block}
+.section-head p{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.14em;color:var(--muted);text-transform:uppercase;margin-top:6px}
+.section-head .en-label{font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:0.18em;color:var(--gold);font-weight:700}
+.view-all{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.12em;color:var(--muted);border:1px solid var(--line);padding:8px 14px;transition:.2s}
+.view-all:hover{color:var(--gold);border-color:var(--gold)}
+.cat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px}
+.dog-tag{
+  position:relative;background:linear-gradient(180deg, #24282B 0%, #1A1D1F 100%);
+  border:1px solid rgba(197,161,91,0.18);padding:18px 14px 16px;
+  text-align:center;transition:.25s;cursor:pointer;overflow:hidden;
+}
+.dog-tag::before{
+  content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:14px;height:14px;background:var(--bg);border:1px solid rgba(197,161,91,0.25);
+  border-radius:50%;box-shadow:inset 0 1px 2px rgba(0,0,0,0.6);
+}
+.dog-tag::after{
+  content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
+  width:36px;height:8px;background:linear-gradient(90deg, transparent, rgba(197,161,91,0.18), transparent);
+  border-radius:999px;opacity:0.6;
+}
+.dog-tag:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:0 12px 28px rgba(0,0,0,0.35), 0 0 0 1px rgba(197,161,91,0.15)}
+.dog-tag.active{border-color:var(--gold);background:linear-gradient(180deg, #2A2E31, #1F2325);box-shadow:0 0 18px rgba(197,161,91,0.15)}
+.dog-icon{
+  width:52px;height:52px;margin:10px auto 12px;display:grid;place-items:center;
+  background:rgba(197,161,91,0.08);border:1px solid rgba(197,161,91,0.18);
+  font-size:22px;
+}
+.dog-tag strong{font-size:13px;font-weight:800;display:block;line-height:1.2}
+.dog-tag span{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.08em}
+.dog-tag .count{
+  margin-top:8px;display:inline-block;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  background:rgba(197,161,91,0.12);color:var(--gold);padding:3px 8px;border:1px solid rgba(197,161,91,0.2)
+}
+
+/* products */
+.tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.tab{
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.08em;font-size:13px;
+  padding:9px 18px;border:1px solid var(--line);background:transparent;color:var(--muted);
+  cursor:pointer;transition:.2s;display:flex;align-items:center;gap:8px;
+}
+.tab b{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(255,255,255,0.08);padding:2px 6px;color:var(--text)}
+.tab:hover{border-color:var(--gold);color:var(--text)}
+.tab.active{background:var(--gold);border-color:var(--gold);color:#0B0B0C}
+.tab.active b{background:#0B0B0C;color:var(--gold-light)}
+.product-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.p-card{
+  background:var(--surface);border:1px solid var(--line);overflow:hidden;position:relative;
+  transition:.25s;display:flex;flex-direction:column;
+}
+.p-card:hover{transform:translateY(-4px);border-color:rgba(197,161,91,0.35);box-shadow:0 16px 36px rgba(0,0,0,0.4)}
+.p-media{
+  height:172px;position:relative;overflow:hidden;
+  background:
+    radial-gradient(ellipse 300px 180px at 30% 20%, rgba(197,161,91,0.18), transparent 60%),
+    linear-gradient(135deg, #252A2E 0%, #1A1D1F 100%);
+  border-bottom:1px solid var(--line);
+  display:grid;place-items:center;
+}
+.p-media::before{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(rgba(197,161,91,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(197,161,91,0.05) 1px, transparent 1px);
+  background-size:22px 22px;opacity:0.6;
+}
+.media-icon{position:relative;z-index:1;width:86px;height:86px;display:grid;place-items:center}
+.media-icon svg{width:100%;height:100%;filter:drop-shadow(0 8px 18px rgba(0,0,0,0.5))}
+.p-badge{
+  position:absolute;top:10px;right:10px;z-index:2;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:0.08em;
+  padding:5px 8px;border:1px solid;
+}
+.badge-gold{background:var(--gold);color:#0B0B0C;border-color:var(--gold-light)}
+.badge-red{background:var(--red);color:white;border-color:#FF4D4D}
+.badge-olive{background:var(--olive);color:#D8E0C8;border-color:var(--olive-light)}
+.p-rank{
+  position:absolute;top:10px;left:10px;z-index:2;
+  font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;
+  color:var(--gold);border:1px solid rgba(197,161,91,0.35);background:rgba(11,11,12,0.85);padding:4px 7px;
+}
+.p-body{padding:14px 14px 12px;flex:1;display:flex;flex-direction:column;gap:8px}
+.p-title{font-size:14px;font-weight:800;line-height:1.3;min-height:36px}
+.p-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.p-meta i{width:4px;height:4px;background:var(--muted);border-radius:50%;display:block}
+.p-pricing{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.p-price{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold-light)}
+.p-old{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted-2);text-decoration:line-through}
+.p-disc{font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(212,42,42,0.14);color:var(--red);padding:2px 6px;border:1px solid rgba(212,42,42,0.25)}
+.p-foot{display:flex;gap:8px;margin-top:auto;padding-top:10px;border-top:1px dashed rgba(197,161,91,0.14)}
+.btn-cart{
+  flex:1;background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#0B0B0C;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.06em;font-size:13px;
+  border:none;padding:9px 10px;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.btn-cart:hover{filter:brightness(1.08)}
+.btn-wish{
+  width:38px;height:36px;display:grid;place-items:center;
+  background:transparent;border:1px solid var(--line);color:var(--muted);cursor:pointer;transition:.2s;
+}
+.btn-wish:hover{border-color:var(--gold);color:var(--gold)}
+
+/* promo banner */
+.promo{
+  margin:18px 0;
+  background:linear-gradient(135deg, #1A1D1F 0%, #252A2E 55%, #1F2325 100%);
+  border:1px solid var(--line);position:relative;overflow:hidden;
+  display:grid;grid-template-columns:1.2fr 0.8fr;align-items:stretch;
+}
+.promo::before{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg, transparent 60%, rgba(197,161,91,0.06) 100%);
+  pointer-events:none;
+}
+.promo-text{padding:28px 28px 24px;position:relative;z-index:1}
+.promo-kicker{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.16em;color:var(--gold);display:flex;gap:8px;align-items:center}
+.promo-kicker i{width:8px;height:8px;background:var(--red);display:block;transform:rotate(45deg);box-shadow:0 0 8px var(--red)}
+.promo h3{font-size:26px;font-weight:900;margin:8px 0 8px;line-height:1.1}
+.promo h3 span{color:var(--gold)}
+.promo p{color:var(--muted);font-size:13px;max-width:520px;line-height:1.7}
+.promo-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.countdown{display:flex;gap:8px;margin-top:14px}
+.cd-box{
+  min-width:64px;text-align:center;background:var(--bg);border:1px solid var(--line);padding:8px 6px;
+}
+.cd-box b{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;display:block;line-height:1;color:var(--gold-light)}
+.cd-box span{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;color:var(--muted);text-transform:uppercase}
+.promo-visual{position:relative;background:radial-gradient(ellipse 400px 300px at 50% 30%, rgba(197,161,91,0.12), transparent 70%);display:grid;place-items:center;padding:18px;border-inline-start:1px solid var(--line);overflow:hidden}
+.promo-visual::before{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(rgba(197,161,91,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(197,161,91,0.04) 1px, transparent 1px);
+  background-size:24px 24px;
+}
+.promo-card{
+  position:relative;z-index:1;width:220px;
+  background:linear-gradient(180deg, #2A2E31, #1A1D1F);border:1px solid rgba(197,161,91,0.25);
+  padding:14px;box-shadow:0 16px 32px rgba(0,0,0,0.4);
+  transform:rotate(-1deg);
+}
+.promo-card .thumb{height:120px;background:linear-gradient(135deg, #2E3336, #1E2224);border:1px solid var(--line);display:grid;place-items:center;margin-bottom:10px;position:relative;overflow:hidden}
+.promo-card .thumb::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse 200px 120px at 30% 20%, rgba(197,161,91,0.18), transparent 60%)}
+.promo-card strong{font-size:13px}
+.promo-card .mini-price{font-family:'Barlow Condensed',sans-serif;font-weight:800;color:var(--gold)}
+
+/* how it works */
+.steps{padding:18px 0 8px;background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;position:relative}
+.steps-grid::before{
+  content:"";position:absolute;top:42px;left:16%;right:16%;height:1px;
+  background:repeating-linear-gradient(90deg, var(--line-strong) 0 8px, transparent 8px 12px);
+}
+.step{text-align:center;position:relative;z-index:1}
+.step-num{
+  width:56px;height:56px;margin:0 auto 14px;display:grid;place-items:center;
+  background:var(--bg);border:2px solid var(--gold);color:var(--gold);
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;
+  box-shadow:0 0 0 6px rgba(197,161,91,0.08);
+}
+.step h4{font-size:15px;font-weight:800;margin-bottom:6px}
+.step p{font-size:13px;color:var(--muted);line-height:1.7;max-width:300px;margin:0 auto}
+.step .en-sub{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.14em;color:var(--gold);margin-top:6px}
+
+/* guarantee + testimonials */
+.split{padding:36px 0;display:grid;grid-template-columns:1.05fr 0.95fr;gap:18px}
+.guarantee{
+  background:linear-gradient(180deg, #1E2224, #15181A);border:1px solid var(--line);
+  padding:22px;position:relative;overflow:hidden;
+}
+.guarantee::before{
+  content:"";position:absolute;top:-40px;left:-40px;width:160px;height:160px;
+  border:1px solid rgba(197,161,91,0.08);transform:rotate(45deg);
+}
+.g-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.g-icon{width:46px;height:46px;display:grid;place-items:center;background:rgba(197,161,91,0.1);border:1px solid rgba(197,161,91,0.25);color:var(--gold)}
+.g-head h3{font-size:18px;font-weight:900}
+.g-head p{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.08em}
+.g-list{display:grid;gap:10px;margin-top:12px}
+.g-item{display:flex;gap:10px;align-items:start;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);padding:10px 12px}
+.g-item i{width:20px;height:20px;background:var(--gold);color:#0B0B0C;display:grid;place-items:center;flex-shrink:0;margin-top:2px;font-size:12px;font-style:normal;font-weight:800}
+.g-item strong{font-size:13px}
+.g-item span{font-size:12px;color:var(--muted)}
+.testimonials{
+  background:var(--surface);border:1px solid var(--line);padding:22px;
+}
+.t-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.t-head h3{font-size:18px;font-weight:900}
+.stars{color:var(--gold);letter-spacing:2px;font-size:13px}
+.t-card{background:var(--bg);border:1px solid var(--line);padding:14px;margin-bottom:10px}
+.t-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.avatar{
+  width:36px;height:36px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#0B0B0C;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;
+}
+.t-name{font-weight:800;font-size:13px}
+.t-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.06em}
+.t-text{font-size:13px;color:var(--muted);line-height:1.7}
+.t-foot{display:flex;gap:8px;margin-top:10px}
+.t-tag{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(197,161,91,0.1);color:var(--gold);border:1px solid rgba(197,161,91,0.2);padding:3px 7px}
+
+/* footer */
+.footer{
+  background:#0F1112;border-top:1px solid var(--line);padding:36px 0 18px;
+  position:relative;overflow:hidden;
+}
+.footer::before{
+  content:"";position:absolute;inset:0 0 auto 0;height:1px;
+  background:linear-gradient(90deg, transparent, var(--gold), transparent);opacity:0.5;
+}
+.foot-grid{display:grid;grid-template-columns:1.4fr 0.8fr 0.8fr 1fr;gap:22px}
+.foot-brand p{font-size:13px;color:var(--muted);line-height:1.7;margin:10px 0 14px;max-width:360px}
+.foot-brand .coords{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.08em}
+.foot-brand .coords b{color:var(--gold)}
+.foot-col h4{font-family:'Barlow Condensed',sans-serif;font-size:13px;letter-spacing:0.14em;color:var(--gold);margin-bottom:12px}
+.foot-col a{display:block;font-size:13px;color:var(--muted);padding:5px 0;transition:.2s}
+.foot-col a:hover{color:var(--text);padding-inline-start:4px}
+.newsletter{display:flex;gap:8px;margin-top:10px}
+.newsletter input{
+  flex:1;background:var(--bg);border:1px solid var(--line);color:var(--text);
+  padding:10px 12px;font-family:'Tajawal',sans-serif;font-size:13px;outline:none;
+}
+.newsletter input::placeholder{color:var(--muted-2)}
+.newsletter button{
+  background:var(--gold);color:#0B0B0C;border:none;
+  font-family:'Barlow Condensed',sans-serif;font-weight:800;letter-spacing:0.08em;
+  padding:10px 16px;cursor:pointer;
+}
+.pay-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.pay{width:44px;height:28px;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--muted);font-weight:700}
+.foot-bottom{
+  margin-top:22px;padding-top:14px;border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:0.06em;
+}
+.social{display:flex;gap:8px}
+.social a{width:32px;height:32px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--line);transition:.2s}
+.social a:hover{border-color:var(--gold);color:var(--gold)}
+
+/* toast */
+.toast{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--surface-2);border:1px solid var(--gold);color:var(--text);
+  padding:12px 16px;display:flex;align-items:center;gap:10px;
+  font-size:13px;z-index:99;opacity:0;transition:.35s;pointer-events:none;
+  box-shadow:0 12px 32px rgba(0,0,0,0.45);
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast b{color:var(--gold)}
+
+/* responsive */
+@media(max-width:1100px){
+  .cat-grid{grid-template-columns:repeat(3,1fr)}
+  .product-grid{grid-template-columns:repeat(3,1fr)}
+  .foot-grid{grid-template-columns:1fr 1fr;gap:18px}
+}
+@media(max-width:860px){
+  .nav{display:none}
+  .mobile-toggle{display:grid}
+  .hero-grid{grid-template-columns:1fr}
+  .hero-visual{padding:0 0 24px}
+  .operator-frame{height:420px}
+  .ranks{flex-direction:row;right:50%;top:auto;bottom:-10px;transform:translateX(50%)}
+  .promo{grid-template-columns:1fr}
+  .promo-visual{border-inline-start:none;border-top:1px solid var(--line)}
+  .split{grid-template-columns:1fr}
+  .steps-grid{grid-template-columns:1fr;gap:16px}
+  .steps-grid::before{display:none}
+}
+@media(max-width:640px){
+  .product-grid{grid-template-columns:repeat(2,1fr)}
+  .cat-grid{grid-template-columns:repeat(2,1fr)}
+  .hero-content{padding:32px 0 28px}
+  .header-top{flex-wrap:wrap}
+  .search-meta{display:none}
+  .search-wrap{flex-wrap:wrap}
+  .foot-grid{grid-template-columns:1fr}
+  .hero-stats{gap:10px}
+  .stat-box{min-width:0;flex:1}
+  .product-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:420px){
+  .product-grid{grid-template-columns:1fr}
+}
+/* focus */
+a:focus-visible,button:focus-visible,input:focus-visible{
+  outline:2px solid var(--gold);outline-offset:2px;
+}
+</style>
+</head>
+<body>
+
+<div class="ticker">
+  <div class="ticker-inner">
+    <span><b>SYSTEM STATUS: OPERATIONAL</b> &nbsp;—&nbsp; التسليم الفوري خلال 5 دقائق &nbsp; <span class="dot"></span> &nbsp; +12,480 عملية ناجحة اليوم &nbsp; <span class="dot"></span> &nbsp; دعم فني 24/7 &nbsp; <span class="dot"></span> &nbsp; ELITE TACTICAL UNIT — EST. 2019 &nbsp; <span class="dot"></span> &nbsp; ضمان استرداد 100%</span>
+    <span><b>SYSTEM STATUS: OPERATIONAL</b> &nbsp;—&nbsp; التسليم الفوري خلال 5 دقائق &nbsp; <span class="dot"></span> &nbsp; +12,480 عملية ناجحة اليوم &nbsp; <span class="dot"></span> &nbsp; دعم فني 24/7 &nbsp; <span class="dot"></span> &nbsp; ELITE TACTICAL UNIT — EST. 2019 &nbsp; <span class="dot"></span> &nbsp; ضمان استرداد 100%</span>
+  </div>
+</div>
+
+<header class="header">
+  <div class="container">
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-mark chamfer-sm">
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="M16 3 L27 9 L27 21 L16 29 L5 21 L5 9 Z" stroke="#C5A15B" stroke-width="1.6" fill="rgba(197,161,91,0.08)"/>
+            <path d="M16 8 L20 12 L16 16 L12 12 Z" fill="#C5A15B"/>
+            <path d="M16 16 L20 20 L16 24 L12 20 Z" fill="#E8E6E1" opacity="0.9"/>
+            <circle cx="16" cy="12" r="1.2" fill="#0B0B0C"/>
+          </svg>
+        </div>
+        <div class="logo-type">
+          <strong>JOKER <span>STORE</span></strong>
+          <em>ELITE TACTICAL • UNIT 07</em>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <a href="#" class="active">المتجر</a>
+        <a href="#categories">التصنيفات</a>
+        <a href="#products">العروض</a>
+        <a href="#how">كيف نعمل</a>
+        <a href="#support">الدعم</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="search-trigger chamfer-sm" aria-label="بحث" onclick="document.getElementById('searchInput').focus()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20L16 16"/></svg>
+        </button>
+        <button class="icon-btn chamfer-sm" aria-label="المفضلة">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-6-4.2-8-8a5 5 0 0 1 8-5 5 5 0 0 1 8 5c-2 3.8-8 8-8 8z"/></svg>
+        </button>
+        <button class="cart-btn chamfer-sm" id="cartBtn">
+          <span>السلة</span>
+          <span class="cart-count" id="cartCount">0</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h15l-1.5 9h-13z"/><path d="M6 6L5 2H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+        </button>
+        <button class="mobile-toggle chamfer-sm" id="menuToggle" aria-label="menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div class="hero-content">
+        <div class="eyebrow"><i></i> الوحدة النخبة • ELITE TACTICAL DIVISION <span class="mono" style="color:var(--muted)">[ LVL 07 ]</span></div>
+        <h1>
+          <span class="line1">عتاد النخبة.</span>
+          <span class="line2">جاهز للقتال.</span>
+          <span class="line3 en">BUILT FOR CHAMPIONS — FIELD TESTED</span>
+        </h1>
+        <p class="hero-desc">متجر الألعاب بطابع تكتيكي فاخر. شحن فوري، أسعار عمليات خاصة، وتسليم خلال دقائق. نفس قوة العتاد العسكري — لكن لعالم الألعاب. انضم لأكثر من 340 ألف مقاتل رقمي.</p>
+
+        <div class="hero-stats">
+          <div class="stat-box chamfer-sm">
+            <b class="en">+340K</b>
+            <span>مقاتل نشط</span>
+          </div>
+          <div class="stat-box chamfer-sm">
+            <b class="en">4.9/5</b>
+            <span>تقييم العمليات</span>
+          </div>
+          <div class="stat-box chamfer-sm">
+            <b class="en">&lt; 5 MIN</b>
+            <span>زمن التسليم</span>
+          </div>
+        </div>
+
+        <div class="hero-ctas">
+          <a href="#products" class="btn-primary chamfer">ادخل ساحة القتال <span>↗</span></a>
+          <a href="#categories" class="btn-ghost chamfer-sm">استعراض الترسانة</a>
+        </div>
+
+        <div class="hero-trust">
+          <span>⭐ <b>4.9</b> (8,420 تقييم)</span>
+          <span class="sep"></span>
+          <span>🔒 دفع مشفّر AES-256</span>
+          <span class="sep"></span>
+          <span class="mono">ID: JKR-07-TAC</span>
+        </div>
+      </div>
+
+      <div class="hero-visual">
+        <div class="operator-frame chamfer-lg">
+          <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+          <div class="scan-line"></div>
+          <div class="op-badge chamfer-sm"><i></i> OPERATOR 07 — READY</div>
+
+          <div class="operator-svg">
+            <!-- CSS operator illustration -->
+            <svg width="360" height="380" viewBox="0 0 360 380" fill="none" xmlns="http://www.w3.org/2000/svg" style="max-width:90%">
+              <!-- glow -->
+              <ellipse cx="180" cy="260" rx="110" ry="18" fill="rgba(197,161,91,0.18)"/>
+              <!-- tactical headset / helmet silhouette -->
+              <path d="M118 110 C118 68 142 42 180 42 C218 42 242 68 242 110 L242 150 L228 150 L228 118 C228 86 208 62 180 62 C152 62 132 86 132 118 L132 150 L118 150 Z" fill="#1F2426" stroke="#C5A15B" stroke-width="1.4"/>
+              <!-- visor -->
+              <path d="M132 125 C132 125 152 138 180 138 C208 138 228 125 228 125 L228 158 C228 158 208 172 180 172 C152 172 132 158 132 158 Z" fill="#2A2E31" stroke="rgba(197,161,91,0.4)" stroke-width="1"/>
+              <path d="M138 132 L222 132" stroke="#C5A15B" stroke-width="0.8" opacity="0.5"/>
+              <!-- mic boom -->
+              <path d="M228 142 C240 142 248 150 248 162 L248 188" stroke="#8A8D93" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="248" cy="192" r="7" fill="#C5A15B" stroke="#0B0B0C" stroke-width="1.5"/>
+              <!-- face lower -->
+              <path d="M148 158 L148 202 C148 224 162 242 180 242 C198 242 212 224 212 202 L212 158" fill="#C9B99A" stroke="#1A1D1F" stroke-width="1.2"/>
+              <!-- beard shadow -->
+              <path d="M152 190 C152 210 164 228 180 228 C196 228 208 210 208 190 L206 182 C190 186 170 186 154 182 Z" fill="#3A3330" opacity="0.9"/>
+              <!-- tactical collar / uniform -->
+              <path d="M118 242 L92 300 L268 300 L242 242 Z" fill="#1E2426" stroke="#2A2E31" stroke-width="1"/>
+              <path d="M132 242 L132 300 M228 242 L228 300" stroke="rgba(197,161,91,0.15)" stroke-width="1"/>
+              <!-- chest rig -->
+              <rect x="138" y="252" width="84" height="48" rx="2" fill="#252A2E" stroke="#C5A15B" stroke-width="1.2"/>
+              <rect x="146" y="258" width="68" height="10" rx="1" fill="rgba(197,161,91,0.18)" stroke="rgba(197,161,91,0.25)"/>
+              <rect x="146" y="272" width="32" height="22" rx="1" fill="#1A1D1F" stroke="rgba(197,161,91,0.2)"/>
+              <rect x="182" y="272" width="32" height="22" rx="1" fill="#1A1D1F" stroke="rgba(197,161,91,0.2)"/>
+              <text x="152" y="287" font-family="JetBrains Mono" font-size="7" fill="#C5A15B">MAG</text>
+              <text x="188" y="287" font-family="JetBrains Mono" font-size="7" fill="#C5A15B">MAG</text>
+              <!-- shoulders -->
+              <path d="M118 242 L78 262 L92 300 L132 300" fill="#23282B" stroke="#2A2E31"/>
+              <path d="M242 242 L282 262 L268 300 L228 300" fill="#23282B" stroke="#2A2E31"/>
+              <!-- gold epaulette -->
+              <rect x="84" y="254" width="38" height="8" fill="#C5A15B" transform="rotate(-18 84 254)"/>
+              <rect x="246" y="248" width="38" height="8" fill="#C5A15B" transform="rotate(18 246 248)"/>
+              <!-- headset details -->
+              <circle cx="122" cy="122" r="18" fill="#252A2E" stroke="#C5A15B" stroke-width="1.2"/>
+              <circle cx="122" cy="122" r="9" fill="#0B0B0C" stroke="rgba(197,161,91,0.5)"/>
+              <circle cx="238" cy="122" r="18" fill="#252A2E" stroke="#C5A15B" stroke-width="1.2"/>
+              <circle cx="238" cy="122" r="9" fill="#0B0B0C" stroke="rgba(197,161,91,0.5)"/>
+              <!-- crosshair -->
+              <g opacity="0.35" stroke="#C5A15B" stroke-width="0.8">
+                <line x1="180" y1="42" x2="180" y2="52"/><line x1="180" y1="172" x2="180" y2="182"/>
+                <line x1="118" y1="112" x2="128" y2="112"/><line x1="232" y1="112" x2="242" y2="112"/>
+                <circle cx="180" cy="112" r="26" fill="none"/>
+              </g>
+              <!-- HUD ticks -->
+              <g font-family="JetBrains Mono" font-size="6" fill="rgba(197,161,91,0.7)" letter-spacing="0.5">
+                <text x="126" y="212">ALT 0420</text>
+                <text x="218" y="212">SIG ▓▓▓▓░</text>
+              </g>
+            </svg>
+          </div>
+
+          <div class="op-info">
+            <div>
+              <strong class="en">TACTICAL HEADSET MK-VII</strong>
+              <span class="mono">— CARBON / GOLD EDITION • STOCK: 14</span>
+            </div>
+            <div class="price-tag chamfer-sm">SAR 549</div>
+          </div>
+        </div>
+        <div class="ranks">
+          <div class="rank chamfer-sm">I</div>
+          <div class="rank chamfer-sm active">II</div>
+          <div class="rank chamfer-sm">III</div>
+          <div class="rank chamfer-sm">★</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="search-section">
+  <div class="container">
+    <div class="search-wrap chamfer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A8D93" stroke-width="1.8" style="margin-inline-start:6px;flex-shrink:0"><circle cx="11" cy="11" r="7"/><path d="M20 20L16 16"/></svg>
+      <input id="searchInput" placeholder="ابحث عن لعبة، بطاقة، اشتراك، أو رتبة..." autocomplete="off">
+      <div class="search-meta mono">⌘ K للبحث السريع</div>
+      <button class="search-btn chamfer-sm" onclick="doSearch()">بحث تكتيكي</button>
+    </div>
+    <div class="filter-chips" id="chips">
+      <button class="chip active chamfer-sm" data-filter="all">الكل</button>
+      <button class="chip chamfer-sm" data-filter="games">ألعاب</button>
+      <button class="chip chamfer-sm" data-filter="cards">بطاقات</button>
+      <button class="chip chamfer-sm" data-filter="subs">اشتراكات</button>
+      <button class="chip chamfer-sm" data-filter="gear">عتاد</button>
+    </div>
+  </div>
+</section>
+
+<section class="section container" id="categories">
+  <div class="section-head">
+    <div>
+      <h2><i></i> الترسانة</h2>
+      <p>اختر فئة المهمة — كل بطاقة مختومة بختم النخبة</p>
+    </div>
+    <div style="text-align:end">
+      <div class="en-label">ARSENAL / 06 CATEGORIES</div>
+      <a href="#" class="view-all chamfer-sm mono" onclick="toast('فتح كل التصنيفات');return false">عرض الخريطة ←</a>
+    </div>
+  </div>
+  <div class="cat-grid" id="catGrid">
+    <!-- generated via JS for interactivity but static fallback -->
+    <div class="dog-tag chamfer active" data-cat="games">
+      <div class="dog-icon chamfer-sm">🎮</div>
+      <strong>الألعاب</strong>
+      <span class="en">GAMES</span>
+      <div class="count mono">248 منتج</div>
+    </div>
+    <div class="dog-tag chamfer" data-cat="cards">
+      <div class="dog-icon chamfer-sm">💳</div>
+      <strong>بطاقات شحن</strong>
+      <span class="en">GIFT CARDS</span>
+      <div class="count mono">186 منتج</div>
+    </div>
+    <div class="dog-tag chamfer" data-cat="subs">
+      <div class="dog-icon chamfer-sm">⚡</div>
+      <strong>اشتراكات</strong>
+      <span class="en">SUBSCRIPTIONS</span>
+      <div class="count mono">92 منتج</div>
+    </div>
+    <div class="dog-tag chamfer" data-cat="gear">
+      <div class="dog-icon chamfer-sm">🎧</div>
+      <strong>عتاد النخبة</strong>
+      <span class="en">ELITE GEAR</span>
+      <div class="count mono">64 منتج</div>
+    </div>
+    <div class="dog-tag chamfer" data-cat="coins">
+      <div class="dog-icon chamfer-sm">🪙</div>
+      <strong>عملات</strong>
+      <span class="en">COINS / UC</span>
+      <div class="count mono">112 منتج</div>
+    </div>
+    <div class="dog-tag chamfer" data-cat="boost">
+      <div class="dog-icon chamfer-sm">🎯</div>
+      <strong>تعزيز الرتبة</strong>
+      <span class="en">RANK BOOST</span>
+      <div class="count mono">38 منتج</div>
+    </div>
+  </div>
+</section>
+
+<section class="section container" id="products" style="padding-top:12px">
+  <div class="section-head">
+    <div>
+      <h2><i></i> الأكثر طلبًا</h2>
+      <p>مختارة من غرفة العمليات — تسليم فوري</p>
+    </div>
+    <div class="tabs" id="productTabs">
+      <button class="tab active chamfer-sm" data-tab="best">الأكثر مبيعًا <b>18</b></button>
+      <button class="tab chamfer-sm" data-tab="new">وصل حديثًا <b>09</b></button>
+      <button class="tab chamfer-sm" data-tab="promo">عروض تكتيكية <b>07</b></button>
+    </div>
+  </div>
+
+  <div class="product-grid" id="productGrid">
+    <!-- best -->
+    <article class="p-card chamfer" data-type="best games">
+      <div class="p-media">
+        <span class="p-rank mono">RANK S</span>
+        <span class="p-badge badge-gold">الأكثر مبيعًا</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <rect x="12" y="18" width="56" height="38" rx="2" fill="#1A1D1F" stroke="#C5A15B" stroke-width="1.2"/>
+            <rect x="18" y="24" width="44" height="22" rx="1" fill="rgba(197,161,91,0.12)" stroke="rgba(197,161,91,0.25)"/>
+            <text x="40" y="38" text-anchor="middle" font-family="Barlow Condensed" font-size="9" font-weight="800" fill="#F0D08A">PUBG UC</text>
+            <circle cx="30" cy="50" r="3" fill="#C5A15B"/><circle cx="50" cy="50" r="3" fill="#C5A15B"/>
+            <path d="M28 54 H52" stroke="rgba(197,161,91,0.3)"/>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">ببجي موبايل — 660 شدة + 60 إضافية</div>
+        <div class="p-meta"><span>تسليم فوري</span><i></i><span class="mono">ID 4402</span><i></i><span>⭐ 4.9</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 89</span><span class="p-old">SAR 109</span><span class="p-disc">-18%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('PUBG 660 UC')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="best cards">
+      <div class="p-media">
+        <span class="p-rank mono">GOLD FOIL</span>
+        <span class="p-badge badge-olive">مضمون</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <rect x="10" y="20" width="60" height="36" rx="3" fill="linear-gradient(135deg,#C5A15B,#F0D08A)" stroke="#F0D08A" stroke-width="1"/>
+            <rect x="10" y="20" width="60" height="36" rx="3" fill="#C5A15B" stroke="#F0D08A"/>
+            <text x="40" y="36" text-anchor="middle" font-family="Barlow Condensed" font-size="11" font-weight="800" fill="#0B0B0C">PSN $50</text>
+            <text x="40" y="48" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#0B0B0C">PLAYSTATION NETWORK</text>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">بطاقة بلايستيشن — 50 دولار (أمريكي)</div>
+        <div class="p-meta"><span>كود رقمي</span><i></i><span class="mono">INSTANT</span><i></i><span>⭐ 5.0</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 189</span><span class="p-old">SAR 210</span><span class="p-disc">-10%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('PSN $50')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="best subs">
+      <div class="p-media">
+        <span class="p-rank mono">ELITE</span>
+        <span class="p-badge badge-gold">مميز</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <rect x="14" y="16" width="52" height="44" rx="2" fill="#0B0B0C" stroke="#C5A15B"/>
+            <text x="40" y="32" text-anchor="middle" font-family="Barlow Condensed" font-size="8" font-weight="800" fill="#C5A15B">XBOX</text>
+            <text x="40" y="42" text-anchor="middle" font-family="Barlow Condensed" font-size="9" font-weight="800" fill="#E8E6E1">GAME PASS</text>
+            <rect x="20" y="48" width="40" height="8" rx="1" fill="#C5A15B"/><text x="40" y="54" text-anchor="middle" font-size="6" font-family="JetBrains Mono" fill="#0B0B0C">12 MONTHS</text>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">Xbox Game Pass Ultimate — 12 شهر</div>
+        <div class="p-meta"><span>اشتراك</span><i></i><span class="mono">AUTO-RENEW OFF</span><i></i><span>⭐ 4.8</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 329</span><span class="p-old">SAR 399</span><span class="p-disc">-17%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('Game Pass 12M')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="promo gear">
+      <div class="p-media">
+        <span class="p-rank mono">MK-VII</span>
+        <span class="p-badge badge-red">عرض محدود</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <path d="M22 28 C22 20 28 16 40 16 C52 16 58 20 58 28 L58 42 L52 42 L52 28 C52 23 48 20 40 20 C32 20 28 23 28 28 L28 42 L22 42 Z" fill="#1A1D1F" stroke="#C5A15B"/>
+            <rect x="18" y="38" width="12" height="14" rx="2" fill="#252A2E" stroke="#C5A15B"/><rect x="50" y="38" width="12" height="14" rx="2" fill="#252A2E" stroke="#C5A15B"/>
+            <rect x="26" y="52" width="28" height="10" rx="1" fill="#C5A15B"/>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">سماعة تكتيكية ELITE 7.1 — إضاءة ذهبية</div>
+        <div class="p-meta"><span>عتاد</span><i></i><span class="mono">STOCK 14</span><i></i><span>⭐ 4.9</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 549</span><span class="p-old">SAR 699</span><span class="p-disc">-21%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('Headset MK-VII')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="new games">
+      <div class="p-media">
+        <span class="p-rank mono">NEW</span>
+        <span class="p-badge badge-gold">جديد</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <rect x="16" y="18" width="48" height="40" rx="2" fill="#1A1D1F" stroke="#5A6B42"/>
+            <text x="40" y="34" text-anchor="middle" font-family="Barlow Condensed" font-size="8" font-weight="800" fill="#8AA66B">CALL OF</text>
+            <text x="40" y="44" text-anchor="middle" font-family="Barlow Condensed" font-size="10" font-weight="800" fill="#E8E6E1">DUTY PTS</text>
+            <text x="40" y="53" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#8A8D93">2400 CP</text>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">كول أوف ديوتي — 2400 نقطة CP</div>
+        <div class="p-meta"><span>نقاط</span><i></i><span class="mono">CROSS-PLATFORM</span><i></i><span>⭐ 4.7</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 149</span><span class="p-old">SAR 175</span><span class="p-disc">-15%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('COD 2400 CP')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="new coins">
+      <div class="p-media">
+        <span class="p-rank mono">VAULT</span>
+        <span class="p-badge badge-olive">سريع</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <circle cx="40" cy="36" r="18" fill="#C5A15B" stroke="#F0D08A" stroke-width="1.2"/>
+            <text x="40" y="41" text-anchor="middle" font-family="Barlow Condensed" font-size="10" font-weight="800" fill="#0B0B0C">V</text>
+            <text x="40" y="60" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#C5A15B">13,500 V-BUCKS</text>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">فورتنايت — 13,500 V-Bucks</div>
+        <div class="p-meta"><span>عملات</span><i></i><span class="mono">EPIC ID</span><i></i><span>⭐ 4.9</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 279</span><span class="p-old">SAR 319</span><span class="p-disc">-12%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('V-Bucks 13.5K')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="promo subs">
+      <div class="p-media">
+        <span class="p-rank mono">TIER 1</span>
+        <span class="p-badge badge-red">خصم 40%</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <rect x="12" y="20" width="56" height="34" rx="2" fill="#0B0B0C" stroke="#D42A2A"/>
+            <text x="40" y="34" text-anchor="middle" font-family="Barlow Condensed" font-size="9" font-weight="800" fill="#D42A2A">NETFLIX</text>
+            <text x="40" y="44" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#E8E6E1">PREMIUM 12M • 4K</text>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">نتفليكس بريميوم — 12 شهر 4K</div>
+        <div class="p-meta"><span>اشتراك</span><i></i><span class="mono">4 SCREENS</span><i></i><span>⭐ 4.8</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 179</span><span class="p-old">SAR 299</span><span class="p-disc">-40%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('Netflix 12M')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+
+    <article class="p-card chamfer" data-type="best gear">
+      <div class="p-media">
+        <span class="p-rank mono">CARBON</span>
+        <span class="p-badge badge-gold">توصية القائد</span>
+        <div class="media-icon">
+          <svg viewBox="0 0 80 80" fill="none">
+            <rect x="20" y="24" width="40" height="28" rx="2" fill="#1F2426" stroke="rgba(197,161,91,0.6)"/>
+            <rect x="26" y="30" width="28" height="16" rx="1" fill="#0B0B0C" stroke="rgba(197,161,91,0.25)"/>
+            <circle cx="40" cy="38" r="5" fill="none" stroke="#C5A15B" stroke-width="1"/><circle cx="40" cy="38" r="2" fill="#C5A15B"/>
+            <text x="40" y="60" text-anchor="middle" font-family="JetBrains Mono" font-size="6" fill="#8A8D93">ELITE KEYBOARD</text>
+          </svg>
+        </div>
+      </div>
+      <div class="p-body">
+        <div class="p-title">كيبورد ميكانيكي ELITE — سويتش ذهبي</div>
+        <div class="p-meta"><span>عتاد</span><i></i><span class="mono">RGB GOLD</span><i></i><span>⭐ 5.0</span></div>
+        <div class="p-pricing"><span class="p-price">SAR 429</span><span class="p-old">SAR 520</span><span class="p-disc">-17%</span></div>
+        <div class="p-foot">
+          <button class="btn-cart chamfer-sm" onclick="addToCart('Elite Keyboard')">أضف للعتاد +</button>
+          <button class="btn-wish chamfer-sm" onclick="toggleWish(this)">♡</button>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <div class="promo chamfer">
+    <div class="promo-text">
+      <div class="promo-kicker"><i></i> عملية خاصة — تنتهي خلال <span class="mono" style="color:var(--red)">72:00:00</span></div>
+      <h3>حزمة القائد <span>COMMANDER BUNDLE</span></h3>
+      <p>اجمع 3 بطاقات من اختيارك + اشتراك Discord Nitro + شارة رتبة ذهبية داخل المتجر. خصم تكتيكي + توصيل فوري + نقاط ولاء مضاعفة.</p>
+      <div class="countdown" id="countdown">
+        <div class="cd-box chamfer-sm"><b id="cdH">71</b><span>ساعة</span></div>
+        <div class="cd-box chamfer-sm"><b id="cdM">42</b><span>دقيقة</span></div>
+        <div class="cd-box chamfer-sm"><b id="cdS">18</b><span>ثانية</span></div>
+        <div class="cd-box chamfer-sm" style="border-color:var(--gold)"><b style="color:var(--gold)">-35%</b><span>خصم</span></div>
+      </div>
+      <div class="promo-actions">
+        <button class="btn-primary chamfer-sm" onclick="addToCart('Commander Bundle')">احصل على الحزمة — SAR 299</button>
+        <button class="btn-ghost chamfer-sm" onclick="toast('تم نسخ كود الخصم: TACTICAL35')">انسخ الكود: TACTICAL35</button>
+      </div>
+    </div>
+    <div class="promo-visual">
+      <div class="promo-card chamfer">
+        <div class="thumb chamfer-sm">
+          <svg width="80" height="60" viewBox="0 0 80 60" fill="none">
+            <rect x="10" y="12" width="60" height="36" rx="2" fill="#0B0B0C" stroke="#C5A15B"/>
+            <text x="40" y="28" text-anchor="middle" font-family="Barlow Condensed" font-size="8" font-weight="800" fill="#C5A15B">COMMANDER</text>
+            <text x="40" y="38" text-anchor="middle" font-family="Barlow Condensed" font-size="10" font-weight="800" fill="#E8E6E1">BUNDLE</text>
+            <text x="40" y="46" text-anchor="middle" font-family="JetBrains Mono" font-size="5" fill="#8A8D93">3 CARDS + NITRO + BADGE</text>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>حزمة القائد</strong>
+          <span class="mini-price">SAR 299</span>
+        </div>
+        <div class="mono" style="font-size:10px;color:var(--muted);margin-top:4px">يشمل: PSN + XBOX + UC</div>
+        <div style="margin-top:8px;display:flex;gap:4px">
+          <span style="flex:1;height:4px;background:var(--gold)"></span><span style="flex:1;height:4px;background:var(--gold)"></span><span style="flex:1;height:4px;background:rgba(197,161,91,0.2)"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="steps" id="how">
+  <div class="container">
+    <div class="section-head" style="margin-bottom:18px">
+      <div>
+        <h2><i></i> بروتوكول التسليم</h2>
+        <p>ثلاث خطوات — من الطلب إلى ساحة القتال</p>
+      </div>
+      <div class="en-label">PROTOCOL / 03 STEPS</div>
+    </div>
+    <div class="steps-grid">
+      <div class="step">
+        <div class="step-num chamfer-sm">01</div>
+        <h4>اختر عتادك</h4>
+        <p>تصفح الترسانة، اختر اللعبة أو البطاقة، وحدد الكمية. كل منتج موثق ومضمون.</p>
+        <div class="en-sub mono">SELECT GEAR</div>
+      </div>
+      <div class="step">
+        <div class="step-num chamfer-sm">02</div>
+        <h4>ادفع بأمان</h4>
+        <p>دفع مشفّر عبر مدى، STC Pay، أو البطاقات العالمية. تأكيد فوري بدون انتظار.</p>
+        <div class="en-sub mono">SECURE PAYMENT</div>
+      </div>
+      <div class="step">
+        <div class="step-num chamfer-sm">03</div>
+        <h4>استلم فورًا</h4>
+        <p>كودك يصل خلال 2-5 دقائق عبر الواتساب والإيميل. جاهز للقتال مباشرة.</p>
+        <div class="en-sub mono">INSTANT DEPLOYMENT</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="container split">
+  <div class="guarantee chamfer">
+    <div class="g-head">
+      <div class="g-icon chamfer-sm">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v5c0 4-2.5 7-7 8-4.5-1-7-4-7-8V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <h3>ضمان النخبة الذهبي</h3>
+        <p class="mono">ELITE GOLD GUARANTEE — TACTICAL CERTIFIED</p>
+      </div>
+    </div>
+    <div class="g-list">
+      <div class="g-item chamfer-sm">
+        <i>✓</i>
+        <div><strong>استرداد 100% خلال 24 ساعة</strong><br><span>إذا لم يعمل الكود — نستبدله أو نعيد المبلغ كاملاً بدون أسئلة.</span></div>
+      </div>
+      <div class="g-item chamfer-sm">
+        <i>✓</i>
+        <div><strong>دعم عمليات 24/7</strong><br><span>فريق تكتيكي يرد خلال دقائق عبر واتساب وتليجرام.</span></div>
+      </div>
+      <div class="g-item chamfer-sm">
+        <i>✓</i>
+        <div><strong>مصادر رسمية فقط</strong><br><span>كل الأكواد من موزعين معتمدين — لا سوق سوداء، لا حظر.</span></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="mono" style="font-size:11px;background:rgba(197,161,91,0.12);border:1px solid rgba(197,161,91,0.2);color:var(--gold);padding:6px 10px">TRUSTED BY 340K+</span>
+      <span class="mono" style="font-size:11px;background:rgba(90,107,66,0.14);border:1px solid rgba(90,107,66,0.3);color:#8AA66B;padding:6px 10px">SSL SECURED</span>
+    </div>
+  </div>
+
+  <div class="testimonials chamfer" id="support">
+    <div class="t-head">
+      <h3>تقارير الميدان</h3>
+      <span class="stars">★★★★★ <span class="mono" style="color:var(--muted);font-size:11px">4.9/5</span></span>
+    </div>
+    <div class="t-card chamfer-sm">
+      <div class="t-top">
+        <div class="avatar chamfer-sm">A</div>
+        <div>
+          <div class="t-name">أحمد القحطاني — رتبة COMMANDER</div>
+          <div class="t-meta">منذ 3 ساعات • PUBG UC • تسليم 3 دقائق</div>
+        </div>
+      </div>
+      <div class="t-text">“أسرع متجر جربته. الشدات وصلت قبل ما أخلص القهوة. الختم الذهبي مو مجرد ديكور — الخدمة فعلاً نخبة.”</div>
+      <div class="t-foot"><span class="t-tag">موثق ✓</span><span class="t-tag">عملية #88420</span></div>
+    </div>
+    <div class="t-card chamfer-sm">
+      <div class="t-top">
+        <div class="avatar chamfer-sm" style="background:linear-gradient(135deg,#3E4A2E,#5A6B42)">S</div>
+        <div>
+          <div class="t-name">سارة المطيري — رتبة ELITE</div>
+          <div class="t-meta">منذ يوم • PSN $50 • واتساب</div>
+        </div>
+      </div>
+      <div class="t-text">“كنت متخوفة من الشراء أونلاين لكن الدعم رد خلال دقيقة وشرح كل شيء. الكود اشتغل فوراً.”</div>
+      <div class="t-foot"><span class="t-tag">موثق ✓</span><span class="t-tag">عملية #88391</span></div>
+    </div>
+    <button class="view-all chamfer-sm mono" style="width:100%;margin-top:6px;text-align:center" onclick="toast('تحميل 1,200+ تقرير ميداني...')">عرض كل التقارير (8,420) →</button>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="logo">
+          <div class="logo-mark chamfer-sm" style="width:38px;height:38px">
+            <svg viewBox="0 0 32 32" fill="none"><path d="M16 3 L27 9 L27 21 L16 29 L5 21 L5 9 Z" stroke="#C5A15B" stroke-width="1.6" fill="rgba(197,161,91,0.08)"/><path d="M16 8 L20 12 L16 16 L12 12 Z" fill="#C5A15B"/></svg>
+          </div>
+          <div class="logo-type"><strong style="font-size:18px">JOKER <span>STORE</span></strong><em>ELITE TACTICAL</em></div>
+        </div>
+        <p>متجر الألعاب التكتيكي الأول في المنطقة. عتاد نخبة، تسليم فوري، وضمان ذهبي. نخدم المقاتلين الرقميين منذ 2019.</p>
+        <div class="coords">
+          HQ: RIYADH — SECTOR 07<br>
+          <b>COORD:</b> 24.7136° N, 46.6753° E &nbsp;|&nbsp; <b>UPTIME:</b> 99.92%
+        </div>
+        <div class="pay-row">
+          <span class="pay">VISA</span><span class="pay">MC</span><span class="pay">MADA</span><span class="pay">STC</span><span class="pay">PAY</span>
+        </div>
+      </div>
+      <div class="foot-col">
+        <h4>الترسانة</h4>
+        <a href="#">ألعاب</a><a href="#">بطاقات شحن</a><a href="#">عملات وشدات</a><a href="#">اشتراكات</a><a href="#">عتاد النخبة</a><a href="#">عروض القائد</a>
+      </div>
+      <div class="foot-col">
+        <h4>الدعم</h4>
+        <a href="#">تتبع الطلب</a><a href="#">الأسئلة الشائعة</a><a href="#">سياسة الاسترجاع</a><a href="#">الدعم الفني</a><a href="#">الشروط والأحكام</a><a href="#">الخصوصية</a>
+      </div>
+      <div class="foot-col">
+        <h4>انضم للوحدة</h4>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6">احصل على كود خصم 15% + تنبيهات العمليات الخاصة.</p>
+        <form class="newsletter" onsubmit="event.preventDefault(); toast('تم تسجيلك في الوحدة — كودك: ELITE15');">
+          <input placeholder="بريدك الإلكتروني" type="email" required>
+          <button class="chamfer-sm" type="submit">انضم</button>
+        </form>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <span class="mono" style="font-size:11px;color:var(--muted)">تابعنا:</span>
+          <div class="social">
+            <a href="#" class="chamfer-sm" aria-label="x"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 6L6 18M6 6l12 12"/></svg></a>
+            <a href="#" class="chamfer-sm" aria-label="ig"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1"/></svg></a>
+            <a href="#" class="chamfer-sm" aria-label="yt"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M22 12s0-4-2-5-8-1-8-1-6 0-8 1-2 5-2 5 0 4 2 5 8 1 8 1 6 0 8-1 2-5 2-5z"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 JOKER STORE — ELITE TACTICAL UNIT 07. جميع الحقوق محفوظة. صُمم للمقاتلين.</span>
+      <span class="mono">SYSTEM: JKR-07-TAC • BUILD v3.7.2 • <span style="color:var(--gold)">OPERATIONAL</span></span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast chamfer" id="toast"><span style="width:8px;height:8px;background:var(--gold);display:block;transform:rotate(45deg)"></span><span id="toastMsg">تمت الإضافة للعتاد</span></div>
+
+<script>
+let cart = 0;
+function addToCart(name){
+  cart++;
+  document.getElementById('cartCount').textContent = cart;
+  toast('تمت الإضافة: ' + name + ' — في السلة الآن');
+  document.getElementById('cartBtn').style.transform='scale(1.05)';
+  setTimeout(()=>document.getElementById('cartBtn').style.transform='',180);
+}
+function toggleWish(btn){
+  btn.textContent = btn.textContent==='♡' ? '♥' : '♡';
+  btn.style.color = btn.textContent==='♥' ? 'var(--red)' : '';
+  btn.style.borderColor = btn.textContent==='♥' ? 'var(--red)' : '';
+  toast(btn.textContent==='♥' ? 'تمت الإضافة للمفضلة' : 'تمت الإزالة من المفضلة');
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm=setTimeout(()=>t.classList.remove('show'),2600);
+}
+function doSearch(){
+  const q=document.getElementById('searchInput').value.trim();
+  if(!q) return toast('أدخل كلمة البحث أولاً');
+  const cards=[...document.querySelectorAll('.p-card')];
+  let found=0;
+  cards.forEach(c=>{
+    const match=c.textContent.includes(q) || q.length<2;
+    c.style.display= match ? '' : 'none';
+    if(match) found++;
+  });
+  toast(found? `تم العثور على ${found} نتيجة` : 'لا توجد نتائج مطابقة');
+}
+// chips filter
+document.querySelectorAll('.chip').forEach(ch=>{
+  ch.addEventListener('click',()=>{
+    document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+    ch.classList.add('active');
+    const f=ch.dataset.filter;
+    document.querySelectorAll('.p-card').forEach(card=>{
+      if(f==='all') card.style.display='';
+      else card.style.display = card.dataset.type.includes(f) ? '' : 'none';
+    });
+    document.querySelectorAll('.dog-tag').forEach(tag=>{
+      tag.classList.toggle('active', tag.dataset.cat===f);
+    });
+    if(f==='all') document.querySelectorAll('.dog-tag').forEach(t=>t.classList.remove('active'));
+  });
+});
+document.querySelectorAll('.dog-tag').forEach(tag=>{
+  tag.addEventListener('click',()=>{
+    const cat=tag.dataset.cat;
+    document.querySelector(`.chip[data-filter="${cat}"]`)?.click();
+    document.getElementById('products').scrollIntoView({behavior:'smooth'});
+  });
+});
+// tabs
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const type=tab.dataset.tab;
+    document.querySelectorAll('.p-card').forEach(c=>{
+      if(type==='best') c.style.display = c.dataset.type.includes('best') ? '' : 'none';
+      else if(type==='new') c.style.display = c.dataset.type.includes('new') ? '' : 'none';
+      else c.style.display = c.dataset.type.includes('promo') ? '' : 'none';
+    });
+  });
+});
+// countdown
+let h=71,m=42,s=18;
+setInterval(()=>{
+  s--; if(s<0){s=59;m--; if(m<0){m=59;h--; if(h<0) h=71}}
+  document.getElementById('cdH').textContent=String(h).padStart(2,'0');
+  document.getElementById('cdM').textContent=String(m).padStart(2,'0');
+  document.getElementById('cdS').textContent=String(s).padStart(2,'0');
+},1000);
+// search on enter
+document.getElementById('searchInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter') doSearch();
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault(); e.target.focus()}
+});
+document.getElementById('menuToggle').addEventListener('click',()=>{
+  const nav=document.querySelector('.nav');
+  nav.style.display = nav.style.display==='flex' ? 'none' : 'flex';
+  nav.style.flexDirection='column';
+  nav.style.position='absolute';
+  nav.style.top='100%';nav.style.right='0';nav.style.left='0';
+  nav.style.background='rgba(11,11,12,0.98)';nav.style.padding='12px';nav.style.borderTop='1px solid var(--line)';
+});
+// default filter best on load
+document.querySelector('.tab.active')?.click();
+</script>
+</body>
+</html>

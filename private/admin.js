@@ -996,7 +996,7 @@ async function loadInventory() {
 
     _inventoryPage = 1;
     _allProducts = [];
-    tbody.innerHTML = `<tr><td colspan="6" class="loading-cell"><span class="spinner"></span> جاري تحميل المنتجات...</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="loading-cell"><span class="spinner"></span> جاري تحميل المنتجات...</td></tr>`;
     updateInventoryFooter(false);
 
     try {
@@ -1004,7 +1004,7 @@ async function loadInventory() {
         const data = await res.json();
 
         if (!res.ok || !data.success) {
-            tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل تحميل المنتجات: ${data.message || 'خطأ غير معروف'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل تحميل المنتجات: ${data.message || 'خطأ غير معروف'}</td></tr>`;
             return;
         }
 
@@ -1014,7 +1014,7 @@ async function loadInventory() {
         tbody.innerHTML = '';
 
         if (products.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">لا توجد منتجات متاحة حالياً.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">لا توجد منتجات متاحة حالياً.</td></tr>`;
             updateInventoryFooter(false);
             return;
         }
@@ -1022,7 +1022,7 @@ async function loadInventory() {
         tbody.innerHTML = products.map(renderInventoryRow).join('');
         updateInventoryFooter(_inventoryHasMore);
     } catch (_err) {
-        tbody.innerHTML = `<tr><td colspan="6" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="error-cell">❌ فشل الاتصال بالسيرفر.</td></tr>`;
         updateInventoryFooter(false);
     }
 }
