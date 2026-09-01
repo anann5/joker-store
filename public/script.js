@@ -1627,7 +1627,7 @@ async function loadSearchIndex() {
         const data = await res.json();
         if (data.success) {
             searchIndex = data.products;
-            console.log(`✅ تم تحميل فهرس البحث بنجاح (${searchIndex.length} منتج).`);
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') console.log(`✅ تم تحميل فهرس البحث بنجاح (${searchIndex.length} منتج).`);
         }
     } catch (error) {
         console.error('Failed to fetch search index:', error);
