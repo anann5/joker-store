@@ -1,10 +1,14 @@
 node_modules/
 .kilo/
 .env
-.env.*.example
+.env.local
+.env.*.local
+.venv/
+npm-debug.log*
 *.exe
 logs/
 *.log
 .vscode/
 server.log
+.DS_Store
 public/uploads/

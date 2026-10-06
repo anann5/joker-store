@@ -53,15 +53,20 @@ app.use(helmet({
             connectSrc: (() => {
                 const list = ["'self'", 'https://cdn.jsdelivr.net'];
                 try {
+                    // أصل الموقع يُشتق من SITE_URL بدل نطاق مكتوب يدوياً،
+                    // حتى لا تتقادم قيمة WebSocket/الأصل عند تغيير النطاق.
                     const siteOrigin = new URL(String(process.env.SITE_URL || '').trim()).origin;
-                    if (siteOrigin && !list.includes(siteOrigin)) list.push(siteOrigin);
+                    if (siteOrigin && !list.includes(siteOrigin)) {
+                        list.push(siteOrigin);
+                        // Socket.IO يعمل عبر wss على نفس الأصل
+                        const wsHost = new URL(siteOrigin).host;
+                        if (wsHost && !list.includes(`wss://${wsHost}`)) list.push(`wss://${wsHost}`);
+                    }
                 } catch (_) {}
                 // السماح لـ localhost أثناء التطوير
                 if (!forceHttps) {
                     list.push('http://localhost:10000', 'http://127.0.0.1:10000', 'ws://localhost:10000', 'ws://127.0.0.1:10000');
                 }
-                // Socket.IO يعمل عبر wss على Render
-                list.push('wss://joker-store.onrender.com', 'https://joker-store.onrender.com');
                 return [...new Set(list)];
             })(),
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
