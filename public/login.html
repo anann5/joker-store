@@ -4,21 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Joker Store | تسجيل الدخول 🔒</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=8">
     <style>
         .login-body {
             display: flex;
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background: var(--bg-dark);
+            background:
+                radial-gradient(600px 320px at 80% -10%, rgba(99, 102, 241, 0.28), transparent 60%),
+                radial-gradient(520px 300px at 10% 110%, rgba(56, 189, 248, 0.18), transparent 60%),
+                var(--bg-0);
         }
         .login-card {
-            background: var(--card-bg);
+            background: rgba(13, 17, 30, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             padding: 40px;
             border-radius: 20px;
-            border: 1px solid var(--primary-neon);
-            box-shadow: 0 0 30px rgba(0, 242, 254, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            box-shadow: 0 14px 34px rgba(3, 6, 14, 0.6), 0 0 22px rgba(99, 102, 241, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.07);
             width: 100%;
             max-width: 400px;
             text-align: center;
@@ -33,15 +41,15 @@
             padding: 12px;
             margin-bottom: 20px;
             border-radius: 8px;
-            border: 1px solid #333;
-            background: #1a1a28;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.045);
             color: white;
             outline: none;
             transition: 0.3s;
         }
         .login-card input:focus {
             border-color: var(--primary-neon);
-            box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+            box-shadow: 0 0 10px rgba(129, 140, 248, 0.3);
         }
         .login-btn {
             width: 100%;
@@ -56,14 +64,14 @@
         }
         .login-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 242, 254, 0.4);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.35);
         }
         .login-logo {
             width: 80px;
             margin-bottom: 15px;
         }
         .error-message {
-            color: #e74c3c;
+            color: #FB7185;
             margin-top: 15px;
             font-size: 0.9rem;
             display: none;

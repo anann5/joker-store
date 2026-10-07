@@ -24,8 +24,8 @@ export const CATEGORY_THEMES = {
     itunes: { color: '#A2AAAD', icon: 'fab fa-apple' },
     razer_gold: { color: '#00A651', icon: 'fas fa-coins' },
     amazon: { color: '#FF9900', icon: 'fab fa-amazon' },
-    gaming_general: { color: '#00E5FF', icon: 'fas fa-gamepad' },
-    fallback: { color: '#00E5FF', icon: 'fas fa-tag' }
+    gaming_general: { color: '#818CF8', icon: 'fas fa-gamepad' },
+    fallback: { color: '#818CF8', icon: 'fas fa-tag' }
 };
 
 export function getCategoryTheme(categoryKey) {

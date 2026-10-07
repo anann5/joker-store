@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم JOKER STORE 🔒</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="/admin-style.css">
+    <script src="/async-css.js" defer></script>
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -81,7 +84,7 @@
                 </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div class="charts-grid">
                 <div class="card" style="padding:16px;">
                     <h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--primary-neon);"><i class="fas fa-chart-line"></i> المبيعات (7 أيام)</h3>
                     <canvas id="salesChart" height="200"></canvas>
@@ -117,7 +120,7 @@
                 <div id="providersStatusList">
                     <div style="text-align:center; padding:20px; color:var(--text-muted);">جاري تحميل حالة المزودين...</div>
                 </div>
-                <div id="lastSyncInfo" style="margin-top:12px; padding:8px 12px; background:rgba(162,0,255,0.08); border-radius:8px; font-size:0.82rem; color:var(--text-muted); display:none;">
+                <div id="lastSyncInfo" style="margin-top:12px; padding:8px 12px; background:rgba(99,102,241,0.10); border-radius:8px; font-size:0.82rem; color:var(--text-muted); display:none;">
                     <i class="fas fa-sync" style="color:var(--primary); margin-right:4px;"></i> آخر مزامنة: <span id="lastSyncTime">--</span>
                 </div>
             </div>
@@ -150,7 +153,7 @@
                         <span id="soundIcon" class="fas fa-volume-up" style="color: var(--accent);"></span>
                     </div>
                 </div>
-                <div id="bulkActionsBar" style="display:none;padding:10px 14px;background:rgba(0,229,255,0.08);border-radius:var(--radius-md);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div id="bulkActionsBar" style="display:none;padding:10px 14px;background:rgba(99,102,241,0.12);border-radius:var(--radius-md);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <span id="bulkSelectedCount" style="font-size:0.85rem;color:#fff;">0 منتج محدد</span>
                     <button class="btn btn-sm btn-approve" data-bulk-action="activate"><i class="fas fa-check"></i> تفعيل</button>
                     <button class="btn btn-sm btn-reject" data-bulk-action="deactivate"><i class="fas fa-ban"></i> تعطيل</button>
@@ -447,7 +450,7 @@
             <div class="form-group">
                 <label>صورة المنتج</label>
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <img id="editImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;display:none;">
+                    <img id="editImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.14);display:none;">
                     <input type="file" id="editProductImage" accept="image/*" class="form-control">
                 </div>
                 <input type="text" id="editImageUrl" class="form-control" placeholder="https://... أو /uploads/xxx.png" style="margin-top:6px;">
@@ -587,7 +590,7 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
                 <div class="form-group">
                     <label>الصورة</label>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <img id="categoryImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #333;display:none;">
+                        <img id="categoryImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.14);display:none;">
                         <input type="file" id="categoryImageFile" accept="image/*" class="form-control">
                     </div>
                     <input type="text" id="categoryImage" class="form-control" placeholder="image/steam.png أو رابط صورة" style="margin-top:6px;">
@@ -650,7 +653,7 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
                 <div class="form-row">
                     <div class="form-group">
                         <input type="text" id="promoProductSearch" class="form-control" placeholder="ابحث عن منتج..." autocomplete="off">
-                        <div id="promoProductDropdown" style="display:none;position:absolute;background:#1a1a2e;border:1px solid #333;border-radius:8px;max-height:150px;overflow-y:auto;width:calc(100% - 32px);z-index:10;"></div>
+                        <div id="promoProductDropdown" style="display:none;position:absolute;background:rgba(13,17,30,0.96);border:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(18px);border-radius:12px;max-height:150px;overflow-y:auto;width:calc(100% - 32px);z-index:10;"></div>
                         <input type="hidden" id="promoProductId">
                         <small id="promoProductLabel" style="color:var(--primary-neon);display:none;"></small>
                     </div>
@@ -670,7 +673,7 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
     <div id="adminToast" class="admin-toast"></div>
 
     <!-- Toast Container -->
-    <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 1000;"></div>
+    <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 10000;"></div>
 
     <script src="/vendor/socket.io/socket.io.min.js"></script>
     <script src="/admin-boot.js"></script>

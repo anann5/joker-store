@@ -42,9 +42,9 @@ function localizedName(value) {
 
 function emailWrapper({ title, preheader, bodyHtml }) {
     const siteUrl = String(process.env.SITE_URL || '').replace(/\/+$/, '') || '#';
-    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body style="margin:0;padding:0;background:#0f172a;font-family:Arial,Tahoma,sans-serif;direction:rtl;">
+    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title></head><body style="margin:0;padding:0;background:#0B0F1C;font-family:Arial,Tahoma,sans-serif;direction:rtl;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(preheader || '')}</div>
-<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#0f172a;padding:24px 12px;">
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#0B0F1C;padding:24px 12px;">
 <tr><td align="center">
 <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
 <tr><td style="background:linear-gradient(135deg,#0e7490 0%,#06b6d4 100%);padding:20px 24px;text-align:center;">
@@ -54,7 +54,7 @@ function emailWrapper({ title, preheader, bodyHtml }) {
 <tr><td style="padding:28px 24px;color:#e2e8f0;line-height:1.7;font-size:14px;">
 ${bodyHtml}
 </td></tr>
-<tr><td style="background:#0f172a;padding:16px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);">
+<tr><td style="background:#0B0F1C;padding:16px 24px;text-align:center;border-top:1px solid rgba(255,255,255,0.06);">
 <p style="margin:0;color:#64748b;font-size:11px;">هذا بريد تلقائي — لا ترد عليه. للمساعدة تواصل عبر واتساب أو <a href="${siteUrl}" style="color:#06b6d4;text-decoration:none;">الموقع</a></p>
 <p style="margin:6px 0 0;color:#475569;font-size:11px;">© ${new Date().getFullYear()} Joker Store — جميع الحقوق محفوظة</p>
 </td></tr>
