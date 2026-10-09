@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const storeController = require('../controllers/storeController');
+const pushController = require('../controllers/pushController');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
-const { validate, checkoutSchema } = require('../middleware/validate');
+const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
 
 // ليميتر خاص بإنشاء الطلبات (منع إغراق قاعدة البيانات بطلبات وهمية)
@@ -37,17 +38,53 @@ const conditionalCodeLimiter = (req, res, next) => {
 // Route to get all categories
 router.get('/categories', storeController.getCategories);
 
+// ===== الأمان: كابتشا + تذاكر الدعم =====
+const supportController = require('../controllers/supportController');
+const { createCaptcha } = require('../middleware/captcha');
+const { supportTicketSchema, supportTicketTrackingSchema } = require('../middleware/validate');
+
+const captchaLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: 'طلبات كثيرة جداً، يرجى الانتظار قليلاً.'
+});
+router.get('/security/captcha', captchaLimiter, (req, res) => {
+    const { token, prompt } = createCaptcha();
+    res.json({ success: true, challenge: token, prompt });
+});
+
+const ticketLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: 'عدد التذاكر كبير جداً، يرجى المحاولة لاحقاً.'
+});
+router.post('/support/tickets', ticketLimiter, validate(supportTicketSchema), supportController.createTicket);
+router.get('/support/tickets/:ticketId', validate(supportTicketTrackingSchema), supportController.getTicket);
+
 // Route to get a lightweight product list for client-side search
 router.get('/products/search-index', storeController.getSearchIndex);
 
 // Route for latest orders (used by updateTrustTicker in script.js)
 router.get('/products/latest-orders', storeController.getLatestOrders);
 
+// ليميتر خاص باشتراكات Web Push (منع تسجيل آلاف الاشتراكات دفعة واحدة)
+const pushLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'محاولات كثيرة لإدارة الإشعارات، يرجى الانتظار قليلاً.'
+});
+
 // Route for site-wide config (payment numbers, social links, stats)
 router.get('/site-config', storeController.getSiteConfig);
 
+// Web Push notifications — subscription management
+router.get('/push/vapid-public-key', pushController.getStatus);
+router.post('/push/subscribe', pushLimiter, verifyUserTokenOptional, validate(pushSubscribeSchema), pushController.subscribe);
+router.post('/push/unsubscribe', pushLimiter, validate(pushUnsubscribeSchema), pushController.unsubscribe);
+
 // Route for guest order tracking by email
 router.post('/track-order', trackOrderLimiter, conditionalCodeLimiter, storeController.trackOrder);
+router.get('/invoice/:orderId', storeController.getInvoice);
 
 // Route to get best-selling products
 router.get('/products/best-selling', storeController.getBestSellingProducts);

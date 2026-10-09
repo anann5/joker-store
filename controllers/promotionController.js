@@ -1,5 +1,6 @@
 const { Promotion } = require('../models');
 const { clearStorefrontCache } = require('./storeController');
+const pushService = require('./push');
 
 /**
  * التحقق من صحة مدخلات عرض جديد/معدّل.
@@ -80,6 +81,18 @@ exports.createPromotion = async (req, res) => {
         const promo = new Promotion(pickPromotionFields(req.body));
         await promo.save();
         clearStorefrontCache();
+
+        // Web Push — إعلام المشتركين بالعرض الجديد
+        pushService.notifyNewPromotion({
+            titleAr: promo.title?.ar,
+            titleEn: promo.title?.en,
+            discountPercent: promo.discountPercent,
+            code: promo.code,
+            promotionId: promo._id
+        }).catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error('[push] فشل إشعار العرض الجديد:', err.message);
+        });
 
         res.status(201).json({ success: true, promotion: promo });
     } catch (_err) {

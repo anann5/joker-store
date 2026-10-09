@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const siteSettings = require('../config/siteSettings');
 const stripeController = require('./stripeController');
 const notification = require('./notification');
+const pushService = require('./push');
 const { applyPromoCode, applyPromoCodeToProducts, applyPromoCodeToProductIds, round2 } = require('./promo');
 const { getSafeBaseHost } = require('./helpers');
 
@@ -225,6 +226,11 @@ exports.getSiteConfig = async (_req, res) => {
                 social: siteSettings.social,
                 analytics: siteSettings.analytics,
                 stripe: { enabled: stripeController.isStripeEnabled() },
+                push: {
+                    enabled: pushService.isPushEnabled(),
+                    publicKey: pushService.getPushStatus().publicKey,
+                    subject: pushService.getPushStatus().subject
+                },
                 stats: {
                     orders: aggregate.completed,
                     customers: Array.isArray(uniqueCustomers) ? uniqueCustomers.filter(Boolean).length : 0
@@ -285,6 +291,58 @@ exports.trackOrder = async (req, res) => {
         res.json({ success: true, orders: safeOrders });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل تتبع الطلب، حاول مرة أخرى' });
+    }
+};
+
+/**
+ * فاتورة الطلب — متاحة فقط لصاحب الطلب (بريده + رقم الطلب معاً).
+ * تُفضي الأكواد فقط عند اكتمال الطلب (نفس درجة حماية تتبع الطلبات).
+ */
+exports.getInvoice = async (req, res) => {
+    try {
+        const email = String(req.query.email || '').trim().toLowerCase();
+        const orderId = String(req.params.orderId || '').trim().toUpperCase();
+        if (!email || email.length > 200 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            return res.status(400).json({ success: false, error: 'بريد إلكتروني غير صالح' });
+        }
+        if (!orderId || orderId.length > 40 || !/^[A-Z0-9-]+$/.test(orderId)) {
+            return res.status(400).json({ success: false, error: 'رقم الطلب غير صالح' });
+        }
+
+        const order = await Order.findOne({ orderId, buyerEmail: email })
+            .select('orderId status price discount discountCode buyerEmail paymentGateway items.name items.qty items.unitPrice items.price items.fulfilmentStatus code deliveredCodes completedAt createdAt');
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+        }
+
+        const codes = order.status === 'completed'
+            ? (order.deliveredCodes?.length ? order.deliveredCodes : (order.code ? [order.code] : []))
+            : [];
+
+        res.json({
+            success: true,
+            invoice: {
+                orderId: order.orderId,
+                status: order.status,
+                price: order.price,
+                discount: Number(order.discount) || 0,
+                discountCode: order.discountCode || null,
+                buyerEmail: order.buyerEmail,
+                paymentGateway: order.paymentGateway || '',
+                createdAt: order.createdAt,
+                completedAt: order.completedAt || null,
+                items: (order.items || []).map(item => ({
+                    name: getLocalizedValue(item.name).ar,
+                    qty: item.qty,
+                    unitPrice: Number(item.unitPrice) || 0,
+                    price: Number(item.price) || 0,
+                    delivery: item.fulfilmentStatus || 'pending'
+                })),
+                codes
+            }
+        });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب الفاتورة' });
     }
 };
 
@@ -655,6 +713,16 @@ exports.createOrder = async (req, res) => {
         notification.sendOrderCreatedEmail(newOrder).catch(err => {
             console.error('Order-created email failure:', err && err.message);
         });
+
+        // تنبيه الأدمن عبر تيليجرام فور إنشاء طلب جديد
+        if (process.env.NODE_ENV !== 'test') {
+            require('./helpers').sendTelegramAlert(
+                `🛒 *طلب جديد*\n`
+                + `🧾 *الطلب:* #${newOrder.orderId}\n`
+                + `💵 *المبلغ:* \`${newOrder.price}\`\n`
+                + `📮 *البريد:* ${newOrder.buyerEmail}`
+            );
+        }
 
         // Stripe: إنشاء جلسة دفع آمنة مستضافة على Stripe (لا حاجة لمكتبة عميل)
         let stripeUrl = null;

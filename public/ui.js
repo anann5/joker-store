@@ -513,6 +513,8 @@ export function showProductDetails(product, currentCategory = '') {
                         reviewImageUrls.push(d.url);
                         const img = document.createElement('img');
                         img.src = d.url;
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
                         img.style.cssText = 'width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.12);';
                         reviewImagesPreview.appendChild(img);
                     }

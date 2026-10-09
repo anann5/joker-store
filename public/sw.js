@@ -1,12 +1,14 @@
 /* eslint-disable no-undef */
-const CACHE_NAME = 'joker-store-v8';
+const CACHE_NAME = 'joker-store-v13';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/style.css',
+    '/theme.js',
     '/shared.js',
     '/script.js',
     '/i18n.js',
+    '/push.js',
     '/image/logo.png'
 ];
 
@@ -65,6 +67,41 @@ self.addEventListener('fetch', event => {
                 }
                 return new Response('Offline', { status: 503 });
             });
+        })
+    );
+});
+
+// ==================== Web Push ====================
+
+self.addEventListener('push', event => {
+    let data = {};
+    if (event.data) {
+        try { data = event.data.json(); } catch (_) { data = { body: event.data.text() }; }
+    }
+    const title = data.title || 'Joker Store';
+    const options = {
+        body: data.body || '',
+        icon: data.icon || '/image/logo.png',
+        badge: '/image/logo.png',
+        tag: data.tag || 'general',
+        renotify: true,
+        data: { url: data.url || '/' }
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    const target = (event.notification.data && event.notification.data.url) || '/';
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+            const url = new URL(target, self.location.origin);
+            for (const client of clientList) {
+                if ('focus' in client && new URL(client.url).pathname === url.pathname) {
+                    return client.focus();
+                }
+            }
+            return clients.openWindow(url.href);
         })
     );
 });

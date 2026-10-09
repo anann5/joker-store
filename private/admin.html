@@ -31,6 +31,7 @@
                 <span><i class="fas fa-shield-alt"></i> خاص بالإدارة فقط</span>
                 <span id="currentDate"></span>
                 <span style="color: var(--accent); font-size: 0.8rem;" id="socketStatus"><i class="fas fa-circle" style="color: var(--warning);"></i> متصل</span>
+                <button class="logout-btn" id="themeToggleBtn" title="تبديل المظهر (فاتح/داكن/النظام)"><i class="fas fa-sun"></i> المظهر</button>
                 <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
             </div>
         </header>
@@ -47,6 +48,8 @@
             <button class="tab-btn" data-tooltip="التسعير الحي" id="pricingTabBtn"><i class="fas fa-dollar-sign"></i> التسعير</button>
             <button class="tab-btn" data-tooltip="السجلات" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
             <button class="tab-btn" data-tooltip="العروض والكوبونات" id="promotionsTabBtn"><i class="fas fa-tags"></i> العروض</button>
+            <button class="tab-btn" data-tooltip="الإعدادات والإشعارات" id="settingsTabBtn"><i class="fas fa-cog"></i> الإعدادات</button>
+            <button class="tab-btn" data-tooltip="تذاكر الدعم" id="ticketsTabBtn"><i class="fas fa-headset"></i> التذاكر</button>
         </div>
 
         <!-- Dashboard Section -->
@@ -297,6 +300,8 @@
                     </div>
                 </div>
                 <div class="reports-summary" id="reportsSummary">جاري التحميل...</div>
+                <h3 class="reports-sub-title">🏆 أفضل المنتجات مبيعاً</h3>
+                <div class="reports-scroll" id="reportsByProduct">جاري التحميل...</div>
                 <h3 class="reports-sub-title">📁 حسب القسم</h3>
                 <div class="reports-scroll" id="reportsByCategory">جاري التحميل...</div>
                 <h3 class="reports-sub-title">🏢 حسب المزود</h3>
@@ -396,9 +401,32 @@
                 </div>
             </div>
         </section>
-    </div>
 
-    <!-- Import CSV Modal -->
+        <!-- Settings Section -->
+        <section id="settingsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-bell"></i> إشعارات Web Push</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshPushBtn" data-tooltip="تحديث الإحصائيات"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div id="pushSettingsBody">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري التحميل...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ticketsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-headset"></i> تذاكر الدعم</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshTicketsBtn" data-tooltip="تحديث القائمة"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div id="ticketsList">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري التحميل...</div>
+                </div>
+            </div>
+        </section>
+    </div>
     <div class="modal-overlay" id="importCsvModal">
         <div class="modal-content">
             <button class="close-modal-btn" id="closeImportCsvBtn">&times;</button>
@@ -551,6 +579,32 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
                 <button class="btn btn-primary" id="saveAddManualBtn" style="min-width: 140px;">
                     <span id="saveBtnText"><i class="fas fa-save"></i> حفظ المنتج</span>
                     <span id="saveBtnLoading" class="hidden"><i class="fas fa-spinner fa-pulse"></i> جاري الحفظ...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة كودات لمنتج موجود -->
+    <div class="modal-overlay" id="addCodesModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeAddCodesModalBtn">×</button>
+            <h3 class="modal-title"><i class="fas fa-key"></i> إضافة كودات للمنتج</h3>
+            <div class="form-group">
+                <label>الكودات (كل كود على سطر جديد)</label>
+                <textarea id="addCodesTextarea" class="form-control" rows="8" placeholder="XXXX-XXXX-XXXX
+YYYY-YYYY-YYYY
+ZZZZ-ZZZZ-ZZZZ"></textarea>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">الكودات المكررة سيتم تجاهلها تلقائياً.</small>
+            </div>
+            <div class="form-group">
+                <label>أو حمّل ملف CSV / TXT / JSON</label>
+                <input type="file" id="addCodesFile" accept=".csv,.txt,.json" class="form-control">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAddCodesBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveAddCodesBtn" style="min-width: 140px;">
+                    <span id="saveAddCodesText"><i class="fas fa-save"></i> إضافة الكودات</span>
+                    <span id="saveAddCodesLoading" class="hidden"><i class="fas fa-spinner fa-pulse"></i> جاري الحفظ...</span>
                 </button>
             </div>
         </div>

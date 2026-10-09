@@ -171,11 +171,39 @@ const homePageHandler = (req, res, next) => {
     const hreflangOrigin = `${req.protocol}://${getRequestHost(req)}`;
     try {
         const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+        // مخطط منظمة/موقع (Schema.org) لأنواع نتائج البحث الغنية على الصفحة الرئيسية
+        const orgId = `${origin}/#organization`;
+        const homeJsonLd = safeJsonLd({
+            '@context': 'https://schema.org',
+            '@graph': [
+                {
+                    '@type': 'Organization',
+                    '@id': orgId,
+                    name: 'Joker Store',
+                    url: origin,
+                    logo: `${origin}/image/logo.png`,
+                    contactPoint: {
+                        '@type': 'ContactPoint',
+                        contactType: 'customer service',
+                        url: `${origin}/contact`,
+                        availableLanguage: ['Arabic', 'English']
+                    }
+                },
+                {
+                    '@type': 'WebSite',
+                    name: 'Joker Store',
+                    url: origin,
+                    inLanguage: ['ar', 'en'],
+                    publisher: { '@id': orgId }
+                }
+            ]
+        });
         res.type('html').send(html
             .replace('<link rel="canonical" href="/">', `<link rel="canonical" href="${origin}/">`)
             .replace('<link rel="alternate" hreflang="ar" href="/?lang=ar">', `<link rel="alternate" hreflang="ar" href="${hreflangOrigin}/?lang=ar">`)
             .replace('<link rel="alternate" hreflang="en" href="/?lang=en">', `<link rel="alternate" hreflang="en" href="${hreflangOrigin}/?lang=en">`)
-            .replace('<link rel="alternate" hreflang="x-default" href="/">', `<link rel="alternate" hreflang="x-default" href="${hreflangOrigin}/">`));
+            .replace('<link rel="alternate" hreflang="x-default" href="/">', `<link rel="alternate" hreflang="x-default" href="${hreflangOrigin}/">`)
+            .replace('</head>', `<script type="application/ld+json">${homeJsonLd}</script></head>`));
     } catch (err) {
         next(err);
     }
@@ -258,6 +286,14 @@ app.get('/api/products/schema/:productId', seoController.productSchema);
 app.get('/api/products/faq-schema', seoController.faqSchema);
 app.get('/api/products/breadcrumb/:productId', seoController.breadcrumbSchema);
 
+// صفحات HTML عبر sendFile: منع التخزين المؤقت لضمان ظهور التحديثات فوراً
+app.use((req, res, next) => {
+    if (/^\/(about|track|invoice|support|privacy|terms|contact|offers|faq|login)(\.html)?\/?$/.test(req.path)) {
+        res.setHeader('Cache-Control', 'no-cache');
+    }
+    next();
+});
+
 app.get('/privacy', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'privacy.html'));
 });
@@ -272,6 +308,18 @@ app.get('/contact', (req, res) => {
 
 app.get('/about', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'about.html'));
+});
+
+app.get('/track', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'track.html'));
+});
+
+app.get('/invoice', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'invoice.html'));
+});
+
+app.get('/support', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'support.html'));
 });
 
 app.get('/offers', (req, res) => {

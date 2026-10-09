@@ -74,6 +74,14 @@ exports.registerSchema = Joi.object({
             'string.min': 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
             'string.pattern.match': 'كلمة المرور يجب أن تحتوي على أحرف كبيرة وصغيرة وأرقام',
             'any.required': 'كلمة المرور مطلوبة'
+        }),
+    referralCode: Joi.string()
+        .trim()
+        .uppercase()
+        .pattern(/^[A-Z0-9]{4,12}$/)
+        .allow('', null)
+        .messages({
+            'string.pattern.base': 'كود الإحالة غير صالح'
         })
 });
 
@@ -415,5 +423,94 @@ exports.promotionIdParamSchema = Joi.object({
     promotionId: Joi.string().pattern(mongoIdPattern).required().messages({
         'string.pattern.base': 'معرف العرض غير صالح',
         'any.required': 'معرف العرض مطلوب'
+    })
+});
+
+/**
+ * مخططات إشعارات Web Push
+ */
+const pushKeysSchema = Joi.object({
+    p256dh: Joi.string().trim().required().messages({
+        'any.required': 'مفتاح p256dh مطلوب'
+    }),
+    auth: Joi.string().trim().required().messages({
+        'any.required': 'مفتاح auth مطلوب'
+    })
+});
+
+exports.pushSubscribeSchema = Joi.object({
+    endpoint: Joi.string().uri().min(20).max(600).required().messages({
+        'string.uri': 'نقطة الاشتراك غير صالحة',
+        'any.required': 'نقطة الاشتراك مطلوبة'
+    }),
+    keys: pushKeysSchema.required(),
+    lang: Joi.string().valid('ar', 'en').default('ar'),
+    userAgent: Joi.string().allow('').trim().max(300).optional()
+});
+
+exports.pushUnsubscribeSchema = Joi.object({
+    endpoint: Joi.string().uri().min(20).max(600).required().messages({
+        'string.uri': 'نقطة الاشتراك غير صالحة',
+        'any.required': 'نقطة الاشتراك مطلوبة'
+    })
+});
+
+exports.pushBroadcastSchema = Joi.object({
+    titleAr: Joi.string().trim().min(1).max(80).required(),
+    bodyAr: Joi.string().allow('').trim().max(300).default(''),
+    titleEn: Joi.string().allow('').trim().max(80).default(''),
+    bodyEn: Joi.string().allow('').trim().max(300).default(''),
+    url: Joi.string().allow('').uri({ relativeOnly: true }).trim().max(200).default('/'),
+    tag: Joi.string().allow('').trim().max(40).default('admin-broadcast')
+});
+
+/**
+ * مخططات تذاكر الدعم
+ */
+exports.supportTicketSchema = Joi.object({
+    email: Joi.string().email().required().messages({
+        'string.email': 'البريد الإلكتروني غير صالح',
+        'any.required': 'البريد الإلكتروني مطلوب'
+    }),
+    subject: Joi.string().trim().min(3).max(120).required().messages({
+        'string.min': 'الموضوع قصير جداً',
+        'string.max': 'الموضوع طويل جداً',
+        'any.required': 'الموضوع مطلوب'
+    }),
+    message: Joi.string().trim().min(10).max(2000).required().messages({
+        'string.min': 'الرسالة قصيرة جداً',
+        'string.max': 'الرسالة طويلة جداً',
+        'any.required': 'الرسالة مطلوبة'
+    }),
+    lang: Joi.string().valid('ar', 'en').default('ar'),
+    captchaToken: Joi.string().trim().required().messages({
+        'any.required': 'التحقق البشري مطلوب'
+    }),
+    captchaAnswer: Joi.alternatives().try(
+        Joi.number().integer(),
+        Joi.string().pattern(/^\d+$/)
+    ).required().messages({
+        'any.required': 'إجابة التحقق البشري مطلوبة'
+    })
+});
+
+exports.supportTicketTrackingSchema = Joi.object({
+    ticketId: Joi.string().pattern(/^TKT-[A-Z0-9]{6}$/).required().messages({
+        'string.pattern.base': 'رقم التذكرة غير صالح'
+    })
+});
+
+exports.ticketReplySchema = Joi.object({
+    message: Joi.string().trim().min(1).max(2000).required().messages({
+        'string.min': 'نص الرد مطلوب',
+        'string.max': 'الرد طويل جداً',
+        'any.required': 'نص الرد مطلوب'
+    })
+});
+
+exports.ticketStatusSchema = Joi.object({
+    status: Joi.string().valid('open', 'answered', 'closed').required().messages({
+        'any.only': 'حالة غير صالحة',
+        'any.required': 'الحالة مطلوبة'
     })
 });

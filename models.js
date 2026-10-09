@@ -23,6 +23,17 @@ const categorySchema = new mongoose.Schema({
 });
 
 // ======================================================
+// Schema سجل الإحالة (يُضمّن في المستخدم)
+// ======================================================
+const referralEntrySchema = new mongoose.Schema({
+    amount: { type: Number, required: true },
+    // referral → مكسب المُحيل، welcome → مكافأة ترحيبية للمحال إليه
+    type: { type: String, enum: ['referral', 'welcome'], default: 'referral' },
+    fromEmail: { type: String, trim: true, default: null },
+    createdAt: { type: Date, default: Date.now }
+}, { _id: false });
+
+// ======================================================
 // Schema المستخدم
 // ======================================================
 const userSchema = new mongoose.Schema({
@@ -39,6 +50,12 @@ const userSchema = new mongoose.Schema({
         }],
         default: []
     },
+    // ===== نظام الإحالة =====
+    referralCode: { type: String, unique: true, sparse: true, trim: true, uppercase: true },
+    referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    referralEarned: { type: Number, default: 0, min: 0 },
+    referralCount: { type: Number, default: 0, min: 0 },
+    referralHistory: { type: [referralEntrySchema], default: [] },
     // سلة المستخدم السحابية — تُزامن بين الأجهزة بعد تسجيل الدخول
     cart: {
         type: [{
@@ -224,6 +241,26 @@ const logSchema = new mongoose.Schema({
 });
 
 // ======================================================
+// Schema تذاكر الدعم (Support Tickets)
+// ======================================================
+const ticketMessageSchema = new mongoose.Schema({
+    from: { type: String, enum: ['customer', 'admin'], required: true },
+    message: { type: String, required: true, trim: true, maxlength: 2000 }
+}, { _id: false });
+
+const supportTicketSchema = new mongoose.Schema({
+    ticketId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, lowercase: true, trim: true, index: true },
+    subject: { type: String, required: true, trim: true, maxlength: 120 },
+    status: { type: String, enum: ['open', 'answered', 'closed'], default: 'open' },
+    lang: { type: String, enum: ['ar', 'en'], default: 'ar' },
+    messages: { type: [ticketMessageSchema], default: [] },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+});
+supportTicketSchema.index({ status: 1, createdAt: -1 });
+
+// ======================================================
 // Schema العروض/الخصومات (Promotions)
 // ------------------------------------------------------
 // عرض قابل للضبط من لوحة التحكم مع مدة انتهاء (countdown):
@@ -321,6 +358,29 @@ const cartSessionSchema = new mongoose.Schema({
 });
 cartSessionSchema.index({ notified: 1, createdAt: -1 });
 
+// ======================================================
+// Schema اشتراك إشعارات المتصفح (Web Push)
+// ======================================================
+const pushSubscriptionSchema = new mongoose.Schema({
+    endpoint: { type: String, required: true, unique: true },
+    keys: {
+        p256dh: { type: String, required: true },
+        auth: { type: String, required: true }
+    },
+    // اختياري: يُربط الاشتراك بالحساب ليسلّح إشعارات حالة الطلب الخاصة به
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    // 'offers' → يسمح بالرسائل التسويقية (افتراضي). يُلغى تحويله إلى [] عند التعطيل
+    topics: { type: [String], enum: ['offers'], default: ['offers'] },
+    lang: { type: String, enum: ['ar', 'en'], default: 'ar' },
+    userAgent: { type: String, default: '' },
+    failedCount: { type: Number, default: 0 },
+    lastErrorAt: { type: Date, default: null },
+    createdAt: { type: Date, default: Date.now },
+    lastSuccessAt: { type: Date, default: null }
+});
+pushSubscriptionSchema.index({ topics: 1 });
+pushSubscriptionSchema.index({ userId: 1 });
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Category: mongoose.model('Category', categorySchema),
@@ -330,5 +390,7 @@ module.exports = {
     ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema),
     AdminSession: mongoose.model('AdminSession', adminSessionSchema),
     Promotion: mongoose.model('Promotion', promotionSchema),
-    CartSession: mongoose.model('CartSession', cartSessionSchema)
+    CartSession: mongoose.model('CartSession', cartSessionSchema),
+    PushSubscription: mongoose.model('PushSubscription', pushSubscriptionSchema),
+    SupportTicket: mongoose.model('SupportTicket', supportTicketSchema)
 };

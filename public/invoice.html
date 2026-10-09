@@ -7,16 +7,15 @@
     <link rel="apple-touch-icon" href="/image/logo.png" />
     <link rel="manifest" href="/manifest.json?v=6" />
     <meta name="theme-color" content="#0B0F1C" />
-    <link rel="canonical" href="/about" />
-    <title data-page-title-key="about_title">من نحن | Joker Store</title>
-    <meta name="description" content="Joker Store — متجرك الموثوق لشحن الألعاب والبطاقات الرقمية. أكواد أصلية مضمونة 100% وتوصيل فوري." data-i18n-meta="meta_about_desc" />
-    <link rel="icon" type="image/png" href="/image/logo.png" />
+    <link rel="canonical" href="/invoice" />
+    <title data-page-title-key="invoice_heading">فاتورة طلب | Joker Store</title>
+    <meta name="description" content="فاتورة الطلب المدفوعة من Joker Store — يمكنك طباعتها أو حفظها PDF." data-i18n-meta="invoice_meta_desc" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" />
-        <script src="/theme.js?v=13"></script>
-<link rel="stylesheet" href="style.css?v=13" />
+    <script src="/theme.js?v=13"></script>
+    <link rel="stylesheet" href="style.css?v=13" />
 </head>
 <body>
 
@@ -29,15 +28,16 @@
             </a>
             <nav>
                 <a href="/" data-i18n-key="nav_home">الرئيسية</a>
+                <a href="/track" data-i18n-key="track_footer_btn">تتبع طلبك</a>
                 <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
-<a href="/support" data-i18n-key="sub_footer_support">الدعم الفني</a>
+                <a href="/support" data-i18n-key="sub_footer_support">الدعم الفني</a>
             </nav>
             <div class="header-controls">
-                <button id="lang-switcher" class="header-btn" title="Switch Language">
-                    <i class="fas fa-globe"></i><span>EN</span>
-                </button>
                 <button id="themeToggleBtn" class="header-btn theme-toggle-btn" title="تبديل المظهر (فاتح / داكن / النظام)" aria-label="تبديل المظهر">
                     <i class="fas fa-moon"></i>
+                </button>
+                <button id="lang-switcher" class="header-btn" title="Switch Language">
+                    <i class="fas fa-globe"></i><span>EN</span>
                 </button>
             </div>
         </div>
@@ -45,38 +45,16 @@
 
     <main class="sub-page-main">
         <div class="sub-page-hero">
-            <h1><i class="fas fa-store"></i><span data-i18n-key="about_title">من نحن</span></h1>
-            <p data-i18n-key="about_lead">Joker Store هو متجر إلكتروني متخصص في بيع البطاقات الرقمية والألعاب والاشتراكات بأسعار تنافسية مع خدمة سريعة وآمنة.</p>
+            <h1><i class="fas fa-file-invoice"></i><span data-i18n-key="invoice_heading">الفاتورة</span></h1>
         </div>
 
         <div class="sub-page-card">
-            <h2><i class="fas fa-bullseye"></i> <span data-i18n-key="about_mission">مهمتنا</span></h2>
-            <p data-i18n-key="about_body">نهدف إلى تقديم تجربة تسوق مريحة، مع دعم سريع وضمان استلام الكود فوراً بعد تأكيد الدفع.</p>
-        </div>
-
-        <div class="sub-page-card">
-            <h2><i class="fas fa-star"></i> <span data-i18n-key="about_values_title">قيمنا</span></h2>
-            <div class="sub-page-grid">
-                <div class="sub-value-card">
-                    <i class="fas fa-shield-alt"></i>
-                    <h3 data-i18n-key="about_value1_title">أصالة 100%</h3>
-                    <p data-i18n-key="about_value1_desc">جميع الأكواد أصلية ومضمونة من مصادر موثوقة.</p>
-                </div>
-                <div class="sub-value-card">
-                    <i class="fas fa-bolt"></i>
-                    <h3 data-i18n-key="about_value2_title">توصيل فوري</h3>
-                    <p data-i18n-key="about_value2_desc">استلام الكود خلال دقائق من تأكيد الدفع.</p>
-                </div>
-                <div class="sub-value-card">
-                    <i class="fas fa-headset"></i>
-                    <h3 data-i18n-key="about_value3_title">دعم حقيقي</h3>
-                    <p data-i18n-key="about_value3_desc">فريقنا متاح لمساعدتك في أي وقت.</p>
-                </div>
+            <div id="invoiceActions" class="invoice-actions" style="display:none;">
+                <button type="button" id="invoicePrintBtn" class="enter-btn"><i class="fas fa-print"></i> <span data-i18n-key="invoice_print_btn">طباعة / حفظ PDF</span></button>
+                <a id="invoiceWhatsappBtn" href="#" target="_blank" rel="noopener" class="enter-btn whatsapp-btn" style="display:none;"><i class="fab fa-whatsapp"></i> <span data-i18n-key="invoice_whatsapp_btn">نسخة عبر واتساب</span></a>
+                <a href="/track" class="enter-btn" style="text-decoration:none;"><i class="fas fa-search"></i> <span data-i18n-key="track_btn">تتبع الآن</span></a>
             </div>
-        </div>
-
-        <div style="text-align:center; margin-top:26px;">
-            <a href="/" class="enter-btn" data-i18n-key="sub_back_home"><i class="fas fa-home"></i> العودة للمتجر</a>
+            <div id="invoiceSheet" class="invoice-sheet"></div>
         </div>
     </main>
 
@@ -89,8 +67,7 @@
             </div>
             <hr class="footer-divider">
             <div class="footer-links">
-                                <a href="/track" data-i18n-key="sub_footer_track">تتبع طلبك</a>
-<a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
                 <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
                 <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
                 <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
@@ -101,5 +78,6 @@
     </footer>
 
     <script type="module" src="sub-page.js"></script>
+    <script type="module" src="invoice.js"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@ const categoryController = require('../controllers/categoryController');
 const uploadController = require('../controllers/uploadController');
 const providerController = require('../controllers/providerController');
 const promotionController = require('../controllers/promotionController');
+const pushController = require('../controllers/pushController');
 const upload = require('../middleware/upload');
 const {
     validate,
@@ -26,7 +27,8 @@ const {
     orderIdParamSchema,
     categoryIdParamSchema,
     productIdParamSchema,
-    promotionIdParamSchema
+    promotionIdParamSchema,
+    pushBroadcastSchema
 } = require('../middleware/validate');
 
 // تعريف ليميتر بسيط خاص بمسارات الأدمن لحمايتها
@@ -64,6 +66,7 @@ router.post('/inventory/sync', productController.syncExternalProducts);
 router.get('/inventory/:productId', validateParams(productIdParamSchema), productController.getProduct);
 router.patch('/inventory/:productId/margin', validateParams(productIdParamSchema), validateLenient(updateProductSchema), productController.updateProductMargin);
 router.patch('/inventory/:productId', validateParams(productIdParamSchema), validateLenient(updateProductSchema), productController.updateProduct);
+router.post('/inventory/:productId/codes', validateParams(productIdParamSchema), productController.addProductCodes);
 router.post('/inventory/:productId/duplicate', validateParams(productIdParamSchema), productController.duplicateProduct);
 router.delete('/inventory/:productId', validateParams(productIdParamSchema), validate(deleteProductSchema), productController.deleteProduct);
 router.get('/orders', orderController.getOrders);
@@ -94,6 +97,10 @@ router.post('/promotions', promotionController.createPromotion);
 router.patch('/promotions/:promotionId', validateParams(promotionIdParamSchema), promotionController.updatePromotion);
 router.delete('/promotions/:promotionId', validateParams(promotionIdParamSchema), promotionController.deletePromotion);
 
+// Web Push — إحصائيات + بث رسالة لكل المشتركين
+router.get('/push/stats', pushController.getAdminStats);
+router.post('/push/broadcast', validate(pushBroadcastSchema), pushController.broadcast);
+
 // Abandoned carts
 const storeController = require('../controllers/storeController');
 router.get('/abandoned-carts', storeController.getAbandonedCarts);
@@ -110,6 +117,14 @@ router.get('/users', async (req, res) => {
         res.json({ success: true, users });
     } catch (_e) { res.status(500).json({ success: false, error: 'فشل جلب المستخدمين' }); }
 });
+
+// تذاكر الدعم (إدارة)
+const supportController = require('../controllers/supportController');
+const { ticketReplySchema, ticketStatusSchema } = require('../middleware/validate');
+router.get('/tickets', supportController.adminList);
+router.get('/tickets/:ticketId', supportController.adminGet);
+router.post('/tickets/:ticketId/reply', validate(ticketReplySchema), supportController.adminReply);
+router.patch('/tickets/:ticketId', validate(ticketStatusSchema), supportController.adminSetStatus);
 
 // Backup export (real data)
 router.get('/backup', async (req, res) => {

@@ -174,6 +174,7 @@ const initAdmin = async () => {
         if (action === 'approve-order') approveOrder(id);
         else if (action === 'reject-order') rejectOrder(id);
         else if (action === 'show-codes') showCodes(id);
+        else if (action === 'add-codes') openAddCodesModal(id);
         else if (action === 'edit-product') editProduct(id);
         else if (action === 'delete-product') deleteProduct(id);
         else if (action === 'edit-category') editCategory(id);
@@ -250,7 +251,8 @@ const initAdmin = async () => {
         { btn: 'reportsTabBtn', section: 'reportsSection' },
         { btn: 'pricingTabBtn', section: 'pricingSection' },
         { btn: 'logsTabBtn', section: 'logsSection' },
-        { btn: 'promotionsTabBtn', section: 'promotionsSection' }
+        { btn: 'promotionsTabBtn', section: 'promotionsSection' },
+        { btn: 'settingsTabBtn', section: 'settingsSection' }
     ];
 
     tabs.forEach(({ btn: btnId, section: sectionId }) => {
@@ -278,6 +280,8 @@ const initAdmin = async () => {
             else if (sectionId === 'pricingSection') loadLivePricing();
             else if (sectionId === 'logsSection') loadLogs();
             else if (sectionId === 'promotionsSection') loadPromotions();
+            else if (sectionId === 'settingsSection') loadPushSettings();
+            else if (sectionId === 'ticketsSection') loadTickets();
         });
     });
 
@@ -338,6 +342,22 @@ const initAdmin = async () => {
     const addManualModal = document.getElementById('addManualModal');
     if (addManualModal) {
         addManualModal.addEventListener('click', (e) => { if (e.target === addManualModal) closeAddManualModal(); });
+    }
+
+    // === إضافة كودات لمنتج موجود ===
+    const closeAddCodesBtn = document.getElementById('closeAddCodesModalBtn');
+    const cancelAddCodesBtn = document.getElementById('cancelAddCodesBtn');
+    const saveAddCodesBtn = document.getElementById('saveAddCodesBtn');
+    if (closeAddCodesBtn) closeAddCodesBtn.addEventListener('click', closeAddCodesModal);
+    if (cancelAddCodesBtn) cancelAddCodesBtn.addEventListener('click', closeAddCodesModal);
+    if (saveAddCodesBtn) saveAddCodesBtn.addEventListener('click', saveAddCodes);
+
+    const addCodesFileInput = document.getElementById('addCodesFile');
+    if (addCodesFileInput) addCodesFileInput.addEventListener('change', fillAddCodesTextarea);
+
+    const addCodesModalEl = document.getElementById('addCodesModal');
+    if (addCodesModalEl) {
+        addCodesModalEl.addEventListener('click', (e) => { if (e.target === addCodesModalEl) closeAddCodesModal(); });
     }
 
     // Edit modal
@@ -942,6 +962,7 @@ function renderInventoryRow(item) {
             <td><span class="badge ${stockBadgeClass}">${stockText}</span></td>
             <td>
                 <div class="action-btns-group">
+                    ${item.isExternal ? '' : `<button class="action-icon btn-edit" data-action="add-codes" data-id="${item._id}" title="إضافة كودات"><i class="fas fa-plus"></i></button>`}
                     <button class="action-icon btn-edit" data-action="edit-product" data-id="${item._id}" title="تعديل"><i class="fas fa-edit"></i></button>
                     <button class="action-icon btn-delete" data-action="delete-product" data-id="${item._id}" title="حذف"><i class="fas fa-trash"></i></button>
                 </div>
@@ -1474,6 +1495,94 @@ function closeAddManualModal() {
     if (modal) modal.classList.remove('active');
 }
 
+// ======================================================
+//  إضافة كودات لمنتج موجود
+// ======================================================
+
+let _addCodesProductId = null;
+
+function openAddCodesModal(productId) {
+    const modal = document.getElementById('addCodesModal');
+    if (!modal) return;
+    _addCodesProductId = productId;
+    document.getElementById('addCodesTextarea').value = '';
+    document.getElementById('addCodesFile').value = '';
+    const text = document.getElementById('saveAddCodesText');
+    const loading = document.getElementById('saveAddCodesLoading');
+    const saveBtn = document.getElementById('saveAddCodesBtn');
+    if (text) text.classList.remove('hidden');
+    if (loading) loading.classList.add('hidden');
+    if (saveBtn) saveBtn.disabled = false;
+    const product = _allProducts.find(p => p._id === productId);
+    const modalTitle = modal.querySelector('.modal-title');
+    if (modalTitle && product) {
+        modalTitle.textContent = `إضافة كودات: ${product.productName?.ar || product.productName?.en || ''}`;
+    }
+    modal.classList.add('active');
+}
+
+function closeAddCodesModal() {
+    const modal = document.getElementById('addCodesModal');
+    if (modal) modal.classList.remove('active');
+    _addCodesProductId = null;
+}
+
+async function fillAddCodesTextarea() {
+    const fileInput = document.getElementById('addCodesFile');
+    const textarea = document.getElementById('addCodesTextarea');
+    const [file] = fileInput.files;
+    if (!file) return;
+    try {
+        const text = await file.text();
+        let codes = [];
+        if (file.name.endsWith('.csv') || file.name.endsWith('.txt')) codes = parseCodesFromCSV(text);
+        else if (file.name.endsWith('.json')) { const json = JSON.parse(text); codes = Array.isArray(json) ? json : (json.codes || []); }
+        textarea.value = codes.join('\n');
+        showAdminToast(`📋 تم تحميل ${codes.length} كود من الملف`, 'success');
+    } catch (_err) {
+        showAdminToast('❌ فشل قراءة الملف', 'error');
+    }
+}
+
+async function saveAddCodes() {
+    if (!_addCodesProductId) return;
+    const codes = parseCodesFromText(document.getElementById('addCodesTextarea').value);
+    if (codes.length === 0) {
+        showAdminToast('❌ لا يوجد كودات للإضافة', 'warning');
+        return;
+    }
+
+    const text = document.getElementById('saveAddCodesText');
+    const loading = document.getElementById('saveAddCodesLoading');
+    const saveBtn = document.getElementById('saveAddCodesBtn');
+    if (text) text.classList.add('hidden');
+    if (loading) loading.classList.remove('hidden');
+    if (saveBtn) saveBtn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/admin/inventory/${_addCodesProductId}/codes`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ codes })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message}`, 'success');
+            closeAddCodesModal();
+            loadInventory(_inventoryPage, true);
+        } else {
+            showAdminToast(`❌ ${data.message || data.error || 'فشل الإضافة'}`, 'error');
+        }
+    } catch (_err) {
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
+    } finally {
+        if (text) text.classList.remove('hidden');
+        if (loading) loading.classList.add('hidden');
+        if (saveBtn) saveBtn.disabled = false;
+    }
+}
+
 function parseCodesFromText(text) {
     return text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 }
@@ -1673,11 +1782,13 @@ async function populateCategoryDatalist() {
 // ======================================================
 async function loadReports(days = 30) {
     const summaryEl = document.getElementById('reportsSummary');
+    const byProdEl = document.getElementById('reportsByProduct');
     const byCatEl = document.getElementById('reportsByCategory');
     const byProvEl = document.getElementById('reportsByProvider');
-    if (!summaryEl || !byCatEl || !byProvEl) return;
+    if (!summaryEl || !byProdEl || !byCatEl || !byProvEl) return;
 
     summaryEl.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> جاري التحميل...</div>`;
+    byProdEl.innerHTML = '';
     byCatEl.innerHTML = '';
     byProvEl.innerHTML = '';
 
@@ -1689,8 +1800,8 @@ async function loadReports(days = 30) {
             return;
         }
 
-        const { totals, byCategory, byProvider } = data;
-        const profit = (Number(totals.revenue) || 0) - (Number(totals.cost) || 0);
+        const { totals, byCategory, byProvider, byProduct } = data;
+        const profit = Number(totals.profit) ?? ((Number(totals.revenue) || 0) - (Number(totals.cost) || 0));
         const marginPct = Number(totals.revenue) > 0 ? ((profit / Number(totals.revenue)) * 100).toFixed(1) : '0.0';
 
         summaryEl.innerHTML = `
@@ -1722,6 +1833,30 @@ async function loadReports(days = 30) {
                 </table>
             `;
         };
+
+        if (!Array.isArray(byProduct) || byProduct.length === 0) {
+            byProdEl.innerHTML = `<div style="text-align:center; padding:14px; color:var(--text-muted);">لا بيانات في هذه الفترة.</div>`;
+        } else {
+            byProdEl.innerHTML = `
+                <table class="reports-table">
+                    <thead><tr><th>المنتج</th><th>الكمية</th><th>طلبات</th><th>إيرادات</th><th>ربح</th></tr></thead>
+                    <tbody>
+                        ${byProduct.map(row => {
+                            const name = escapeHtml(row.nameAr || row.nameEn || 'غير معروف');
+                            const rev = Number(row.revenue) || 0;
+                            const productProfit = Number(row.profit) ?? (rev - (Number(row.cost) || 0));
+                            return `<tr>
+                                <td>${name}</td>
+                                <td>${Number(row.qty) || 0}</td>
+                                <td>${Number(row.orders) || 0}</td>
+                                <td>${rev.toLocaleString()}</td>
+                                <td>${productProfit.toLocaleString()}</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
 
         byCatEl.innerHTML = renderTable(byCategory, true);
         byProvEl.innerHTML = renderTable(byProvider, false);
@@ -2228,3 +2363,280 @@ async function editPromo(promoId) {
         showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
     }
 }
+
+// ======================================================
+//  إشعارات Web Push (الإعدادات)
+// ======================================================
+
+async function loadPushSettings() {
+    const body = document.getElementById('pushSettingsBody');
+    if (!body) return;
+    body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);"><span class="spinner"></span> جاري التحميل...</div>';
+    try {
+        const res = await fetch('/api/admin/push/stats', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) throw new Error('failed');
+
+        if (!data.enabled) {
+            body.innerHTML = `
+                <div class="settings-empty" style="display:grid; gap:12px; justify-items:start; color:var(--text-muted);">
+                    <p><i class="fas fa-info-circle"></i> إشعارات Web Push <b>معطّلة</b> — اضبط المتغيرات التالية على الخادم ثم أعد التشغيل:</p>
+                    <code style="background:var(--bg-elevated,#101426); padding:10px 14px; border-radius:10px; direction:ltr; display:inline-block;">
+PUSH_NOTIFICATIONS_ENABLED=true<br>VAPID_PUBLIC_KEY=&lt;you-public-key&gt;<br>VAPID_PRIVATE_KEY=&lt;you-private-key&gt;<br>VAPID_SUBJECT=mailto:you@domain.com
+                    </code>
+                    <p style="font-size:0.85rem;">ولّد المفاتيح: <code style="direction:ltr; display:inline-block; padding:2px 8px; border-radius:6px; background:var(--bg-elevated,#101426);">npx web-push generate-vapid-keys</code></p>
+                </div>`;
+            return;
+        }
+
+        body.innerHTML = `
+            <div class="push-status-row" style="display:flex; flex-wrap:wrap; gap:14px; margin-bottom:18px;">
+                <div class="detail-box" style="flex:1; min-width:180px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted);">حالة الإشعارات</div>
+                    <div style="font-size:1.3rem; font-weight:800; color:#2ecc71;">مفعّلة</div>
+                </div>
+                <div class="detail-box" style="flex:1; min-width:180px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted);">عدد المشتركين (العروض)</div>
+                    <div style="font-size:1.3rem; font-weight:800;" id="pushSubscribers">${Number(data.subscribers || 0)}</div>
+                </div>
+                <div class="detail-box" style="flex:1; min-width:180px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted);">إجمالي الأجهزة</div>
+                    <div style="font-size:1.3rem; font-weight:800;">${Number(data.totalDevices || 0)}</div>
+                </div>
+            </div>
+            <div class="card" style="border:1px solid var(--border,#1F2937);">
+                <div class="card-header">
+                    <h3 style="font-size:1rem; margin:0;"><i class="fas fa-paper-plane"></i> بث رسالة لكل المشتركين</h3>
+                </div>
+                <div class="form-group">
+                    <label>عنوان (عربي)</label>
+                    <input type="text" id="pushTitleAr" class="form-control" maxlength="80" placeholder="🎉 عرض جديد">
+                </div>
+                <div class="form-group">
+                    <label>الرسالة (عربي)</label>
+                    <textarea id="pushBodyAr" class="form-control" rows="2" maxlength="300" placeholder="خصم 20% بكود SAVE20 — لفترة محدودة!"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>عنوان (إنجليزي) — اختياري</label>
+                    <input type="text" id="pushTitleEn" class="form-control" maxlength="80" placeholder="🎉 New offer">
+                </div>
+                <div class="form-group">
+                    <label>الرسالة (إنجليزي) — اختياري</label>
+                    <textarea id="pushBodyEn" class="form-control" rows="2" maxlength="300" placeholder="20% off with code SAVE20 — limited time!"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>رابط الصفحة عند الضغط (اختياري)</label>
+                    <input type="text" id="pushUrl" class="form-control" maxlength="200" value="/" placeholder="/ أو /offers">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="pushBroadcastBtn"><i class="fas fa-paper-plane"></i> إرسال للجميع</button>
+                </div>
+                <div id="pushBroadcastResult" style="margin-top:10px;"></div>
+            </div>`;
+
+        const broadcastBtn = document.getElementById('pushBroadcastBtn');
+        if (broadcastBtn) broadcastBtn.addEventListener('click', sendPushBroadcast);
+    } catch (_err) {
+        body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--danger);">فشل تحميل إعدادات الإشعارات</div>';
+    }
+}
+
+async function sendPushBroadcast() {
+    const body = {
+        titleAr: document.getElementById('pushTitleAr').value.trim(),
+        bodyAr: document.getElementById('pushBodyAr').value.trim(),
+        titleEn: document.getElementById('pushTitleEn').value.trim(),
+        bodyEn: document.getElementById('pushBodyEn').value.trim(),
+        url: document.getElementById('pushUrl').value.trim() || '/'
+    };
+    const resultEl = document.getElementById('pushBroadcastResult');
+    if (!body.titleAr) {
+        if (resultEl) resultEl.innerHTML = '<div style="color:var(--danger);">⚠️ العنوان العربي مطلوب</div>';
+        return;
+    }
+    if (resultEl) resultEl.innerHTML = '<div style="color:var(--text-muted);">جاري الإرسال...</div>';
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/push/broadcast', {
+            method: 'POST',
+            credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (resultEl) resultEl.innerHTML = `<div style="color:#2ecc71; font-weight:700;">✅ أُرسل إلى ${Number(data.sent)} جهاز (فشل ${Number(data.failed || 0)})</div>`;
+            loadPushSettings();
+        } else {
+            if (resultEl) resultEl.innerHTML = `❌ ${escapeHtml(data.error || 'فشل الإرسال')}`;
+        }
+    } catch (_err) {
+        if (resultEl) resultEl.innerHTML = '<div style="color:var(--danger);">❌ فشل الاتصال بالسيرفر</div>';
+    }
+}
+document.getElementById('refreshPushBtn')?.addEventListener('click', loadPushSettings);
+
+// ======================================================
+//  تبديل المظهر (فاتح / داكن / تلقائي)
+// ======================================================
+const THEME_KEY = 'joker_admin_theme';
+const THEME_CYCLE = ['dark', 'light'];
+
+function initAdminTheme() {
+    const btn = document.getElementById('themeToggleBtn');
+    if (!btn) return;
+
+    const applyTheme = (theme) => {
+        const root = document.documentElement;
+        if (theme === 'light' || theme === 'dark') root.setAttribute('data-theme', theme);
+        else root.setAttribute('data-theme', 'dark');
+        try { localStorage.setItem(THEME_KEY, theme === 'dark' ? 'dark' : theme); } catch (_e) {}
+        const icon = btn.querySelector('i');
+        if (icon) {
+            icon.className = theme === 'light' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+    };
+
+    btn.addEventListener('click', () => {
+        let current = '';
+        try { current = localStorage.getItem(THEME_KEY) || ''; } catch (_e) { current = ''; }
+        const next = THEME_CYCLE[(THEME_CYCLE.indexOf(current) + 1) % THEME_CYCLE.length];
+        applyTheme(next);
+        const label = next === 'light' ? 'الوضع الفاتح' : 'الوضع الداكن';
+        showAdminToast(`🎨 ${label}`, 'info');
+    });
+
+    let saved = '';
+    try { saved = localStorage.getItem(THEME_KEY) || ''; } catch (_e) { saved = ''; }
+    applyTheme(saved === 'light' ? 'light' : 'dark');
+}
+initAdminTheme();
+
+// ======================================================
+//  تذاكر الدعم (عرض + رد + إغلاق)
+// ======================================================
+const TICKET_STATUS_LABELS = {
+    open: { text: 'مفتوحة', cls: 'status-pending' },
+    answered: { text: 'تم الرد', cls: 'status-completed' },
+    closed: { text: 'مغلقة', cls: 'status-failed' }
+};
+
+function escapeTicketHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function loadTickets() {
+    const listEl = document.getElementById('ticketsList');
+    if (!listEl) return;
+    try {
+        const res = await fetch('/api/admin/tickets');
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'failed');
+        renderTickets(data.tickets || []);
+    } catch (e) {
+        listEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">❌ فشل تحميل التذاكر</div>`;
+    }
+}
+
+function renderTickets(tickets) {
+    const listEl = document.getElementById('ticketsList');
+    if (!listEl) return;
+
+    if (!tickets.length) {
+        listEl.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fas fa-inbox"></i> لا توجد تذاكر حالياً.</div>`;
+        return;
+    }
+
+    listEl.innerHTML = tickets.map(ticket => {
+        const st = TICKET_STATUS_LABELS[ticket.status] || TICKET_STATUS_LABELS.open;
+        const lastMsg = ticket.messages && ticket.messages.length
+            ? ticket.messages[ticket.messages.length - 1]
+            : null;
+        return `
+            <div class="ticket-item" data-ticket-id="${escapeTicketHtml(ticket.ticketId)}" style="border:1px solid var(--glass-border-strong); border-radius:16px; padding:14px 16px; margin-bottom:12px; background:var(--glass-soft);">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-weight:700; color:var(--text-1);"><span class="track-id">${escapeTicketHtml(ticket.ticketId)}</span> · ${escapeTicketHtml(ticket.subject)}</span>
+                    <span class="order-status ${st.cls}">${st.text}</span>
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">
+                    ${escapeTicketHtml(ticket.email)} · ${new Date(ticket.createdAt).toLocaleString('ar-EG')}
+                </div>
+                <div style="margin:10px 0 0; border-top:1px dashed var(--line); padding-top:10px;">
+                    ${(ticket.messages || []).map(m => `
+                        <div style="margin-bottom:8px; padding:8px 10px; border-radius:10px; background:${m.from === 'admin' ? 'rgba(56,189,248,.08)' : 'rgba(255,255,255,.03)'};">
+                            <div style="font-size:0.72rem; color:var(--text-muted); margin-bottom:3px;">
+                                <b>${m.from === 'admin' ? 'الفريق' : 'العميل'}</b> · ${new Date(m.createdAt).toLocaleString('ar-EG')}
+                            </div>
+                            <div style="font-size:0.9rem; white-space:pre-wrap; color:var(--text-2);">${escapeTicketHtml(m.message)}</div>
+                        </div>`).join('')}
+                </div>
+                ${ticket.status !== 'closed' ? `
+                    <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+                        <textarea class="form-control ticket-reply-input" rows="2" placeholder="اكتب رداً..." maxlength="2000" style="flex:1; min-width:220px;"></textarea>
+                        <button class="btn btn-primary btn-sm ticket-reply-btn" data-reply-to="${escapeTicketHtml(ticket.ticketId)}"><i class="fas fa-paper-plane"></i> رد</button>
+                        <button class="btn btn-secondary btn-sm ticket-close-btn" data-close-to="${escapeTicketHtml(ticket.ticketId)}"><i class="fas fa-lock"></i> إغلاق</button>
+                    </div>` : ''}
+            </div>`;
+    }).join('');
+}
+
+async function replyTicket(ticketId, message) {
+    if (!message) return;
+    const res = await fetch(`/api/admin/tickets/${encodeURIComponent(ticketId)}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'failed');
+}
+
+async function closeTicket(ticketId) {
+    const res = await fetch(`/api/admin/tickets/${encodeURIComponent(ticketId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'closed' })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'failed');
+}
+
+document.addEventListener('click', async (e) => {
+    const replyBtn = e.target.closest('.ticket-reply-btn');
+    if (replyBtn) {
+        const card = replyBtn.closest('.ticket-item');
+        const input = card && card.querySelector('.ticket-reply-input');
+        const message = input ? input.value.trim() : '';
+        if (!message) return;
+        replyBtn.disabled = true;
+        try {
+            await replyTicket(replyBtn.dataset.replyTo, message);
+            showAdminToast('تم إرسال الرد ✅', 'success');
+            await loadTickets();
+        } catch (err) {
+            showAdminToast('❌ فشل إرسال الرد', 'error');
+            replyBtn.disabled = false;
+        }
+        return;
+    }
+
+    const closeBtn = e.target.closest('.ticket-close-btn');
+    if (closeBtn) {
+        closeBtn.disabled = true;
+        try {
+            await closeTicket(closeBtn.dataset.closeTo);
+            showAdminToast('تم إغلاق التذكرة', 'info');
+            await loadTickets();
+        } catch (_err) {
+            showAdminToast('❌ فشل إغلاق التذكرة', 'error');
+            closeBtn.disabled = false;
+        }
+    }
+});
+
+document.getElementById('refreshTicketsBtn')?.addEventListener('click', loadTickets);

@@ -79,6 +79,28 @@ export function initAuth() {
     if (registerForm) registerForm.addEventListener('submit', handleRegister);
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
+    // نسخ كود الإحالة
+    const referralCopyBtn = document.getElementById('referralCopyBtn');
+    if (referralCopyBtn) {
+        referralCopyBtn.addEventListener('click', async () => {
+            const code = document.getElementById('referralCodeText')?.textContent?.trim();
+            if (!code) return;
+            try {
+                await navigator.clipboard.writeText(`${location.origin}/?ref=${code}`);
+            } catch (_e) {
+                const ta = document.createElement('textarea');
+                ta.value = `${location.origin}/?ref=${code}`;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+            showToast(t('referral_copy_done'), 'success');
+            referralCopyBtn.textContent = '✅';
+            setTimeout(() => { referralCopyBtn.textContent = t('referral_copy'); }, 1600);
+        });
+    }
+
     // معالجة نافذة سجل الطلبات (الإغلاق عبر [data-close-modal] في initModalBehaviors)
     if (orderHistoryBtn) orderHistoryBtn.addEventListener('click', showOrderHistory);
 
@@ -213,6 +235,7 @@ async function handleRegister(e) {
     e.preventDefault();
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
+    const referralCode = document.getElementById('registerReferralCode')?.value?.trim().toUpperCase() || undefined;
     const btn = e.target.querySelector('button');
     btn.disabled = true;
     btn.textContent = t('auth_creating');
@@ -221,7 +244,7 @@ async function handleRegister(e) {
         const res = await fetch('/api/users/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password, ...(referralCode ? { referralCode } : {}) })
         });
         const data = await res.json();
 
@@ -251,8 +274,15 @@ async function checkLoginState() {
         const data = await res.json();
         if (!data.success || !data.user) throw new Error('no session');
 
-        currentUser = { email: data.user.email, balance: data.user.balance };
+        currentUser = {
+            email: data.user.email,
+            balance: data.user.balance,
+            referralCode: data.user.referralCode,
+            referralCount: data.user.referralCount,
+            referralEarned: data.user.referralEarned
+        };
         setAuthButtonLabel(t('auth_account_label'));
+        renderReferralInfo(currentUser);
         const userEmailDisplay = document.getElementById('userEmailDisplay');
         if (userEmailDisplay) {
             userEmailDisplay.textContent = currentUser.email;
@@ -264,12 +294,32 @@ async function checkLoginState() {
     } catch (_err) {
         currentUser = null;
         setAuthButtonLabel(t('auth_login_btn'));
+        renderReferralInfo(null);
         const userAccountDropdown = document.getElementById('userAccountDropdown');
         if (userAccountDropdown) {
             userAccountDropdown.classList.remove('active');
         }
         realtimeAfterLogout();
     }
+}
+
+/**
+ * عرض قسم الإحالة في القائمة المنسدلة للحساب.
+ */
+function renderReferralInfo(user) {
+    const section = document.getElementById('referralDropdownSection');
+    const codeEl = document.getElementById('referralCodeText');
+    const statsEl = document.getElementById('referralStatsText');
+    if (!section || !codeEl) return;
+    if (!user || !user.referralCode) {
+        section.style.display = 'none';
+        return;
+    }
+    codeEl.textContent = user.referralCode;
+    if (statsEl) {
+        statsEl.textContent = `${t('referral_count_label')}: ${user.referralCount || 0} · ${t('referral_earned_label')}: ${formatPrice(user.referralEarned || 0)}`;
+    }
+    section.style.display = 'flex';
 }
 
 /**
@@ -348,6 +398,7 @@ async function handleLogout() {
     }
     currentUser = null;
     setAuthButtonLabel(t('auth_login_btn'));
+    renderReferralInfo(null);
     const userAccountDropdown = document.getElementById('userAccountDropdown');
     if (userAccountDropdown) {
         userAccountDropdown.classList.remove('active');

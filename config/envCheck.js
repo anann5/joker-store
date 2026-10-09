@@ -36,6 +36,9 @@ function validateEnv() {
     if (!process.env.JWT_USER_SECRET) {
         optionalWarnings.push('JWT_USER_SECRET غير مضبوط — سجلات مستخدمين غير آمنة في الإنتاج');
     }
+    if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+        optionalWarnings.push('VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY غير مضبوطين — إشعارات Web Push غير مفعلة');
+    }
 
     if (optionalWarnings.length > 0) {
         console.warn('ℹ️  تنبيهات اختيارية:');

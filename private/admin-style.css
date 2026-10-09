@@ -1975,3 +1975,61 @@ code {
         animation: none;
     }
 }
+
+/* =========================================================
+   مظهر فاتح (Light theme)
+   الداكن هو الأساس افتراضياً (أول زيارة بلا تفضيل → داكن).
+   الفاتح تفرضه أداة التبديل في الرأس عبر html[data-theme="light"]
+   (و media query أدناه تخص فقط العرض التلقائي بلا سمة صريحة).
+   ========================================================= */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme]) {
+        color-scheme: light;
+        --bg-0: #F4F6FC;
+        --bg-1: #EDF1FA;
+        --bg-2: #E3E8F5;
+        --glass: rgba(255, 255, 255, .78);
+        --glass-strong: rgba(255, 255, 255, .94);
+        --glass-soft: rgba(255, 255, 255, .62);
+        --glass-border: rgba(28, 39, 80, .10);
+        --glass-border-strong: rgba(28, 39, 80, .18);
+        --top-hi: rgba(28, 39, 80, .05);
+        --text-1: #1A2035;
+        --text-2: #414C6B;
+        --text-muted: #66708C;
+        --line: rgba(28, 39, 80, .08);
+        --card-bg: rgba(255, 255, 255, .86);
+        --shadow-1: 0 2px 8px rgba(23, 34, 72, .07);
+        --shadow-2: 0 18px 40px rgba(23, 34, 72, .10), 0 2px 8px rgba(91, 107, 245, .05);
+        --shadow-glow: 0 10px 28px rgba(91, 107, 245, .16);
+        --success-soft: rgba(16, 185, 129, .14);
+        --danger-soft: rgba(244, 63, 94, .12);
+        --warning-soft: rgba(217, 119, 6, .12);
+        --accent-soft: rgba(2, 132, 199, .10);
+    }
+}
+
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg-0: #F4F6FC;
+    --bg-1: #EDF1FA;
+    --bg-2: #E3E8F5;
+    --glass: rgba(255, 255, 255, .78);
+    --glass-strong: rgba(255, 255, 255, .94);
+    --glass-soft: rgba(255, 255, 255, .62);
+    --glass-border: rgba(28, 39, 80, .10);
+    --glass-border-strong: rgba(28, 39, 80, .18);
+    --top-hi: rgba(28, 39, 80, .05);
+    --text-1: #1A2035;
+    --text-2: #414C6B;
+    --text-muted: #66708C;
+    --line: rgba(28, 39, 80, .08);
+    --card-bg: rgba(255, 255, 255, .86);
+    --shadow-1: 0 2px 8px rgba(23, 34, 72, .07);
+    --shadow-2: 0 18px 40px rgba(23, 34, 72, .10), 0 2px 8px rgba(91, 107, 245, .05);
+    --shadow-glow: 0 10px 28px rgba(91, 107, 245, .16);
+    --success-soft: rgba(16, 185, 129, .14);
+    --danger-soft: rgba(244, 63, 94, .12);
+    --warning-soft: rgba(217, 119, 6, .12);
+    --accent-soft: rgba(2, 132, 199, .10);
+}

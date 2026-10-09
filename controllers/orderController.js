@@ -1,6 +1,7 @@
 const { Product, Order } = require('../models');
 const { createLog, sendTelegramAlert } = require('./helpers');
 const { sendOrderConfirmationEmail, sendOrderRejectedEmail } = require('./notification');
+const pushService = require('./push');
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
 
@@ -185,6 +186,12 @@ exports.rejectOrder = async (req, res) => {
         await sendTelegramAlert(`⛔ تم رفض الطلب #${order.orderId}.`);
         await sendOrderRejectedEmail(order);
 
+        // Web Push — إشعار خاص بمالك الطلب إن كان مسجلاً
+        pushService.notifyOrderStatus(order).catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error('[push] فشل إشعار رفض الطلب:', err.message);
+        });
+
         // إشعار لحظي للعميل المسجل عند رفض الطلب واسترداد المبلغ
         const io = req.app?.get('io');
         if (io && order.userId) {
@@ -203,6 +210,7 @@ exports.rejectOrder = async (req, res) => {
 
 exports.approveOrder = async (req, res) => {
     let order;
+    const io = req.app?.get('io');
 
     try {
         order = await Order.findOneAndUpdate(
@@ -219,117 +227,7 @@ exports.approveOrder = async (req, res) => {
             return res.status(409).json({ success: false, message: 'الطلب معالج مسبقاً' });
         }
 
-        const allDeliveredCodes = [];
-        let totalCost = 0;
-
-        for (const item of order.items) {
-            const productId = getItemProductId(item);
-            // eslint-disable-next-line no-await-in-loop
-            const product = await Product.findById(productId);
-            if (!product || !product.isActive) {
-                throw new Error('أحد منتجات الطلب لم يعد متاحاً');
-            }
-
-            item.fulfilmentStatus = 'processing';
-            const deliveredCodes = [];
-            let itemCost = 0;
-
-            if (item.fulfilmentType === 'external' || product.isExternal) {
-                // حماية هامش الربح: تمر على أحدث سعر للمزود بعد آخر مزامنة،
-                // فلو هبط الهامش دون الحد المسموح يُوقف التنفيذ آلياً ويُرسل تنبيه.
-                const baseCost = Number(product.basePrice);
-                if (baseCost > 0 && Number(product.price) / baseCost < MIN_PROFIT_RATIO) {
-                    const name = product.productName.ar || product.productName.en;
-                    // eslint-disable-next-line no-await-in-loop
-                    await sendTelegramAlert(
-                        `🚨 *هامش ربح منخفض — تنفيذ موقوف*\n`
-                        + `📦 *المنتج:* ${name}\n`
-                        + `💰 *سعر البيع:* \`${Number(product.price) || 0}\`\n`
-                        + `🏷️ *التكلفة:* \`${baseCost}\`\n`
-                        + `🛡️ *الحد الأدنى للنسبة:* ${MIN_PROFIT_RATIO}\n`
-                        + `👀 يرجى مراجعة الطلب #${order.orderId} يدوياً.`
-                    );
-                    throw new Error(`هامش الربح للمنتج "${name}" دون الحد المسموح؛ التنفيذ يتطلب تدخلاً يدوياً.`);
-                }
-                // eslint-disable-next-line no-await-in-loop
-                const purchase = await buyExternalCodes(product, item.qty);
-                deliveredCodes.push(...purchase.codes);
-                itemCost = purchase.costPrice;
-            } else {
-                for (let claimed = 0; claimed < item.qty; claimed += 1) {
-                    // eslint-disable-next-line no-await-in-loop
-                    const code = await Product.claimCodeAtomic(product._id, order.orderId, order.buyerEmail);
-                    deliveredCodes.push(code);
-                }
-                // التكلفة الفعلية: basePrice إن وُجد، وإلا تقديرها من هامش الربح
-                // (سعر البيع = basePrice × profitMargin، لذا basePrice ≈ price / profitMargin)
-                const unitPrice = Number(item.unitPrice) || Number(product.price) || 0;
-                const basePrice = Number(product.basePrice);
-                const margin = Number(product.profitMargin) > 1 ? Number(product.profitMargin) : 1.10;
-                const unitCost = basePrice > 0 ? basePrice : (unitPrice > 0 ? unitPrice / margin : 0);
-                itemCost = unitCost * item.qty;
-            }
-
-            item.deliveredCodes = deliveredCodes;
-            item.costPrice = itemCost;
-            item.fulfilmentStatus = 'completed';
-            item.fulfilledAt = new Date();
-            allDeliveredCodes.push(...deliveredCodes);
-            totalCost += itemCost;
-        }
-
-        order.status = 'completed';
-        order.deliveredCodes = allDeliveredCodes;
-        order.code = allDeliveredCodes.length === 1 ? allDeliveredCodes[0] : null;
-        order.costPrice = totalCost;
-        order.completedAt = new Date();
-        await order.save();
-
-        // نقاط الولاء: 1 نقطة لكل 10₪
-        if (order.userId) {
-            const pointsEarned = Math.floor((order.totalPrice || 0) / 10);
-            if (pointsEarned > 0) {
-                const User = require('../models').User;
-                await User.findByIdAndUpdate(order.userId, {
-                    $inc: { loyaltyPoints: pointsEarned },
-                    $push: {
-                        loyaltyHistory: {
-                            points: pointsEarned,
-                            type: 'earned',
-                            orderId: order._id,
-                            createdAt: new Date()
-                        }
-                    }
-                });
-            }
-        }
-
-        await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
-        await sendOrderConfirmationEmail(order);
-
-        // Emit WebSocket event to authenticated admin sockets only
-        const io = req.app?.get('io');
-        if (io) {
-            io.to('admins').emit('order_approved', {
-                orderId: order.orderId,
-                buyerEmail: order.buyerEmail
-            });
-
-            // إشعار لحظي للعميل المسجل عند اكتمال الطلب (لا تُرسل الأكواد عبر WS)
-            if (order.userId) {
-                io.to(`user:${String(order.userId)}`).emit('order_status', {
-                    orderId: order.orderId,
-                    status: 'completed'
-                });
-            }
-            // نبض اجتماعي حقيقي مجهول — لكل زوار الموقع عند كل طلب مكتمل
-            if (typeof io.emit === 'function') {
-                io.emit('order_completed', {
-                    productName: order.productName,
-                    time: Date.now()
-                });
-            }
-        }
+        await performFulfilment(order, io, req);
 
         return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });
     } catch (err) {
@@ -356,3 +254,171 @@ exports.approveOrder = async (req, res) => {
 };
 
 exports.buyExternalCodes = buyExternalCodes;
+
+/**
+ * تنفيذ التسليم الفعلي للطلب (أكواد خارجية من أرخص مزود / أكواد محلية ذرية).
+ * مشترك بين الموافقة اليدوية (approveOrder) والتسليم التلقائي (autoFulfilOrder).
+ * عند الفشل يُرمى خطأ فيُحوَّل الطلب للمراجعة اليدوية من قبل المتصل.
+ */
+async function performFulfilment(order, io, req) {
+    const allDeliveredCodes = [];
+    let totalCost = 0;
+
+    for (const item of order.items) {
+        const productId = getItemProductId(item);
+        // eslint-disable-next-line no-await-in-loop
+        const product = await Product.findById(productId);
+        if (!product || !product.isActive) {
+            throw new Error('أحد منتجات الطلب لم يعد متاحاً');
+        }
+
+        item.fulfilmentStatus = 'processing';
+        const deliveredCodes = [];
+        let itemCost = 0;
+
+        if (item.fulfilmentType === 'external' || product.isExternal) {
+            // حماية هامش الربح: تمر على أحدث سعر للمزود بعد آخر مزامنة،
+            // فلو هبط الهامش دون الحد المسموح يُوقف التنفيذ آلياً ويُرسل تنبيه.
+            const baseCost = Number(product.basePrice);
+            if (baseCost > 0 && Number(product.price) / baseCost < MIN_PROFIT_RATIO) {
+                const name = product.productName.ar || product.productName.en;
+                // eslint-disable-next-line no-await-in-loop
+                await sendTelegramAlert(
+                    `🚨 *هامش ربح منخفض — تنفيذ موقوف*\n`
+                    + `📦 *المنتج:* ${name}\n`
+                    + `💰 *سعر البيع:* \`${Number(product.price) || 0}\`\n`
+                    + `🏷️ *التكلفة:* \`${baseCost}\`\n`
+                    + `🛡️ *الحد الأدنى للنسبة:* ${MIN_PROFIT_RATIO}\n`
+                    + `👀 يرجى مراجعة الطلب #${order.orderId} يدوياً.`
+                );
+                throw new Error(`هامش الربح للمنتج "${name}" دون الحد المسموح؛ التنفيذ يتطلب تدخلاً يدوياً.`);
+            }
+            // eslint-disable-next-line no-await-in-loop
+            const purchase = await buyExternalCodes(product, item.qty);
+            deliveredCodes.push(...purchase.codes);
+            itemCost = purchase.costPrice;
+        } else {
+            for (let claimed = 0; claimed < item.qty; claimed += 1) {
+                // eslint-disable-next-line no-await-in-loop
+                const code = await Product.claimCodeAtomic(product._id, order.orderId, order.buyerEmail);
+                deliveredCodes.push(code);
+            }
+            // التكلفة الفعلية: basePrice إن وُجد، وإلا تقديرها من هامش الربح
+            // (سعر البيع = basePrice × profitMargin، لذا basePrice ≈ price / profitMargin)
+            const unitPrice = Number(item.unitPrice) || Number(product.price) || 0;
+            const basePrice = Number(product.basePrice);
+            const margin = Number(product.profitMargin) > 1 ? Number(product.profitMargin) : 1.10;
+            const unitCost = basePrice > 0 ? basePrice : (unitPrice > 0 ? unitPrice / margin : 0);
+            itemCost = unitCost * item.qty;
+        }
+
+        item.deliveredCodes = deliveredCodes;
+        item.costPrice = itemCost;
+        item.fulfilmentStatus = 'completed';
+        item.fulfilledAt = new Date();
+        allDeliveredCodes.push(...deliveredCodes);
+        totalCost += itemCost;
+    }
+
+    order.status = 'completed';
+    order.deliveredCodes = allDeliveredCodes;
+    order.code = allDeliveredCodes.length === 1 ? allDeliveredCodes[0] : null;
+    order.costPrice = totalCost;
+    order.completedAt = new Date();
+    await order.save();
+
+    // نقاط الولاء: 1 نقطة لكل 10₪
+    if (order.userId) {
+        const pointsEarned = Math.floor((order.totalPrice || 0) / 10);
+        if (pointsEarned > 0) {
+            const User = require('../models').User;
+            await User.findByIdAndUpdate(order.userId, {
+                $inc: { loyaltyPoints: pointsEarned },
+                $push: {
+                    loyaltyHistory: {
+                        points: pointsEarned,
+                        type: 'earned',
+                        orderId: order._id,
+                        createdAt: new Date()
+                    }
+                }
+            });
+        }
+    }
+
+    await createLog('تأكيد طلب', `تم إكمال الطلب #${order.orderId}`, req, null, order.productName);
+    await sendOrderConfirmationEmail(order);
+
+    // Web Push — إشعار خاص بمالك الطلب إن كان مسجلاً
+    pushService.notifyOrderStatus(order).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('[push] فشل إشعار إكمال الطلب:', err.message);
+    });
+
+    if (io) {
+        io.to('admins').emit('order_approved', {
+            orderId: order.orderId,
+            buyerEmail: order.buyerEmail
+        });
+
+        // إشعار لحظي للعميل المسجل عند اكتمال الطلب (لا تُرسل الأكواد عبر WS)
+        if (order.userId) {
+            io.to(`user:${String(order.userId)}`).emit('order_status', {
+                orderId: order.orderId,
+                status: 'completed'
+            });
+        }
+        // نبض اجتماعي حقيقي مجهول — لكل زوار الموقع عند كل طلب مكتمل
+        if (typeof io.emit === 'function') {
+            io.emit('order_completed', {
+                productName: order.productName,
+                time: Date.now()
+            });
+        }
+    }
+
+    return { success: true };
+}
+
+/**
+ * تسليم تلقائي للطلب المدفوع (يُستدعى من Webhook Stripe أو مهمة تسوية دورية).
+ * يعمل على أي طلب بحالة pending فقط؛ أي محاولة تكرار تُرفض بأمان.
+ */
+exports.autoFulfilOrder = async (orderId, io) => {
+    let order;
+
+    try {
+        order = await Order.findOne({ orderId });
+        if (!order) {
+            return { success: false, reason: 'الطلب غير موجود' };
+        }
+        if (order.status !== 'pending') {
+            return { success: false, reason: `الطلب بحالة ${order.status}` };
+        }
+
+        order.status = 'processing';
+        await order.save();
+
+        await performFulfilment(order, io, null);
+        await sendTelegramAlert(`⚡ *تسليم تلقائي ناجح*\n🧾 *الطلب:* #${order.orderId}`);
+
+        return { success: true, orderId: order.orderId };
+    } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Auto Fulfilment Error:', err.message);
+
+        if (order) {
+            order.status = 'failed';
+            order.failedAt = new Date();
+            order.items.forEach(item => {
+                if (item.fulfilmentStatus === 'processing') {
+                    item.fulfilmentStatus = 'failed';
+                }
+            });
+            await order.save();
+            await sendTelegramAlert(`🚨 فشل التسليم التلقائي للطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
+        }
+
+        return { success: false, reason: err.message };
+    }
+};

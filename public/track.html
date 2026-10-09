@@ -7,9 +7,9 @@
     <link rel="apple-touch-icon" href="/image/logo.png" />
     <link rel="manifest" href="/manifest.json?v=6" />
     <meta name="theme-color" content="#0B0F1C" />
-    <link rel="canonical" href="/about" />
-    <title data-page-title-key="about_title">من نحن | Joker Store</title>
-    <meta name="description" content="Joker Store — متجرك الموثوق لشحن الألعاب والبطاقات الرقمية. أكواد أصلية مضمونة 100% وتوصيل فوري." data-i18n-meta="meta_about_desc" />
+    <link rel="canonical" href="/track" />
+    <title data-page-title-key="track_title">تتبع طلبك | Joker Store</title>
+    <meta name="description" content="تتبّع طلبك في Joker Store لحظياً — اعرف حالة طلبك وأكواد الشحن." data-i18n-meta="meta_track_desc" />
     <link rel="icon" type="image/png" href="/image/logo.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -45,34 +45,21 @@
 
     <main class="sub-page-main">
         <div class="sub-page-hero">
-            <h1><i class="fas fa-store"></i><span data-i18n-key="about_title">من نحن</span></h1>
-            <p data-i18n-key="about_lead">Joker Store هو متجر إلكتروني متخصص في بيع البطاقات الرقمية والألعاب والاشتراكات بأسعار تنافسية مع خدمة سريعة وآمنة.</p>
+            <h1><i class="fas fa-search-location"></i><span data-i18n-key="track_title">تتبع طلبك</span></h1>
+            <p data-i18n-key="meta_track_desc">تتبّع طلبك في Joker Store لحظياً — اعرف الحالة وسير التوصيل وأكواد الشحن عبر بريدك الإلكتروني ورقم الطلب.</p>
         </div>
 
         <div class="sub-page-card">
-            <h2><i class="fas fa-bullseye"></i> <span data-i18n-key="about_mission">مهمتنا</span></h2>
-            <p data-i18n-key="about_body">نهدف إلى تقديم تجربة تسوق مريحة، مع دعم سريع وضمان استلام الكود فوراً بعد تأكيد الدفع.</p>
-        </div>
-
-        <div class="sub-page-card">
-            <h2><i class="fas fa-star"></i> <span data-i18n-key="about_values_title">قيمنا</span></h2>
-            <div class="sub-page-grid">
-                <div class="sub-value-card">
-                    <i class="fas fa-shield-alt"></i>
-                    <h3 data-i18n-key="about_value1_title">أصالة 100%</h3>
-                    <p data-i18n-key="about_value1_desc">جميع الأكواد أصلية ومضمونة من مصادر موثوقة.</p>
-                </div>
-                <div class="sub-value-card">
-                    <i class="fas fa-bolt"></i>
-                    <h3 data-i18n-key="about_value2_title">توصيل فوري</h3>
-                    <p data-i18n-key="about_value2_desc">استلام الكود خلال دقائق من تأكيد الدفع.</p>
-                </div>
-                <div class="sub-value-card">
-                    <i class="fas fa-headset"></i>
-                    <h3 data-i18n-key="about_value3_title">دعم حقيقي</h3>
-                    <p data-i18n-key="about_value3_desc">فريقنا متاح لمساعدتك في أي وقت.</p>
-                </div>
+            <div class="form-group">
+                <label for="trackEmailInput" data-i18n-key="track_email_label">البريد الإلكتروني الذي طلبت به</label>
+                <input type="email" id="trackEmailInput" class="form-control" placeholder="example@mail.com" required>
             </div>
+            <div class="form-group">
+                <label for="trackOrderIdInput" data-i18n-key="track_id_label">رقم الطلب (اختياري)</label>
+                <input type="text" id="trackOrderIdInput" class="form-control" placeholder="ABC123" style="direction: ltr; text-align: left;">
+            </div>
+            <button type="button" id="trackOrderBtn" class="enter-btn" style="width:100%;"><i class="fas fa-search"></i> <span data-i18n-key="track_btn">تتبع الآن</span></button>
+            <div id="trackOrderResults" style="margin-top: 18px;"></div>
         </div>
 
         <div style="text-align:center; margin-top:26px;">
@@ -89,8 +76,7 @@
             </div>
             <hr class="footer-divider">
             <div class="footer-links">
-                                <a href="/track" data-i18n-key="sub_footer_track">تتبع طلبك</a>
-<a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
                 <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
                 <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
                 <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
@@ -101,5 +87,6 @@
     </footer>
 
     <script type="module" src="sub-page.js"></script>
+    <script type="module" src="track-page.js"></script>
 </body>
 </html>

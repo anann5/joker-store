@@ -19,6 +19,7 @@ router.post('/users/login', authLimiter, validate(loginSchema), userAuthControll
 // مسارات محمية تتطلب تسجيل الدخول
 router.get('/users/orders', verifyUserToken, userAuthController.getOrderHistory);
 router.get('/users/me', verifyUserTokenOptional, userAuthController.getMe);
+router.get('/users/referral', verifyUserToken, userAuthController.getReferralInfo);
 
 // مزامنة السلة السحابية (يتطلب تسجيل الدخول — للتزامن بين الأجهزة)
 router.get('/users/cart', verifyUserToken, userAuthController.getUserCart);

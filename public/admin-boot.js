@@ -5,6 +5,18 @@
  * (no inline scripts allowed).
  */
 (function () {
+    // استعادة مظهر لوحة الأدمن قبل الرندر لمنع "وميض" اللون
+    // الداكن هو النمط الأساسي: أول زيارة بلا تفضيل → داكن دائماً.
+    try {
+        const saved = localStorage.getItem('joker_admin_theme');
+        if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved);
+        } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('joker_admin_theme', 'dark');
+        }
+    } catch (_e) {}
+
     const overlay = document.getElementById('loadingOverlay');
     const script = document.createElement('script');
     script.src = '/admin.js';

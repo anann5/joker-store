@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const { Order } = require('../models');
 const { createLog, sendTelegramAlert } = require('./helpers');
+const orderController = require('./orderController');
 
 const STRIPE_API = 'https://api.stripe.com/v1';
 
@@ -131,6 +132,17 @@ exports.stripeWebhook = async (req, res) => {
                     + `🧾 *الطلب:* #${orderId}\n`
                     + `💰 *المبلغ:* \`${order.price}\``
                 );
+
+                // تسليم تلقائي فوري بعد تأكيد الدفع (يعمل فقط على الطلبات pending).
+                // يُفعَّل تلقائياً، ويُعطَّل عبر AUTO_FULFIL_ORDERS=false.
+                const autoFulfilEnabled = String(process.env.AUTO_FULFIL_ORDERS ?? 'true') !== 'false';
+                if (autoFulfilEnabled && order.status === 'pending') {
+                    const io = req.app?.get('io');
+                    orderController.autoFulfilOrder(orderId, io).catch(err => {
+                        // eslint-disable-next-line no-console
+                        console.error('[stripe] فشل التسليم التلقائي:', err.message);
+                    });
+                }
             }
         }
     }

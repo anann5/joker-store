@@ -1,10 +1,34 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { User, Order } = require('../models');
 const { logSecurityEvent } = require('../middleware/securityLogger');
 
 // مفتاح توقيع منفصل لتوكنات المستخدمين (يُنصح بأن يختلف عن مفتاح الأدمن)
 const getUserSecret = () => process.env.JWT_USER_SECRET || process.env.JWT_SECRET;
+
+// ===== نظام الإحالة =====
+const REFERRAL_REWARD = () => parseFloat(process.env.REFERRAL_REWARD || '5');
+const REFERRAL_WELCOME = () => parseFloat(process.env.REFERRAL_WELCOME || '2');
+const REFERRAL_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // بلا أحرف غامضة
+
+const generateReferralCode = () => {
+    const bytes = crypto.randomBytes(6);
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += REFERRAL_ALPHABET[bytes[i] % REFERRAL_ALPHABET.length];
+    }
+    return code;
+};
+
+async function generateUniqueReferralCode() {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateReferralCode();
+        const exists = await User.findOne({ referralCode: code }).select('_id').lean();
+        if (!exists) return code;
+    }
+    throw new Error('تعذر توليد كود إحالة فريد');
+}
 
 // Track failed login attempts
 const failedAttempts = new Map();
@@ -33,6 +57,7 @@ const isLocalhostRequest = (req) => {
 exports.register = async (req, res) => {
     try {
         const { email, password } = req.body;
+        const referralCodeInput = String(req.body.referralCode || '').trim().toUpperCase();
 
         if (!email || !password) {
             return res.status(400).json({ success: false, message: 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.' });
@@ -52,16 +77,51 @@ exports.register = async (req, res) => {
             return res.status(409).json({ success: false, message: 'هذا البريد الإلكتروني مسجل بالفعل.' });
         }
 
+        // التحقق من كود الإحالة المرفق (اختياري)
+        let referrer = null;
+        const normalizedEmail = email.toLowerCase();
+        if (referralCodeInput) {
+            if (referralCodeInput.length < 4 || referralCodeInput.length > 12 || !/^[A-Z0-9]+$/.test(referralCodeInput)) {
+                return res.status(400).json({ success: false, message: 'كود الإحالة غير صالح.' });
+            }
+            referrer = await User.findOne({ referralCode: referralCodeInput }).select('email').lean();
+            if (!referrer) {
+                return res.status(400).json({ success: false, message: 'كود الإحالة غير صالح.' });
+            }
+            if (referrer.email === normalizedEmail) {
+                return res.status(400).json({ success: false, message: 'لا يمكنك استخدام كود إحالتك الخاص.' });
+            }
+        }
+
         const salt = await bcrypt.genSalt(12); // زيادة عدد الأدوار للأمان
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const newUser = new User({
-            email: email.toLowerCase(),
+            email: normalizedEmail,
             passwordHash: hashedPassword,
             balance: 0
         });
 
+        newUser.referralCode = await generateUniqueReferralCode();
         await newUser.save();
+
+        if (referrer) {
+            const reward = REFERRAL_REWARD();
+            const welcome = REFERRAL_WELCOME();
+            await User.updateOne(
+                { _id: referrer._id },
+                {
+                    $inc: { balance: reward, referralEarned: reward, referralCount: 1 },
+                    $push: { referralHistory: { amount: reward, type: 'referral', fromEmail: normalizedEmail } }
+                }
+            );
+            if (welcome > 0) {
+                newUser.balance += welcome;
+                newUser.referralHistory.push({ amount: welcome, type: 'welcome', fromEmail: referrer.email });
+                await newUser.save();
+            }
+            logSecurityEvent('REFERRAL_USED', `إحالة مستخدم جديد: ${referralCodeInput} ← ${normalizedEmail}`, req);
+        }
 
         logSecurityEvent('USER_REGISTERED', `تم تسجيل مستخدم جديد: ${email}`, req);
 
@@ -161,13 +221,52 @@ exports.getMe = async (req, res) => {
         if (!req.user || !req.user.userId) {
             return res.json({ success: true, user: null });
         }
-        const user = await User.findById(req.user.userId).select('email balance');
+        const user = await User.findById(req.user.userId).select('email balance referralCode referralCount referralEarned');
         if (!user) {
             return res.json({ success: true, user: null });
         }
-        res.json({ success: true, user: { email: user.email, balance: user.balance } });
+        res.json({
+            success: true,
+            user: {
+                email: user.email,
+                balance: user.balance,
+                referralCode: user.referralCode,
+                referralCount: user.referralCount,
+                referralEarned: user.referralEarned
+            }
+        });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'حدث خطأ أثناء جلب بيانات المستخدم.' });
+    }
+};
+
+/**
+ * معلومات الإحالة للمستخدم الحالي: كود المشاركة + رابط + إحصائيات.
+ */
+exports.getReferralInfo = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId)
+            .select('referralCode referralCount referralEarned referralHistory email');
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'المستخدم غير موجود.' });
+        }
+
+        const host = req.get('host');
+        const proto = req.headers['x-forwarded-proto'] || req.protocol;
+        const origin = `${proto}://${host}`;
+
+        res.json({
+            success: true,
+            referral: {
+                code: user.referralCode,
+                url: `${origin}/?ref=${user.referralCode}`,
+                count: user.referralCount,
+                earned: user.referralEarned,
+                history: Array.isArray(user.referralHistory) ? user.referralHistory.slice(-10).reverse() : []
+            }
+        });
+    } catch (_err) {
+        res.status(500).json({ success: false, error: 'فشل جلب معلومات الإحالة.' });
     }
 };
 

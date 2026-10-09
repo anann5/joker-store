@@ -77,7 +77,7 @@ exports.getReports = async (req, res) => {
 
         const match = { status: 'completed', completedAt: { $gte: start } };
 
-        const [daily, byCategory, byProvider, totals] = await Promise.all([
+        const [daily, byCategory, byProvider, byProduct, totals] = await Promise.all([
             Order.aggregate([
                 { $match: match },
                 {
@@ -121,11 +121,39 @@ exports.getReports = async (req, res) => {
             ]),
             Order.aggregate([
                 { $match: match },
+                { $unwind: '$items' },
+                { $lookup: { from: 'products', localField: 'items.productId', foreignField: '_id', as: 'p' } },
+                { $unwind: { path: '$p', preserveNullAndEmptyArrays: true } },
+                {
+                    $group: {
+                        _id: '$items.productId',
+                        nameAr: { $first: { $ifNull: ['$p.productName.ar', '$items.name.ar'] } },
+                        nameEn: { $first: { $ifNull: ['$p.productName.en', '$items.name.en'] } },
+                        qty: { $sum: '$items.qty' },
+                        orders: { $sum: 1 },
+                        revenue: { $sum: '$items.price' },
+                        cost: { $sum: '$items.costPrice' }
+                    }
+                },
+                { $sort: { revenue: -1 } },
+                { $limit: 10 }
+            ]),
+            Order.aggregate([
+                { $match: match },
                 {
                     $group: {
                         _id: null,
                         revenue: { $sum: '$price' },
-                        cost: { $sum: '$costPrice' }
+                        cost: { $sum: '$costPrice' },
+                        profit: {
+                            $sum: {
+                                $cond: [
+                                    { $and: [{ $ne: ['$costPrice', null] }, { $gt: ['$costPrice', 0] }] },
+                                    { $subtract: ['$price', '$costPrice'] },
+                                    0
+                                ]
+                            }
+                        }
                     }
                 }
             ])
@@ -134,10 +162,16 @@ exports.getReports = async (req, res) => {
         res.json({
             success: true,
             days,
-            totals: totals[0] || { revenue: 0, cost: 0 },
+            totals: totals[0] || { revenue: 0, cost: 0, profit: 0 },
             daily,
             byCategory,
-            byProvider
+            byProvider,
+            byProduct: byProduct.map(row => ({
+                ...row,
+                nameAr: row.nameAr || row.nameEn || 'غير معروف',
+                nameEn: row.nameEn || row.nameAr || 'Unknown',
+                profit: (Number(row.revenue) || 0) - (Number(row.cost) || 0)
+            }))
         });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل جلب التقارير' });

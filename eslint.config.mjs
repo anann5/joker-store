@@ -109,6 +109,8 @@ export default [
         showToast: 'readonly',
         initToastContainer: 'readonly',
         Chart: 'readonly',
+        Notification: 'readonly',
+        PushManager: 'readonly',
       },
     },
     rules: {

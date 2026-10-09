@@ -62,7 +62,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" media="print" data-async-css>
-    <link rel="stylesheet" href="/style.css?v=8">
+    <script src="/theme.js?v=13"></script>
+    <link rel="stylesheet" href="/style.css?v=13">
     <link rel="modulepreload" href="/script.js">
     <link rel="modulepreload" href="/i18n.js">
     <link rel="modulepreload" href="/ui.js">
@@ -92,6 +93,9 @@
         </button>
 
         <div class="header-controls">
+            <button id="themeToggleBtn" class="header-btn theme-toggle-btn" title="تبديل المظهر (فاتح / داكن / النظام)" aria-label="تبديل المظهر">
+                <i class="fas fa-moon"></i>
+            </button>
             <button id="lang-switcher" class="header-btn" title="Switch Language">
                 <i class="fas fa-globe"></i>
                 <span>EN</span>
@@ -106,6 +110,14 @@
             <div id="userAccountDropdown">
                 <div id="userEmailDisplay" class="account-dropdown-item account-email-item"></div>
                 <div id="orderHistoryBtn" class="account-dropdown-item"><i class="fas fa-history"></i> <span data-i18n-key="order_history_label">سجل الطلبات</span></div>
+                <div id="referralDropdownSection" class="account-dropdown-item" style="display:none; flex-direction:column; align-items:flex-start; gap:6px; padding:10px 14px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted);"><i class="fas fa-gift"></i> <span data-i18n-key="referral_heading">كود الإحالة الخاص بك</span></div>
+                    <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                        <strong id="referralCodeText" dir="ltr" style="letter-spacing:2px; color:var(--accent);"></strong>
+                        <button id="referralCopyBtn" class="enter-btn" style="padding:4px 10px; font-size:0.75rem;" data-i18n-key="referral_copy">نسخ</button>
+                    </div>
+                    <div id="referralStatsText" style="font-size:0.75rem; color:var(--text-muted);"></div>
+                </div>
                 <div id="logoutBtn" class="account-dropdown-item account-logout"><i class="fas fa-sign-out-alt"></i> <span data-i18n-key="logout_label">تسجيل الخروج</span></div>
             </div>
         </div>
@@ -372,7 +384,7 @@
         <!-- شوهد مؤخراً — حقيقي -->
         <section class="info-section auto-section" id="recentlyViewedSection" hidden>
             <div class="section-head">
-                <h2 class="section-title auto-title"><i class="fas fa-history"></i> <span>شوهد مؤخراً</span></h2>
+                <h2 class="section-title auto-title"><i class="fas fa-history"></i> <span data-i18n-key="recently_viewed_title">شوهد مؤخراً</span></h2>
             </div>
             <div class="products-grid auto-products-grid" id="recentlyViewedGrid"></div>
         </section>
@@ -453,6 +465,10 @@
             <div class="form-group">
                 <label for="registerPassword" data-i18n-key="auth_password_label">كلمة المرور</label>
                 <input type="password" id="registerPassword" required minlength="8">
+            </div>
+            <div class="form-group">
+                <label for="registerReferralCode" data-i18n-key="auth_referral_label">كود الإحالة (اختياري)</label>
+                <input type="text" id="registerReferralCode" maxlength="12" autocomplete="off">
             </div>
             <button type="submit" class="auth-submit-btn" data-i18n-key="auth_tab_register">إنشاء حساب</button>
         </form>
@@ -933,13 +949,14 @@
     <button type="button" class="lightbox-close" data-lightbox-close aria-label="إغلاق"><i class="fas fa-times"></i></button>
     <button type="button" class="lightbox-prev" data-lightbox-prev aria-label="الصورة السابقة"><i class="fas fa-chevron-left"></i></button>
     <button type="button" class="lightbox-next" data-lightbox-next aria-label="الصورة التالية"><i class="fas fa-chevron-right"></i></button>
-    <img src="" class="lightbox-img" data-lightbox-img alt="">
+    <img src="" class="lightbox-img" data-lightbox-img alt="" loading="lazy" decoding="async">
 </div>
 
 <!-- ====================================================== -->
 <!-- ⏱️ عدّاد عرض اليوم + 🍔 قائمة الموبايل (سكربت خارجي للالتزام بـ CSP) -->
 <!-- ====================================================== -->
 <script src="/countdown-menu.js?v=4.1" defer></script>
+<script type="module" src="/push.js"></script>
 <script src="/sw-register.js" defer></script>
 </body>
 </html>

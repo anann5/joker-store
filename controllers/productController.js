@@ -4,6 +4,7 @@ const { clearStorefrontCache } = require('./storeController');
 const providerSync = require('../providers/sync');
 const currency = require('../providers/currency');
 const pricing = require('../providers/pricing');
+const pushService = require('./push');
 
 function getLocalizedValue(value, fallback = '') {
     if (!value || typeof value !== 'object') return value || fallback;
@@ -202,6 +203,12 @@ exports.createProduct = async (req, res) => {
             productName.ar || productName.en
         );
 
+        // Web Push — إعلام المشتركين بمنتج جديد
+        pushService.notifyNewProduct(productName.ar, productName.en, newProduct._id).catch((err) => {
+            // eslint-disable-next-line no-console
+            console.error('[push] فشل إشعار المنتج الجديد:', err.message);
+        });
+
         res.status(201).json({
             success: true,
             message: '✅ تم إنشاء المنتج بنجاح!',
@@ -221,7 +228,71 @@ exports.createProduct = async (req, res) => {
 };
 
 /**
- * إنشاء منتج مع كودات يدوي — يدعم رفع ملف CSV أو إرسال كودات كمصفوفة
+ * إضافة كودات يدوية لمنتج موجود (مع تجاهل المكرر).
+ * @route POST /api/admin/products/:productId/codes
+ * @body { codes: string[] | manualCodes: string[] }
+ */
+exports.addProductCodes = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        if (!productId || typeof productId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(productId)) {
+            return res.status(400).json({ success: false, message: 'معرف المنتج غير صالح' });
+        }
+
+        const rawCodes = Array.isArray(req.body.codes) ? req.body.codes : req.body.manualCodes;
+        if (!Array.isArray(rawCodes) || rawCodes.length === 0) {
+            return res.status(400).json({ success: false, message: 'لا توجد كودات للإضافة' });
+        }
+        if (rawCodes.length > 1000) {
+            return res.status(400).json({ success: false, message: 'الحد الأقصى 1000 كود في كل عملية' });
+        }
+
+        const product = await Product.findById(productId);
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'المنتج غير موجود' });
+        }
+        if (product.isExternal) {
+            return res.status(400).json({ success: false, message: 'المنتجات الخارجية (API) لا تدعم كودات يدوية' });
+        }
+
+        const existing = new Set(product.codes.filter(c => c.value).map(c => c.value));
+        let added = 0;
+        for (const code of rawCodes) {
+            const trimmed = String(code).trim();
+            if (trimmed && !existing.has(trimmed)) {
+                existing.add(trimmed);
+                product.codes.push({ value: trimmed, status: 'available' });
+                added++;
+            }
+        }
+
+        product.updatedAt = new Date();
+        await product.save();
+
+        if (added > 0) clearStorefrontCache();
+        await createLog(
+            'إضافة كودات يدوية',
+            `تمت إضافة ${added} كود للمنتج: ${product.productName.ar || product.productName.en} (المكرر: ${rawCodes.length - added})`,
+            req,
+            product._id,
+            product.productName.ar || product.productName.en
+        );
+
+        const available = product.codes.filter(c => c.status === 'available').length;
+        res.json({
+            success: true,
+            message: `✅ تمت إضافة ${added} كود! (إجمالي المتاح: ${available})`,
+            added,
+            duplicated: rawCodes.length - added,
+            available
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'فشل إضافة الكودات: ' + err.message });
+    }
+};
+
+/**
+ * إضافة كودات يدوية — يدعم رفع ملف CSV أو إرسال كودات كمصفوفة
  * @route POST /api/admin/inventory/add-manual
  * @body { productName:{ar,en}, category, price, manualCodes:[string] }
  * @body [optional] file CSV عبر multipart/form-data
@@ -620,7 +691,7 @@ exports.exportProductsCSV = async (req, res) => {
             'الاسم عربي', 'Name English', 'الفئة', 'المنطقة', 'السعر', 
             'هامش الربح', 'السعر الأساسي', 'نوع المنتج', 'نوع الاشتراك',
             'مدة الاشتراك (أيام)', 'المزود', 'معرف المزود', 'رابط الصورة',
-            'الوصف عربي', 'Description English', 'الحالة'
+            'الوصف عربي', 'Description English', 'الحالة', 'الكودات (مفصولة بـ ;)'
         ];
 
         const rows = products.map(product => {
@@ -643,7 +714,13 @@ exports.exportProductsCSV = async (req, res) => {
                 csvEscape(product.image || ''),
                 csvEscape(product.description?.ar || ''),
                 csvEscape(product.description?.en || ''),
-                csvEscape(product.isActive ? 'نشط' : 'غير نشط')
+                csvEscape(product.isActive ? 'نشط' : 'غير نشط'),
+                csvEscape(
+                    (product.codes || [])
+                        .filter(c => c.status === 'available')
+                        .map(c => c.value)
+                        .join(';')
+                )
             ].join(',');
         });
 
@@ -730,6 +807,20 @@ exports.importProductsCSV = async (req, res) => {
                     isActive: fields[15]?.trim() !== 'غير نشط',
                     isExternal: fields[15]?.trim() === 'خارجي' || fields[7]?.trim() === 'خارجي'
                 };
+
+                // عمود الكودات (اختياري): مفصولة بـ ";" أو أسطر جديدة
+                const rawCodesCell = fields[16] ? fields[16].trim() : '';
+                if (rawCodesCell) {
+                    const seenCodes = new Set();
+                    productData.codes = [];
+                    rawCodesCell.split(/[;\n\r|]+/).forEach(code => {
+                        const trimmed = String(code).trim();
+                        if (trimmed && !seenCodes.has(trimmed)) {
+                            seenCodes.add(trimmed);
+                            productData.codes.push({ value: trimmed, status: 'available' });
+                        }
+                    });
+                }
 
                 // Check if product already exists (by English name) to handle "update existing"
                 // eslint-disable-next-line no-await-in-loop

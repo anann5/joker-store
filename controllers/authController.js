@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { createLog, sendTelegramAlert } = require('./helpers');
 const { logSecurityEvent } = require('../middleware/securityLogger');
+const { verifyTotp } = require('../middleware/totp');
 const { AdminSession } = require('../models');
 
 // Rate limiting storage for admin login attempts
@@ -180,11 +181,24 @@ exports.login = async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(password, adminHash);
-        // 2FA اختياري: إن ضُبط ADMIN_2FA_CODE يجب إرسال totp مطابق
-        const required2FA = String(process.env.ADMIN_2FA_CODE || '').trim();
-        if (isMatch && required2FA) {
+        // 2FA: TOTP حقيقي (RFC 6238) إذا ضُبط ADMIN_TOTP_SECRET،
+        // مع بقاء ADMIN_2FA_CODE القديم الثابت كخيار خلفي للتوافق.
+        const totpSecret = String(process.env.ADMIN_TOTP_SECRET || '').trim();
+        const legacy2FA = String(process.env.ADMIN_2FA_CODE || '').trim();
+        if (isMatch && totpSecret) {
             const provided = String(req.body?.totp || '').trim();
-            if (provided !== required2FA) {
+            const verdict = verifyTotp(totpSecret, provided);
+            if (!verdict.valid) {
+                logSecurityEvent('ADMIN_2FA_FAILED', 'رمز TOTP غير صحيح', req);
+                return res.status(401).json({
+                    success: false,
+                    requireTotp: true,
+                    message: 'رمز التحقق الثنائي غير صحيح'
+                });
+            }
+        } else if (isMatch && legacy2FA) {
+            const provided = String(req.body?.totp || '').trim();
+            if (provided !== legacy2FA) {
                 logSecurityEvent('ADMIN_2FA_FAILED', 'رمز تحقق ثنائي خاطئ', req);
                 return res.status(401).json({ success: false, message: 'رمز التحقق الثنائي غير صحيح' });
             }

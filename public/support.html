@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/image/logo.png" />
+    <link rel="apple-touch-icon" href="/image/logo.png" />
+    <link rel="manifest" href="/manifest.json?v=6" />
+    <meta name="theme-color" content="#0B0F1C" />
+    <link rel="canonical" href="/support" />
+    <title data-page-title-key="support_title">الدعم الفني | Joker Store</title>
+    <meta name="description" content="تواصل مع فريق دعم Joker Store وحل مشكلات طلباتك وأكوادك بسرعة." data-i18n-meta="meta_support_desc" />
+    <link rel="icon" type="image/png" href="/image/logo.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" />
+        <script src="/theme.js?v=13"></script>
+<link rel="stylesheet" href="style.css?v=13" />
+</head>
+<body>
+
+    <!-- هيدر ثانوي موحد -->
+    <header class="sub-header">
+        <div class="header-container">
+            <a href="/" class="logo-zone" title="العودة للرئيسية" data-i18n-title="header_logo_title">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <img src="/image/logo.png" alt="Logo" class="header-image" />
+            </a>
+            <nav>
+                <a href="/" data-i18n-key="nav_home">الرئيسية</a>
+                <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
+            </nav>
+            <div class="header-controls">
+                <button id="lang-switcher" class="header-btn" title="Switch Language">
+                    <i class="fas fa-globe"></i><span>EN</span>
+                </button>
+                <button id="themeToggleBtn" class="header-btn theme-toggle-btn" title="تبديل المظهر (فاتح / داكن / النظام)" aria-label="تبديل المظهر">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="sub-page-main">
+        <div class="sub-page-hero">
+            <h1><i class="fas fa-headset"></i><span data-i18n-key="support_title">الدعم الفني</span></h1>
+            <p data-i18n-key="meta_support_desc">تواصل مع فريق دعم جوكر ستور وتابع تذكرتك — نرد عادةً خلال ساعات قليلة.</p>
+        </div>
+
+        <!-- نموذج إنشاء تذكرة -->
+        <div class="sub-page-card" id="supportFormCard">
+            <div class="form-group">
+                <label for="supportEmail" data-i18n-key="support_email_label">بريدك الإلكتروني</label>
+                <input type="email" id="supportEmail" class="form-control" placeholder="example@mail.com" required>
+            </div>
+            <div class="form-group">
+                <label for="supportSubject" data-i18n-key="support_subject_label">الموضوع</label>
+                <input type="text" id="supportSubject" class="form-control" maxlength="120" required>
+            </div>
+            <div class="form-group">
+                <label for="supportMessage" data-i18n-key="support_message_label">اشرح المشكلة بالتفصيل</label>
+                <textarea id="supportMessage" class="form-control" rows="5" maxlength="2000" required></textarea>
+            </div>
+            <div class="form-group">
+                <label data-i18n-key="support_captcha_label">تحقق أنك إنسان</label>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <span id="supportCaptchaPrompt" class="form-control" style="min-width:120px; text-align:center; font-weight:700; letter-spacing:1px;"></span>
+                    <input type="text" id="supportCaptchaAnswer" class="form-control" style="max-width:120px; text-align:center;" inputmode="numeric" required>
+                    <button type="button" id="supportCaptchaRefresh" class="enter-btn" title="تجديد"><i class="fas fa-sync-alt"></i></button>
+                </div>
+            </div>
+            <button type="button" id="supportSubmitBtn" class="enter-btn" style="width:100%;"><i class="fas fa-paper-plane"></i> <span data-i18n-key="support_submit">إرسال التذكرة</span></button>
+            <div id="supportFormMessage" style="margin-top: 14px;"></div>
+        </div>
+
+        <!-- متابعة تذكرة -->
+        <div class="sub-page-card" style="margin-top: 22px;">
+            <h2 style="font-size:1.05rem; margin-bottom:12px;"><i class="fas fa-clipboard-list"></i> <span data-i18n-key="support_follow_title">عندك تذكرة بالفعل؟ تابعها</span></h2>
+            <div class="form-group">
+                <label for="supportTrackEmail" data-i18n-key="support_track_email">البريد الذي أرسلت به</label>
+                <input type="email" id="supportTrackEmail" class="form-control" placeholder="example@mail.com">
+            </div>
+            <div class="form-group">
+                <label for="supportTrackId" data-i18n-key="support_track_id">رقم التذكرة (مثل TKT-ABC123)</label>
+                <input type="text" id="supportTrackId" class="form-control" placeholder="TKT-ABC123" style="direction: ltr; text-align: left;">
+            </div>
+            <button type="button" id="supportTrackBtn" class="enter-btn" style="width:100%;"><i class="fas fa-search"></i> <span data-i18n-key="support_track_btn">متابعة الحالة</span></button>
+            <div id="supportTrackResults" style="margin-top: 18px;"></div>
+        </div>
+
+        <div style="text-align:center; margin-top:26px;">
+            <a href="/" class="enter-btn" data-i18n-key="sub_back_home"><i class="fas fa-home"></i> العودة للمتجر</a>
+        </div>
+    </main>
+
+    <!-- فوتر موحد -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+                <p class="footer-slogan" data-i18n-key="footer_slogan">بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.</p>
+            </div>
+            <hr class="footer-divider">
+            <div class="footer-links">
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
+                <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
+                <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
+                <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
+            </div>
+            <p class="copyright" data-i18n-key="copyright_text">© 2026 Joker Store — جميع الحقوق محفوظة</p>
+        </div>
+    </footer>
+
+    <script type="module" src="sub-page.js"></script>
+    <script type="module" src="support-page.js"></script>
+</body>
+</html>

@@ -166,6 +166,49 @@ setInterval(async()=>{
 }, 6*60*60*1000);
 setTimeout(()=>{ checkAbandonedCarts().catch(()=>{}); }, 60*1000);
 
+// تنظيف دوري لاشتراكات Web Push الميتة
+const { purgeStaleSubscriptions } = require('./controllers/push');
+let pushPurgeInFlight = false;
+setInterval(async () => {
+    if (pushPurgeInFlight) return;
+    pushPurgeInFlight = true;
+    try { await purgeStaleSubscriptions(); } catch (e) { console.error('❌ تنظيف اشتراكات Push فشل:', e.message); }
+    finally { pushPurgeInFlight = false; }
+}, 24 * 60 * 60 * 1000);
+setTimeout(() => { purgeStaleSubscriptions(3 * 24 * 60 * 60 * 1000).catch(()=>{}); }, 5 * 60 * 1000);
+
+// تسوية الطلبات المدفوعة التي لم تُكمَّل (مثلاً فشل Webhook أو انطفاء السيرفر قبل التسليم).
+// تُجارى كل بضع دقائق كل طلبات Stripe المدفوعة العالقة في pending وتسلّمها تلقائياً.
+const { autoFulfilOrder } = require('./controllers/orderController');
+const { Order } = require('./models');
+const RECONCILE_INTERVAL_SEC = Math.max(60, Number.parseInt(process.env.RECONCILE_INTERVAL_SEC, 10) || 300);
+let reconcileInFlight = false;
+const reconcilePaidOrders = async () => {
+    if (reconcileInFlight) return;
+    reconcileInFlight = true;
+    try {
+        const cutoff = new Date(Date.now() - 2 * 60 * 1000); // مهلة كافية لمعالجة الـ webhook
+        const stale = await Order.find({
+            status: 'pending',
+            paymentGateway: 'stripe',
+            stripePaymentIntentId: { $ne: null },
+            createdAt: { $lt: cutoff }
+        }).limit(50).select('orderId');
+        if (stale.length === 0) return;
+        for (const o of stale) {
+            // eslint-disable-next-line no-await-in-loop
+            const result = await autoFulfilOrder(o.orderId, io);
+            if (result.success) console.log(`✅ تسوية تلقائية: أكتمل الطلب #${o.orderId}.`);
+        }
+    } catch (error) {
+        console.error('❌ فشل تسوية الطلبات المدفوعة:', error.message);
+    } finally {
+        reconcileInFlight = false;
+    }
+};
+setInterval(reconcilePaidOrders, RECONCILE_INTERVAL_SEC * 1000);
+setTimeout(() => { reconcilePaidOrders(); }, 60 * 1000);
+
 const FINAL_PORT = process.env.PORT || 5850;
 // الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
 server.listen(FINAL_PORT, '::', () => {
