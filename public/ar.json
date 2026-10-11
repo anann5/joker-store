@@ -84,8 +84,8 @@
     "pay_methods_title": "طرق الدفع المتاحة",
     "pay_jawwal": "جوال بي",
     "pay_palpay": "بال بي",
-    "pay_refakt": "ريفلكت",
-    "pay_refakt_hint": "ادفع عبر تطبيق ريفلكت",
+    "pay_reflect": "ريفلكت",
+    "pay_reflect_hint": "ادفع عبر تطبيق ريفلكت",
     "sub_back_home": "العودة للمتجر",
     "sub_footer_about": "من نحن",
     "sub_footer_privacy": "سياسة الخصوصية",
@@ -381,7 +381,8 @@
     "cart_discount": "خصم ({code})",
     "realtime_order_updated": "تم تحديث حالة طلبك {orderId}.",
     "realtime_order_completed": "✅ اكتمل طلبك {orderId} — استلم كودك الآن!",
-    "realtime_order_rejected": "❌ رُفض طلبك {orderId} — تم استرداد المبلغ.",
+    "realtime_order_rejected": "❌ رُفض طلبك {orderId} — تم استرداد المبلغ."
+,
     "mobile_cart_label": "السلة",
     "mobile_cart_checkout": "إتمام الشراء",
     "receipt_title": "🎉 تم استلام طلبك!",

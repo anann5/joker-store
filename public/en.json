@@ -84,8 +84,8 @@
     "pay_methods_title": "Available payment methods",
     "pay_jawwal": "Jawwal Pay",
     "pay_palpay": "PalPay",
-    "pay_refakt": "Reflect",
-    "pay_refakt_hint": "Pay via Reflect app",
+    "pay_reflect": "Reflect",
+    "pay_reflect_hint": "Pay via Reflect app",
     "sub_back_home": "Back to Store",
     "sub_footer_about": "About Us",
     "sub_footer_privacy": "Privacy Policy",
@@ -381,7 +381,8 @@
     "cart_discount": "Discount ({code})",
     "realtime_order_updated": "Order {orderId} status updated.",
     "realtime_order_completed": "✅ Your order {orderId} is complete — grab your code now!",
-    "realtime_order_rejected": "❌ Order {orderId} was rejected — amount refunded.",
+    "realtime_order_rejected": "❌ Order {orderId} was rejected — amount refunded."
+,
     "mobile_cart_label": "Cart",
     "mobile_cart_checkout": "Checkout",
     "receipt_title": "🎉 Your order is received!",
