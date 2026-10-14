@@ -7,6 +7,10 @@
     <link rel="icon" type="image/png" href="/image/logo.png" />
     <link rel="apple-touch-icon" href="/image/logo.png" />
     <link rel="manifest" href="/manifest.json?v=6" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Joker Store">
     <meta name="theme-color" content="#0B0F1C" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,5 +36,7 @@
         </div>
     </main>
     <script type="module" src="/404-page.js"></script>
+    <script src="/sw-register.js" defer></script>
+    <script src="/install-prompt.js" defer></script>
 </body>
 </html>
