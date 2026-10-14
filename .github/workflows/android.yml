@@ -72,11 +72,13 @@ jobs:
         run: |
           set -e
           RES="android/app/src/main/res"
-          # remove Capacitor default assets that clash with ours
-          rm -f "$RES/drawable/splash.png" "$RES/drawable-*/splash.png"
+          # replace Capacitor's default splash asset (styles.xml references @drawable/splash)
+          rm -f "$RES/drawable/splash.png"
+          rm -f $RES/drawable-*/splash.png
+          # replace Capacitor's default launcher background colour
           rm -f "$RES/values/ic_launcher_background.xml"
           cp -r mobile-assets/res/. "$RES/"
-          echo "branding applied"
+          test -f "$RES/drawable/splash.xml" && echo "branding applied"
 
       - name: Build release APK (unsigned)
         id: build
