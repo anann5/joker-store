@@ -7615,6 +7615,32 @@ html[data-theme="light"] .hero-section {
     }
 }
 
+/* ==================== Mobile hero: room for trust strip (no overlap) ==================== */
+@media (max-width: 768px) {
+    .hero-section {
+        height: 360px;
+    }
+    .hero-trust {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+        pointer-events: auto;
+        bottom: 10px;
+    }
+    .hero-trust::-webkit-scrollbar {
+        display: none;
+    }
+    .hero-trust-item {
+        flex: 0 0 auto;
+    }
+}
+@media (min-width: 561px) and (max-width: 768px) {
+    .hero-trust {
+        justify-content: center;
+    }
+}
+
 /* ==================== Touch devices: calm paint-heavy animations ==================== */
 /* touch screens (phones/tablets/app WebView): disable infinite box-shadow, filter, */
 /* background-position and custom-property animations that cause visible jitter.     */
