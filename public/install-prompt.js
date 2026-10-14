@@ -44,6 +44,7 @@
                 `<button type="button" class="pwa-install-close" id="pwaInstallClose" aria-label="${  i18n.close  }">&times;</button>` +
             `</div>`;
         document.body.appendChild(bar);
+        document.body.classList.add('pwa-bar-visible');
         requestAnimationFrame(function () { bar.classList.add('show'); });
 
         const btn = document.getElementById('pwaInstallBtn');
@@ -81,6 +82,7 @@
             bar.classList.remove('show');
             setTimeout(function () { bar.remove(); }, 300);
         }
+        if (document.body) document.body.classList.remove('pwa-bar-visible');
         try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
     }
 

@@ -1,11 +1,11 @@
-import { getCurrentLanguage } from '/i18n.js';
+import { getCurrentLanguage, t } from '/i18n.js';
 async function loadOffers() {
     const container = document.getElementById('offersContainer');
     try {
         const res = await fetch('/api/promotions');
         const data = await res.json();
         if (!data.success || !data.promotions || data.promotions.length === 0) {
-            container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--text-muted);"><i class="fas fa-tag" style="font-size:3rem;margin-bottom:16px;display:block;opacity:0.3;"></i><p>لا توجد عروض نشطة حالياً</p></div>`;
+            container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--text-muted);"><i class="fas fa-tag" style="font-size:3rem;margin-bottom:16px;display:block;opacity:0.3;"></i><p>${t('offers_empty')}</p></div>`;
             return;
         }
         const lang = getCurrentLanguage();
@@ -23,7 +23,7 @@ async function loadOffers() {
                             <h3 style="margin:0;font-size:1.25rem;color:#fff;">${escapeHtml(title)}</h3>
                         </div>
                         ${desc ? `<p style="color:var(--text-muted);margin-bottom:12px;line-height:1.6;">${escapeHtml(desc)}</p>` : ''}
-                        ${expiresAt ? `<p style="color:var(--danger);font-size:0.85rem;margin-bottom:16px;"><i class="fas fa-clock"></i> ينتهي: ${expiresAt.toLocaleDateString('ar-EG')}</p>` : ''}
+                        ${expiresAt ? `<p style="color:var(--danger);font-size:0.85rem;margin-bottom:16px;"><i class="fas fa-clock"></i> ${t('offers_ends')} ${expiresAt.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')}</p>` : ''}
                         ${products.length > 0 ? `
                             <div class="products-grid" style="gap:12px;">
                                 ${products.map(p => {
@@ -52,7 +52,7 @@ async function loadOffers() {
             el.addEventListener('click', () => { window.location.href = '/product/' + el.dataset.productId; });
         });
     } catch (_err) {
-        container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--danger);">❌ فشل تحميل العروض</div>`;
+        container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--danger);">${t('offers_load_failed')}</div>`;
     }
 }
 function escapeHtml(str) { const d=document.createElement('div'); d.textContent=str||''; return d.innerHTML; }

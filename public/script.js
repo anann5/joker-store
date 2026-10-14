@@ -8,17 +8,17 @@ import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime, initPublicPulse } from './realtime.js';
 
 // ======================================================
-//  ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„ط£ط³ط§ط³ظٹط© ظ„ظ„ط£ظ‚ط³ط§ظ… (ظ…ط³طھظˆط±ط¯ط© ظ…ظ† shared.js)
+//  البيانات الأساسية للأقسام (مستوردة من shared.js)
 // ======================================================
 
-let searchIndex = []; // ًںڑ€ ظپظ‡ط±ط³ ط§ظ„ط¨ط­ط« ط§ظ„ط³ط±ظٹط¹
-let _currentCategoryKey = 'all'; // ظ…طھط؛ظٹط± ط¯ط§ط®ظ„ظٹ ظ„ظ…طھط§ط¨ط¹ط© ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ
-let _categoryProducts = []; // ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ (ظ„ظ„طھط±طھظٹط¨ ظˆط§ظ„ظپظ„طھط±ط©)
-let _currentSort = 'latest'; // ط§ظ„طھط±طھظٹط¨ ط§ظ„ط­ط§ظ„ظٹ: latest | price_asc | price_desc | rating
-const productCache = new Map(); // ط°ط§ظƒط±ط© طھط®ط²ظٹظ† ظ…ط¤ظ‚طھ ظ„ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„طھظٹ ظٹطھظ… ط¬ظ„ط¨ظ‡ط§
+let searchIndex = []; // 🚀 فهرس البحث السريع
+let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
+let _categoryProducts = []; // منتجات القسم الحالي (للترتيب والفلترة)
+let _currentSort = 'latest'; // الترتيب الحالي: latest | price_asc | price_desc | rating
+const productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
 
 // ======================================================
-// ًںڑ€ طھط´ط؛ظٹظ„ ط³ظ„ط§ظٹط¯ط± ط§ظ„ط¹ط±ظˆط¶ طھظ„ظ‚ط§ط¦ظٹط§ظ‹
+// 🚀 تشغيل سلايدر العروض تلقائياً
 // ======================================================
 function initHeroSlider() {
     const slides = document.querySelectorAll('.hero-section .slide');
@@ -29,11 +29,11 @@ function initHeroSlider() {
         slides[currentSlide].classList.remove('active');
         currentSlide = (currentSlide + 1) % slides.length;
         slides[currentSlide].classList.add('active');
-    }, 5000); // طھط¨ط¯ظٹظ„ ظƒظ„ 5 ط«ظˆط§ظ†ظچ
+    }, 5000); // تبديل كل 5 ثوانٍ
 }
 
 // ======================================================
-// ًں›،ï¸ڈ طھط­ط¯ظٹط« ط´ط±ظٹط· ط§ظ„ط«ظ‚ط© ط¨ط¨ظٹط§ظ†ط§طھ ط­ظ‚ظٹظ‚ظٹط©
+// 🛡️ تحديث شريط الثقة ببيانات حقيقية
 // ======================================================
 let _lastTickerOrders = [];
 
@@ -45,7 +45,7 @@ function renderTickerItems() {
         const id = escapeHtml(String(o.orderId || '')).substring(0, 8);
         const name = escapeHtml(String(o.productName || ''));
         return `<span class="ticker-item"><i class="fas fa-check-circle" aria-hidden="true"></i><b>${id}</b><span class="ticker-name">${name}</span><em>${t('ticker_moment')}</em></span>`;
-    }).join('<span class="ticker-sep" aria-hidden="true">âœ¦</span>');
+    }).join('<span class="ticker-sep" aria-hidden="true">✦</span>');
 
     tickerZone.innerHTML = `${itemsHtml} <span class="ticker-item trust">${t('trust_all_codes')}</span>`;
 }
@@ -55,7 +55,7 @@ async function updateTrustTicker() {
     if (!tickerZone) return;
 
     try {
-        const res = await fetch('/api/products/latest-orders'); // ط³ظ†ظپطھط±ط¶ ظˆط¬ظˆط¯ ظ‡ط°ط§ ط§ظ„ظ…ط³ط§ط± ط§ظ„ط¨ط³ظٹط·
+        const res = await fetch('/api/products/latest-orders'); // سنفترض وجود هذا المسار البسيط
         const data = await res.json();
         if (data.success && data.orders.length > 0) {
             _lastTickerOrders = data.orders;
@@ -63,12 +63,12 @@ async function updateTrustTicker() {
             enqueueSocialProof();
         }
     } catch (_e) {
-        // ظپظٹ ط­ط§ظ„ ط§ظ„ظپط´ظ„ ظ†طھط±ظƒ ط§ظ„ظ†طµ ط§ظ„ط§ظپطھط±ط§ط¶ظٹ ط§ظ„ط¬ظ…ظٹظ„ ط§ظ„ط°ظٹ ظˆط¶ط¹ظ†ط§ظ‡
+        // في حال الفشل نترك النص الافتراضي الجميل الذي وضعناه
     }
 }
 
 // ======================================================
-//  ًں”” Social Proof â€” ظ†ط¨ط¶ ط§ط¬طھظ…ط§ط¹ظٹ ط­ظٹ (ط¹ظ…ظ„ظٹط§طھ ط­ظ‚ظٹظ‚ظٹط© ظ…ظ† ط§ظ„ط³ط¬ظ„)
+//  🔔 Social Proof — نبض اجتماعي حي (عمليات حقيقية من السجل)
 // ======================================================
 const _socialQueue = [];
 const _socialShown = new Set();
@@ -119,15 +119,15 @@ function showNextSocialProof() {
 }
 
 // ======================================================
-//  ط¯ظˆط§ظ„ظ…ط³ط§ط¹ط¯ط© (Helper Functions)
+//  دوالمساعدة (Helper Functions)
 // ======================================================
 function detectRegion(item) {
     const text = (`${item.productName || item.name || ""  } ${  item._id || item.id || ""}`).toLowerCase();
-    if (text.includes('tr') || text.includes('طھط±ظƒظٹ')) return 'tr';
-    if (text.includes('ae') || text.includes('ط§ظ…ط§ط±ط§طھ')) return 'ae';
-    if (text.includes('sa') || text.includes('ط³ط¹ظˆط¯ظٹ')) return 'sa';
-    if (text.includes('us') || text.includes('ط§ظ…ط±ظٹظƒظٹ')) return 'us';
-    if (text.includes('eu') || text.includes('ط§ظˆط±ظˆط¨')) return 'eu';
+    if (text.includes('tr') || text.includes('تركي')) return 'tr';
+    if (text.includes('ae') || text.includes('امارات')) return 'ae';
+    if (text.includes('sa') || text.includes('سعودي')) return 'sa';
+    if (text.includes('us') || text.includes('امريكي')) return 'us';
+    if (text.includes('eu') || text.includes('اوروب')) return 'eu';
     return 'global';
 }
 
@@ -153,11 +153,11 @@ function formatItem(item, categoryKey, region) {
 }
 
 // ======================================================
-//  â­گ طھظ‚ظٹظٹظ…ط§طھ ط§ظ„ظ…ظ†طھط¬ط§طھ (ظ…ط³طھظˆط±ط¯ط© ظ…ظ† shared.js)
+//  ⭐ تقييمات المنتجات (مستوردة من shared.js)
 // ======================================================
 
 // ======================================================
-//  â‌¤ï¸ڈ ظ‚ط§ط¦ظ…ط© ط§ظ„ط£ظ…ظ†ظٹط§طھ (Wishlist â€” localStorage)
+//  ❤️ قائمة الأمنيات (Wishlist — localStorage)
 // ======================================================
 
 async function showWishlist() {
@@ -168,7 +168,7 @@ async function showWishlist() {
     const ids = getWishlist();
 
     if (ids.length === 0) {
-        container.innerHTML = `<p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:30px;">ًں’” ${t('wishlist_empty')}</p>`;
+        container.innerHTML = `<p style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:30px;">💔 ${t('wishlist_empty')}</p>`;
         return;
     }
 
@@ -220,12 +220,12 @@ async function showWishlist() {
         });
         syncWishlistButtons();
     } catch (_e) {
-        container.innerHTML = `<p style="color:#e74c3c; text-align:center; grid-column:1/-1; padding:30px;">â‌Œ ${t('wishlist_load_error')}</p>`;
+        container.innerHTML = `<p style="color:#e74c3c; text-align:center; grid-column:1/-1; padding:30px;">❌ ${t('wishlist_load_error')}</p>`;
     }
 }
 
 // ======================================================
-//  âڑ™ï¸ڈ ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ظ…ظˆظ‚ط¹ (ط£ط±ظ‚ط§ظ… ط§ظ„ط¯ظپط¹طŒ ط±ظˆط§ط¨ط· ط§ظ„طھظˆط§طµظ„طŒ ط§ظ„ط¥ط­طµط§ط¦ظٹط§طھ)
+//  ⚙️ إعدادات الموقع (أرقام الدفع، روابط التواصل، الإحصائيات)
 // ======================================================
 let siteConfig = null;
 let paymentProofUrl = null;
@@ -268,7 +268,7 @@ function applySiteConfig() {
         link.style.display = 'flex';
     }
 
-    // ظˆط³ط§ط¦ظ„ ط§ظ„ط¯ظپط¹: ط¥ظ† ظ„ظ… طھظڈط¶ط¨ط· ط£ط±ظ‚ط§ظ… ط§ظ„ط­ط³ط§ط¨ط§طھطŒ ظ†ط®ظپظٹ ط®ظٹط§ط±ط§طھ ط§ظ„ط¯ظپط¹ طھظ…ط§ظ…ط§ظ‹ (ظ„ط§ ظ†ط¹ط±ط¶ ط£ط±ظ‚ط§ظ…ط§ظ‹ ظˆظ‡ظ…ظٹط©)
+    // وسائل الدفع: إن لم تُضبط أرقام الحسابات، نخفي خيارات الدفع تماماً (لا نعرض أرقاماً وهمية)
     const payment = siteConfig.payment || {};
     const paymentOptionsEl = document.querySelector('.payment-options');
     const hasPaymentNumbers = Boolean(payment.jawwalNumber) || Boolean(payment.palpayNumber) || Boolean(payment.reflectNumber);
@@ -276,13 +276,13 @@ function applySiteConfig() {
         paymentOptionsEl.style.display = 'none';
     }
 
-    // Stripe: ظ†ظڈط¸ظ‡ط± ط®ظٹط§ط± ط§ظ„ط¯ظپط¹ ط¨ط§ظ„ط¨ط·ط§ظ‚ط© ظپظ‚ط· ط¹ظ†ط¯ظ…ط§ ظٹظƒظˆظ† ظ…ظپط¹ظ„ط§ظ‹ ظپظٹ ط§ظ„ط®ط§ط¯ظ…
+    // Stripe: نُظهر خيار الدفع بالبطاقة فقط عندما يكون مفعلاً في الخادم
     const stripeOption = document.getElementById('stripePaymentOption');
     if (stripeOption) {
         stripeOption.style.display = (siteConfig.stripe && siteConfig.stripe.enabled) ? 'flex' : 'none';
     }
 
-    // ط¥ط«ط¨ط§طھ ط§ظ„ظ…ط¨ظٹط¹ط§طھ ط§ظ„ط­ظٹ: ظٹظڈظ…ظ„ط£ ظ…ظ† ط¥ط­طµط§ط¦ظٹط§طھ ط­ظ‚ظٹظ‚ظٹط© ظ…ظ† ظ‚ط§ط¹ط¯ط© ط§ظ„ط¨ظٹط§ظ†ط§طھ
+    // إثبات المبيعات الحي: يُملأ من إحصائيات حقيقية من قاعدة البيانات
     const proofEl = document.getElementById('liveSalesProof');
     const proofText = proofEl ? proofEl.querySelector('span') : null;
     const stats = siteConfig.stats || {};
@@ -297,7 +297,7 @@ function applySiteConfig() {
         proofEl.style.display = 'none';
     }
 
-    // ط´ط±ظٹط· ط§ظ„ط¥ط­طµط§ط¦ظٹط§طھ ظپظٹ ط£ط¹ظ„ظ‰ ط§ظ„طµظپط­ط© ط§ظ„ط±ط¦ظٹط³ظٹط©
+    // شريط الإحصائيات في أعلى الصفحة الرئيسية
     const homeStatsStrip = document.getElementById('homeStatsStrip');
     const homeStatsCountEl = document.getElementById('homeStatsCount');
     const homeStatsTextEl = document.getElementById('homeStatsText');
@@ -332,11 +332,11 @@ function applySiteConfig() {
 }
 
 /**
- * ط¹ط¯ظ‘ط§ط¯ ظ…طھط­ط±ظƒ ظ…ظ† طµظپط± ط¥ظ„ظ‰ ط§ظ„ظ‚ظٹظ…ط© ط§ظ„ظ…ط³طھظ‡ط¯ظپط© (ط£ط«ط¨ط§طھ ط­ظٹ ظ„ظ„ط¥ط­طµط§ط¦ظٹط§طھ).
- * @param {HTMLElement} el - ط§ظ„ط¹ظ†طµط± ط§ظ„ط°ظٹ ظٹط¸ظ‡ط± ط§ظ„ط±ظ‚ظ….
- * @param {number} from - ظ‚ظٹظ…ط© ط§ظ„ط¨ط¯ط§ظٹط©.
- * @param {number} to - ط§ظ„ظ‚ظٹظ…ط© ط§ظ„ظ…ط³طھظ‡ط¯ظپط©.
- * @param {number} duration - ظ…ط¯ط© ط§ظ„ط­ط±ظƒط© ط¨ط§ظ„ظ…ظٹظ„ظٹ ط«ط§ظ†ظٹط©.
+ * عدّاد متحرك من صفر إلى القيمة المستهدفة (أثبات حي للإحصائيات).
+ * @param {HTMLElement} el - العنصر الذي يظهر الرقم.
+ * @param {number} from - قيمة البداية.
+ * @param {number} to - القيمة المستهدفة.
+ * @param {number} duration - مدة الحركة بالميلي ثانية.
  */
 function animateNumber(el, from, to, duration = 800) {
     if (typeof requestAnimationFrame !== 'function') {
@@ -361,9 +361,9 @@ function animateNumber(el, from, to, duration = 800) {
 }
 
 // ======================================================
-//  ًں”چ طھطھط¨ط¹ ط§ظ„ط·ظ„ط¨
+//  🔍 تتبع الطلب
 // ======================================================
-// ط®ط· ط²ظ…ظ†ظٹ ظ…ظ† 3 ط®ط·ظˆط§طھ ظ„ط­ط§ظ„ط© ط§ظ„ط·ظ„ط¨ (ظٹظڈط¨ظ†ظ‰ ظƒظ€ HTML ظˆط£ط³ظ„ط§ظƒظ‡ ظپظٹ style.css)
+// خط زمني من 3 خطوات لحالة الطلب (يُبنى كـ HTML وأسلاكه في style.css)
 function buildOrderTimeline(status) {
     const steps = [
         { key: 'track_step_received', state: 'pending' },
@@ -392,7 +392,7 @@ function buildOrderTimeline(status) {
         </div>`;
 }
 
-// ط¹ط±ط¶ ظپط´ظ„/ط§ط³طھط±ط¯ط§ط¯ ط¹ظ„ظ‰ ط§ظ„ط®ط· ط§ظ„ط²ظ…ظ†ظٹ ط¨ط§ظ„ظƒط§ظ…ظ„ (ط£ط­ظ…ط± + â‌Œ) ط¯ظˆظ† طµظ†ط¯ظˆظ‚ ط§ظ„ط£ظƒظˆط§ط¯
+// عرض فشل/استرداد على الخط الزمني بالكامل (أحمر + ❌) دون صندوق الأكواد
 function buildOrderFailureTimeline() {
     const steps = ['track_step_received', 'track_step_processing', 'track_step_delivered'];
     return `
@@ -426,11 +426,11 @@ async function handleTrackOrder() {
         const data = await res.json();
 
         if (!data.success) {
-            results.innerHTML = `<p style="color:#e74c3c; text-align:center;">â‌Œ ${escapeHtml(data.error || t('track_error_generic'))}</p>`;
+            results.innerHTML = `<p style="color:#e74c3c; text-align:center;">❌ ${escapeHtml(data.error || t('track_error_generic'))}</p>`;
             return;
         }
         if (data.orders.length === 0) {
-            results.innerHTML = `<p style="color:var(--text-muted); text-align:center;">ًں”چ ${t('track_no_results')}</p>`;
+            results.innerHTML = `<p style="color:var(--text-muted); text-align:center;">🔍 ${t('track_no_results')}</p>`;
             return;
         }
 
@@ -447,7 +447,7 @@ async function handleTrackOrder() {
             const st = statusMap[order.status] || { text: order.status, cls: '' };
             const isFailure = order.status === 'failed' || order.status === 'refunded';
             const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
-            const items = order.items.map(i => escapeHtml(i.name[lang] || i.name.ar)).join('طŒ ');
+            const items = order.items.map(i => escapeHtml(i.name[lang] || i.name.ar)).join('، ');
             const codesHtml = (!isFailure && order.codes && order.codes.length)
                 ? `<div class="track-code-box"><span class="track-code-label">${escapeHtml(t('track_shipping_code'))}</span>${order.codes.map(c => `<span class="track-code-row"><code class="track-code" dir="ltr">${escapeHtml(c)}</code><button type="button" class="track-copy-btn" data-code="${escapeHtml(c)}" title="${escapeHtml(t('track_copy_code'))}" aria-label="${escapeHtml(t('track_copy_code'))}"><i class="fas fa-copy"></i></button></span>`).join('')}</div>`
                 : '';
@@ -464,17 +464,17 @@ async function handleTrackOrder() {
                 </div>`;
         }).join('');
     } catch (_e) {
-        results.innerHTML = `<p style="color:#e74c3c; text-align:center;">â‌Œ ${t('auth_error_connection')}</p>`;
+        results.innerHTML = `<p style="color:#e74c3c; text-align:center;">❌ ${t('auth_error_connection')}</p>`;
     }
 }
 
 // ======================================================
-//  ًں’³ ط¥ظٹطµط§ظ„ ط§ظ„ط·ظ„ط¨ + ط§ط³طھظ„ط§ظ… ط§ظ„ط£ظƒظˆط§ط¯ ظ„ط­ط¸ظٹط§ظ‹
-//  ظٹط¹ط±ط¶ ط±ظ‚ظ… ط§ظ„ط·ظ„ط¨طŒ ظٹظ†طھط¸ط± طھط£ظƒظٹط¯ ط§ظ„ط£ط¯ظ…ظ† ط¨ط§ظ„ط§ط³طھط·ظ„ط§ط¹طŒ ط«ظ…
-//  ظٹط³ظ„ظ‘ظ… ط§ظ„ط£ظƒظˆط§ط¯ ظ…ط¹ ط²ط± ظ†ط³ط® ظˆط¹ط¯ظ‘ط§ط¯ ظٹظڈط®ظپظٹظ‡ط§ ط¨ط¹ط¯ 15 ط¯ظ‚ظٹظ‚ط©.
-//  ط§ظ„ط£ظƒظˆط§ط¯ طھط¨ظ‚ظ‰ ظ…ط­ظپظˆط¸ط© ظپظٹ طھطھط¨ط¹ ط§ظ„ط·ظ„ط¨ ط­طھظ‰ ط¨ط¹ط¯ ط¥ط؛ظ„ط§ظ‚ ط§ظ„طµظپط­ط©.
+//  💳 إيصال الطلب + استلام الأكواد لحظياً
+//  يعرض رقم الطلب، ينتظر تأكيد الأدمن بالاستطلاع، ثم
+//  يسلّم الأكواد مع زر نسخ وعدّاد يُخفيها بعد 15 دقيقة.
+//  الأكواد تبقى محفوظة في تتبع الطلب حتى بعد إغلاق الصفحة.
 // ======================================================
-const RECEIPT_CODE_TTL = 15 * 60 * 1000; // 15 ط¯ظ‚ظٹظ‚ط© ظ…ظ† ظ„ط­ط¸ط© ط§ظ„طھط³ظ„ظٹظ…
+const RECEIPT_CODE_TTL = 15 * 60 * 1000; // 15 دقيقة من لحظة التسليم
 let _receiptPollTimer = null;
 let _receiptCountdownTimer = null;
 let _receiptPollFn = null;
@@ -505,7 +505,7 @@ async function copyTextToClipboard(text) {
         ta.select();
         let ok = false;
         try { ok = document.execCommand('copy'); } catch (_e2) { ok = false; }
-        // ط£ظˆظ„ظˆظٹط© ط§ظ„ظ†ط¬ط§ط­: ط¥ظ† ظپط´ظ„ ط§ظ„طھظ†ظپظٹط° ظ†ظڈط¨ظ‚ظٹ ط§ظ„طھط­ط¯ظٹط¯ ظ„ظ„ظ†ط³ط® ط§ظ„ظٹط¯ظˆظٹ ط¨ظ€ Ctrl+C
+        // أولوية النجاح: إن فشل التنفيذ نُبقي التحديد للنسخ اليدوي بـ Ctrl+C
         if (!ok) {
             const range = document.createRange();
             range.selectNodeContents(ta);
@@ -536,7 +536,7 @@ function renderReceiptCodes(order) {
     const codes = (order && order.codes && order.codes.length) ? order.codes : [];
     if (!codes.length) return;
 
-    // ط¨ط¯ط§ظٹط© ط§ظ„ط¹ط¯ظ‘ط§ط¯ = ظˆظ‚طھ ط§ظƒطھظ…ط§ظ„ ط§ظ„ط·ظ„ط¨ ظ…ظ† ط§ظ„ط®ط§ط¯ظ… (ظٹط«ط¨طھ ط¹ط¨ط± ط¥ط¹ط§ط¯ط© ظپطھط­ ط§ظ„طµظپط­ط©)
+    // بداية العدّاد = وقت اكتمال الطلب من الخادم (يثبت عبر إعادة فتح الصفحة)
     const startMs = order.completedAt ? new Date(order.completedAt).getTime() : Date.now();
     const endMs = startMs + RECEIPT_CODE_TTL;
     const ttlKey = `joker:receipt:end:${order.orderId}`;
@@ -563,7 +563,7 @@ function renderReceiptCodes(order) {
             stopReceiptCountdown();
             if (countdownEl) countdownEl.textContent = t('receipt_expired');
             list.classList.add('codes-hidden');
-            list.querySelectorAll('code').forEach(c => { c.textContent = 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'; });
+            list.querySelectorAll('code').forEach(c => { c.textContent = '••••••••'; });
             return;
         }
         if (countdownEl) countdownEl.textContent = t('receipt_countdown').replace('{time}', formatCountdown(remain));
@@ -585,7 +585,7 @@ function renderOrderReceipt({ email, orderId }) {
 
     if (titleEl) titleEl.textContent = email || '';
     if (codeEl) {
-        codeEl.textContent = orderId || 'â€”';
+        codeEl.textContent = orderId || '—';
         codeEl.classList.remove('revealed');
         requestAnimationFrame(() => codeEl.classList.add('revealed'));
     }
@@ -627,7 +627,7 @@ function renderOrderReceipt({ email, orderId }) {
                         </div>`;
                 }
             }
-        } catch (_e) { /* ط£ظٹ ط®ط·ط£ ط´ط¨ظƒط© ظپظٹ ط¬ظˆظ„ط© ظ…ط§ ظٹظڈط¹ط§ط¯ ظپظٹ ط§ظ„ط¬ظˆظ„ط© ط§ظ„ظ‚ط§ط¯ظ…ط© */ }
+        } catch (_e) { /* أي خطأ شبكة في جولة ما يُعاد في الجولة القادمة */ }
     };
 
     _receiptPollFn = poll;
@@ -651,7 +651,7 @@ function openOrderTrackingFromReceipt() {
     if (ctx) handleTrackOrder();
 }
 
-// طھط­ط¯ظٹط« ظپظˆط±ظٹ ظ„ظ„ط¥ظٹطµط§ظ„ ط§ظ„ظ…ظپطھظˆط­ ط¹ظ†ط¯ ظˆطµظˆظ„ ط¥ط´ط¹ط§ط± WebSocket ظ„ط·ظ„ط¨ظچ ظ…ط¹ظ†ظٹ
+// تحديث فوري للإيصال المفتوح عند وصول إشعار WebSocket لطلبٍ معني
 window.addEventListener('joker-order-status', function(e) {
     const ctx = _receiptContext;
     const d = (e && e.detail) || {};
@@ -660,7 +660,7 @@ window.addEventListener('joker-order-status', function(e) {
     }
 });
 
-// ظ†ط³ط® ط§ظ„ط£ظƒظˆط§ط¯ ظ…ظ† ط§ظ„ط¥ظٹطµط§ظ„ ط£ظˆ ظ†ط§ظپط°ط© ط§ظ„طھطھط¨ط¹ (طھظپظˆظٹط¶)
+// نسخ الأكواد من الإيصال أو نافذة التتبع (تفويض)
 document.addEventListener('click', function(e) {
     const copyBtn = e.target.closest('.receipt-copy-one, .track-copy-btn');
     if (copyBtn) {
@@ -685,7 +685,7 @@ document.addEventListener('click', function(e) {
 });
 
 // ======================================================
-//  ط¯ط§ظ„ط© طھط­ط¯ظٹط¯ ط§ظ„ط±ظٹط¬ظ† ظˆط¬ظ„ط¨ ط±ظˆط§ط¨ط· ط§ظ„ط£ط¹ظ„ط§ظ… ط§ظ„ظ…ط­ظ„ظٹط©
+//  دالة تحديد الريجن وجلب روابط الأعلام المحلية
 // ======================================================
 function getRegionDetails(region) {
     const reg = String(region || 'global').toLowerCase();
@@ -701,19 +701,19 @@ function getRegionDetails(region) {
 }
 
 // ======================================================
-//  ط¯ط§ظ„ط© ظ„ظ…ط¹ط±ظپط© ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ
-//  ط¹ط±ط¶ ط§ظ„ظ…ظ†طھط¬ط§طھ ط¯ط§ط®ظ„ ط§ظ„ظ‚ط³ظ…
+//  دالة لمعرفة القسم الحالي
+//  عرض المنتجات داخل القسم
 // ======================================================
 export function selectCategory(categoryKey) {
-    // ط­ظپط¸ ط§ظ„ظ‚ط³ظ… ط§ظ„ط°ظٹ طھظ…طھ ط²ظٹط§ط±طھظ‡ ظپظٹ ط§ظ„طھط®ط²ظٹظ† ط§ظ„ظ…ط­ظ„ظٹ
+    // حفظ القسم الذي تمت زيارته في التخزين المحلي
     localStorage.setItem('joker_lastCategory', categoryKey);
 
-    // ط§ط³طھط¹ط§ط¯ط© ط§ظ„ط¹ظ†ظˆط§ظ† ط§ظ„ط§ظپطھط±ط§ط¶ظٹ ط¹ظ†ط¯ ظ…ط؛ط§ط¯ط±ط© طµظپط­ط© طھظپط§طµظٹظ„ ط§ظ„ظ…ظ†طھط¬
+    // استعادة العنوان الافتراضي عند مغادرة صفحة تفاصيل المنتج
     document.title = t('site_title');
 
-    _currentCategoryKey = categoryKey; // طھط­ط¯ظٹط« ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ
-    _categoryProducts = []; // طھطµظپظٹط± ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ظ…ط®ط²ظ†ط©
-    _currentSort = 'latest'; // ط¥ط¹ط§ط¯ط© طھط¹ظٹظٹظ† ط§ظ„طھط±طھظٹط¨
+    _currentCategoryKey = categoryKey; // تحديث القسم الحالي
+    _categoryProducts = []; // تصفير المنتجات المخزنة
+    _currentSort = 'latest'; // إعادة تعيين الترتيب
     const availabilityCheck = document.getElementById('availabilityFilter');
     if (availabilityCheck) availabilityCheck.checked = false;
     const sortSelectEl = document.getElementById('sortSelect');
@@ -728,7 +728,7 @@ export function selectCategory(categoryKey) {
     if (homeSections) homeSections.classList.add('hidden');
 
     if (!grid) return;
-    grid.className = 'products-grid'; // طھط·ط¨ظٹظ‚ ظƒظ„ط§ط³ ط§ظ„ط´ط¨ظƒط© ظ„ظ„ظ…ظ†طھط¬ط§طھ
+    grid.className = 'products-grid'; // تطبيق كلاس الشبكة للمنتجات
     grid.removeAttribute('style');
 
     if (backContainer) backContainer.classList.remove('hidden');
@@ -741,7 +741,7 @@ export function selectCategory(categoryKey) {
         if (allBtn) allBtn.classList.add('active');
     }
 
-    // ط§ط³طھط®ط¯ط§ظ… ظ…ط¤ط´ط± طھط­ظ…ظٹظ„ ظ…ط±ط¦ظٹ ط£ظپط¶ظ„
+    // استخدام مؤشر تحميل مرئي أفضل
     grid.innerHTML = Array.from({ length: 6 }, () => `
         <div class="skeleton-card">
             <div class="skeleton-img"></div>
@@ -760,19 +760,19 @@ export function selectCategory(categoryKey) {
 
     fetch(`/api/products/${categoryKey}?lang=${getCurrentLanguage()}`)
         .then(function(res) { return res.json(); })
-        .then(function(data) { // ًں”¥ طھطµط­ظٹط­: ط§ظ„ظ…طھط؛ظٹط± ط§ظ„ط¢ظ† ظ‡ظˆ 'data' ط§ظ„ط°ظٹ ظٹط­طھظˆظٹ ط¹ظ„ظ‰ success ظˆ products
+        .then(function(data) { // 🔥 تصحيح: المتغير الآن هو 'data' الذي يحتوي على success و products
             if (!data.success || !data.products) {
-                throw new Error(data.error || 'ظپط´ظ„ ظپظٹ ط¬ظ„ط¨ ط§ظ„ط¨ظٹط§ظ†ط§طھ');
+                throw new Error(data.error || 'فشل في جلب البيانات');
             }
 
-            _categoryProducts = data.products; // ط­ظپط¸ ط§ظ„ظ…ظ†طھط¬ط§طھ ظ„ظ„طھط±طھظٹط¨ ظˆط§ظ„ظپظ„طھط±ط©
-            productCache.clear(); // طھظپط±ظٹط؛ ط§ظ„ظƒط§ط´ ظ‚ط¨ظ„ ظ…ظ„ط¦ظ‡ ظ…ظ† ط¬ط¯ظٹط¯
+            _categoryProducts = data.products; // حفظ المنتجات للترتيب والفلترة
+            productCache.clear(); // تفريغ الكاش قبل ملئه من جديد
             renderCategoryProducts(grid);
         }).catch(err => console.error("Error fetching products:", err));
 }
 
 // ======================================================
-//  ًںڈ·ï¸ڈ ط¨ط§ظ†ط± ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ
+//  🏷️ بانر القسم الحالي
 // ======================================================
 function renderCategoryBanner(categoryKey) {
     const banner = document.getElementById('categoryBanner');
@@ -789,7 +789,7 @@ function renderCategoryBanner(categoryKey) {
     if (titleEl) titleEl.textContent = cat ? cat.title : (categoryKey === 'all' ? t('all_products') : categoryKey);
     if (tagEl && cat && cat.desc) { tagEl.textContent = cat.desc; }
     else if (tagEl && !cat) { tagEl.textContent = t('category_banner_tag'); }
-    // ظٹظڈظ…ظ„ط£ ط¨ط§ظ„ط¹ط¯ط¯ ط§ظ„ط­ظ‚ظٹظ‚ظٹ ظپظٹ renderCategoryProducts ط¨ط¹ط¯ ط§ظƒطھظ…ط§ظ„ ط§ظ„ط¬ظ„ط¨
+    // يُملأ بالعدد الحقيقي في renderCategoryProducts بعد اكتمال الجلب
     if (metaEl && countEl) countEl.textContent = '';
     if (iconEl) iconEl.className = (getCategoryTheme(categoryKey) || {}).icon || 'fas fa-gamepad';
 
@@ -798,8 +798,8 @@ function renderCategoryBanner(categoryKey) {
 }
 
 /**
- * طھظ‚ط¯ظٹظ… ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ ظ…ط¹ طھط·ط¨ظٹظ‚ ط§ظ„طھط±طھظٹط¨ ظˆظپظ„طھط±ط© ط§ظ„طھظˆظپط± ظˆط§ظ„ظ…ظ†ط·ظ‚ط©.
- * @param {HTMLElement} [grid] - ط´ط¨ظƒط© ط§ظ„ط¹ط±ط¶ (ط§ظپطھط±ط§ط¶ظٹط§ظ‹ #mainCategories).
+ * تقديم منتجات القسم الحالي مع تطبيق الترتيب وفلترة التوفر والمنطقة.
+ * @param {HTMLElement} [grid] - شبكة العرض (افتراضياً #mainCategories).
  */
 function renderCategoryProducts(grid) {
     const targetGrid = grid || document.getElementById('mainCategories');
@@ -807,7 +807,7 @@ function renderCategoryProducts(grid) {
 
     const lang = getCurrentLanguage();
 
-    // 1) ظپط±ط² ط§ظ„ظ…ظ†طھط¬ط§طھ ط­ط³ط¨ ط§ظ„ط§ط®طھظٹط§ط±
+    // 1) فرز المنتجات حسب الاختيار
     const sorted = [..._categoryProducts].sort((a, b) => {
         const pa = Number(a.price) || 0;
         const pb = Number(b.price) || 0;
@@ -815,27 +815,27 @@ function renderCategoryProducts(grid) {
             case 'price_asc': return pa - pb;
             case 'price_desc': return pb - pa;
             case 'rating': return (Number(b.rating) || 0) - (Number(a.rating) || 0);
-            default: return Number(b.createdAt) - Number(a.createdAt); // ط§ظ„ط£ط­ط¯ط«
+            default: return Number(b.createdAt) - Number(a.createdAt); // الأحدث
         }
     });
 
-    // 2) ظپظ„طھط±ط© ط§ظ„طھظˆظپط± (ط§ظ„ظ…طھظˆظپط± ظپظ‚ط·)
+    // 2) فلترة التوفر (المتوفر فقط)
     const availabilityCheck = document.getElementById('availabilityFilter');
     const inStockOnly = availabilityCheck ? availabilityCheck.checked : false;
     let visible = sorted;
     if (inStockOnly) {
         visible = sorted.filter(item => {
-            // ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ط®ط§ط±ط¬ظٹط© (API) طھط¹طھط¨ط± ظ…طھظˆظپط±ط© ظ…ط§ ظ„ظ… طھظڈط¹ظ„ظ… ط¨ط®ظ„ط§ظپ ط°ظ„ظƒ
+            // المنتجات الخارجية (API) تعتبر متوفرة ما لم تُعلم بخلاف ذلك
             if (item.availableStock === null || item.availableStock === undefined) return true;
             return Number(item.availableStock) > 0;
         });
     }
 
-    // 3) ظپظ„طھط±ط© ط§ظ„ظ…ظ†ط·ظ‚ط© ط§ظ„ط­ط§ظ„ظٹط©
+    // 3) فلترة المنطقة الحالية
     const activeRegion = document.querySelector('#regionFilterBar .filter-btn.active');
     const currentRegion = activeRegion ? activeRegion.dataset.target : 'all';
 
-    // ط¹ط¯ط¯ ط§ظ„ط¨ط·ط§ظ‚ط§طھ ط§ظ„ط¸ط§ظ‡ط±ط© ظپط¹ظ„ظٹط§ظ‹ (ط¨ط¹ط¯ ظپظ„طھط±ط© ط§ظ„ظ…ظ†ط·ظ‚ط©) ظ„ط¹ط±ط¶ظ‡ ظپظٹ ط¨ط§ظ†ط± ط§ظ„ظ‚ط³ظ…
+    // عدد البطاقات الظاهرة فعلياً (بعد فلترة المنطقة) لعرضه في بانر القسم
     const displayedCount = visible.filter(item =>
         currentRegion === 'all' || detectRegion(item) === currentRegion
     ).length;
@@ -850,13 +850,13 @@ function renderCategoryProducts(grid) {
 
     if (visible.length === 0) {
         const emptyTitle = inStockOnly
-            ? (lang === 'en' ? 'No items are currently in stock.' : 'ظ„ط§ طھظˆط¬ط¯ ط¹ظ†ط§طµط± ظ…طھظˆظپط±ط© ط­ط§ظ„ظٹط§ظ‹.')
-            : (lang === 'en' ? 'No cards are available in this category yet.' : 'ظ„ط§ طھظˆط¬ط¯ ط¨ط·ط§ظ‚ط§طھ ظ…طھط§ط­ط© ظپظٹ ظ‡ط°ط§ ط§ظ„ظ‚ط³ظ… ط­ط§ظ„ظٹط§ظ‹.');
+            ? (lang === 'en' ? 'No items are currently in stock.' : 'لا توجد عناصر متوفرة حالياً.')
+            : (lang === 'en' ? 'No cards are available in this category yet.' : 'لا توجد بطاقات متاحة في هذا القسم حالياً.');
         targetGrid.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-box-open"></i>
                 <h3>${emptyTitle}</h3>
-                <p>${lang === 'en' ? 'Please check back soon or try another option.' : 'طھظپط¶ظ„ ط¨ط§ظ„ط¹ظˆط¯ط© ظ„ط§ط­ظ‚ط§ظ‹ ط£ظˆ ط¬ط±ظ‘ط¨ ط®ظٹط§ط±ط§ظ‹ ط¢ط®ط±.'}</p>
+                <p>${lang === 'en' ? 'Please check back soon or try another option.' : 'تفضل بالعودة لاحقاً أو جرّب خياراً آخر.'}</p>
             </div>
         `;
         return;
@@ -869,7 +869,7 @@ function renderCategoryProducts(grid) {
         const localizedName = item.productName[lang] || item.productName['ar'];
         const clientItem = formatItem({ ...item, name: localizedName }, _currentCategoryKey, detectedRegion);
 
-        productCache.set(clientItem.id, clientItem); // ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ظ„ظ„ظƒط§ط´
+        productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش
 
         const card = template.content.cloneNode(true);
         const cardElement = card.querySelector('.product-item-card');
@@ -894,7 +894,7 @@ function renderCategoryProducts(grid) {
             stockBadge.textContent = stockText;
             stockBadge.classList.toggle('out-of-stock', Number(clientItem.availableStock) <= 0);
         }
-        // ط´ط§ط±ط© ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹ ظپظٹ ط¹ط±ط¶ ط§ظ„ظ‚ط³ظ… (ظƒظ„ط§ط³ظٹظƒظٹط©طŒ ظ„ط§ طھظڈط·ط¨ظ‘ظ‚ ط¹ظ„ظ‰ ظƒظ„ ط§ظ„ط¨ط·ط§ظ‚ط§طھ)
+        // شارة الأكثر مبيعاً في عرض القسم (كلاسيكية، لا تُطبّق على كل البطاقات)
         const badge = card.querySelector('.product-badge');
         if (badge) {
             applyProductBadge(badge, { productId: clientItem.id });
@@ -906,44 +906,44 @@ function renderCategoryProducts(grid) {
 export const currentCategoryKey = () => _currentCategoryKey;
 
 // ======================================================
-//  ط¯ط§ظ„ط© ظ„طھظ‚ط¯ظٹظ… ط£ط²ط±ط§ط± ظپظ„طھط±ط© ط§ظ„ط£ظ‚ط³ط§ظ… ط¯ظٹظ†ط§ظ…ظٹظƒظٹط§ظ‹
+//  دالة لتقديم أزرار فلترة الأقسام ديناميكياً
 // ======================================================
 function renderCategoryFilterButtons() {
     const filterTabsContainer = document.getElementById('filterTabs');
     if (!filterTabsContainer) return;
 
-    filterTabsContainer.innerHTML = ''; // طھظپط±ظٹط؛ ط§ظ„ط£ط²ط±ط§ط± ط§ظ„ظ‚ط¯ظٹظ…ط©
+    filterTabsContainer.innerHTML = ''; // تفريغ الأزرار القديمة
 
-    // ط²ط± "ط§ظ„ظƒظ„" ط§ظ„ط§ظپطھط±ط§ط¶ظٹ
+    // زر "الكل" الافتراضي
     const allBtn = document.createElement('button');
     allBtn.className = 'filter-btn active';
     allBtn.dataset.filter = 'all';
     allBtn.textContent = t('filter_all');
     filterTabsContainer.appendChild(allBtn);
 
-    // ط¥ط¶ط§ظپط© ط£ط²ط±ط§ط± ط§ظ„ط£ظ‚ط³ط§ظ… ظ…ظ† ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„ظ…ط³طھط±ط¬ط¹ط©
+    // إضافة أزرار الأقسام من البيانات المسترجعة
     for (const key in rawServerData.categories) {
         const category = rawServerData.categories[key];
         const btn = document.createElement('button');
         btn.className = 'filter-btn';
         btn.dataset.filter = key;
-        btn.textContent = category.title; // ط§ط³طھط®ط¯ط§ظ… ط§ظ„ط§ط³ظ… ط§ظ„ظ…طھط±ط¬ظ…
+        btn.textContent = category.title; // استخدام الاسم المترجم
         filterTabsContainer.appendChild(btn);
     }
 }
 
 // ======================================================
-//  ط¯ط§ظ„ط© ظ„طھظ‚ط¯ظٹظ… ط£ط²ط±ط§ط± ظپظ„طھط±ط© ط§ظ„ظ…ظ†ط§ط·ظ‚ ط¯ظٹظ†ط§ظ…ظٹظƒظٹط§ظ‹
+//  دالة لتقديم أزرار فلترة المناطق ديناميكياً
 // ======================================================
 function renderRegionFilterButtons() {
     const regionFilterBar = document.getElementById('regionFilterBar');
     if (!regionFilterBar) return;
 
-    regionFilterBar.innerHTML = ''; // طھظپط±ظٹط؛ ط§ظ„ط£ط²ط±ط§ط± ط§ظ„ظ‚ط¯ظٹظ…ط©
+    regionFilterBar.innerHTML = ''; // تفريغ الأزرار القديمة
 
     const regions = [
         { key: 'all', text: t('filter_all'), icon: null },
-        { key: 'global', text: t('filter_global'), icon: 'ًںŒگ' },
+        { key: 'global', text: t('filter_global'), icon: '🌐' },
         { key: 'tr', text: t('filter_tr'), flag: 'tr.png' },
         { key: 'ae', text: t('filter_ae'), flag: 'ae.png' },
         { key: 'sa', text: t('filter_sa'), flag: 'sa.png' },
@@ -969,13 +969,13 @@ function renderRegionFilterButtons() {
         regionFilterBar.appendChild(btn);
     });
 
-    // طھظپط¹ظٹظ„ ط²ط± "ط§ظ„ظƒظ„" ط§ظپطھط±ط§ط¶ظٹط§ظ‹
+    // تفعيل زر "الكل" افتراضياً
     const allBtn = regionFilterBar.querySelector('[data-target="all"]');
     if (allBtn) allBtn.classList.add('active');
 }
 
 // ======================================================
-//  ط¯ط§ظ„ط© ظ…ط³ط§ط¹ط¯ط© ظ„طھظ‚ط¯ظٹظ… ط§ظ„ظ…ظ†طھط¬ط§طھ (طھط¬ظ†ط¨ ط§ظ„طھظƒط±ط§ط±)
+//  دالة مساعدة لتقديم المنتجات (تجنب التكرار)
 // ======================================================
 function renderSkeletonCards(container, count = 6) {
     const grid = container.querySelector('.products-grid');
@@ -997,7 +997,7 @@ function renderSkeletonCards(container, count = 6) {
 function renderEmptyState(container, opts = {}) {
     const grid = container.querySelector('.products-grid') || container;
     const icon = opts.icon || 'fas fa-box-open';
-    const title = opts.title || 'ظ„ط§ طھظˆط¬ط¯ ط¨ط·ط§ظ‚ط§طھ ظ…طھط§ط­ط© ط­ط§ظ„ظٹط§ظ‹.';
+    const title = opts.title || t('empty_default_title');
     const sub = opts.sub || '';
     grid.innerHTML = `
         <div class="empty-state">
@@ -1015,27 +1015,27 @@ function renderProductCards(products, containerId) {
     const grid = container.querySelector('.products-grid');
     if (!grid) return;
 
-    grid.innerHTML = ''; // طھظپط±ظٹط؛ ط§ظ„ظ…ط­طھظˆظ‰
+    grid.innerHTML = ''; // تفريغ المحتوى
     const template = document.getElementById('product-card-template');
     const lang = getCurrentLanguage();
 
     if (products.length === 0) {
         renderEmptyState(container, {
             icon: 'fas fa-box-open',
-            title: lang === 'en' ? 'No cards are currently available.' : 'ظ„ط§ طھظˆط¬ط¯ ط¨ط·ط§ظ‚ط§طھ ظ…طھط§ط­ط© ط­ط§ظ„ظٹط§ظ‹.',
-            sub: lang === 'en' ? 'Please check back soon or try another category.' : 'طھظپط¶ظ„ ط¨ط§ظ„ط¹ظˆط¯ط© ظ„ط§ط­ظ‚ط§ظ‹ ط£ظˆ ط¬ط±ظ‘ط¨ ظ‚ط³ظ…ط§ظ‹ ط¢ط®ط±.'
+            title: lang === 'en' ? 'No cards are currently available.' : 'لا توجد بطاقات متاحة حالياً.',
+            sub: lang === 'en' ? 'Please check back soon or try another category.' : 'تفضل بالعودة لاحقاً أو جرّب قسماً آخر.'
         });
         return;
     }
 
     products.forEach((item, idx) => {
-        // ط¨ظ…ط§ ط£ظ† ط§ط³ظ… ط§ظ„ظ…ظ†طھط¬ ظٹط£طھظٹ ظƒظƒط§ط¦ظ† (ar, en)طŒ ظ†ط®طھط§ط± ط§ظ„ظ„ط؛ط© ط§ظ„طµط­ظٹط­ط©
+        // بما أن اسم المنتج يأتي ككائن (ar, en)، نختار اللغة الصحيحة
         const localizedName = item.productName[lang] || item.productName['ar'];
         const detectedRegion = detectRegion(item);
         const regionInfo = getRegionDetails(detectedRegion);
         const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectedRegion);
 
-        productCache.set(clientItem.id, clientItem); // ط¥ط¶ط§ظپط© ط§ظ„ظ…ظ†طھط¬ ظ„ظ„ظƒط§ط´ ظ„ظ„ظˆطµظˆظ„ ط§ظ„ط³ط±ظٹط¹
+        productCache.set(clientItem.id, clientItem); // إضافة المنتج للكاش للوصول السريع
 
         const card = template.content.cloneNode(true);
         const cardElement = card.querySelector('.product-item-card');
@@ -1071,22 +1071,22 @@ function renderProductCards(products, containerId) {
 }
 
 // ======================================================
-//  ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ط±ط¦ظٹط³ظٹط©
+//  العودة للرئيسية
 // ======================================================
 function goBack() {
-    // ط­ط°ظپ ط§ظ„ظ‚ط³ظ… ط§ظ„ظ…ط­ظپظˆط¸ ط¹ظ†ط¯ ط§ظ„ط¹ظˆط¯ط© ظ„ظ„طµظپط­ط© ط§ظ„ط±ط¦ظٹط³ظٹط©
+    // حذف القسم المحفوظ عند العودة للصفحة الرئيسية
     localStorage.removeItem('joker_lastCategory');
 
     const searchInput = document.getElementById('searchInput');
     if (searchInput) searchInput.value = '';
     showAllCategories();
-    // ط§ظ„ط¹ظˆط¯ط© ظ„ط£ط¹ظ„ظ‰ ط§ظ„طµظپط­ط© ط¨ط¹ط¯ ط¥ط¸ظ‡ط§ط± ط§ظ„ط±ط¦ظٹط³ظٹط©
+    // العودة لأعلى الصفحة بعد إظهار الرئيسية
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 }
 
 /**
- * ط¬ظ„ط¨ ظˆط¹ط±ط¶ ظ‚ط³ظ… "ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹" ظپظٹ ط§ظ„طµظپط­ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.
+ * جلب وعرض قسم "الأكثر مبيعاً" في الصفحة الرئيسية.
  */
 async function renderBestSellingProducts() {
     const container = document.getElementById('best-selling-container');
@@ -1097,7 +1097,7 @@ async function renderBestSellingProducts() {
         const res = await fetch(`/api/products/best-selling?lang=${getCurrentLanguage()}`);
         const data = await res.json();
         if (data.success) {
-            // ظ…ظ„ط، ظ…ط¬ظ…ظˆط¹ط© ظ…ط¹ط±ظ‘ظپط§طھ ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹ ط­طھظ‰ طھط­ط§ظپط¸ ط§ظ„ط¨ط·ط§ظ‚ط§طھ ط¹ظ„ظ‰ ط´ط§ط±طھظ‡ط§ ظپظٹ ظƒظ„ ط§ظ„ط£ظ‚ط³ط§ظ…
+            // ملء مجموعة معرّفات الأكثر مبيعاً حتى تحافظ البطاقات على شارتها في كل الأقسام
             bestSellerIds.clear();
             (Array.isArray(data.products) ? data.products : []).forEach(p => {
                 const pid = String(p._id || p.id || '');
@@ -1107,22 +1107,22 @@ async function renderBestSellingProducts() {
         } else {
             renderEmptyState(container, {
                 icon: 'fas fa-fire',
-                title: getCurrentLanguage() === 'en' ? 'No best sellers yet.' : 'ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹ ط¨ط¹ط¯.',
-                sub: getCurrentLanguage() === 'en' ? 'Products appear here once orders take place.' : 'طھط¸ظ‡ط± ط§ظ„ظ…ظ†طھط¬ط§طھ ظ‡ظ†ط§ ط¨ط¹ط¯ ط¥طھظ…ط§ظ… ط£ظˆظ„ظ‰ ط§ظ„ط·ظ„ط¨ط§طھ.'
+                title: getCurrentLanguage() === 'en' ? 'No best sellers yet.' : 'لا توجد منتجات الأكثر مبيعاً بعد.',
+                sub: getCurrentLanguage() === 'en' ? 'Products appear here once orders take place.' : 'تظهر المنتجات هنا بعد إتمام أولى الطلبات.'
             });
         }
     } catch (error) {
         console.error("Failed to render best-selling products:", error);
         renderEmptyState(container, {
             icon: 'fas fa-fire',
-            title: getCurrentLanguage() === 'en' ? 'No best sellers yet.' : 'ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹ ط¨ط¹ط¯.',
-            sub: getCurrentLanguage() === 'en' ? 'Products appear here once orders take place.' : 'طھط¸ظ‡ط± ط§ظ„ظ…ظ†طھط¬ط§طھ ظ‡ظ†ط§ ط¨ط¹ط¯ ط¥طھظ…ط§ظ… ط£ظˆظ„ظ‰ ط§ظ„ط·ظ„ط¨ط§طھ.'
+            title: getCurrentLanguage() === 'en' ? 'No best sellers yet.' : 'لا توجد منتجات الأكثر مبيعاً بعد.',
+            sub: getCurrentLanguage() === 'en' ? 'Products appear here once orders take place.' : 'تظهر المنتجات هنا بعد إتمام أولى الطلبات.'
         });
     }
 }
 
 /**
- * ط¬ظ„ط¨ ظˆط¹ط±ط¶ ظ‚ط³ظ… "ط£ط¶ظٹظپ ط­ط¯ظٹط«ط§ظ‹" ظپظٹ ط§ظ„طµظپط­ط© ط§ظ„ط±ط¦ظٹط³ظٹط©.
+ * جلب وعرض قسم "أضيف حديثاً" في الصفحة الرئيسية.
  */
 async function renderNewlyAddedProducts() {
     const container = document.getElementById('newly-added-container');
@@ -1137,24 +1137,24 @@ async function renderNewlyAddedProducts() {
         } else {
             renderEmptyState(container, {
                 icon: 'fas fa-sparkles',
-                title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ ط¬ط¯ظٹط¯ط© ط¨ط¹ط¯.',
-                sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ط³طھط¸ظ‡ط± ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ط¬ط¯ظٹط¯ط© ظ‡ظ†ط§.'
+                title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'لا توجد منتجات جديدة بعد.',
+                sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ستظهر المنتجات الجديدة هنا.'
             });
         }
     } catch (error) {
         console.error("Failed to render newly added products:", error);
         renderEmptyState(container, {
             icon: 'fas fa-sparkles',
-            title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'ظ„ط§ طھظˆط¬ط¯ ظ…ظ†طھط¬ط§طھ ط¬ط¯ظٹط¯ط© ط¨ط¹ط¯.',
-            sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ط³طھط¸ظ‡ط± ط§ظ„ظ…ظ†طھط¬ط§طھ ط§ظ„ط¬ط¯ظٹط¯ط© ظ‡ظ†ط§.'
+            title: getCurrentLanguage() === 'en' ? 'No new products yet.' : 'لا توجد منتجات جديدة بعد.',
+            sub: getCurrentLanguage() === 'en' ? 'New products will appear here.' : 'ستظهر المنتجات الجديدة هنا.'
         });
     }
 }
 
 // ======================================================
-//  ًںژپ ظ‚ط³ظ… "ط¹ط±ظˆط¶ ط¬ط§ظ‡ط²ط© ط§ظ„ط´ط­ظ†" â€” ط¨ظٹط§ظ†ط§طھ ط­ظ‚ظٹظ‚ظٹط© ظ…ظ† /api/promotions
+//  🎁 قسم "عروض جاهزة الشحن" — بيانات حقيقية من /api/promotions
 // ======================================================
-const _promoProducts = new Map(); // ظ…ط¹ط±ظ‘ظپ ط§ظ„ظ…ظ†طھط¬ â†گ clientItem (ظ„ظپطھط­ ط§ظ„طھظپط§طµظٹظ„)
+const _promoProducts = new Map(); // معرّف المنتج ← clientItem (لفتح التفاصيل)
 
 async function renderPromotions() {
     const section = document.getElementById('promoSection');
@@ -1176,7 +1176,7 @@ async function renderPromotions() {
         const lang = getCurrentLanguage();
         section.hidden = false;
         _promoProducts.clear();
-        // طھط¹ط¨ط¦ط© ط®ط±ظٹط·ط© ط§ظ„ط®طµظˆظ…ط§طھ ظ„ط´ط§ط±ط© ط§ظ„ظ…ظ†طھط¬
+        // تعبئة خريطة الخصومات لشارة المنتج
         {
             const map = new Map();
             promos.forEach(p => {
@@ -1241,7 +1241,7 @@ async function renderPromotions() {
     }
 }
 
-// طھظپط§ط¹ظ„ط§طھ ظ‚ط³ظ… ط§ظ„ط¹ط±ظˆط¶ (ظپطھط­ طھظپط§طµظٹظ„ ظ…ظ†طھط¬ + طھطµظپط­ ط§ظ„ظ‚ط³ظ…)
+// تفاعلات قسم العروض (فتح تفاصيل منتج + تصفح القسم)
 function initPromoSectionInteractions() {
     const container = document.getElementById('promoContainer');
     if (!container) return;
@@ -1261,7 +1261,7 @@ function initPromoSectionInteractions() {
     });
 }
 
-// ط­ظ‚ظ„ ظƒظˆط¯ ط§ظ„ط®طµظ… ظپظٹ ظ†ط§ظپط°ط© ط§ظ„ط³ظ„ط© (طھط·ط¨ظٹظ‚/ط¥ط²ط§ظ„ط© + طھط؛ط°ظٹط© ط±ط§ط¬ط¹ط© ظپظˆط±ظٹط©)
+// حقل كود الخصم في نافذة السلة (تطبيق/إزالة + تغذية راجعة فورية)
 function initPromoInput() {
     const input = document.getElementById('promoCodeInput');
     const applyBtn = document.getElementById('applyPromoBtn');
@@ -1296,7 +1296,7 @@ function initPromoInput() {
         }
         applyBtn.disabled = true;
         try {
-            // ظ†ط±ط³ظ„ ظƒظ„ ظ…ظ†طھط¬ط§طھ ط§ظ„ط³ظ„ط© â€” ط§ظ„ط®ط§ط¯ظ… ظٹط±ظپط¶ ط§ظ„ظƒظˆط¯ ط¥ظ† ظ„ظ… ظٹظ†ط·ط¨ظ‚ ط¹ظ„ظ‰ ط¬ظ…ظٹط¹ظ‡ط§
+            // نرسل كل منتجات السلة — الخادم يرفض الكود إن لم ينطبق على جميعها
             const res = await fetch('/api/promotions/validate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1346,7 +1346,7 @@ function initPromoInput() {
 }
 
 // ======================================================
-//  ًں’¬ ظ‚ط³ظ… "ظ‚ط§ظ„ظˆط§ ط¹ظ†ط§" â€” ط³ظ„ط§ظٹط¯ط± ط§ظ„طھظ‚ظٹظٹظ…ط§طھ (ط¨ظٹط§ظ†ط§طھ ط­ظ‚ظٹظ‚ظٹط©)
+//  💬 قسم "قالوا عنا" — سلايدر التقييمات (بيانات حقيقية)
 // ======================================================
 let _testimonialsCards = [];
 let _testimonialsIndex = 0;
@@ -1390,7 +1390,7 @@ function _stopTestimonialsAuto() {
 
 function _restartTestimonialsAuto() {
     const slider = document.getElementById('testimonialsSlider');
-    if (slider && slider.matches(':hover')) return; // ط¥ظٹظ‚ط§ظپ ظ…ط¤ظ‚طھ ط£ط«ظ†ط§ط، ظ…ط±ظˆط± ط§ظ„ظ…ط§ظˆط³
+    if (slider && slider.matches(':hover')) return; // إيقاف مؤقت أثناء مرور الماوس
     _stopTestimonialsAuto();
     if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     _testimonialsTimer = setInterval(() => {
@@ -1423,13 +1423,13 @@ function _bindTestimonialsControls() {
         });
     }
 
-    // ط¥ظٹظ‚ط§ظپ ط§ظ„طھط´ط؛ظٹظ„ ط§ظ„طھظ„ظ‚ط§ط¦ظٹ ط¹ظ†ط¯ ط§ظ„طھظ…ط±ظٹط±/ط§ظ„طھط±ظƒظٹط² ظˆط§ط³طھط¦ظ†ط§ظپظ‡ ط¹ظ†ط¯ ط§ظ„ظ…ط؛ط§ط¯ط±ط©
+    // إيقاف التشغيل التلقائي عند التمرير/التركيز واستئنافه عند المغادرة
     slider.addEventListener('mouseenter', _stopTestimonialsAuto);
     slider.addEventListener('mouseleave', _restartTestimonialsAuto);
     slider.addEventListener('focusin', _stopTestimonialsAuto);
     slider.addEventListener('focusout', _restartTestimonialsAuto);
 
-    // ط¥ط¹ط§ط¯ط© ط­ط³ط§ط¨ ط­ط¬ظ… ط§ظ„طµظپط­ط© ط¹ظ†ط¯ طھط؛ظٹظٹط± ط¹ط±ط¶ ط§ظ„ظ†ط§ظپط°ط©
+    // إعادة حساب حجم الصفحة عند تغيير عرض النافذة
     let resizeRaf = null;
     window.addEventListener('resize', () => {
         if (resizeRaf) return;
@@ -1439,7 +1439,7 @@ function _bindTestimonialsControls() {
         });
     });
 
-    // ط¹ظ†ط¯ ط¹ظˆط¯ط© ط§ظ„ظ‚ط³ظ… ط¥ظ„ظ‰ ط§ظ„ط´ط§ط´ط© (ظ…ط«ظ„ط§ظ‹ ط¨ط¹ط¯ طھطµظپط­ ظ‚ط³ظ…) ظ†ط¹ظٹط¯ ط¶ط¨ط· ط§ظ„ظ…ظˆط¶ط¹
+    // عند عودة القسم إلى الشاشة (مثلاً بعد تصفح قسم) نعيد ضبط الموضع
     if (window.IntersectionObserver) {
         const visibilityObserver = new window.IntersectionObserver(entries => {
             entries.forEach(entry => {
@@ -1451,7 +1451,7 @@ function _bindTestimonialsControls() {
 }
 
 /**
- * طھط§ط±ظٹط® ظ†ط³ط¨ظٹ ظ‚طµظٹط± ظ…ط­ظ„ظٹ ("ظ…ظ†ط° X"/"X ago") ط¹ط¨ط± Intl.RelativeTimeFormat.
+ * تاريخ نسبي قصير محلي ("منذ X"/"X ago") عبر Intl.RelativeTimeFormat.
  */
 function formatTestimonialDate(value) {
     if (!value) return '';
@@ -1471,13 +1471,13 @@ function formatTestimonialDate(value) {
         return formatter.format(Math.round(diffSec / 31536000), 'year');
     }
 
-    // ط§ط­طھظٹط§ط·ظٹ: طھط§ط±ظٹط® ظ‚طµظٹط± ظپظ‚ط·
+    // احتياطي: تاريخ قصير فقط
     return date.toLocaleDateString(locale === 'en' ? 'en-GB' : 'ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 /**
- * ط¬ظ„ط¨ ظˆط¹ط±ط¶ طھظ‚ظٹظٹظ…ط§طھ ط§ظ„ط¹ظ…ظ„ط§ط، ظپظٹ ط§ظ„ظ‚ط³ظ… ط§ظ„ط±ط¦ظٹط³ظٹ.
- * ط¥ط°ط§ ظ„ظ… طھظˆط¬ط¯ طھظ‚ظٹظٹظ…ط§طھ ظٹظڈط®ظپظ‰ ط§ظ„ظ‚ط³ظ… ظƒط§ظ…ظ„ط§ظ‹ (ظ„ط§ ظ…ظƒط§ظ† ظپط§ط±ط؛).
+ * جلب وعرض تقييمات العملاء في القسم الرئيسي.
+ * إذا لم توجد تقييمات يُخفى القسم كاملاً (لا مكان فارغ).
  */
 async function renderTestimonials() {
     const section = document.getElementById('testimonialsSection');
@@ -1520,60 +1520,60 @@ async function renderTestimonials() {
         _restartTestimonialsAuto();
         section.hidden = false;
     } catch (_e) {
-        // ظپط´ظ„ ط§ظ„ط¬ظ„ط¨ â†’ ظٹظڈط¨ظ‚ظ‰ ط§ظ„ظ‚ط³ظ… ظ…ط®ظپظٹط§ظ‹ (ظ„ط§ ظ†ط¹ط±ط¶ ط£ظٹ ظ…ط­طھظˆظ‰ ظˆظ‡ظ…ظٹ)
+        // فشل الجلب → يُبقى القسم مخفياً (لا نعرض أي محتوى وهمي)
     }
 }
 
 /**
- * ظٹط¹ط§ظ„ط¬ ط­ط¯ط« طھط؛ظٹظٹط± ط§ظ„ظ„ط؛ط©طŒ ظˆظٹظ‚ظˆظ… ط¨ط¬ظ„ط¨ ط¨ظٹط§ظ†ط§طھ ط§ظ„ط£ظ‚ط³ط§ظ… ظˆط§ظ„ظ…ظ†طھط¬ط§طھ ظˆط¹ط±ط¶ظ‡ط§ ط¨ط§ظ„ظ„ط؛ط© ط§ظ„ط¬ط¯ظٹط¯ط©.
+ * يعالج حدث تغيير اللغة، ويقوم بجلب بيانات الأقسام والمنتجات وعرضها باللغة الجديدة.
  */
 async function handleLanguageChange(event) {
     try {
-        const lang = event.detail.lang || getCurrentLanguage(); // ط§ظ„ط£ظˆظ„ظˆظٹط© ظ„ظ„ط؛ط© ط§ظ„ظ…ظ…ط±ط±ط© ظپظٹ ط§ظ„ط­ط¯ط«
+        const lang = event.detail.lang || getCurrentLanguage(); // الأولوية للغة الممررة في الحدث
         const res = await fetch(`/api/categories?lang=${lang}`);
         const data = await res.json();
         if (data.success) {
             rawServerData.categories = data.categories;
-            renderCategoryFilterButtons(); // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ ط£ط²ط±ط§ط± ط§ظ„ط£ظ‚ط³ط§ظ…
-            renderRegionFilterButtons();   // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ ط£ط²ط±ط§ط± ط§ظ„ظ…ظ†ط§ط·ظ‚
+            renderCategoryFilterButtons(); // إعادة عرض أزرار الأقسام
+            renderRegionFilterButtons();   // إعادة عرض أزرار المناطق
 
-            // طھط­ط¯ظٹط« ظƒظ„ ط§ظ„ظ…ظ‚ط§ط·ط¹ ط§ظ„ط¯ظٹظ†ط§ظ…ظٹظƒظٹط© ظ„ظ„ط؛ط© ط§ظ„ط¬ط¯ظٹط¯ط©
-            productCache.clear();          // طھظپط±ظٹط؛ ط§ظ„ظƒط§ط´ ط­طھظ‰ طھظڈط¹ط±ط¶ ط§ظ„طھظپط§طµظٹظ„ ط¨ط§ظ„ظ„ط؛ط© ط§ظ„ط¬ط¯ظٹط¯ط©
-            renderBestSellingProducts();   // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ "ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹"
-            renderNewlyAddedProducts();    // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ "ظˆطµظ„ ط­ط¯ظٹط«ط§ظ‹"
-            renderPromotions();            // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ "ط¹ط±ظˆط¶ ط¬ط§ظ‡ط²ط© ط§ظ„ط´ط­ظ†"
-            renderTestimonials();          // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ "ظ‚ط§ظ„ظˆط§ ط¹ظ†ط§"
+            // تحديث كل المقاطع الديناميكية للغة الجديدة
+            productCache.clear();          // تفريغ الكاش حتى تُعرض التفاصيل باللغة الجديدة
+            renderBestSellingProducts();   // إعادة عرض "الأكثر مبيعاً"
+            renderNewlyAddedProducts();    // إعادة عرض "وصل حديثاً"
+            renderPromotions();            // إعادة عرض "عروض جاهزة الشحن"
+            renderTestimonials();          // إعادة عرض "قالوا عنا"
 
             const grid = document.getElementById('mainCategories');
             const inCategoryView = grid && grid.classList.contains('products-grid');
             if (inCategoryView) {
-                // ط¥ط¹ط§ط¯ط© ط¬ظ„ط¨ ظˆط¹ط±ط¶ ظ…ظ†طھط¬ط§طھ ط§ظ„ظ‚ط³ظ… ط§ظ„ط­ط§ظ„ظٹ ط¨ط§ظ„ظ„ط؛ط© ط§ظ„ط¬ط¯ظٹط¯ط©
+                // إعادة جلب وعرض منتجات القسم الحالي باللغة الجديدة
                 selectCategory(_currentCategoryKey || 'all');
             } else if (!isProductDeepLink()) {
-                showAllCategories(); // ط¹ط±ط¶ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط±ط¦ظٹط³ظٹط© ط¨ط¹ط¯ ط¬ظ„ط¨ظ‡ط§
+                showAllCategories(); // عرض الأقسام الرئيسية بعد جلبها
             } else {
-                handleProductDeepLink(); // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ طھظپط§طµظٹظ„ ط§ظ„ظ…ظ†طھط¬ ط¨ط§ظ„ظ„ط؛ط© ط§ظ„ط¬ط¯ظٹط¯ط©
+                handleProductDeepLink(); // إعادة عرض تفاصيل المنتج باللغة الجديدة
             }
         }
-        // ط¥ط¹ط§ط¯ط© طھط·ط¨ظٹظ‚ ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ظ…ظˆظ‚ط¹ ط­طھظ‰ طھطھط­ط¯ط« طھط±ط¬ظ…ط© ط¥ط«ط¨ط§طھ ط§ظ„ظ…ط¨ظٹط¹ط§طھ ظˆط§ظ„ط´ط§ط±ط§طھ
+        // إعادة تطبيق إعدادات الموقع حتى تتحدث ترجمة إثبات المبيعات والشارات
         applySiteConfig();
     } catch (error) {
         console.error("Failed to reload dynamic categories:", error);
     }
-    renderTickerItems(); // ط¥ط¹ط§ط¯ط© ط¹ط±ط¶ ط´ط±ظٹط· ط§ظ„ط«ظ‚ط© ط¨ط§ظ„ظ„ط؛ط© ط§ظ„ط¬ط¯ظٹط¯ط©
+    renderTickerItems(); // إعادة عرض شريط الثقة باللغة الجديدة
 }
 
-// ظ‡ظ„ ظ†ط­ظ† ط¯ط§ط®ظ„ ط±ط§ط¨ط· ط¹ظ…ظٹظ‚ ظ…ط¨ط§ط´ط± ظ„ظ…ظ†طھط¬طں
+// هل نحن داخل رابط عميق مباشر لمنتج؟
 function isProductDeepLink() {
     return /^\/product\/[a-fA-F0-9]{24}\/?$/.test(window.location.pathname);
 }
 
 /**
- * ظپطھط­ ط±ط§ط¨ط· ط¹ظ…ظٹظ‚ ظ…ط¨ط§ط´ط± ظ„ظ„ظ…ظ†طھط¬ ط¹ظ†ط¯ ظپطھط­ طµظپط­ط© /product/:id (SEO + ظ…ط´ط§ط±ظƒط©).
- * ظٹط¨ط­ط« ط§ظ„ظ…ظ†طھط¬ ظپظٹ ظپظ‡ط±ط³ ط§ظ„ط¨ط­ط«طŒ ظˆط¥ظ† ظ„ظ… ظٹط¬ط¯ظ‡ ظٹط¬ظ„ط¨ ط¨ظٹط§ظ†ط§طھظ‡ ظ…ظ† ط§ظ„ط®ط§ط¯ظ… ظ…ط¨ط§ط´ط±ط©
- * (fallback) ط­طھظ‰ ظ„ط§ ظٹظپط´ظ„ ط§ظ„ط±ط§ط¨ط· ط§ظ„ط¹ظ…ظٹظ‚ ط¨طµظ…طھ ط£ط¨ط¯ط§ظ‹.
- * ط¹ظ†ط¯ ط¥ط¹ط§ط¯ط© ط§ظ„ط§ط³طھط¯ط¹ط§ط، (ظ…ط«ظ„ط§ظ‹ ط¨ط¹ط¯ طھط؛ظٹظٹط± ط§ظ„ظ„ط؛ط©) ظٹظڈط¹ط§ط¯ ط§ظ„ط¹ط±ط¶ ظ…ظ† ط§ظ„ظƒط§ط´
- * ط¯ظˆظ† ط¥ط¹ط§ط¯ط© ط¬ظ„ط¨ ط¥ط¶ط§ظپظٹط© ظ…ظ† ط§ظ„ط®ط§ط¯ظ….
+ * فتح رابط عميق مباشر للمنتج عند فتح صفحة /product/:id (SEO + مشاركة).
+ * يبحث المنتج في فهرس البحث، وإن لم يجده يجلب بياناته من الخادم مباشرة
+ * (fallback) حتى لا يفشل الرابط العميق بصمت أبداً.
+ * عند إعادة الاستدعاء (مثلاً بعد تغيير اللغة) يُعاد العرض من الكاش
+ * دون إعادة جلب إضافية من الخادم.
  */
 let deepLinkProductData = null;
 
@@ -1591,7 +1591,7 @@ async function handleProductDeepLink() {
         return;
     }
 
-    // ط¥ط¹ط§ط¯ط© ط§ظ„ط§ط³طھط¯ط¹ط§ط، ظ„ظ†ظپط³ ط§ظ„ظ…ظ†طھط¬ â†’ ط¥ط¹ط§ط¯ط© ط§ظ„ط¹ط±ط¶ ظ…ظ† ط§ظ„ظƒط§ط´ ط¯ظˆظ† ط¥ط¹ط§ط¯ط© ط¬ظ„ط¨
+    // إعادة الاستدعاء لنفس المنتج → إعادة العرض من الكاش دون إعادة جلب
     if (deepLinkProductData && String(deepLinkProductData._id) === productId) {
         const lang = getCurrentLanguage();
         const localizedName = deepLinkProductData.productName[lang] || deepLinkProductData.productName['ar'] || '';
@@ -1600,7 +1600,7 @@ async function handleProductDeepLink() {
         return;
     }
 
-    // ط§ظ„ظ…ظ†طھط¬ ط؛ظٹط± ظ…ظˆط¬ظˆط¯ ظپظٹ ظپظ‡ط±ط³ ط§ظ„ط¨ط­ط« â†’ ط¬ظ„ط¨ ظ…ط¨ط§ط´ط± ظ…ظ† ط§ظ„ط®ط§ط¯ظ… (ظ„ط§ ظپط´ظ„ طµط§ظ…طھ).
+    // المنتج غير موجود في فهرس البحث → جلب مباشر من الخادم (لا فشل صامت).
     try {
         const res = await fetch(`/api/products/item/${productId}`);
         const data = await res.json();
@@ -1618,8 +1618,8 @@ async function handleProductDeepLink() {
 }
 
 /**
- * طھط­ظ…ظٹظ„ ظپظ‡ط±ط³ ط§ظ„ط¨ط­ط« (ظ…ظ†طھط¬ ظˆط§ط­ط¯ ظپظ‚ط· ط¨ط§ظ„ط±ط؛ظ… ظ…ظ† ط§ظ„ط§ط³ظ…) â€” ظٹظڈط³طھط®ط¯ظ… ظ„ظ„ط¨ط­ط« ط§ظ„ط³ط±ظٹط¹
- * ظˆظ„ظپطھط­ طµظپط­ط© طھظپط§طµظٹظ„ ط§ظ„ظ…ظ†طھط¬ ط¹ط¨ط± ط§ظ„ط±ظˆط§ط¨ط· ط§ظ„ط¹ظ…ظٹظ‚ط©.
+ * تحميل فهرس البحث (منتج واحد فقط بالرغم من الاسم) — يُستخدم للبحث السريع
+ * ولفتح صفحة تفاصيل المنتج عبر الروابط العميقة.
  */
 async function loadSearchIndex() {
     try {
@@ -1627,7 +1627,7 @@ async function loadSearchIndex() {
         const data = await res.json();
         if (data.success) {
             searchIndex = data.products;
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') console.log(`âœ… طھظ… طھط­ظ…ظٹظ„ ظپظ‡ط±ط³ ط§ظ„ط¨ط­ط« ط¨ظ†ط¬ط§ط­ (${searchIndex.length} ظ…ظ†طھط¬).`);
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') console.log(`✅ تم تحميل فهرس البحث بنجاح (${searchIndex.length} منتج).`);
         }
     } catch (error) {
         console.error('Failed to fetch search index:', error);
@@ -1635,66 +1635,66 @@ async function loadSearchIndex() {
 }
 
 /**
- * طھظ‡ظٹط¦ط© ط§ظ„طھط·ط¨ظٹظ‚ ط¨ط§ظ„ظƒط§ظ…ظ„: ط¬ظ„ط¨ ط§ظ„ط¨ظٹط§ظ†ط§طھ ط§ظ„ط£ط³ط§ط³ظٹط© ظˆط±ط¨ط· ط§ظ„ط£ط­ط¯ط§ط«.
+ * تهيئة التطبيق بالكامل: جلب البيانات الأساسية وربط الأحداث.
  */
 async function initializeApp() {
-    // ًں”‌ ط¥ط¬ط¨ط§ط± ط§ظ„ظ…طھطµظپط­ ط¹ظ„ظ‰ ط¨ط¯ط، ط§ظ„طµظپط­ط© ظ…ظ† ط§ظ„ط£ط¹ظ„ظ‰ ط¹ظ†ط¯ ط§ظ„طھط­ط¯ظٹط«
+    // 🔝 إجبار المتصفح على بدء الصفحة من الأعلى عند التحديث
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
     }
     window.scrollTo(0, 0);
     
-    // 0. ًں”¥ ط®ط·ظˆط© ط­ط§ط³ظ…ط©: ط±ط¨ط· ط§ظ„ظ…ط³طھظ…ط¹ ط£ظˆظ„ط§ظ‹ ظ„ط¶ظ…ط§ظ† ط§ظ„طھظ‚ط§ط· ط§ظ„ط­ط¯ط« ط§ظ„ط£ظˆظ„ظٹ
+    // 0. 🔥 خطوة حاسمة: ربط المستمع أولاً لضمان التقاط الحدث الأولي
     window.addEventListener('languageChanged', handleLanguageChange);
 
-    // 1. طھظ‡ظٹط¦ط© ظ†ط¸ط§ظ… ط§ظ„طھط±ط¬ظ…ط© ط£ظˆظ„ط§ظ‹. ط³ظٹظ‚ظˆظ… ظ‡ط°ط§ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¨طھط­ط¯ظٹط¯ ط§ظ„ظ„ط؛ط© ط§ظ„طµط­ظٹط­ط©طŒ
-    // طھط­ظ…ظٹظ„ ط§ظ„طھط±ط¬ظ…ط§طھطŒ ظˆط¥ط·ظ„ط§ظ‚ ط­ط¯ط« 'languageChanged'. ظ†ظ†طھط¸ط± ط§ظƒطھظ…ط§ظ„ظ‡ ظ‚ط¨ظ„
-    // ط¹ط±ط¶ ط§ظ„ظ…ط­طھظˆظ‰ ط§ظ„ط¯ظٹظ†ط§ظ…ظٹظƒظٹ ظ„ط¶ظ…ط§ظ† طھط±ط¬ظ…طھظ‡ ط¨ط§ظ„ظ„ط؛ط© ط§ظ„طµط­ظٹط­ط© ظ…ظ†ط° ط§ظ„ط¨ط¯ط§ظٹط©.
+    // 1. تهيئة نظام الترجمة أولاً. سيقوم هذا تلقائياً بتحديد اللغة الصحيحة،
+    // تحميل الترجمات، وإطلاق حدث 'languageChanged'. ننتظر اكتماله قبل
+    // عرض المحتوى الديناميكي لضمان ترجمته باللغة الصحيحة منذ البداية.
     await initI18n(); 
 
-    // 2. ط§ظ„ظ…ط³طھظ…ط¹ ظ„ط­ط¯ط« 'languageChanged' (ط§ظ„ظ…ظڈط³ط¬ظژظ‘ظ„ ط£ط¹ظ„ط§ظ‡ ظˆظٹظڈط·ظ„ظ‚ ط£ط«ظ†ط§ط، initI18n)
-    //    ظ‡ظˆ ط§ظ„ظ…ط³ط¤ظˆظ„ ط§ظ„ظˆط­ظٹط¯ ط¹ظ† ط¬ظ„ط¨ ط§ظ„ط£ظ‚ط³ط§ظ… ظˆط¹ط±ط¶ ط£ط²ط±ط§ط± ط§ظ„ظپظ„طھط±ط© ظˆط§ظ„ظ…ظ‚ط§ط·ط¹ ط§ظ„ط±ط¦ظٹط³ظٹط©
-    //    (ط§ظ„ط£ظƒط«ط± ظ…ط¨ظٹط¹ط§ظ‹طŒ ظˆطµظ„ ط­ط¯ظٹط«ط§ظ‹طŒ "ظ‚ط§ظ„ظˆط§ ط¹ظ†ط§") â€” ظ„ط§ ظ†ظƒط±ط± ط§ظ„ط§ط³طھط¯ط¹ط§ط،ط§طھ ظ‡ظ†ط§.
-    // 3. ط¨ط§ظ‚ظٹ ط¹ظ…ظ„ظٹط§طھ ط§ظ„طھظ‡ظٹط¦ط© ط§ظ„طھظٹ ظ„ط§ طھط¹طھظ…ط¯ ط¹ظ„ظ‰ ط§ظ„ظ„ط؛ط©.
-    initToastContainer(); // طھظ‡ظٹط¦ط© ط­ط§ظˆظٹط© ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ
-    initHeroSlider(); // طھط´ط؛ظٹظ„ ط§ظ„ط³ظ„ط§ظٹط¯ط±
+    // 2. المستمع لحدث 'languageChanged' (المُسجَّل أعلاه ويُطلق أثناء initI18n)
+    //    هو المسؤول الوحيد عن جلب الأقسام وعرض أزرار الفلترة والمقاطع الرئيسية
+    //    (الأكثر مبيعاً، وصل حديثاً، "قالوا عنا") — لا نكرر الاستدعاءات هنا.
+    // 3. باقي عمليات التهيئة التي لا تعتمد على اللغة.
+    initToastContainer(); // تهيئة حاوية الإشعارات
+    initHeroSlider(); // تشغيل السلايدر
 
-    // ًںڑ€ ط¬ظ„ط¨ ظپظ‡ط±ط³ ط§ظ„ط¨ط­ط« (ظ…ط±ط© ظˆط§ط­ط¯ط© ظپظ‚ط· ظ‡ظ†ط§) â€” ظٹظڈط³طھط®ط¯ظ… ظ„ظ„ط¨ط­ط« ط§ظ„ط³ط±ظٹط¹ ظˆظ„ظ„ط±ظˆط§ط¨ط· ط§ظ„ط¹ظ…ظٹظ‚ط©
+    // 🚀 جلب فهرس البحث (مرة واحدة فقط هنا) — يُستخدم للبحث السريع وللروابط العميقة
     await loadSearchIndex();
 
-    // ًںڑ€ ظپطھط­ ط±ط§ط¨ط· ط¹ظ…ظٹظ‚ ظ…ط¨ط§ط´ط± ظ„ظ„ظ…ظ†طھط¬ (طھط­ط³ظٹظ† SEO + ظ‚ط§ط¨ظ„ظٹط© ظ…ط´ط§ط±ظƒط© ط§ظ„ط±ظˆط§ط¨ط·)
+    // 🚀 فتح رابط عميق مباشر للمنتج (تحسين SEO + قابلية مشاركة الروابط)
     await handleProductDeepLink();
 
     initAuth(); 
-    initRealtime(); // ط¥ط´ط¹ط§ط±ط§طھ ظ„ط­ط¸ظٹط© ظ„ط­ط§ظ„ط© ط§ظ„ط·ظ„ط¨ط§طھ ظ„ظ„ظ…ط³طھط®ط¯ظ…ظٹظ† ط§ظ„ظ…ط³ط¬ظ„ظٹظ†
-    initPublicPulse(); // ظ†ط¨ط¶ ط­ظٹ ط­ظ‚ظٹظ‚ظٹ â€” ط·ظ„ط¨ ظ…ظƒطھظ…ظ„ ظٹط¸ظ‡ط± ظ„ظƒظ„ ط§ظ„ط²ظˆط§ط± ظپظˆط±ط§ظ‹
-    updateTrustTicker(); // طھط­ط¯ظٹط« ط´ط±ظٹط· ط§ظ„ط«ظ‚ط©
-    setInterval(updateTrustTicker, 45000); // طھط­ط¯ظٹط« ط¯ظˆط±ظٹ ظ„ظ„ط´ط±ظٹط· + طھط؛ط°ظٹط© social proof
-    setupReveal(document); // ط¸ظ‡ظˆط± ظ…طھط¯ط±ظ‘ط¬ ظ„ط¹ظ†ط§ظˆظٹظ† ط§ظ„ط£ظ‚ط³ط§ظ… ظˆط¨ط·ط§ظ‚ط§طھظ‡ط§ ط§ظ„ط«ط§ط¨طھط©
-    renderPromotions(); // ط¹ط±ط¶ ظ‚ط³ظ… "ط¹ط±ظˆط¶ ط¬ط§ظ‡ط²ط© ط§ظ„ط´ط­ظ†"
+    initRealtime(); // إشعارات لحظية لحالة الطلبات للمستخدمين المسجلين
+    initPublicPulse(); // نبض حي حقيقي — طلب مكتمل يظهر لكل الزوار فوراً
+    updateTrustTicker(); // تحديث شريط الثقة
+    setInterval(updateTrustTicker, 45000); // تحديث دوري للشريط + تغذية social proof
+    setupReveal(document); // ظهور متدرّج لعناوين الأقسام وبطاقاتها الثابتة
+    renderPromotions(); // عرض قسم "عروض جاهزة الشحن"
 
-    // âڑ™ï¸ڈ ط¬ظ„ط¨ ط¥ط¹ط¯ط§ط¯ط§طھ ط§ظ„ظ…ظˆظ‚ط¹ (ط£ط±ظ‚ط§ظ… ط§ظ„ط¯ظپط¹طŒ ط§ظ„ط³ظˆط´ظٹط§ظ„طŒ ط§ظ„ط¥ط­طµط§ط¦ظٹط§طھ) ظ‚ط¨ظ„ ط±ط¨ط· ط§ظ„ط£ط­ط¯ط§ط«
+    // ⚙️ جلب إعدادات الموقع (أرقام الدفع، السوشيال، الإحصائيات) قبل ربط الأحداث
     await fetchSiteConfig();
     applySiteConfig();
     
-    updateCartUI(); // طھط­ط¯ظٹط« ط§ظ„ط³ظ„ط© ظپظˆط± ظپطھط­ ط§ظ„طµظپط­ط©
+    updateCartUI(); // تحديث السلة فور فتح الصفحة
 
     setupEventListeners();
-    syncWishlistButtons(); // طھظپط¹ظٹظ„ ط£ط²ط±ط§ط± ط§ظ„ط£ظ…ظ†ظٹط§طھ ط¨ط¹ط¯ ط£ظˆظ„ ط¹ط±ط¶
-    initModalBehaviors(); // ط¥ط؛ظ„ط§ظ‚ ط§ظ„ظ†ظˆط§ظپط° ط¨ط§ظ„ط®ظ„ظپظٹط©/ط²ط± ط§ظ„ط¥ط؛ظ„ط§ظ‚ + ط§ظ„طھط¨ظˆظٹط¨
-    initPromoSectionInteractions(); // طھظپط§ط¹ظ„ط§طھ ط¨ط·ط§ظ‚ط§طھ ط§ظ„ط¹ط±ظˆط¶
-    initPromoInput(); // ط­ظ‚ظ„ ظƒظˆط¯ ط§ظ„ط®طµظ… ظپظٹ ظ†ط§ظپط°ط© ط§ظ„ط³ظ„ط©
+    syncWishlistButtons(); // تفعيل أزرار الأمنيات بعد أول عرض
+    initModalBehaviors(); // إغلاق النوافذ بالخلفية/زر الإغلاق + التبويب
+    initPromoSectionInteractions(); // تفاعلات بطاقات العروض
+    initPromoInput(); // حقل كود الخصم في نافذة السلة
 }
 
 function setupEventListeners() {
-    // ط±ط¨ط· ط§ظ„ط£ط­ط¯ط§ط« ط¨ط¹ط¯ طھط­ظ…ظٹظ„ ط§ظ„ط¨ظٹط§ظ†ط§طھ
+    // ربط الأحداث بعد تحميل البيانات
 
     const logoHomeBtn = document.getElementById('logoHomeBtn');
     if (logoHomeBtn) {
         logoHomeBtn.addEventListener('click', function() { goBack(); });
     }
 
-    // ط§ط³طھط®ط¯ط§ظ… ط§ظ„طھظپظˆظٹط¶ (Event Delegation) ظ„ط£ط²ط±ط§ط± ظپظ„طھط±ط© ط§ظ„ظ…ظ†ط§ط·ظ‚
+    // استخدام التفويض (Event Delegation) لأزرار فلترة المناطق
     document.addEventListener('click', function(e) {
         const regionFilterBar = document.getElementById('regionFilterBar');
         if (regionFilterBar && regionFilterBar.contains(e.target)) {
@@ -1704,13 +1704,13 @@ function setupEventListeners() {
             regionFilterBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            // ط¥ط¹ط§ط¯ط© طھظ‚ط¯ظٹظ… ط§ظ„ط´ط¨ظƒط© ظ…ط¹ طھط·ط¨ظٹظ‚ ظپظ„طھط±ط© ط§ظ„ظ…ظ†ط·ظ‚ط© + ط§ظ„طھط±طھظٹط¨ + ط§ظ„طھظˆظپط±
+            // إعادة تقديم الشبكة مع تطبيق فلترة المنطقة + الترتيب + التوفر
             renderCategoryProducts();
-            return; // ظ…ظ†ط¹ طھظƒط±ط§ط± ط§ظ„ظ…ط¹ط§ظ„ط¬ط© ط¥ط°ط§ ظƒط§ظ† ط§ظ„ط­ط¯ط« ط¯ط§ط®ظ„ ط´ط±ظٹط· ط§ظ„ظپظ„طھط±ط©
-        } // ط¥ط؛ظ„ط§ظ‚ ظƒطھظ„ط© if ظ‡ظ†ط§
-    }); // ط¥ط؛ظ„ط§ظ‚ ط¯ط§ظ„ط© addEventListener ظ‡ظ†ط§
+            return; // منع تكرار المعالجة إذا كان الحدث داخل شريط الفلترة
+        } // إغلاق كتلة if هنا
+    }); // إغلاق دالة addEventListener هنا
 
-    // â”€â”€â”€ ط£ط¯ظˆط§طھ ط§ظ„طھط±طھظٹط¨ ظˆظپظ„طھط±ط© ط§ظ„طھظˆظپط± â”€â”€â”€
+    // ─── أدوات الترتيب وفلترة التوفر ───
     const sortSelectEl = document.getElementById('sortSelect');
     if (sortSelectEl) {
         sortSelectEl.addEventListener('change', function() {
@@ -1762,9 +1762,9 @@ function setupEventListeners() {
         }
     });
 
-    // ط£ط­ط¯ط§ط« ط§ظ„ظ…ظˆط¯ط§ظ„ط§طھ ط§ظ„ط¹ط§ظ…ط© ظ„طھط¬ظ†ط¨ ط§ظ„طھظƒط±ط§ط±
-    // ط¥ط؛ظ„ط§ظ‚ ط§ظ„ط³ظ„ط© ظˆظ†ط§ظپط°ط© ط§ظ„ظƒظˆط¯ ظٹط¹طھظ…ط¯ ط¹ظ„ظ‰ [data-close-modal] ط¹ط¨ط± initModalBehaviors
-    // (ظٹظڈط؛ظ„ظ‚ ط¹ط¨ط± closeModal â€” ظٹظ†ط¸ظپ aria-modal ظˆظپط®ظ‘ ط§ظ„طھط¨ظˆظٹط¨ ظˆظ‚ظپظ„ ط§ظ„طھظ…ط±ظٹط±)
+    // أحداث المودالات العامة لتجنب التكرار
+    // إغلاق السلة ونافذة الكود يعتمد على [data-close-modal] عبر initModalBehaviors
+    // (يُغلق عبر closeModal — ينظف aria-modal وفخّ التبويب وقفل التمرير)
     const purchaseModal = document.getElementById('purchaseModal');
 
     const copyCodeBtn = document.getElementById('copyCodeBtn');
@@ -1778,7 +1778,7 @@ function setupEventListeners() {
         });
     }
 
-    // ط¥ظٹظ‚ط§ظپ ط§ظ„ط§ط³طھط·ظ„ط§ط¹/ط§ظ„ط¹ط¯ظ‘ط§ط¯ ط¹ظ†ط¯ ط¥ط؛ظ„ط§ظ‚ ط¥ظٹطµط§ظ„ ط§ظ„ط·ظ„ط¨
+    // إيقاف الاستطلاع/العدّاد عند إغلاق إيصال الطلب
     const receiptOverlay = document.getElementById('codeModal');
     if (receiptOverlay) {
         receiptOverlay.addEventListener('click', function(e) {
@@ -1789,10 +1789,10 @@ function setupEventListeners() {
         });
     }
 
-    // طµط§ط¦ط¯ ط¶ط؛ط·ط§طھ ط§ظ„ظƒط±ظˆطھ ظˆط§ظ„ط¯ط®ظˆظ„ ظ„ظ„ط³ظ„ط©
+    // صائد ضغطات الكروت والدخول للسلة
     document.getElementById('mainCategories').addEventListener('click', function(e) {
-        if (e.target.closest('[data-wishlist-btn]')) return; // ظ„ط§ طھظپطھط­ ط§ظ„طھظپط§طµظٹظ„ ط¹ظ†ط¯ ط¶ط؛ط· ط²ط± ط§ظ„ط£ظ…ظ†ظٹط§طھ
-        if (e.target.closest('[data-quick-add]')) return; // ظ„ط§ طھظپطھط­ ط§ظ„طھظپط§طµظٹظ„ ط¹ظ†ط¯ ط¶ط؛ط· ط²ط± ط§ظ„ط¥ط¶ط§ظپط© ط§ظ„ط³ط±ظٹط¹ط©
+        if (e.target.closest('[data-wishlist-btn]')) return; // لا تفتح التفاصيل عند ضغط زر الأمنيات
+        if (e.target.closest('[data-quick-add]')) return; // لا تفتح التفاصيل عند ضغط زر الإضافة السريعة
         
         const enterBtn = e.target.closest('.enter-btn[data-category]');
         if (enterBtn) {
@@ -1801,8 +1801,8 @@ function setupEventListeners() {
         }
         
         const buyBtn = e.target.closest('.buy-btn[data-item]');
-        if (buyBtn && buyBtn.dataset.productId) { // طھط£ظƒط¯ ظ…ظ† ظˆط¬ظˆط¯ productId
-            const item = productCache.get(buyBtn.dataset.productId); // ط§ط³طھط±ط¬ط§ط¹ ط§ظ„ظ…ظ†طھط¬ ظ…ظ† ط§ظ„ظƒط§ط´
+        if (buyBtn && buyBtn.dataset.productId) { // تأكد من وجود productId
+            const item = productCache.get(buyBtn.dataset.productId); // استرجاع المنتج من الكاش
             addToCart(item);
             return;
         }
@@ -1820,7 +1820,7 @@ function setupEventListeners() {
         }
     });
 
-    // ط§ط³طھط®ط¯ط§ظ… ط§ظ„طھظپظˆظٹط¶ (Event Delegation) ظ„ط£ط²ط±ط§ط± ظپظ„طھط±ط© ط§ظ„ط£ظ‚ط³ط§ظ…
+    // استخدام التفويض (Event Delegation) لأزرار فلترة الأقسام
     document.addEventListener('click', function(e) {
         const filterTabs = document.getElementById('filterTabs');
         if (filterTabs && filterTabs.contains(e.target)) {
@@ -1837,7 +1837,7 @@ function setupEventListeners() {
         }
     });
 
-    // --- ظ†ط¸ط§ظ… ط§ظ„ط¨ط­ط« ط§ظ„ط°ظƒظٹ ط§ظ„ط¬ط¯ظٹط¯ ظ…ط¹ ط§ظ„ط¥ظƒظ…ط§ظ„ ط§ظ„طھظ„ظ‚ط§ط¦ظٹ ---
+    // --- نظام البحث الذكي الجديد مع الإكمال التلقائي ---
     const setupAutocomplete = (inputId, resultsId) => {
         const searchInput = document.getElementById(inputId);
         const resultsContainer = document.getElementById(resultsId);
@@ -1870,7 +1870,7 @@ function setupEventListeners() {
             if (results.length === 0) {
                 const msg = lang === 'en'
                     ? `No results for "<strong>${escapeHtml(query)}</strong>"`
-                    : `ظ„ط§ طھظˆط¬ط¯ ظ†طھط§ط¦ط¬ ظ„ط¨ط­ط«ظƒ "<strong>${escapeHtml(query)}</strong>"`;
+                    : `لا توجد نتائج لبحثك "<strong>${escapeHtml(query)}</strong>"`;
                 resultsContainer.innerHTML = `<div class="autocomplete-empty"><i class="fas fa-search-minus"></i> ${msg}</div>`;
                 showResults();
                 return;
@@ -1911,14 +1911,14 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 return;
             }
 
-            // ط¥ط¸ظ‡ط§ط± skeleton loading ط¨ظٹظ†ظ…ط§ ط§ظ„ط¨ط­ط«
+            // إظهار skeleton loading بينما البحث
             renderLoadingSkeleton();
 
             debounceTimer = setTimeout(() => {
                 const lang = getCurrentLanguage();
                 const lowerCaseQuery = query.toLowerCase();
 
-                // --- âœ¨ ط¨ط­ط« ظ…ظˆط­ط¯ + ظپظ„طھط±ط§طھ ظپط¦ط©/ط³ط¹ط±/طھظ‚ظٹظٹظ… ---
+                // --- ✨ بحث موحد + فلترات فئة/سعر/تقييم ---
                 const catFilter=document.getElementById('searchFilterCategory')?.value||'';
                 const priceFilter=document.getElementById('searchFilterPrice')?.value||'';
                 const ratingFilter=parseFloat(document.getElementById('searchFilterRating')?.value||'');
@@ -1945,17 +1945,17 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 else if(sortFilter==='rating') results.sort((a,b)=>(Number(b.rating)||0)-(Number(a.rating)||0));
                 results=results.slice(0,10);
                 renderResults(results, lang, query);
-            }, 300); // ط§ظ†طھط¸ط§ط± 300ms ط¨ط¹ط¯ طھظˆظ‚ظپ ط§ظ„ظ…ط³طھط®ط¯ظ… ط¹ظ† ط§ظ„ظƒطھط§ط¨ط©
+            }, 300); // انتظار 300ms بعد توقف المستخدم عن الكتابة
         });
 
-        // ط¥ط®ظپط§ط، ط§ظ„ظ†طھط§ط¦ط¬ ط¹ظ†ط¯ ط§ظ„ط¶ط؛ط· ط®ط§ط±ط¬ ط­ظ‚ظ„ ط§ظ„ط¨ط­ط«
+        // إخفاء النتائج عند الضغط خارج حقل البحث
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.search-container') && !e.target.closest('.search-container-mobile')) {
                 hideResults();
             }
         });
 
-        // ط¥ط®ظپط§ط، ط§ظ„ظ†طھط§ط¦ط¬ ط¹ظ†ط¯ ط§ظ„ط¶ط؛ط· ط¹ظ„ظ‰ Escape
+        // إخفاء النتائج عند الضغط على Escape
         searchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 hideResults();
@@ -1965,7 +1965,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
     setupAutocomplete('searchInput', 'autocomplete-results');
     setupAutocomplete('searchInputMobile', 'autocomplete-results-mobile');
-    // ظپظ„طھط±ط§طھ ط§ظ„ط¨ط­ط« ط§ظ„ط°ظƒظٹ
+    // فلترات البحث الذكي
     (function initSearchFilters(){
         const catSel=document.getElementById('searchFilterCategory');
         const filtersWrap=document.getElementById('searchFilters');
@@ -1996,7 +1996,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         const inpM=document.getElementById('searchInputMobile');
         if(inpM){ inpM.addEventListener('input',()=>{ const q=inpM.value.trim(); showFilters(q.length>=2); }); }
     })();
-    // ط¥ط«ط¨ط§طھ ط§ظ„ط¯ظپط¹ â€” ظ…ط¹ط§ظٹظ†ط© ط§ظ„طµظˆط±ط©
+    // إثبات الدفع — معاينة الصورة
     (function initPaymentProof(){
         const input=document.getElementById('paymentProofInput');
         const preview=document.getElementById('paymentProofPreview');
@@ -2006,7 +2006,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         input.addEventListener('change', async()=>{
             const file=input.files?.[0];
             if(!file || !file.type.startsWith('image/')) return;
-            if(file.size>5*1024*1024){ showToast('ط­ط¬ظ… ط§ظ„طµظˆط±ط© ظƒط¨ظٹط± (5MB max)','error'); input.value=''; return; }
+            if(file.size>5*1024*1024){ showToast('حجم الصورة كبير (5MB max)','error'); input.value=''; return; }
             const form=new FormData(); form.append('image', file);
             try{
                 const res=await fetch('/api/upload/review-image',{method:'POST', body:form});
@@ -2015,17 +2015,17 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                     paymentProofUrl=data.url;
                     if(img) img.src=data.url;
                     if(preview) preview.style.display='flex';
-                    showToast('طھظ… ط±ظپط¹ طµظˆط±ط© ط§ظ„ط¥ط«ط¨ط§طھ','success');
-                }else{ showToast(data.error||'ظپط´ظ„ ط§ظ„ط±ظپط¹','error'); }
-            }catch(_e){ showToast('ظپط´ظ„ ط§ظ„ط±ظپط¹','error'); }
+                    showToast('تم رفع صورة الإثبات','success');
+                }else{ showToast(data.error||'فشل الرفع','error'); }
+            }catch(_e){ showToast('فشل الرفع','error'); }
         });
         if(removeBtn) removeBtn.addEventListener('click',()=>{ paymentProofUrl=null; if(preview) preview.style.display='none'; if(img) img.src=''; input.value=''; });
     })();
 
-    // ظپطھط­ ط§ظ„ط³ظ„ط© ط¹ط¨ط± ط²ط± ط§ظ„ظ‡ظٹط¯ط±
+    // فتح السلة عبر زر الهيدر
     const cartHeaderBtn = document.getElementById('cartHeaderBtn');
     const openPurchaseCheckout = function() {
-        // طھط­ط³ظٹظ† طھط¬ط±ط¨ط© ط§ظ„ظ…ط³طھط®ط¯ظ…: طھط¹ط¨ط¦ط© ط§ظ„ط¥ظٹظ…ظٹظ„ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¥ط°ط§ ظƒط§ظ† ظ…ط³ط¬ظ„ط§ظ‹ ط¯ط®ظˆظ„ظ‡
+        // تحسين تجربة المستخدم: تعبئة الإيميل تلقائياً إذا كان مسجلاً دخوله
         const loggedInUser = getCurrentUser();
         const emailInput = document.getElementById('user-email');
         if (loggedInUser && emailInput) {
@@ -2039,7 +2039,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         cartHeaderBtn.addEventListener('click', openPurchaseCheckout);
     }
 
-    // ط´ط±ظٹط· ط§ظ„ط³ظ„ط© ط§ظ„ط«ط§ط¨طھ ظ„ظ„ط¬ظˆط§ظ„ (ط²ط± ط¥طھظ…ط§ظ… ط§ظ„ط´ط±ط§ط، + ظ…ظ†ط·ظ‚ط© ظ…ط¹ظ„ظˆظ…ط§طھ ط§ظ„ط³ظ„ط©)
+    // شريط السلة الثابت للجوال (زر إتمام الشراء + منطقة معلومات السلة)
     const mobileCheckoutBtn = document.getElementById('mobileCartCheckoutBtn');
     if (mobileCheckoutBtn && purchaseModal) {
         mobileCheckoutBtn.addEventListener('click', openPurchaseCheckout);
@@ -2056,7 +2056,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     }
 
     // ======================================================
-    //  ط®ط·ظˆط§طھ ط§ظ„ط´ط±ط§ط، (ط¨ظٹط§ظ†ط§طھ â†گ ط¯ظپط¹ â†گ ط§ط³طھظ„ط§ظ…)
+    //  خطوات الشراء (بيانات ← دفع ← استلام)
     // ======================================================
     let checkoutStep = 1;
     const checkoutPrevBtn = document.getElementById('checkoutPrevBtn');
@@ -2082,7 +2082,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         if (checkoutNextBtn) checkoutNextBtn.style.display = checkoutStep === 3 ? 'none' : 'inline-flex';
         if (submitOrderBtnEl) submitOrderBtnEl.style.display = checkoutStep === 3 ? 'inline-flex' : 'none';
 
-        if (checkoutStep === 3) updateCartUI(); // طھط­ط¯ظٹط« ظ…ظ„ط®طµ ط§ظ„ظ…ط±ط§ط¬ط¹ط© ظ‚ط¨ظ„ ط§ظ„ط¸ظ‡ظˆط±
+        if (checkoutStep === 3) updateCartUI(); // تحديث ملخص المراجعة قبل الظهور
     }
 
     if (checkoutNextBtn) {
@@ -2106,7 +2106,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         checkoutPrevBtn.addEventListener('click', () => setCheckoutStep(checkoutStep - 1));
     }
 
-    // طھط؛ظٹظٹط± ط§ظ„ظ…ط­ط§ظپط¸ ط¯ظٹظ†ط§ظ…ظٹظƒظٹط§ظ‹ ط¯ط§ط®ظ„ ط§ظ„ظ…ظˆط¯ط§ظ„
+    // تغيير المحافظ ديناميكياً داخل المودال
     const paymentOptionsContainer = document.querySelector('.payment-options');
     const instructionsZone = document.getElementById('paymentInstructions');
 
@@ -2141,11 +2141,11 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 updatePaymentInstructions(e.target.value);
             }
         });
-        // ط¹ط±ط¶ ط§ظ„طھط¹ظ„ظٹظ…ط§طھ ط§ظ„ط§ظپطھط±ط§ط¶ظٹط© ط¹ظ†ط¯ ط§ظ„طھط­ظ…ظٹظ„
+        // عرض التعليمات الافتراضية عند التحميل
         updatePaymentInstructions('jawwal_pay');
     }
 
-    // ط¥ط±ط³ط§ظ„ ط·ظ„ط¨ ط§ظ„ط³ظ„ط© ط§ظ„ظƒط§ظ…ظ„ ط¨ط§ظ„ظƒط§ظ…ظ„ ظ„ظ„ظ€ Backend
+    // إرسال طلب السلة الكامل بالكامل للـ Backend
     const submitOrderBtn = document.getElementById('submitOrderBtn');
     if (submitOrderBtn) {
         submitOrderBtn.addEventListener('click', async function() {
@@ -2157,7 +2157,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             if (gateway !== 'stripe' && !paymentRef) { showToast(t('checkout_ref_required'), 'error'); return; }
             if (cart.length === 0) { showToast(t('checkout_cart_empty'), 'error'); return; }
 
-            // طھط¬ظ‡ظٹط² ظ…طµظپظˆظپط© ط§ظ„ظ…ظ†طھط¬ط§طھ ظ„ظƒظٹ ظٹط³طھظ„ظ…ظ‡ط§ ط§ظ„ط³ظٹط±ظپط± ط¯ظپط¹ط© ظˆط§ط­ط¯ط©
+            // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
             const appliedPromo = getAppliedPromo();
             const appliedLoyalty = getAppliedLoyalty();
             const orderData = {
@@ -2174,7 +2174,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             submitOrderBtn.textContent = t('checkout_submitting');
 
             try {
-                // ط§ظ„ط¬ظ„ط³ط© طھظڈط±ط³ظ„ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ط¨ط± HttpOnly cookie (ظ„ط§ ط­ط§ط¬ط© ظ„طھط®ط²ظٹظ† طھظˆظƒظ† ظپظٹ localStorage)
+                // الجلسة تُرسل تلقائياً عبر HttpOnly cookie (لا حاجة لتخزين توكن في localStorage)
                 const response = await fetch('/api/checkout', {
                     method: 'POST',
                     credentials: 'include',
@@ -2187,9 +2187,9 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 if (result.success) {
                     closeModal(purchaseModal);
                     setCheckoutStep(1);
-                    cart.length = 0; // طھظپط±ظٹط؛ ط§ظ„ظ…طµظپظˆظپط©
+                    cart.length = 0; // تفريغ المصفوفة
                     localStorage.removeItem('joker_cart');
-                    clearAppliedPromo(); // ط¥ط²ط§ظ„ط© ظƒظˆط¯ ط§ظ„ط®طµظ… ط¨ط¹ط¯ ط¥طھظ…ط§ظ… ط§ظ„ط·ظ„ط¨
+                    clearAppliedPromo(); // إزالة كود الخصم بعد إتمام الطلب
                     clearAppliedLoyalty();
                     paymentProofUrl=null;
                     const ppPreview=document.getElementById('paymentProofPreview'); if(ppPreview) ppPreview.style.display='none';
@@ -2204,7 +2204,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                         showToast(t('checkout_success'), 'success');
                     }
                 } else {
-                    showToast(`â‌Œ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');
+                    showToast(`❌ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');
                 }
             } catch (_err) {
                 showToast(t('checkout_error_connection'), 'error');
@@ -2220,7 +2220,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         clearBtn.onclick = clearCart;
     }
 
-    // ط²ط± ط§ظ„ظ€ Hero â€” ط§ظ„ط¹ظˆط¯ط© ظ„ظ„ط±ط¦ظٹط³ظٹط© ظˆط§ظ„طھظ…ط±ظٹط± ظ„ظ„ط£ظ‚ط³ط§ظ…
+    // زر الـ Hero — العودة للرئيسية والتمرير للأقسام
     document.addEventListener('click', function(e) {
         const cta = e.target.closest('[data-hero-cta]');
         if (!cta) return;
@@ -2229,7 +2229,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    // ط²ط± ط§ظ„ط¹ظˆط¯ط© ط¥ظ„ظ‰ ط§ظ„ط£ط¹ظ„ظ‰
+    // زر العودة إلى الأعلى
     const backToTopBtn = document.getElementById('backToTop');
     if (backToTopBtn) {
         const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -2243,7 +2243,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         });
     }
 
-    // ط£ط²ط±ط§ط± ط§ظ„ط£ظ…ظ†ظٹط§طھ (طھظپظˆظٹط¶)
+    // أزرار الأمنيات (تفويض)
     document.addEventListener('click', function(e) {
         const btn = e.target.closest('[data-wishlist-btn]');
         if (!btn) return;
@@ -2254,7 +2254,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         showToast(added ? t('wishlist_added') : t('wishlist_removed'), added ? 'success' : 'info');
     });
 
-    // ط²ط± "ط¥ط¶ط§ظپط© ط³ط±ظٹط¹ط©" (+)
+    // زر "إضافة سريعة" (+)
     document.addEventListener('click', function(e) {
         const addBtn = e.target.closest('[data-quick-add]');
         if (!addBtn) return;
@@ -2264,12 +2264,12 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         if (!id) return;
         const item = productCache.get(id);
         if (!item) return;
-        // ط§ظ„ظ…ط®ط²ظˆظ† ط؛ظٹط± ظ…ط¹ط±ظˆظپ (ط®ط§ط±ط¬ظٹ) â†’ ظٹظڈط¹طھط¨ط± ظ…طھظˆظپط±ط§ظ‹ط› ط§ظ„ظ†ظپط§ط° ظپظ‚ط· ط¹ظ†ط¯ظ…ط§ ظٹظƒظˆظ† ط±ظ‚ظ…ط§ظ‹ ظ…ط¹ط±ظˆظپط§ظ‹ â‰¤ 0
+        // المخزون غير معروف (خارجي) → يُعتبر متوفراً؛ النفاذ فقط عندما يكون رقماً معروفاً ≤ 0
         if (item.availableStock !== null && item.availableStock !== undefined && Number(item.availableStock) <= 0) {
             showToast(t('stock_out'), 'error');
             return;
         }
-        addToCart(item); // addToCart ظٹط¹ط±ط¶ ط¥ط´ط¹ط§ط± "cart_added" ط¨ظ†ظپط³ظ‡ ظˆظ„ط§ ط­ط§ط¬ط© ظ„ط¥ط´ط¹ط§ط± ظ…ظƒط±ط±
+        addToCart(item); // addToCart يعرض إشعار "cart_added" بنفسه ولا حاجة لإشعار مكرر
         addBtn.classList.add('added');
         const label = addBtn.querySelector('i');
         if (label) label.classList.replace('fa-plus', 'fa-check');
@@ -2279,7 +2279,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         }, 1400);
     });
 
-    // طھط£ط«ظٹط± 3D ط®ظپظٹظپ ط¹ظ†ط¯ ظ…ط±ظˆط± ط§ظ„ظپط£ط±ط© ط¹ظ„ظ‰ ط§ظ„ظƒط±طھ
+    // تأثير 3D خفيف عند مرور الفأرة على الكرت
     document.addEventListener('mousemove', function(e) {
         const card = e.target.closest('.product-item-card');
         if (!card || card.closest('.tilt-disabled')) return;
@@ -2297,7 +2297,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         });
     });
 
-    // ظپطھط­/ط¥ط؛ظ„ط§ظ‚ ظ†ط§ظپط°ط© طھطھط¨ط¹ ط§ظ„ط·ظ„ط¨
+    // فتح/إغلاق نافذة تتبع الطلب
     const trackFooterBtn = document.getElementById('trackOrderFooterBtn');
     const trackModal = document.getElementById('trackOrderModal');
     const closeTrackBtn = document.getElementById('closeTrackOrderModal');
@@ -2318,7 +2318,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         trackOrderBtn.addEventListener('click', handleTrackOrder);
     }
 
-    // طھط­ط¯ظٹط« ظ†ط§ظپط°ط© ط§ظ„طھطھط¨ط¹ طھظ„ظ‚ط§ط¦ظٹط§ظ‹ ط¹ظ†ط¯ طھط؛ظٹظ‘ط± ط­ط§ظ„ط© ط·ظ„ط¨ ط¹ط¨ط± WebSocket (ظ…ظ† realtime.js)
+    // تحديث نافذة التتبع تلقائياً عند تغيّر حالة طلب عبر WebSocket (من realtime.js)
     window.addEventListener('joker-order-status', function(e) {
         const orderId = e.detail && e.detail.orderId;
         if (!orderId) return;
@@ -2332,7 +2332,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         }
     });
 
-    // ظپطھط­/ط¥ط؛ظ„ط§ظ‚ ظ†ط§ظپط°ط© ظ‚ط§ط¦ظ…ط© ط§ظ„ط£ظ…ظ†ظٹط§طھ
+    // فتح/إغلاق نافذة قائمة الأمنيات
     const wishlistFooterBtn = document.getElementById('wishlistFooterBtn');
     const wishlistModal = document.getElementById('wishlistModal');
     if (wishlistFooterBtn && wishlistModal) {
@@ -2343,20 +2343,20 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     }
 }
 
-//  طھظ‡ظٹط¦ط© ط§ظ„ط£ط­ط¯ط§ط« ط¹ظ†ط¯ طھط­ظ…ظٹظ„ ط§ظ„طµظپط­ط©
+//  تهيئة الأحداث عند تحميل الصفحة
 // ======================================================
 document.addEventListener('DOMContentLoaded', function() {
-    // ط§ط³طھط¯ط¹ط§ط، ط¯ط§ظ„ط© ط§ظ„طھظ‡ظٹط¦ط© ط§ظ„ط±ط¦ظٹط³ظٹط© ط§ظ„طھظٹ ط£طµط¨ط­طھ ط§ظ„ط¢ظ† طھط­طھظˆظٹ ط¹ظ„ظ‰ ظƒظ„ ط§ظ„ظ…ظ†ط·ظ‚ ط§ظ„ظ„ط§ط²ظ… ط¨ط§ظ„طھط±طھظٹط¨ ط§ظ„طµط­ظٹط­.
+    // استدعاء دالة التهيئة الرئيسية التي أصبحت الآن تحتوي على كل المنطق اللازم بالترتيب الصحيح.
     initializeApp(); 
 });
 
 // ======================================================
-// ًںچ‍ ظ†ط¸ط§ظ… ط§ظ„ط¥ط´ط¹ط§ط±ط§طھ ط§ظ„ظ…ظ†ط¨ط«ظ‚ط© (Toast Notifications)
+// 🍞 نظام الإشعارات المنبثقة (Toast Notifications)
 // ======================================================
-// طھظ… ظ†ظ‚ظ„ ظ‡ط°ط§ ط§ظ„ظ…ظ†ط·ظ‚ ط¨ط§ظ„ظƒط§ظ…ظ„ ط¥ظ„ظ‰ ui.js
+// تم نقل هذا المنطق بالكامل إلى ui.js
 
 // ======================================================
-// ًں¤‌ طھطµط¯ظٹط± ط§ظ„ط£ط¯ظˆط§طھ ط§ظ„ظ…ط³ط§ط¹ط¯ط© ط§ظ„ظ…ظڈط³طھط®ط¯ظ…ط© ظپظٹ ui.js
-// (ظ…ظ†طھط¬ط§طھ ظ…ط´ط§ط¨ظ‡ط© / ط´ظˆظ‡ط¯طھ ظ…ط¤ط®ط±ط§ظ‹) â€” import ط¯ظٹظ†ط§ظ…ظٹظƒظٹ
+// 🤝 تصدير الأدوات المساعدة المُستخدمة في ui.js
+// (منتجات مشابهة / شوهدت مؤخراً) — import ديناميكي
 // ======================================================
 export { productCache, formatItem, detectRegion, getRegionDetails };

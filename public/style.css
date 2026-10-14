@@ -7513,7 +7513,6 @@ html[data-theme="light"] .hero-section {
     box-shadow: var(--shadow-2);
     color: var(--text-1);
     font-family: var(--font-sans);
-    direction: rtl;
     transform: translateY(140%);
     opacity: 0;
     transition: transform .3s ease, opacity .3s ease;
@@ -7614,4 +7613,72 @@ html[data-theme="light"] .hero-section {
     .pwa-install-text > span {
         display: none;
     }
+}
+
+/* ==================== Touch devices: calm paint-heavy animations ==================== */
+/* touch screens (phones/tablets/app WebView): disable infinite box-shadow, filter, */
+/* background-position and custom-property animations that cause visible jitter.     */
+/* Transform/opacity animations (ticker, ken-burns, fades) are untouched.            */
+@media (hover: none) {
+    html::before,
+    .hero-section,
+    .hero-section::before,
+    .whatsapp-float,
+    .cart-count-badge.has-items,
+    .slide-tag,
+    .offer-banner,
+    .offer-banner::after,
+    .offer-title-emoji,
+    .countdown-block,
+    .countdown-sep,
+    .skeleton-img,
+    .skeleton-text,
+    #mainCategories .skeleton-card::after,
+    .product-badge.best-seller,
+    .auto-products-grid:empty::after,
+    .timeline-step.current .timeline-dot,
+    .skeleton-line,
+    .card-img-shimmer,
+    .home-stats::before,
+    .code-spark,
+    .section-title i,
+    .filter-btn.active,
+    .stock-badge::before,
+    .mobile-cart-checkout,
+    .offer-cta,
+    .skeleton-price,
+    .skeleton-btn {
+        animation: none !important;
+    }
+    /* sticky :hover states must not stick after tap on touch */
+    .whatsapp-float:hover,
+    .back-to-top-btn:hover,
+    .card-price:hover,
+    .product-item-card.trace:hover {
+        transform: none;
+        animation: none;
+    }
+}
+
+/* ==================== PWA install bar: lift floating buttons ==================== */
+/* same pattern as body.mobile-cart-open — install bar is ~90px tall at bottom */
+body.pwa-bar-visible .whatsapp-float {
+    bottom: 118px;
+}
+body.pwa-bar-visible .back-to-top-btn {
+    bottom: 196px;
+}
+body.pwa-bar-visible .social-proof {
+    bottom: 184px;
+}
+body.pwa-bar-visible.mobile-cart-open .back-to-top-btn {
+    bottom: 216px;
+}
+body.pwa-bar-visible.mobile-cart-open .social-proof {
+    bottom: 200px;
+}
+body.pwa-bar-visible .whatsapp-float,
+body.pwa-bar-visible .back-to-top-btn,
+body.pwa-bar-visible .social-proof {
+    transition: bottom 0.3s ease, opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
 }
