@@ -95,7 +95,8 @@ jobs:
             cat error-report.txt
             echo '```'
           } > issue-body.md
-          gh issue create --title "Android build failed (run #$GITHUB_RUN_NUMBER)" --body-file issue-body.md --label build || true
+          gh label create build --description "Automated build failures" --color B60205 || true
+          gh issue create --title "Android build failed (run #$GITHUB_RUN_NUMBER)" --body-file issue-body.md || true
         env:
           GH_TOKEN: ${{ github.token }}
 
