@@ -65,10 +65,39 @@ jobs:
           npx cap sync android
 
       - name: Build release APK (unsigned)
+        id: build
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          set -o pipefail
+          {
+            echo "=== variables.gradle ==="
+            cat variables.gradle 2>/dev/null || true
+            echo "=== local.properties ==="
+            cat local.properties 2>/dev/null || true
+            echo "=== SDK dirs ==="
+            ls "$ANDROID_HOME/platforms" 2>/dev/null || true
+            ls "$ANDROID_HOME/build-tools" 2>/dev/null || true
+            echo "=== gradle build ==="
+          } > build.log
+          ./gradlew assembleRelease --no-daemon --stacktrace >> build.log 2>&1
+
+      - name: Report build failure
+        if: failure() && steps.build.outcome == 'failure'
+        run: |
+          tail -c 25000 android/build.log > error-report.txt 2>/dev/null || true
+          {
+            echo "### Android build failed — run #$GITHUB_RUN_NUMBER"
+            echo ""
+            echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo ""
+            echo '```'
+            cat error-report.txt
+            echo '```'
+          } > issue-body.md
+          gh issue create --title "Android build failed (run #$GITHUB_RUN_NUMBER)" --body-file issue-body.md --label build || true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Sign APK
         env:
