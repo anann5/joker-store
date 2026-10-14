@@ -330,6 +330,10 @@ app.get('/faq', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'faq.html'));
 });
 
+app.get('/download', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'download.html'));
+});
+
 /**
  * تهريب قيمة نصية ديناميكية لإدراجها بأمان داخل HTML (يمنع حقن الوسوم).
  */
