@@ -7,6 +7,7 @@ on:
     paths:
       - 'capacitor.config.json'
       - 'www/**'
+      - 'mobile-assets/**'
       - '.github/workflows/android.yml'
       - 'public/image/icon-*.png'
   release:
@@ -66,6 +67,14 @@ jobs:
           cp public/image/icon-512.png www/icon.png
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           npx cap sync android
+
+      - name: Apply branded icons + splash
+        run: |
+          set -e
+          cp -r mobile-assets/res/. android/app/src/main/res/
+          # force legacy+adaptive icons over Capacitor defaults
+          ls android/app/src/main/res/ | tr '\n' ' '
+          echo "branding applied"
 
       - name: Build release APK (unsigned)
         id: build
