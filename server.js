@@ -1,0 +1,216 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
+const http = require('http');
+const { Server } = require('socket.io');
+const connectDB = require('./config/database');
+const { validateEnv } = require('./config/envCheck');
+const app = require('./app');
+const { syncInventoryInternal } = require('./controllers/productController');
+const { cleanupOldLogsInternal } = require('./controllers/logController');
+const { verifyAdminSocket, verifyUserSocket } = require('./controllers/authController');
+const { checkProviderBalancesAlert } = require('./controllers/helpers');
+const { clearStorefrontCache } = require('./controllers/storeController');
+const registry = require('./providers/registry');
+
+validateEnv();
+
+connectDB();
+
+const server = http.createServer(app);
+
+// WebSocket for real-time admin notifications.
+// - Same-origin only (CORS disabled for cross-origin).
+// - Every socket must authenticate with the admin HttpOnly cookie
+//   before it can join the 'admins' room or receive any event.
+const io = new Server(server, {
+    cors: { origin: false, methods: ['GET', 'POST'] },
+    serveClient: false
+});
+
+io.use((socket, next) => {
+    // Reject cross-origin handshakes (defense in depth).
+    const { origin, host } = socket.handshake.headers;
+    if (origin && host && origin !== `http://${host}` && origin !== `https://${host}`) {
+        return next(new Error('cross-origin connections are not allowed'));
+    }
+    // Accept the handshake if it passes EITHER admin OR user authentication:
+    //   - admin sockets join the 'admins' room (existing behavior)
+    //   - logged-in customers join their 'user:<id>' room for order_status events
+    verifyAdminSocket(socket, (adminError) => {
+        if (!adminError) return next();
+        return verifyUserSocket(socket, next);
+    });
+});
+
+io.on('connection', (socket) => {
+    console.log(`🔌 WebSocket admin connected: ${socket.id}`);
+    socket.on('disconnect', () => {
+        console.log(`🔌 WebSocket admin disconnected: ${socket.id}`);
+    });
+});
+
+// Make io accessible to routes
+app.set('io', io);
+
+// مزامنة الأسعار تلقائياً من المزودين (الفترة بالساعات قابلة للضبط عبر SYNC_INTERVAL_HOURS)
+// هذا يبقي المتجر "صاحياً" على تغيّرات الأسعار لدى المزودين.
+const SYNC_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.SYNC_INTERVAL_HOURS, 10) || 6);
+const AUTO_SYNC_INTERVAL = SYNC_INTERVAL_HOURS * 60 * 60 * 1000;
+// حراسة التداخل: تمنع تشغيل نفس المهمة بشكل متوازٍ إذا تجاوزت مدة الدورة الفاصل الزمني
+// (مثلاً مزامنة أسعار أبطأ من 6 ساعات، أو تزامن المزامنة الأولى مع الدورة التالية)
+let priceSyncInFlight = false;
+const runPriceSync = async () => {
+    if (priceSyncInFlight) return;
+    priceSyncInFlight = true;
+    try {
+        console.log('🔄 جاري بدء مراقبة وتحديث الأسعار من المزودين...');
+        const result = await syncInventoryInternal();
+        if (result.success) {
+            // بعد تحديث الأسعار/المنتجات نمسح كاش الواجهة حتى لا تُعرض بيانات قديمة
+            clearStorefrontCache();
+            console.log(`✅ تم تحديث ${result.count} منتج بناءً على الأسعار الجديدة لهوامش الربح.`);
+        } else {
+            console.error('⚠️ فشل التحديث التلقائي للأسعار:', result.error);
+        }
+    } catch (error) {
+        console.error('❌ خطأ فادح في مهمة تحديث الأسعار:', error);
+    } finally {
+        priceSyncInFlight = false;
+    }
+};
+
+setInterval(runPriceSync, AUTO_SYNC_INTERVAL);
+
+// مزامنة أولية بعد إقلاع السيرفر (إن وُجد مزودون معدّون) لضمان أسعار حديثة فوراً
+const hasConfiguredProviders = registry.getProviders().length > 0;
+if (hasConfiguredProviders) {
+    const INITIAL_SYNC_DELAY = Math.max(10, Number.parseInt(process.env.INITIAL_SYNC_DELAY_SEC, 10) || 30) * 1000;
+    setTimeout(() => {
+        console.log(`🔄 مزامنة أولية بعد الإقلاع (${registry.getProviders().length} مزود)...`);
+        runPriceSync();
+    }, INITIAL_SYNC_DELAY);
+}
+
+const DAILY_INTERVAL = 24 * 60 * 60 * 1000;
+let logCleanupInFlight = false;
+setInterval(async () => {
+    if (logCleanupInFlight) return;
+    logCleanupInFlight = true;
+    try {
+        console.log('🧹 جاري فحص وتنظيف السجلات القديمة...');
+        const result = await cleanupOldLogsInternal();
+        if (result.success && result.count > 0) {
+            console.log(`✅ تم حذف ${result.count} سجل قديم مر عليها أكثر من شهر.`);
+        }
+    } catch (error) {
+        console.error('❌ خطأ فادح في مهمة تنظيف السجلات:', error);
+    } finally {
+        logCleanupInFlight = false;
+    }
+}, DAILY_INTERVAL);
+
+// فحص دوري لأرصدة المزودين مع تنبيه تيليغرام عند الانخفاض (LOW_BALANCE_THRESHOLD)
+const BALANCE_CHECK_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.BALANCE_CHECK_INTERVAL_HOURS, 10) || 6);
+let balanceCheckInFlight = false;
+setInterval(async () => {
+    if (balanceCheckInFlight) return;
+    balanceCheckInFlight = true;
+    try {
+        const result = await checkProviderBalancesAlert();
+        if (result.alerted > 0) {
+            console.log(`⚠️ تم إرسال ${result.alerted} تنبيه أرصدة/انقطاع مزود.`);
+        }
+    } catch (error) {
+        console.error('❌ خطأ فادح في فحص أرصدة المزودين:', error);
+    } finally {
+        balanceCheckInFlight = false;
+    }
+}, BALANCE_CHECK_INTERVAL_HOURS * 60 * 60 * 1000);
+
+// فحص أولي بعد الإقلاع (نفس تأخير المزامنة) لتنبيه رصيد منخفض فوراً
+if (hasConfiguredProviders) {
+    setTimeout(() => {
+        checkProviderBalancesAlert().catch(err => {
+            console.error('❌ خطأ في الفحص الأولي لأرصدة المزودين:', err);
+        });
+    }, Math.max(10, Number.parseInt(process.env.INITIAL_SYNC_DELAY_SEC, 10) || 30) * 1000);
+}
+
+// فحص دوري للمخزون المنخفض مع تنبيه تيليجرام
+const { checkLowStockAlert } = require('./controllers/helpers');
+const LOW_STOCK_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.LOW_STOCK_CHECK_INTERVAL_HOURS, 10) || 6);
+let lowStockInFlight = false;
+setInterval(async () => {
+    if (lowStockInFlight) return;
+    lowStockInFlight = true;
+    try {
+        const r = await checkLowStockAlert();
+        if (r.alerted > 0) console.log(`⚠️ تنبيه مخزون منخفض: ${r.alerted} منتج (من ${r.checked})`);
+    } catch (e) { console.error('❌ فحص المخزون المنخفض فشل:', e.message); }
+    finally { lowStockInFlight = false; }
+}, LOW_STOCK_INTERVAL_HOURS * 60 * 60 * 1000);
+setTimeout(() => { checkLowStockAlert().catch(()=>{}); }, 45 * 1000);
+
+// متابعة السلال المهجورة وإرسال تذكير عبر البريد
+const { checkAbandonedCarts } = require('./controllers/helpers');
+let abandonedInFlight=false;
+setInterval(async()=>{
+    if(abandonedInFlight) return;
+    abandonedInFlight=true;
+    try{
+        const r=await checkAbandonedCarts();
+        if(r.sent>0) console.log(`📧 سلال مهجورة: تم إرسال ${r.sent} تذكير`);
+    }catch(e){ console.error('❌ سلال مهجورة فشل:', e.message); }
+    finally{ abandonedInFlight=false; }
+}, 6*60*60*1000);
+setTimeout(()=>{ checkAbandonedCarts().catch(()=>{}); }, 60*1000);
+
+// تنظيف دوري لاشتراكات Web Push الميتة
+const { purgeStaleSubscriptions } = require('./controllers/push');
+let pushPurgeInFlight = false;
+setInterval(async () => {
+    if (pushPurgeInFlight) return;
+    pushPurgeInFlight = true;
+    try { await purgeStaleSubscriptions(); } catch (e) { console.error('❌ تنظيف اشتراكات Push فشل:', e.message); }
+    finally { pushPurgeInFlight = false; }
+}, 24 * 60 * 60 * 1000);
+setTimeout(() => { purgeStaleSubscriptions(3 * 24 * 60 * 60 * 1000).catch(()=>{}); }, 5 * 60 * 1000);
+
+// تسوية الطلبات المدفوعة التي لم تُكمَّل (مثلاً فشل Webhook أو انطفاء السيرفر قبل التسليم).
+// تُجارى كل بضع دقائق كل طلبات Stripe المدفوعة العالقة في pending وتسلّمها تلقائياً.
+const { autoFulfilOrder } = require('./controllers/orderController');
+const { Order } = require('./models');
+const RECONCILE_INTERVAL_SEC = Math.max(60, Number.parseInt(process.env.RECONCILE_INTERVAL_SEC, 10) || 300);
+let reconcileInFlight = false;
+const reconcilePaidOrders = async () => {
+    if (reconcileInFlight) return;
+    reconcileInFlight = true;
+    try {
+        const cutoff = new Date(Date.now() - 2 * 60 * 1000); // مهلة كافية لمعالجة الـ webhook
+        const stale = await Order.find({
+            status: 'pending',
+            paymentGateway: 'stripe',
+            stripePaymentIntentId: { $ne: null },
+            createdAt: { $lt: cutoff }
+        }).limit(50).select('orderId');
+        if (stale.length === 0) return;
+        for (const o of stale) {
+            // eslint-disable-next-line no-await-in-loop
+            const result = await autoFulfilOrder(o.orderId, io);
+            if (result.success) console.log(`✅ تسوية تلقائية: أكتمل الطلب #${o.orderId}.`);
+        }
+    } catch (error) {
+        console.error('❌ فشل تسوية الطلبات المدفوعة:', error.message);
+    } finally {
+        reconcileInFlight = false;
+    }
+};
+setInterval(reconcilePaidOrders, RECONCILE_INTERVAL_SEC * 1000);
+setTimeout(() => { reconcilePaidOrders(); }, 60 * 1000);
+
+const FINAL_PORT = process.env.PORT || 5850;
+// الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
+server.listen(FINAL_PORT, '::', () => {
+    console.log(`🚀 السيرفر شغال ومثالي على بورت ${FINAL_PORT}`);
+});

@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: joker-store
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # فرض HTTPS مفعّل افتراضياً في الإنتاج (Render يمرر x-forwarded-proto: https).
+      # لا تضبط FORCE_HTTPS هنا — يبقى مفعّلاً.
+      - key: PORT
+        value: 10000
+      # ⚠️ عيّن قيماً حقيقية في لوحة Render (Dashboard → Environment)
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: JWT_USER_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      # ضع قيمة SITE_URL في لوحة Render بعد أول ديبلوي (مثلاً https://joker-store.onrender.com)
+      - key: SITE_URL
+        sync: false
+      # أرقام الدفع وروابط التواصل — املأها في لوحة Render
+      - key: JAWWAL_PAY_NUMBER
+        sync: false
+      - key: PALPAY_NUMBER
+        sync: false
+      - key: WHATSAPP_NUMBER
+        sync: false
+      - key: TELEGRAM_LINK
+        sync: false
+      - key: INSTAGRAM_LINK
+        sync: false
+      - key: TIKTOK_LINK
+        sync: false

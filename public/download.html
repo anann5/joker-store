@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/image/logo.png">
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json?v=6">
+    <meta name="theme-color" content="#0B0F1C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Joker Store">
+    <title>Joker Store | تحميل التطبيق</title>
+    <meta name="description" content="حمّل تطبيق Joker Store لأندرويد أو ثبّته على الآيفون — كل ميزات المتجر في تطبيق واحد.">
+    <script src="/theme.js?v=13"></script>
+    <link rel="stylesheet" href="style.css?v=13">
+    <style>
+        .dl-page {
+            min-height: 100vh;
+            padding: 40px 20px 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dl-hero { text-align: center; max-width: 640px; }
+        .dl-hero img { width: 108px; height: 108px; border-radius: 26px; box-shadow: var(--shadow-2); }
+        .dl-hero h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); margin: 18px 0 8px; color: var(--text-1); }
+        .dl-hero p { color: var(--text-2); line-height: 1.7; font-size: .95rem; }
+        .dl-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 18px;
+            width: 100%;
+            max-width: 760px;
+            margin-top: 34px;
+        }
+        .dl-card {
+            background: var(--glass-strong);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 26px 22px;
+            text-align: center;
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+        }
+        .dl-card .logo-os {
+            width: 56px; height: 56px;
+            border-radius: var(--radius-md);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.9rem; margin-bottom: 14px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+        }
+        .dl-card h2 { color: var(--text-1); font-size: 1.15rem; margin-bottom: 8px; }
+        .dl-card > p { color: var(--text-2); font-size: .85rem; line-height: 1.7; margin-bottom: 18px; }
+        .dl-btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; padding: 13px 20px;
+            background: var(--grad-primary); color: #fff;
+            border: 0; border-radius: var(--radius-pill);
+            font-family: var(--font-sans); font-weight: 700; font-size: .95rem;
+            cursor: pointer; text-decoration: none;
+            box-shadow: var(--shadow-glow);
+        }
+        .dl-btn:hover { filter: brightness(1.08); }
+        .dl-btn[aria-disabled="true"], .dl-btn.disabled {
+            background: var(--glass); color: var(--text-muted);
+            box-shadow: none; cursor: not-allowed; pointer-events: none;
+        }
+        .dl-note { margin-top: 12px; font-size: .78rem; color: var(--text-muted); line-height: 1.6; }
+        .dl-steps {
+            margin-top: 34px; max-width: 640px; width: 100%;
+            background: var(--glass); border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg); padding: 22px;
+        }
+        .dl-steps h3 { color: var(--text-1); font-size: 1rem; margin-bottom: 12px; }
+        .dl-steps ol { margin: 0; padding-inline-start: 20px; color: var(--text-2); font-size: .88rem; line-height: 2; }
+        .dl-back { margin-top: 30px; color: var(--primary); text-decoration: none; font-weight: 600; font-size: .9rem; }
+        .dl-back:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <main class="dl-page">
+        <div class="dl-hero">
+            <img src="/image/apple-touch-icon.png" alt="Joker Store">
+            <h1>تطبيق Joker Store</h1>
+            <p>كل ميزات المتجر في تطبيق واحد — أسعار لحظية، طلباتك، تتبع الشحنات، وإشعارات. أي تحديث على الموقع يظهر في التطبيق فوراً.</p>
+        </div>
+
+        <div class="dl-cards">
+            <section class="dl-card">
+                <div class="logo-os">🤖</div>
+                <h2>أندرويد</h2>
+                <p>ملف APK تُثبّته مباشرة بدون متجر Google Play. الإصدار <span id="apkSize">—</span></p>
+                <a class="dl-btn" id="apkBtn" href="https://github.com/anann5/joker-store/releases/latest/download/joker-store.apk">
+                    ⬇ تحميل تطبيق أندرويد
+                </a>
+                <p class="dl-note" id="apkNote">عند التثبيت: فعّل "التثبيت من مصادر غير معروفة" لو طلب منك الهاتف.</p>
+            </section>
+
+            <section class="dl-card">
+                <div class="logo-os"></div>
+                <h2>آيفون (iPhone)</h2>
+                <p>بدون متجر التطبيقات — ثبّت الموقع كتطبيق من Safari خلال ثانية واحدة.</p>
+                <button class="dl-btn" id="iosBtn"> طريقة تثبيت الآيفون</button>
+                <p class="dl-note">يفتح بأيقونة على الشاشة الرئيسية ويعمل بدون شريط المتصفح.</p>
+            </section>
+        </div>
+
+        <div class="dl-steps" id="iosSteps" hidden>
+            <h3>طريقة التثبيت على الآيفون:</h3>
+            <ol>
+                <li>افتح <b>Safari</b> على جهازك (ليس Chrome).</li>
+                <li>ادخل على الرابط: <b id="siteUrl"></b></li>
+                <li>اضغط زر المشاركة <b>⬆︎</b> أسفل الشاشة.</li>
+                <li>اختر <b>"إضافة إلى الشاشة الرئيسية"</b> ثم <b>"إضافة"</b>.</li>
+            </ol>
+        </div>
+
+        <div class="dl-steps" id="androidSteps" hidden>
+            <h3>طريقة تثبيت ملف APK على أندرويد:</h3>
+            <ol>
+                <li>اضغط زر <b>تحميل تطبيق أندرويد</b> بالأعلى.</li>
+                <li>افتح الملف المُحمّل (من الإشعارات أو ملف التنزيلات).</li>
+                <li>لو ظهر تحذير، اضغط <b>الإعدادات</b> وفعّل "السماح من هذا المصدر".</li>
+                <li>اضغط <b>تثبيت</b> — أيقونة Joker Store رح تظهر مع تطبيقاتك.</li>
+            </ol>
+        </div>
+
+        <a class="dl-back" href="/">→ الرجوع للمتجر</a>
+    </main>
+
+    <script type="module" src="sub-page.js"></script>
+    <script src="/sw-register.js" defer></script>
+    <script src="/install-prompt.js" defer></script>
+    <script>
+        document.getElementById('siteUrl').textContent = location.host || 'joker-store.onrender.com';
+
+        var iosBtn = document.getElementById('iosBtn');
+        var iosSteps = document.getElementById('iosSteps');
+        iosBtn.addEventListener('click', function () {
+            iosSteps.hidden = !iosSteps.hidden;
+        });
+
+        var apkBtn = document.getElementById('apkBtn');
+        var apkNote = document.getElementById('apkNote');
+        var apkSize = document.getElementById('apkSize');
+        var androidSteps = document.getElementById('androidSteps');
+
+        // تحقق إن ملف الـ APK منشور فعلاً
+        fetch('https://api.github.com/repos/anann5/joker-store/releases/latest', { headers: { 'Accept': 'application/vnd.github+json' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (rel) {
+                var asset = (rel.assets || []).find(function (a) { return /\.apk$/i.test(a.name); });
+                if (asset) {
+                    apkSize.textContent = Math.round(asset.size / 1048576) + ' ميجابايت';
+                    apkNote.textContent = 'آخر تحديث: ' + new Date(asset.updated_at).toLocaleDateString('ar-EG');
+                } else {
+                    apkBtn.classList.add('disabled');
+                    apkBtn.removeAttribute('href');
+                    apkNote.textContent = 'التطبيق قيد النشر — استخدم التثبيت من المتجر مؤقتاً.';
+                }
+            })
+            .catch(function () {
+                apkBtn.classList.add('disabled');
+                apkBtn.removeAttribute('href');
+                apkNote.textContent = 'التطبيق قيد النشر — استخدم المتجر من المتصفح مؤقتاً.';
+            });
+
+        apkBtn.addEventListener('click', function (e) {
+            if (apkBtn.classList.contains('disabled')) { e.preventDefault(); return; }
+            androidSteps.hidden = false;
+            androidSteps.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    </script>
+</body>
+</html>

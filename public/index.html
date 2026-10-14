@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/image/logo.png">
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json?v=6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Joker Store">
+    <title data-page-title-key="site_title">Joker Store | بطاقات رقمية وألعاب</title>
+    <meta name="description" content="Joker Store — متجرك الموثوق لشحن الألعاب والبطاقات الرقمية. أكواد أصلية مضمونة 100% وتوصيل فوري: ببجي، فورتنايت، ستيم، بلايستيشن والمزيد." data-i18n-meta="meta_home_desc">
+    <meta name="keywords" content="ببجي, فورتنايت, ستيم, بلايستيشن, شدات, بطاقات رقمية, شحن, Joker Store">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="/">
+    <meta name="theme-color" content="#0B0F1C">
+    <meta property="og:title" content="Joker Store | بطاقات رقمية وألعاب" data-i18n-meta="meta_og_title">
+    <meta property="og:description" content="أكواد أصلية مضمونة 100% وتوصيل فوري. اشحن ببجي، فورتنايت، ستيم والمزيد بضمان Joker Store." data-i18n-meta="meta_og_desc">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="/">
+    <meta property="og:image" content="/image/logo.png">
+    <meta property="og:site_name" content="Joker Store">
+    <meta property="og:locale" content="ar_AR">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Joker Store | بطاقات رقمية وألعاب" data-i18n-meta="meta_og_title">
+    <meta name="twitter:description" content="أكواد أصلية مضمونة 100% وتوصيل فوري. اشحن ببجي، فورتنايت، ستيم والمزيد بضمان Joker Store." data-i18n-meta="meta_og_desc">
+    <meta name="twitter:image" content="/image/logo.png">
+    <link rel="alternate" hreflang="ar" href="/?lang=ar">
+    <link rel="alternate" hreflang="en" href="/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="/">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "OnlineStore",
+        "name": "Joker Store",
+        "description": "متجر بطاقات رقمية وألعاب — أكواد أصلية مضمونة وتوصيل فوري.",
+        "image": "/image/logo.png",
+        "paymentAccepted": ["Jawwal Pay", "PalPay", "Reflect"],
+        "currenciesAccepted": "ILS",
+        "priceRange": "₪₪",
+        "address": { "@type": "PostalAddress", "addressCountry": "PS" },
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Joker Store",
+        "logo": "/image/logo.png",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer service",
+            "availableLanguage": ["Arabic", "English"]
+        }
+    }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" media="print" data-async-css>
+    <script src="/theme.js?v=13"></script>
+    <link rel="stylesheet" href="/style.css?v=13">
+    <link rel="modulepreload" href="/script.js">
+    <link rel="modulepreload" href="/i18n.js">
+    <link rel="modulepreload" href="/ui.js">
+    <link rel="modulepreload" href="/shared.js">
+    <link rel="modulepreload" href="/auth.js">
+    <link rel="modulepreload" href="/cart.js">
+    <link rel="modulepreload" href="/modals.js">
+    <link rel="modulepreload" href="/currency.js">
+    <link rel="modulepreload" href="/realtime.js">
+    <script src="/async-css.js" defer></script>
+</head>
+<body>
+
+<!-- ====================================================
+     الهيدر — Aurora Glass
+==================================================== -->
+<header>
+    <div class="header-container">
+
+        <div class="logo-zone" id="logoHomeBtn" title="العودة للرئيسية" data-i18n-title="header_logo_title">
+            <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+            <img src="/image/logo.png" alt="Logo" class="header-image">
+        </div>
+
+        <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="فتح القائمة" data-i18n-aria="mobile_menu_aria" aria-expanded="false">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <div class="header-controls">
+            <button id="themeToggleBtn" class="header-btn theme-toggle-btn" title="تبديل المظهر (فاتح / داكن / النظام)" aria-label="تبديل المظهر">
+                <i class="fas fa-moon"></i>
+            </button>
+            <button id="lang-switcher" class="header-btn" title="Switch Language">
+                <i class="fas fa-globe"></i>
+                <span>EN</span>
+            </button>
+        </div>
+
+        <div id="userAuthContainer" class="user-auth-zone">
+            <button id="userAuthBtn" class="header-btn auth-zone-btn">
+                <i class="fas fa-user-circle"></i>
+                <span id="userStateText" data-i18n-key="login_button">تسجيل الدخول</span>
+            </button>
+            <div id="userAccountDropdown">
+                <div id="userEmailDisplay" class="account-dropdown-item account-email-item"></div>
+                <div id="orderHistoryBtn" class="account-dropdown-item"><i class="fas fa-history"></i> <span data-i18n-key="order_history_label">سجل الطلبات</span></div>
+                <div id="referralDropdownSection" class="account-dropdown-item" style="display:none; flex-direction:column; align-items:flex-start; gap:6px; padding:10px 14px;">
+                    <div style="font-size:0.78rem; color:var(--text-muted);"><i class="fas fa-gift"></i> <span data-i18n-key="referral_heading">كود الإحالة الخاص بك</span></div>
+                    <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                        <strong id="referralCodeText" dir="ltr" style="letter-spacing:2px; color:var(--accent);"></strong>
+                        <button id="referralCopyBtn" class="enter-btn" style="padding:4px 10px; font-size:0.75rem;" data-i18n-key="referral_copy">نسخ</button>
+                    </div>
+                    <div id="referralStatsText" style="font-size:0.75rem; color:var(--text-muted);"></div>
+                </div>
+                <div id="logoutBtn" class="account-dropdown-item account-logout"><i class="fas fa-sign-out-alt"></i> <span data-i18n-key="logout_label">تسجيل الخروج</span></div>
+            </div>
+        </div>
+
+        <a href="/offers" class="header-btn" style="text-decoration:none;color:#C3CBD9;background:rgba(251,113,133,0.12);border:1px solid rgba(251,113,133,0.25);" title="العروض الخاصة"><i class="fas fa-fire" style="color:#FB7185;"></i> <span data-i18n-key="sub_footer_offers">العروض الخاصة</span></a>
+
+        <div class="cart-icon-container" id="cartHeaderBtn" title="سلة المشتريات" data-i18n-title="cart_header_title">
+            <i class="fas fa-shopping-cart"></i>
+            <span id="cartCountBadge" class="cart-count-badge">0</span>
+        </div>
+
+        <nav>
+            <a href="#" class="active" id="homeLink" data-i18n-key="nav_home">الرئيسية</a>
+            <div class="dropdown-wrapper">
+                <button class="dropdown-btn" id="categoriesBtn">
+                    <i class="fas fa-list"></i><span data-i18n-key="nav_categories">الأقسام</span>
+                </button>
+                <div class="dropdown-menu mega-menu" id="categoriesDropdown">
+                    <div class="mega-column">
+                        <span class="mega-heading"><i class="fas fa-gamepad"></i> <span data-i18n-key="menu_group_games">الألعاب والمنصات</span></span>
+                        <button class="dropdown-item" data-category="gaming_general"><i class="fas fa-gamepad"></i> <span data-i18n-key="menu_games_btn">الألعاب</span></button>
+                        <button class="dropdown-item" data-category="steam"><i class="fab fa-steam"></i> <span data-i18n-key="menu_steam_btn">ستيم</span></button>
+                        <button class="dropdown-item" data-category="pubg"><i class="fas fa-crosshairs"></i> <span data-i18n-key="menu_pubg_btn">ببجي</span></button>
+                        <button class="dropdown-item" data-category="fortnite"><i class="fas fa-gun"></i> <span data-i18n-key="menu_fortnite_btn">فورتنايت</span></button>
+                        <button class="dropdown-item" data-category="playstation"><i class="fab fa-playstation"></i> <span data-i18n-key="menu_playstation_btn">بلايستيشن</span></button>
+                        <button class="dropdown-item" data-category="xbox"><i class="fab fa-xbox"></i> <span data-i18n-key="menu_xbox_btn">إكس بوكس</span></button>
+                    </div>
+                    <div class="mega-column">
+                        <span class="mega-heading"><i class="fas fa-window-restore"></i> <span data-i18n-key="menu_group_software">البرامج والتراخيص</span></span>
+                        <button class="dropdown-item" data-category="microsoft_windows"><i class="fab fa-windows"></i> <span data-i18n-key="menu_windows_btn">ويندوز</span></button>
+                        <button class="dropdown-item" data-category="adobe"><i class="fas fa-paint-brush"></i> <span data-i18n-key="menu_adobe_btn">أدوبي</span></button>
+                        <button class="dropdown-item" data-category="antivirus"><i class="fas fa-shield-alt"></i> <span data-i18n-key="menu_antivirus_btn">الحماية</span></button>
+                        <button class="dropdown-item" data-category="vpn"><i class="fas fa-lock"></i> <span data-i18n-key="menu_vpn_btn">VPN</span></button>
+                    </div>
+                    <div class="mega-column">
+                        <span class="mega-heading"><i class="fas fa-gift"></i> <span data-i18n-key="menu_group_giftcards">بطاقات هدايا</span></span>
+                        <button class="dropdown-item" data-category="google"><i class="fab fa-google-play"></i> <span data-i18n-key="menu_google_btn">جوجل بلاي</span></button>
+                        <button class="dropdown-item" data-category="itunes"><i class="fab fa-apple"></i> <span data-i18n-key="menu_itunes_btn">آيتونز</span></button>
+                        <button class="dropdown-item" data-category="razer_gold"><i class="fas fa-coins"></i> <span data-i18n-key="menu_razer_btn">ريزر جولد</span></button>
+                        <button class="dropdown-item" data-category="amazon"><i class="fab fa-amazon"></i> <span data-i18n-key="menu_amazon_btn">أمازون</span></button>
+                    </div>
+                </div>
+            </div>
+            <a href="#" id="digitalCardsLink" data-i18n-key="nav_digital_cards">البطاقات الرقمية</a>
+        </nav>
+
+        <div class="search-zone">
+            <div class="search-container">
+                <input type="text" id="searchInput" aria-label="بحث" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
+                <button class="search-btn" aria-label="بحث" data-i18n-aria="header_search_aria"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+            <div id="searchFilters" class="search-filters" hidden>
+                <select id="searchFilterCategory"><option value="">كل الفئات</option></select>
+                <select id="searchFilterPrice"><option value="">أي سعر</option><option value="0-50">0–50 ₪</option><option value="50-100">50–100 ₪</option><option value="100-300">100–300 ₪</option><option value="300-">300+ ₪</option></select>
+                <select id="searchFilterRating"><option value="">أي تقييم</option><option value="4">★4+</option><option value="4.5">★4.5+</option></select>
+                <select id="searchFilterSort"><option value="">الأحدث</option><option value="price_asc">السعر ↑</option><option value="price_desc">السعر ↓</option><option value="rating">الأعلى تقييماً</option></select>
+            </div>
+            <div class="autocomplete-results" id="autocomplete-results"></div>
+        </div>
+    </div>
+
+    <div class="search-container-mobile">
+        <div class="search-wrapper">
+            <input type="text" id="searchInputMobile" aria-label="بحث" data-i18n-key="search_placeholder" data-i18n-placeholder="true" placeholder="ابحث عن باقة، شدات، بطاقة أو قسم...">
+            <button class="search-btn-mobile" aria-label="بحث" data-i18n-aria="header_search_aria"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
+        <div class="autocomplete-results" id="autocomplete-results-mobile"></div>
+    </div>
+</header>
+
+<!-- ====================================================
+     المحتوى الرئيسي
+==================================================== -->
+<main class="page-shell">
+
+    <!-- ===== Hero Slider ===== -->
+    <div class="hero-section">
+        <div class="slide active">
+            <div class="slide-content">
+                <span class="slide-tag"><i class="fas fa-bolt"></i> <span data-i18n-key="hero_tag_instant">توصيل فوري</span></span>
+                <h1 data-i18n-key="hero_slide1_title">أكواد أصلية تُسلَّم فوراً</h1>
+                <p data-i18n-key="hero_slide1_sub">اشحن حسابك خلال دقائق بأمان تام وبضمان Joker Store.</p>
+                <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-store"></i> <span data-i18n-key="hero_cta_browse">تسوق الآن</span></button>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <span class="slide-tag"><i class="fas fa-fire"></i> <span data-i18n-key="hero_tag_daily">عروض يومية</span></span>
+                <h2 data-i18n-key="hero_slide2_title">أفضل الأسعار والعروض</h2>
+                <p data-i18n-key="hero_slide2_sub">باقات وشدات وأكواد لجميع المنصات بأسعار تنافسية.</p>
+                <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-fire"></i> <span data-i18n-key="hero_cta_discover">اكتشف الباقات</span></button>
+            </div>
+        </div>
+        <div class="slide">
+            <div class="slide-content">
+                <span class="slide-tag"><i class="fas fa-shield-alt"></i> <span data-i18n-key="hero_tag_guarantee">ضمان كامل</span></span>
+                <h2 data-i18n-key="hero_slide3_title">ضمان استرجاع كامل</h2>
+                <p data-i18n-key="hero_slide3_sub">مشكلة مع الكود؟ نستبدله أو نعيد لك المبلغ فوراً.</p>
+                <button class="enter-btn hero-cta" data-hero-cta="browse"><i class="fas fa-shield-alt"></i> <span data-i18n-key="hero_cta_safe">اشحن بأمان</span></button>
+            </div>
+        </div>
+
+        <!-- مؤشرات الثقة أسفل الهيرو -->
+        <div class="hero-trust" role="list" aria-label="مؤشرات الثقة" data-i18n-aria="hero_trust_aria">
+            <div class="hero-trust-item" role="listitem">
+                <i class="fas fa-check-circle"></i>
+                <b>+2,500</b>
+                <span data-i18n-key="hero_stat_sales">عملية ناجحة</span>
+            </div>
+            <div class="hero-trust-item" role="listitem">
+                <i class="fas fa-headset"></i>
+                <b>24/7</b>
+                <span data-i18n-key="hero_stat_support">دعم متواصل</span>
+            </div>
+            <div class="hero-trust-item" role="listitem">
+                <i class="fas fa-undo-alt"></i>
+                <b>100%</b>
+                <span data-i18n-key="hero_stat_refund">ضمان استرداد</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== عرض اليوم + عدّاد تنازلي ===== -->
+    <section class="offer-banner" aria-label="عرض اليوم" data-i18n-aria="offer_today_kicker">
+        <div class="offer-banner-bg"></div>
+        <div class="offer-banner-content">
+            <div class="offer-banner-text">
+                <span class="offer-kicker"><i class="fas fa-bolt"></i> <span data-i18n-key="offer_today_kicker">عرض اليوم</span></span>
+                <h2 class="offer-title"><span data-i18n-key="offer_today_title">خصومات على أكواد الشحن</span> <span class="offer-title-emoji">🎮</span></h2>
+                <p class="offer-sub" data-i18n-key="offer_today_sub">اشحن قبل انتهاء العرض بأفضل الأسعار — والتوصيل تلقائي بعد تأكيد الطلب.</p>
+            </div>
+            <div class="offer-timer-wrap">
+                <div class="countdown-timer" id="dailyCountdown" aria-label="الوقت المتبقي حتى نهاية عرض اليوم" data-i18n-aria="offer_countdown_hint">
+                    <div class="countdown-block">
+                        <span class="countdown-value" data-timer="hours">00</span>
+                        <span class="countdown-label" data-i18n-key="countdown_hour">ساعة</span>
+                    </div>
+                    <span class="countdown-sep">:</span>
+                    <div class="countdown-block">
+                        <span class="countdown-value" data-timer="minutes">00</span>
+                        <span class="countdown-label" data-i18n-key="countdown_minute">دقيقة</span>
+                    </div>
+                    <span class="countdown-sep">:</span>
+                    <div class="countdown-block">
+                        <span class="countdown-value" data-timer="seconds">00</span>
+                        <span class="countdown-label" data-i18n-key="countdown_second">ثانية</span>
+                    </div>
+                </div>
+                <p class="countdown-hint"><i class="fas fa-clock"></i> <span data-i18n-key="offer_countdown_hint">يتبقى على نهاية عرض اليوم</span></p>
+            </div>
+            <button type="button" class="offer-cta" data-offer-cta="browse"><i class="fas fa-gift"></i> <span data-i18n-key="offer_today_cta">اطلب عرض اليوم</span></button>
+        </div>
+    </section>
+
+    <!-- ===== Trust Ticker ===== -->
+    <div class="trust-ticker">
+        <div class="ticker-content" data-i18n-key="trust_ticker_text">🛡️ أكواد أصلية ومضمونة .. ⚡ توصيل تلقائي بعد تأكيد الطلب .. 💬 دعم فني سريع</div>
+    </div>
+
+    <!-- ===== الإحصائيات الحية (على رأس الصفحة) ===== -->
+    <div class="home-stats" id="homeStatsStrip" hidden>
+        <div class="home-stats-inner">
+            <span class="home-stats-icon"><i class="fas fa-fire"></i></span>
+            <span class="home-stats-count" id="homeStatsCount">0</span>
+            <p class="home-stats-text" id="homeStatsText"></p>
+        </div>
+    </div>
+
+    <!-- ===== فلترة الأقسام ===== -->
+    <div class="filter-container" id="filterTabs"></div>
+
+    <div id="back-container">
+        <button class="back-to-main-btn" id="backToMainBtn" data-i18n-key="back_to_categories">
+            <i class="fas fa-arrow-right"></i>الرجوع للأقسام الرئيسية
+        </button>
+    </div>
+
+    <!-- ===== منطقة الأقسام والمنتجات ===== -->
+    <div class="main-container">
+        <div id="categoryBanner" class="category-banner" hidden>
+            <div class="category-banner-glow" aria-hidden="true"></div>
+            <div class="category-banner-icon"><i class="fas fa-gamepad" aria-hidden="true"></i></div>
+            <div class="category-banner-info">
+                <h2 class="category-banner-title"></h2>
+                <p class="category-banner-tag" data-i18n-key="category_banner_tag">⚡ شحن فوري .. ضمان كامل</p>
+                <p class="category-banner-meta"><i class="fas fa-box"></i> <span data-banner-count></span></p>
+            </div>
+        </div>
+        <div id="regionFilterBar" class="region-filter-bar"></div>
+        <div id="categoryToolbar" class="category-toolbar hidden">
+            <div class="toolbar-group">
+                <label for="sortSelect"><i class="fas fa-sort-amount-down-alt"></i> <span data-i18n-key="sort_by_label">ترتيب حسب</span></label>
+                <select id="sortSelect" class="toolbar-select">
+                    <option value="latest" data-i18n-key="sort_latest">الأحدث</option>
+                    <option value="price_asc" data-i18n-key="sort_price_asc">السعر: من الأقل للأعلى</option>
+                    <option value="price_desc" data-i18n-key="sort_price_desc">السعر: من الأعلى للأقل</option>
+                    <option value="rating" data-i18n-key="sort_rating">الأعلى تقييماً</option>
+                </select>
+            </div>
+            <label class="toolbar-check">
+                <input type="checkbox" id="availabilityFilter">
+                <span data-i18n-key="in_stock_only">المتوفر فقط</span>
+            </label>
+        </div>
+        <div id="trustGuardStrip" class="trust-guard-strip" hidden>
+            <span class="trust-guard-head"><i class="fas fa-shield-halved"></i> <span data-i18n-key="guarantee_strip_title">ضمان Joker Store</span></span>
+            <div class="trust-guard-badges">
+                <span class="guard-badge"><i class="fas fa-shield-alt"></i> <span data-i18n-key="guarantee1_title">ضمان أصالة 100%</span></span>
+                <span class="guard-badge"><i class="fas fa-undo-alt"></i> <span data-i18n-key="guarantee2_title">ضمان الاسترجاع</span></span>
+                <span class="guard-badge"><i class="fas fa-bolt"></i> <span data-i18n-key="trust_instant">استلام الكود فوراً</span></span>
+                <span class="guard-badge"><i class="fas fa-headset"></i> <span data-i18n-key="guarantee3_title">دعم مباشر</span></span>
+            </div>
+        </div>
+        <div id="mainCategories"></div>
+    </div>
+
+    <!-- ===== أقسام الصفحة الرئيسية فقط ===== -->
+    <div id="homeSections">
+
+        <!-- الأكثر مبيعاً -->
+        <section class="info-section auto-section">
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-fire"></i> <span data-i18n-key="best_selling_title">الأكثر مبيعاً 🔥</span></h2>
+                <p class="section-kicker" data-i18n-key="best_selling_kicker">الباقات الأكثر طلباً من عملائنا هذا الأسبوع</p>
+            </div>
+            <div id="best-selling-container" class="auto-products-zone">
+                <div class="products-grid auto-products-grid"></div>
+            </div>
+        </section>
+
+        <!-- وصل حديثاً -->
+        <section class="info-section auto-section">
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-sparkles"></i> <span data-i18n-key="newly_added_title">وصل حديثاً ✨</span></h2>
+                <p class="section-kicker" data-i18n-key="newly_added_kicker">آخر ما أضفناه إلى المتجر</p>
+            </div>
+            <div id="newly-added-container" class="auto-products-zone">
+                <div class="products-grid auto-products-grid"></div>
+            </div>
+        </section>
+
+        <!-- عروض جاهزة الشحن — بيانات حقيقية من /api/promotions -->
+        <section class="info-section auto-section" id="promoSection" hidden>
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-badge-percent"></i> <span data-i18n-key="promo_section_title">عروض جاهزة الشحن 🎁</span></h2>
+                <p class="section-kicker" data-i18n-key="promo_section_kicker">خصومات فعّالة على بطاقات متوفرة فوراً</p>
+            </div>
+            <div id="promoContainer" class="promo-cards-grid"></div>
+        </section>
+
+        <!-- قالوا عنا — تقييمات حقيقية -->
+        <section class="info-section auto-section" id="testimonialsSection" hidden>
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-comment-dots"></i> <span data-i18n-key="testimonials_title">قالوا عنا</span></h2>
+                <p class="section-kicker" data-i18n-key="testimonials_kicker">تقييمات حقيقية من عملائنا</p>
+            </div>
+            <div class="testimonials-slider" id="testimonialsSlider">
+                <button type="button" class="testimonial-nav testimonial-prev" id="testimonialsPrevBtn" aria-label="السابق" data-i18n-aria="testimonials_prev_aria"><i class="fas fa-chevron-right"></i></button>
+                <div class="testimonials-track" id="testimonialsTrack"></div>
+                <button type="button" class="testimonial-nav testimonial-next" id="testimonialsNextBtn" aria-label="التالي" data-i18n-aria="testimonials_next_aria"><i class="fas fa-chevron-left"></i></button>
+            </div>
+        </section>
+
+        <!-- شوهد مؤخراً — حقيقي -->
+        <section class="info-section auto-section" id="recentlyViewedSection" hidden>
+            <div class="section-head">
+                <h2 class="section-title auto-title"><i class="fas fa-history"></i> <span data-i18n-key="recently_viewed_title">شوهد مؤخراً</span></h2>
+            </div>
+            <div class="products-grid auto-products-grid" id="recentlyViewedGrid"></div>
+        </section>
+
+        <!-- كيف أطلب؟ -->
+        <section class="info-section" id="howItWorks">
+            <h2 class="section-title"><i class="fas fa-rocket"></i> <span data-i18n-key="how_title">كيف أطلب؟ 3 خطوات فقط</span></h2>
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <i class="fas fa-mouse-pointer"></i>
+                    <h3 data-i18n-key="step1_title">اختر المنتج</h3>
+                    <p data-i18n-key="step1_desc">تصفح الأقسام واختر الباقة أو الكود المناسب لك.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <i class="fas fa-wallet"></i>
+                    <h3 data-i18n-key="step2_title">حوّل وأرسل</h3>
+                    <p data-i18n-key="step2_desc">حوّل المبلغ على جوال بي أو بال بي واكتب رقم العملية.</p>
+                </div>
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <i class="fas fa-envelope-open-text"></i>
+                    <h3 data-i18n-key="step3_title">استلم كودك</h3>
+                    <p data-i18n-key="step3_desc">يصلك الكود على بريدك فور تأكيد التحويل.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- لماذا تثق بنا؟ -->
+        <section class="info-section" id="guarantee">
+            <h2 class="section-title"><i class="fas fa-shield-alt"></i> <span data-i18n-key="guarantee_title">لماذا تثق بنا؟</span></h2>
+            <div class="guarantee-grid">
+                <div class="guarantee-card"><i class="fas fa-shield-alt"></i><h3 data-i18n-key="guarantee1_title">ضمان أصالة 100%</h3><p data-i18n-key="guarantee1_desc">جميع الأكواد أصلية ومضمونة من مصادر موثوقة.</p></div>
+                <div class="guarantee-card"><i class="fas fa-undo-alt"></i><h3 data-i18n-key="guarantee2_title">ضمان الاسترجاع</h3><p data-i18n-key="guarantee2_desc">إذا لم يعمل الكود نستبدله أو نعيد لك المبلغ بالكامل.</p></div>
+                <div class="guarantee-card"><i class="fas fa-headset"></i><h3 data-i18n-key="guarantee3_title">دعم مباشر</h3><p data-i18n-key="guarantee3_desc">فريقنا جاهز لمساعدتك في أي وقت على مدار الساعة.</p></div>
+                <div class="guarantee-card"><i class="fas fa-lock"></i><h3 data-i18n-key="guarantee4_title">تعامل آمن</h3><p data-i18n-key="guarantee4_desc">طلباتك محمية وبياناتك في أمان تام.</p></div>
+            </div>
+        </section>
+    </div>
+
+</main><!-- /page-shell -->
+
+<!-- ====================================================
+     المودالات (Modals)
+==================================================== -->
+
+<!-- مودال تسجيل الدخول / إنشاء حساب -->
+<div class="modal-overlay" id="authModal">
+    <div class="auth-container">
+        <button class="close-modal-btn" id="closeAuthModal" data-close-modal>×</button>
+        <div class="auth-tabs">
+            <button class="auth-tab-btn active" data-form="loginForm" data-i18n-key="auth_tab_login">تسجيل الدخول</button>
+            <button class="auth-tab-btn" data-form="registerForm" data-i18n-key="auth_tab_register">إنشاء حساب جديد</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+            <h3 data-i18n-key="auth_welcome_heading">أهلاً بعودتك!</h3>
+            <div class="form-group">
+                <label for="loginEmail" data-i18n-key="auth_email_label">البريد الإلكتروني</label>
+                <input type="email" id="loginEmail" data-autofocus required>
+            </div>
+            <div class="form-group">
+                <label for="loginPassword" data-i18n-key="auth_password_label">كلمة المرور</label>
+                <input type="password" id="loginPassword" required>
+            </div>
+            <button type="submit" class="auth-submit-btn" data-i18n-key="auth_tab_login">تسجيل الدخول</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form">
+            <h3 data-i18n-key="auth_join_heading">انضم إلينا</h3>
+            <div class="form-group">
+                <label for="registerEmail" data-i18n-key="auth_email_label">البريد الإلكتروني</label>
+                <input type="email" id="registerEmail" required>
+            </div>
+            <div class="form-group">
+                <label for="registerPassword" data-i18n-key="auth_password_label">كلمة المرور</label>
+                <input type="password" id="registerPassword" required minlength="8">
+            </div>
+            <div class="form-group">
+                <label for="registerReferralCode" data-i18n-key="auth_referral_label">كود الإحالة (اختياري)</label>
+                <input type="text" id="registerReferralCode" maxlength="12" autocomplete="off">
+            </div>
+            <button type="submit" class="auth-submit-btn" data-i18n-key="auth_tab_register">إنشاء حساب</button>
+        </form>
+    </div>
+</div>
+
+<!-- مودال السلة / الشراء -->
+<div class="modal-overlay" id="purchaseModal">
+    <div class="delivery-container cart-modal">
+        <button class="close-modal-btn" id="closeModal" data-close-modal>×</button>
+        <div class="cart-modal-header">
+            <h3><i class="fas fa-shopping-cart"></i> <span data-i18n-key="cart_title">سلة المشتريات الخاصة بك</span></h3>
+        </div>
+
+        <!-- مؤشر خطوات الشراء -->
+        <div class="checkout-steps" id="checkoutSteps">
+            <div class="checkout-step active" data-checkout-step-label="1">
+                <span class="checkout-step-num">1</span>
+                <span class="checkout-step-label" data-i18n-key="checkout_step_details">البيانات</span>
+            </div>
+            <span class="checkout-step-line" aria-hidden="true"></span>
+            <div class="checkout-step" data-checkout-step-label="2">
+                <span class="checkout-step-num">2</span>
+                <span class="checkout-step-label" data-i18n-key="checkout_step_payment">الدفع</span>
+            </div>
+            <span class="checkout-step-line" aria-hidden="true"></span>
+            <div class="checkout-step" data-checkout-step-label="3">
+                <span class="checkout-step-num">3</span>
+                <span class="checkout-step-label" data-i18n-key="checkout_step_review">الاستلام</span>
+            </div>
+        </div>
+
+        <!-- الخطوة 1: البيانات -->
+        <div class="checkout-panel active" data-checkout-panel="1" aria-hidden="false">
+            <div class="cart-modal-body">
+                <div class="form-group">
+                    <label for="user-email" data-i18n-key="email_label">البريد الإلكتروني لاستلام الكود</label>
+                    <input type="email" id="user-email" data-autofocus data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
+                </div>
+
+                <button id="clearCartBtn" class="clear-cart-btn">
+                    <i class="fas fa-trash"></i> <span data-i18n-key="clear_cart_label">تفريغ السلة</span>
+                </button>
+
+                <div id="cartItemsList"></div>
+                <div id="cartSuggested" class="cart-suggested" style="display:none;">
+                    <h4 style="margin:12px 0 8px;font-size:0.9rem;color:var(--primary-neon);"><i class="fas fa-magic"></i> <span data-i18n-key="suggested_products">منتجات قد تعجبك</span></h4>
+                    <div id="cartSuggestedList" class="cart-suggested-list"></div>
+                </div>
+
+                <div class="promo-input-row">
+                    <label for="promoCodeInput" class="promo-input-label" data-i18n-key="promo_label">كود الخصم</label>
+                    <input type="text" id="promoCodeInput" data-i18n-key="promo_placeholder" data-i18n-placeholder="true" placeholder="أدخل رمز الخصم" autocomplete="off" spellcheck="false">
+                    <button type="button" id="applyPromoBtn" data-i18n-key="promo_apply">تطبيق</button>
+                    <button type="button" id="removePromoBtn" data-i18n-key="promo_remove" hidden>إزالة</button>
+                </div>
+                <p id="promoFeedback" class="promo-feedback" data-state="neutral" hidden></p>
+
+                <div id="loyaltySection" class="loyalty-section" hidden>
+                    <div class="loyalty-balance-row">
+                        <span><i class="fas fa-star" style="color:#F5C518;"></i> <span data-i18n-key="loyalty_balance">رصيدك</span>: <strong id="loyaltyBalance">0</strong> <span data-i18n-key="loyalty_points_unit">نقطة</span></span>
+                        <span id="loyaltyDiscountPreview" class="loyalty-discount-preview"></span>
+                    </div>
+                    <div class="promo-input-row loyalty-input-row">
+                        <input type="number" id="loyaltyRedeemInput" min="10" step="10" placeholder="10" aria-label="points">
+                        <button type="button" id="loyaltyRedeemBtn" data-i18n-key="loyalty_redeem_btn">استبدال</button>
+                        <button type="button" id="loyaltyRemoveBtn" data-i18n-key="promo_remove" hidden>إزالة</button>
+                    </div>
+                    <p id="loyaltyFeedback" class="promo-feedback" data-state="neutral" hidden></p>
+                </div>
+            </div>
+
+<div class="cart-total-row">
+                    <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
+                    <span id="cartTotalAmount" class="cart-total-amount">0.00 ₪</span>
+                </div>
+                <div class="cart-total-row cart-discount-row" id="cartDiscountRow" hidden>
+                    <span class="cart-total-label promo-discount-label" id="cartDiscountLabel"></span>
+                    <span class="cart-total-amount promo-discount-amount" id="cartDiscountAmount"></span>
+                </div>
+            </div>
+
+        <!-- الخطوة 2: الدفع -->
+        <div class="checkout-panel" data-checkout-panel="2" aria-hidden="true">
+            <div class="cart-modal-body">
+                <div class="form-group">
+                    <label data-i18n-key="payment_method_label">اختر طريقة الدفع</label>
+                    <div class="payment-options">
+                        <label class="payment-option-label">
+                            <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
+                            <div class="payment-option-content">
+                                <img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="26" height="26" loading="lazy" decoding="async">
+                                <span class="payment-option-text"><b data-i18n-key="pay_jawwal">جوال بي</b><small data-i18n-key="pay_jawwal_hint">حوالة فورية عبر جوال بي</small></span>
+                            </div>
+                        </label>
+                        <label class="payment-option-label">
+                            <input type="radio" name="payment_gateway" value="palpay">
+                            <div class="payment-option-content">
+                                <img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="26" height="26" loading="lazy" decoding="async">
+                                <span class="payment-option-text"><b data-i18n-key="pay_palpay">بال بي</b><small data-i18n-key="pay_palpay_hint">الدفع عبر محفظة بال بي</small></span>
+                            </div>
+                        </label>
+                        <label class="payment-option-label">
+                            <input type="radio" name="payment_gateway" value="reflect">
+                            <div class="payment-option-content">
+                                <img class="pay-tile" src="/image/pay/refakt.svg" alt="ريفلكت" width="26" height="26" loading="lazy" decoding="async">
+                                <span class="payment-option-text"><b data-i18n-key="pay_reflect">رفلكت</b><small data-i18n-key="pay_reflect_hint">ادفع عبر تطبيق رفلكت</small></span>
+                            </div>
+                        </label>
+                        
+                    </div>
+                </div>
+
+                <div id="paymentInstructions"></div>
+
+                <div class="form-group">
+                    <label for="paymentRefInput" data-i18n-key="payment_ref_label">رقم العملية / اسم المحوّل</label>
+                    <input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required>
+                </div>
+                <div class="form-group" style="margin-top:12px;">
+                    <label for="paymentProofInput" style="font-size:0.82rem;color:var(--text-muted);">إرفاق صورة الإثبات (اختياري)</label>
+                    <input type="file" id="paymentProofInput" accept="image/*" style="margin-top:6px;display:block;">
+                    <div id="paymentProofPreview" style="margin-top:8px;display:none;align-items:center;gap:8px;">
+                        <img id="paymentProofImg" style="max-width:180px;max-height:120px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);object-fit:cover;" alt="proof">
+                        <button type="button" id="removeProofBtn" class="btn btn-secondary btn-sm">إزالة</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- الخطوة 3: المراجعة والاستلام -->
+        <div class="checkout-panel" data-checkout-panel="3" aria-hidden="true">
+            <div class="cart-modal-body">
+                <div class="review-summary">
+                    <h4 class="review-heading"><i class="fas fa-receipt"></i> <span data-i18n-key="checkout_summary_heading">ملخص الطلب</span></h4>
+                    <div id="cartReviewList"></div>
+                    <div class="cart-total-row review-total-row">
+                        <span class="cart-total-label" data-i18n-key="total_label">المجموع الإجمالي:</span>
+                        <span class="cart-total-amount">0.00 ₪</span>
+                    </div>
+                    <div class="cart-total-row review-discount-row" id="reviewDiscountRow" hidden>
+                        <span class="cart-total-label promo-discount-label" id="reviewDiscountLabel"></span>
+                        <span class="cart-total-amount promo-discount-amount" id="reviewDiscountAmount"></span>
+                    </div>
+                </div>
+
+                <div class="trust-badges" aria-label="Trust badges">
+                    <div class="trust-badge"><i class="fas fa-lock" aria-hidden="true"></i><span data-i18n-key="trust_secure">دفع آمن ومشفر</span></div>
+                    <div class="trust-badge"><i class="fas fa-bolt" aria-hidden="true"></i><span data-i18n-key="trust_instant">استلام الكود فوراً</span></div>
+                    <div class="trust-badge"><i class="fas fa-shield-halved" aria-hidden="true"></i><span data-i18n-key="trust_guarantee">ضمان استلام الكود 100%</span></div>
+                </div>
+
+                <div class="cart-proof" id="liveSalesProof" style="display:none;">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    <span data-i18n-key="live_sales_proof">نخدم {customers}+ عميل ونكمل {orders}+ طلب مكتمل</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- أزرار التنقل بين الخطوات -->
+        <div class="checkout-footer">
+            <button type="button" id="checkoutPrevBtn" class="checkout-nav-btn checkout-prev" disabled><i class="fas fa-arrow-right"></i> <span data-i18n-key="checkout_back">رجوع</span></button>
+            <button type="button" id="checkoutNextBtn" class="checkout-nav-btn checkout-next"><span data-i18n-key="checkout_next">متابعة</span> <i class="fas fa-arrow-left"></i></button>
+            <button type="button" id="submitOrderBtn" style="display:none;" data-i18n-key="submit_order_button">🚀 تأكيد التحويل وإرسال الطلب</button>
+        </div>
+    </div>
+</div>
+
+<!-- Order History Modal -->
+<div class="modal-overlay" id="orderHistoryModal">
+    <div class="delivery-container cart-modal">
+        <button class="close-modal-btn" id="closeOrderHistoryModal" data-close-modal>×</button>
+        <div class="cart-modal-header">
+            <h3><i class="fas fa-history"></i> <span data-i18n-key="order_history_title">سجل طلباتك</span></h3>
+        </div>
+        <div class="cart-modal-body">
+            <div id="orderHistoryList">
+                <!-- Orders will be rendered here by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Track Order Modal -->
+<div class="modal-overlay" id="trackOrderModal">
+    <div class="delivery-container cart-modal">
+        <button class="close-modal-btn" id="closeTrackOrderModal" data-close-modal>×</button>
+        <div class="cart-modal-header">
+            <h3><i class="fas fa-search"></i> <span data-i18n-key="track_title">تتبع طلبك</span></h3>
+        </div>
+        <div class="cart-modal-body">
+            <div class="form-group">
+                <label for="trackEmailInput" data-i18n-key="track_email_label">البريد الإلكتروني الذي طلبت به</label>
+                <input type="email" id="trackEmailInput" placeholder="example@mail.com" required>
+            </div>
+            <div class="form-group">
+                <label for="trackOrderIdInput" data-i18n-key="track_id_label">رقم الطلب (اختياري)</label>
+                <input type="text" id="trackOrderIdInput" placeholder="ABC123" style="direction: ltr; text-align: left;">
+            </div>
+            <button type="button" id="trackOrderBtn" class="auth-submit-btn"><i class="fas fa-search"></i> <span data-i18n-key="track_btn">تتبع الآن</span></button>
+            <div id="trackOrderResults" style="margin-top: 16px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال استلام الكود / متابعة الطلب لحظياً -->
+<div class="modal-overlay" id="codeModal">
+    <div class="delivery-container">
+        <button class="close-modal-btn" id="closeCodeModal" data-close-modal>×</button>
+        <h3 data-i18n-key="receipt_title">🎉 تم استلام طلبك!</h3>
+        <p id="modalProductTitle" class="modal-product-title"></p>
+        <div class="delivery-code-box code-reveal">
+            <span class="code-spark" aria-hidden="true">✦</span>
+            <p class="delivery-code-label" data-i18n-key="code_receipt_label">رقم طلبك (للمتابعة):</p>
+            <p id="generatedCode" class="delivery-code">···</p>
+            <span class="code-reveal-ring" aria-hidden="true"></span>
+        </div>
+
+        <!-- حالة الطلب: انتظار / تسليم / فشل -->
+        <div id="receiptStatusZone" class="receipt-status-zone" aria-live="polite"></div>
+
+        <!-- الأكواد المسلّمة -->
+        <div id="deliveredCodesZone" class="delivered-codes-zone" hidden>
+            <p class="receipt-codes-head" data-i18n-key="receipt_delivered_title">🎁 أكوادك جاهزة!</p>
+            <p class="receipt-codes-note" data-i18n-key="receipt_delivered_desc">انسخ الكود والصقه في اللعبة أو المنصة. يُخفى الكود تلقائياً بعد انتهاء المؤقت حفاظاً على خصوصيتك.</p>
+            <div id="receiptCodesList" class="receipt-codes-list"></div>
+            <p id="receiptCountdown" class="receipt-countdown"></p>
+        </div>
+
+        <div class="receipt-actions">
+            <button id="copyCodeBtn" class="copy-code-btn" data-autofocus>
+                <i class="fas fa-copy"></i> <span data-i18n-key="copy_order_id_btn">نسخ رقم الطلب</span>
+            </button>
+            <button id="openTrackingBtn" class="copy-code-btn receipt-track-btn" hidden>
+                <i class="fas fa-search"></i> <span data-i18n-key="receipt_open_tracking">فتح تتبع الطلب</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Wishlist Modal -->
+<div class="modal-overlay" id="wishlistModal">
+    <div class="delivery-container cart-modal" style="max-width: 640px;">
+        <button class="close-modal-btn" id="closeWishlistModal" data-close-modal>×</button>
+        <div class="cart-modal-header">
+            <h3><i class="fas fa-heart"></i> <span data-i18n-key="wishlist_title">قائمة أمنياتي</span></h3>
+        </div>
+        <div class="cart-modal-body" id="wishlistContainer" style="max-height: 60vh; overflow-y: auto;">
+            <div class="products-grid" id="wishlistGrid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr));"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================
+     الفوتر
+==================================================== -->
+<footer>
+    <div class="footer-container">
+        <div class="footer-brand">
+            <span class="logo-text">JOKER <span class="highlight">STORE</span></span>
+            <p class="footer-slogan" data-i18n-key="footer_slogan">بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.</p>
+        </div>
+        <hr class="footer-divider">
+        <div class="payment-zone">
+            <h4 data-i18n-key="pay_methods_title">طرق الدفع المتاحة</h4>
+            <div class="payment-methods">
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_jawwal">جوال بي</span></div>
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_palpay">بال بي</span></div>
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/refakt.svg" alt="ريفلكت" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_reflect">ريفلكت</span></div>
+            </div>
+        </div>
+        <div class="footer-social">
+            <a href="#" id="footerWhatsapp" target="_blank" rel="noopener" title="WhatsApp" class="social-link social-whatsapp" style="display: none;"><i class="fab fa-whatsapp"></i></a>
+            <a href="#" id="footerTelegram" target="_blank" rel="noopener" title="Telegram" class="social-link social-telegram" style="display: none;"><i class="fab fa-telegram-plane"></i></a>
+            <a href="#" id="footerInstagram" target="_blank" rel="noopener" title="Instagram" class="social-link social-instagram" style="display: none;"><i class="fab fa-instagram"></i></a>
+            <a href="#" id="footerTiktok" target="_blank" rel="noopener" title="TikTok" class="social-link social-tiktok" style="display: none;"><i class="fab fa-tiktok"></i></a>
+        </div>
+        <div class="footer-links">
+            <a href="#" id="trackOrderFooterBtn" data-i18n-key="track_footer_btn">تتبع طلبك</a>
+            <a href="#" id="wishlistFooterBtn"><i class="fas fa-heart"></i> <span data-i18n-key="wishlist_footer_btn">قائمة أمنياتي</span></a>
+            <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+            <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
+            <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
+            <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
+            <a href="/offers" data-i18n-key="sub_footer_offers">العروض الخاصة</a>
+            <a href="/download"><i class="fas fa-mobile-alt"></i> تحميل التطبيق</a>
+            <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
+        </div>
+        <p class="copyright" data-i18n-key="copyright_text">© 2026 Joker Store — جميع الحقوق محفوظة</p>
+    </div>
+</footer>
+
+<!-- WhatsApp Floating Button -->
+<a id="whatsappFloatBtn" href="#" target="_blank" rel="noopener" class="whatsapp-float" title="تواصل معنا عبر واتساب" data-i18n-title="whatsapp_title" style="display: none;">
+    <i class="fab fa-whatsapp"></i>
+</a>
+
+<!-- استخدام type="module" لتفعيل نظام الوحدات (ES6 Modules). -->
+<!-- الملف الرئيسي script.js هو نقطة الدخول الوحيدة التي تستورد باقي الوحدات. -->
+<script src="/vendor/socket.io/socket.io.min.js" defer></script>
+<script type="module" src="/script.js"></script>
+<script type="module" src="/i18n.js"></script>
+
+<!-- ====================================================== -->
+<!-- 🔥 قوالب الواجهة الديناميكية (Dynamic UI Templates) -->
+<!-- ====================================================== -->
+
+<!-- قالب بطاقة المنتج في الشبكة -->
+<template id="product-card-template">
+    <div class="product-item-card card trace" data-product-id="">
+        <div class="product-badge"></div>
+        <div class="card-flag-badge"></div>
+        <button class="wishlist-btn" data-wishlist-btn title="أضف لقائمة الأمنيات" data-i18n-title="wishlist_tooltip"><i class="far fa-heart"></i></button>
+        <div class="card-img-container">
+            <span class="card-img-shimmer" aria-hidden="true"></span>
+            <img src="" alt="" class="card-inner-img" loading="lazy" decoding="async" fetchpriority="low" width="200" height="160">
+        </div>
+        <div class="card-content">
+            <div class="card-rating" data-rating></div>
+            <h3 class="card-title"></h3>
+            <p class="price-tag card-price"></p>
+            <div class="card-meta-pills">
+                <span class="stock-badge" data-stock-badge></span>
+                <span class="card-guarantee"><i class="fas fa-check-circle"></i> <span data-i18n-key="card_guaranteed">مضمون</span></span>
+            </div>
+            <div class="card-action-row">
+                <button type="button" class="quick-add-btn" data-quick-add title="إضافة سريعة للسلة" data-i18n-title="quick_add"><i class="fas fa-plus"></i></button>
+                <button class="enter-btn" data-i18n-key="card_view_details">عرض التفاصيل 🔍</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- قالب بطاقة القسم الرئيسي -->
+<template id="category-card-template">
+    <div class="category-card trace" data-category="">
+        <img src="" alt="" loading="lazy" decoding="async" fetchpriority="low" width="200" height="135">
+        <h3></h3>
+        <p></p>
+        <button class="enter-btn" data-category="" data-i18n-key="category_enter">دخول القسم 📂</button>
+    </div>
+</template>
+
+<!-- قالب صفحة تفاصيل المنتج -->
+<template id="product-details-template">
+    <div class="product-detail-container">
+        <div class="detail-media">
+            <div class="detail-main-img-wrapper">
+                <img src="" class="detail-img" width="400" height="400" decoding="async">
+                <button type="button" class="detail-zoom-btn" data-zoom-btn aria-label="تكبير الصورة"><i class="fas fa-search-plus"></i></button>
+            </div>
+            <div class="detail-thumbnails" data-thumbnails></div>
+        </div>
+        <div class="detail-info">
+            <h2 class="product-name"></h2>
+            <div class="detail-meta">
+                <div class="detail-rating" data-rating></div>
+                <button class="wishlist-btn detail-wishlist" data-wishlist-btn title="أضف لقائمة الأمنيات" data-i18n-title="wishlist_tooltip"><i class="far fa-heart"></i></button>
+            </div>
+            <div class="detail-desc">
+                <p class="detail-description-text">✨ <b data-i18n-key="detail_desc_label">وصف المنتج:</b> <span data-detail-description data-i18n-key="detail_default_desc">استلم كود شحن أصلي ومضمون 100%.</span></p>
+                <p>🌍 <b data-i18n-key="detail_region_label">المنطقة:</b> <span class="product-region"></span></p>
+                <p>🛡️ <b data-i18n-key="detail_guarantee_label">الضمان:</b> <span data-i18n-key="detail_guarantee_text">ضمان Joker Store لعمل الكود بشكل فوري.</span></p>
+                <p style="margin-top:20px; color:var(--primary-neon);" data-i18n-key="detail_note">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
+            </div>
+            <!-- شريط الثقة -->
+            <div class="product-trust-bar" data-trust-bar>
+                <div class="trust-item" data-trust-sold><i class="fas fa-fire"></i> <span data-trust-sold-text></span></div>
+                <div class="trust-item"><i class="fas fa-shield-alt"></i> <span data-i18n-key="detail_guarantee_badge">ضمان استرجاع</span></div>
+                <div class="trust-item"><i class="fas fa-bolt"></i> <span data-i18n-key="detail.instant_badge">توصيل فوري</span></div>
+            </div>
+            <!-- مواصفات المنتج -->
+            <div class="product-specs" data-product-specs>
+                <div class="spec-row" data-spec-region>
+                    <span class="spec-label" data-i18n-key="spec_region">المنطقة</span>
+                    <span class="spec-value" data-spec-region-value></span>
+                </div>
+                <div class="spec-row" data-spec-category>
+                    <span class="spec-label" data-i18n-key="spec_category">الفئة</span>
+                    <span class="spec-value" data-spec-category-value></span>
+                </div>
+                <div class="spec-row" data-spec-type>
+                    <span class="spec-label" data-i18n-key="spec_type">النوع</span>
+                    <span class="spec-value" data-spec-type-value></span>
+                </div>
+            </div>
+            <div class="detail-stock" data-stock-badge></div>
+            <div class="detail-last-update" data-last-update style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;"></div>
+            <div class="price-tag product-price"></div>
+            <div class="qty-selector">
+                <button type="button" class="qty-btn qty-dec" data-qty-dec aria-label="تقليل الكمية">−</button>
+                <input type="number" class="qty-input" value="1" min="1" max="10" data-qty-input aria-label="الكمية">
+                <button type="button" class="qty-btn qty-inc" data-qty-inc aria-label="زيادة الكمية">+</button>
+            </div>
+            <button class="buy-btn">
+                <i class="fas fa-shopping-cart"></i> <span data-i18n-key="buy_now_btn">إضافة للسلة وإتمام الشراء</span>
+            </button>
+            <button class="share-btn">
+                <i class="fas fa-share-alt"></i> <span data-i18n-key="share_product_btn">مشاركة المنتج</span>
+            </button>
+            <button class="back-to-main-btn" data-i18n-key="back_to_cards_btn">
+                ⬅️ العودة لقائمة البطاقات
+            </button>
+            <div class="product-review-panel">
+                <h4 data-i18n-key="review_this_product">⭐ تقييمك للمنتج</h4>
+                <div class="review-stars" data-review-stars>
+                    <i class="far fa-star" data-star="1"></i>
+                    <i class="far fa-star" data-star="2"></i>
+                    <i class="far fa-star" data-star="3"></i>
+                    <i class="far fa-star" data-star="4"></i>
+                    <i class="far fa-star" data-star="5"></i>
+                </div>
+                <textarea data-review-comment placeholder="اكتب تعليقك (اختياري)" data-i18n-key="review_comment_placeholder" data-i18n-placeholder="true" maxlength="500" rows="2"></textarea>
+                <div class="review-images-row" style="display:flex;align-items:center;gap:8px;margin:8px 0;">
+                    <label class="btn btn-secondary btn-sm" style="cursor:pointer;"><i class="fas fa-image"></i> <span data-i18n-key="review_images">إرفاق صور</span><input type="file" data-review-images accept="image/*" multiple hidden></label>
+                    <span style="font-size:0.75rem;color:var(--text-muted);" data-i18n-key="review_images_max">حد أقصى 3 صور</span>
+                </div>
+                <div data-review-images-preview style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;"></div>
+                <button class="review-submit-btn" type="button" data-i18n-key="review_submit_btn">إرسال التقييم</button>
+            </div>
+        </div>
+    </div>
+    <!-- قسم المنتجات ذات الصلة -->
+    <div class="related-products-section">
+        <div class="section-header">
+            <h2><i class="fas fa-random"></i> <span data-i18n-key="related_products_title">منتجات قد تعجبك أيضاً</span></h2>
+        </div>
+        <div class="products-grid" id="related-products-grid">
+            <!-- سيتم تعبئة المنتجات ذات الصلة هنا -->
+        </div>
+    </div>
+    <!-- قسم تقييمات العملاء -->
+    <div class="product-reviews-section">
+        <div class="section-header">
+            <h2><i class="fas fa-star"></i> <span data-i18n-key="customer_reviews_title">تقييمات العملاء</span></h2>
+        </div>
+        <div id="product-reviews-list" class="reviews-list">
+            <div class="reviews-empty" data-i18n-key="reviews_empty_hint">لا توجد تقييمات بعد — كن أول من يقيّم هذا المنتج.</div>
+        </div>
+    </div>
+</template>
+
+<!-- ======================================================
+     شريط السلة الثابت للجوال
+===================================================== -->
+<div class="mobile-cart-bar" id="mobileCartBar" aria-hidden="true">
+    <div class="mobile-cart-bar-info" id="mobileCartBarInfo" role="button" tabindex="0" aria-label="فتح السلة">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="mobile-cart-cnt" id="mobileCartCount">0</span>
+        <span class="mobile-cart-sep" aria-hidden="true">·</span>
+        <span class="mobile-cart-total" id="mobileCartTotal">0.00</span>
+        <span class="mobile-cart-label" data-i18n-key="mobile_cart_label">السلة</span>
+    </div>
+    <button type="button" class="mobile-cart-checkout" id="mobileCartCheckoutBtn" data-i18n-key="mobile_cart_checkout">إتمام الشراء</button>
+</div>
+
+<!-- زر العودة إلى الأعلى -->
+<button type="button" class="back-to-top-btn" id="backToTop" aria-label="العودة إلى الأعلى" data-i18n-aria="back_to_top" title="العودة إلى الأعلى" data-i18n-title="back_to_top">
+    <i class="fas fa-chevron-up"></i>
+</button>
+
+<!-- نبضة social proof: آخر العمليات الفعلية من السجل -->
+<div class="social-proof" id="socialProof" role="status" aria-live="polite" aria-hidden="true">
+    <i class="fas fa-bolt" aria-hidden="true"></i>
+    <div class="social-proof-body">
+        <b class="social-proof-name"></b>
+        <span class="social-proof-meta"></span>
+    </div>
+</div>
+
+<!-- Lightbox overlay لعرض الصور بحجم كامل -->
+<div class="lightbox-overlay" id="lightboxOverlay" role="dialog" aria-hidden="true">
+    <button type="button" class="lightbox-close" data-lightbox-close aria-label="إغلاق"><i class="fas fa-times"></i></button>
+    <button type="button" class="lightbox-prev" data-lightbox-prev aria-label="الصورة السابقة"><i class="fas fa-chevron-left"></i></button>
+    <button type="button" class="lightbox-next" data-lightbox-next aria-label="الصورة التالية"><i class="fas fa-chevron-right"></i></button>
+    <img src="" class="lightbox-img" data-lightbox-img alt="" loading="lazy" decoding="async">
+</div>
+
+<!-- ====================================================== -->
+<!-- ⏱️ عدّاد عرض اليوم + 🍔 قائمة الموبايل (سكربت خارجي للالتزام بـ CSP) -->
+<!-- ====================================================== -->
+<script src="/countdown-menu.js?v=4.1" defer></script>
+<script type="module" src="/push.js"></script>
+<script src="/sw-register.js" defer></script>
+    <script src="/install-prompt.js" defer></script>
+</body>
+</html>

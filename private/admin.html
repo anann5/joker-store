@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة تحكم JOKER STORE 🔒</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="/admin-style.css">
+    <script src="/async-css.js" defer></script>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">
+                <span class="gradient-text">JOKER STORE</span>
+                <div class="loading-subtitle">جاري تحميل لوحة التحكم...</div>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>لوحة تحكم <span>JOKER STORE</span></h1>
+            <div class="admin-meta">
+                <span><i class="fas fa-shield-alt"></i> خاص بالإدارة فقط</span>
+                <span id="currentDate"></span>
+                <span style="color: var(--accent); font-size: 0.8rem;" id="socketStatus"><i class="fas fa-circle" style="color: var(--warning);"></i> متصل</span>
+                <button class="logout-btn" id="themeToggleBtn" title="تبديل المظهر (فاتح/داكن/النظام)"><i class="fas fa-sun"></i> المظهر</button>
+                <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-tooltip="لوحة الإحصائيات" id="dashboardTabBtn"><i class="fas fa-chart-pie"></i> لوحة الإحصائيات</button>
+            <button class="tab-btn" data-tooltip="الطلبات" id="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i> الطلبات</button>
+            <button class="tab-btn" data-tooltip="المخزون" id="inventoryTabBtn"><i class="fas fa-boxes"></i> المخزون</button>
+            <button class="tab-btn" data-tooltip="الأقسام" id="categoriesTabBtn"><i class="fas fa-tags"></i> الأقسام</button>
+            <button class="tab-btn" data-tooltip="سلال مهجورة" id="abandonedTabBtn"><i class="fas fa-shopping-basket"></i> سلال مهجورة</button>
+            <button class="tab-btn" data-tooltip="المستخدمون" id="usersTabBtn"><i class="fa fa-users"></i> المستخدمون</button>
+            <button class="tab-btn" data-tooltip="التقارير" id="reportsTabBtn"><i class="fas fa-chart-line"></i> التقارير</button>
+            <button class="tab-btn" data-tooltip="التسعير الحي" id="pricingTabBtn"><i class="fas fa-dollar-sign"></i> التسعير</button>
+            <button class="tab-btn" data-tooltip="السجلات" id="logsTabBtn"><i class="fas fa-history"></i> السجلات</button>
+            <button class="tab-btn" data-tooltip="العروض والكوبونات" id="promotionsTabBtn"><i class="fas fa-tags"></i> العروض</button>
+            <button class="tab-btn" data-tooltip="الإعدادات والإشعارات" id="settingsTabBtn"><i class="fas fa-cog"></i> الإعدادات</button>
+            <button class="tab-btn" data-tooltip="تذاكر الدعم" id="ticketsTabBtn"><i class="fas fa-headset"></i> التذاكر</button>
+        </div>
+
+        <!-- Dashboard Section -->
+        <section id="dashboardSection">
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card stat-revenue">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-value" id="statRevenue">0 ₪</div>
+                    <div class="stat-label">إجمالي المبيعات</div>
+                </div>
+                <div class="stat-card stat-profit">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-value" id="statProfit">0 ₪</div>
+                    <div class="stat-label">إجمالي الأرباح</div>
+                </div>
+                <div class="stat-card stat-orders">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value" id="statCompleted">0</div>
+                    <div class="stat-label">طلبات مكتملة</div>
+                </div>
+                <div class="stat-card stat-pending">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-value" id="statPending">0</div>
+                    <div class="stat-label">طلبات معلقة</div>
+                </div>
+                <div class="stat-card stat-today">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-value" id="statTodaySales">0 ₪</div>
+                    <div class="stat-label">مبيعات اليوم</div>
+                </div>
+                <div class="stat-card stat-today">
+                    <div class="stat-icon">🆕</div>
+                    <div class="stat-value" id="statTodayOrders">0</div>
+                    <div class="stat-label">طلبات اليوم</div>
+                </div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card" style="padding:16px;">
+                    <h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--primary-neon);"><i class="fas fa-chart-line"></i> المبيعات (7 أيام)</h3>
+                    <canvas id="salesChart" height="200"></canvas>
+                </div>
+                <div class="card" style="padding:16px;">
+                    <h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--primary-neon);"><i class="fas fa-chart-pie"></i> المبيعات حسب الفئة</h3>
+                    <canvas id="categoryChart" height="200"></canvas>
+                </div>
+            </div>
+
+            <div class="card" id="healthCard" style="border-left:4px solid var(--primary-neon);">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-heartbeat"></i> صحة النظام</h2>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary btn-sm" id="backupBtn"><i class="fas fa-download"></i> نسخ احتياطي</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshHealthBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                    </div>
+                </div>
+                <div id="healthGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
+                    <div style="text-align:center;padding:16px;color:var(--text-muted);">جاري التحميل...</div>
+                </div>
+                <div id="healthProvidersMini" style="margin-top:12px;font-size:0.82rem;color:var(--text-muted);"></div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-server"></i> المزودون والمزامنة (B2B)</h2>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button class="btn btn-approve btn-sm" id="providerSyncBtn" data-tooltip="مزامنة الأسعار من جميع المزودين"><i class="fas fa-sync-alt"></i> مزامنة الآن</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshRatesBtn" data-tooltip="تحديث أسعار الصرف الحالية"><i class="fas fa-coins"></i> تحديث أسعار الصرف</button>
+                    </div>
+                </div>
+                <div id="providersStatusList">
+                    <div style="text-align:center; padding:20px; color:var(--text-muted);">جاري تحميل حالة المزودين...</div>
+                </div>
+                <div id="lastSyncInfo" style="margin-top:12px; padding:8px 12px; background:rgba(99,102,241,0.10); border-radius:8px; font-size:0.82rem; color:var(--text-muted); display:none;">
+                    <i class="fas fa-sync" style="color:var(--primary); margin-right:4px;"></i> آخر مزامنة: <span id="lastSyncTime">--</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">آخر الطلبات</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshDashboardBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div class="recent-orders-scroll" id="recentOrdersList">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري تحميل البيانات...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inventory Section -->
+        <section id="inventorySection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">المخزون الحالي بالمتجر</h2>
+<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                         <button class="btn btn-secondary btn-sm" id="exportCsvBtn" data-tooltip="تصدير منتجات المتجر إلى ملف CSV"><i class="fas fa-download"></i> تصدير CSV</button>
+                         <button class="btn btn-secondary btn-sm" id="importCsvBtn" data-tooltip="استيراد منتجات من ملف CSV"><i class="fas fa-upload"></i> استيراد CSV</button>
+                         <button class="btn" id="refreshBtn" data-tooltip="تحديث قائمة المنتجات"><i class="fas fa-sync-alt"></i> تحديث</button>
+                         <button class="btn btn-approve" id="addManualBtn" data-tooltip="إضافة منتج يدوي مع أكواد"><i class="fas fa-plus"></i> إضافة منتج</button>
+                         <span class="toggle-switch">
+                            <input type="checkbox" id="soundToggle" checked>
+                            <span class="slider"></span>
+                        </span>
+                        <span id="soundIcon" class="fas fa-volume-up" style="color: var(--accent);"></span>
+                    </div>
+                </div>
+                <div id="bulkActionsBar" style="display:none;padding:10px 14px;background:rgba(99,102,241,0.12);border-radius:var(--radius-md);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <span id="bulkSelectedCount" style="font-size:0.85rem;color:#fff;">0 منتج محدد</span>
+                    <button class="btn btn-sm btn-approve" data-bulk-action="activate"><i class="fas fa-check"></i> تفعيل</button>
+                    <button class="btn btn-sm btn-reject" data-bulk-action="deactivate"><i class="fas fa-ban"></i> تعطيل</button>
+                    <button class="btn btn-sm btn-secondary" data-bulk-action="set-price"><i class="fas fa-dollar-sign"></i> تعديل السعر</button>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <input type="text" id="inventorySearchInput" placeholder="بحث بالاسم..." style="flex:1;min-width:180px;padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                    <select id="inventoryCategoryFilter" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                        <option value="">كل الفئات</option>
+                        <option value="pubg">PUBG</option>
+                        <option value="fortnite">Fortnite</option>
+                        <option value="playstation">PlayStation</option>
+                        <option value="xbox">Xbox</option>
+                        <option value="steam">Steam</option>
+                        <option value="nintendo">Nintendo</option>
+                        <option value="freefire">Free Fire</option>
+                        <option value="mobilelegends">Mobile Legends</option>
+                        <option value="spotify">Spotify</option>
+                        <option value="netflix">Netflix</option>
+                        <option value="amazon">Amazon</option>
+                        <option value="google">Google Play</option>
+                        <option value="itunes">iTunes</option>
+                    </select>
+                    <select id="inventoryStockFilter" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                        <option value="">كل المخزون</option>
+                        <option value="in_stock">متوفر</option>
+                        <option value="low_stock">مخزون منخفض</option>
+                        <option value="out_of_stock">نفذ</option>
+                    </select>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:36px;"><input type="checkbox" id="selectAllProducts" title="تحديد الكل"></th>
+                            <th>اسم المنتج</th>
+                            <th>الفئة</th>
+                            <th>المنطقة</th>
+                            <th>السعر</th>
+                            <th>المخزون</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryList">
+                        <tr><td colspan="7" class="loading-cell">جاري تحميل المنتجات...</td></tr>
+                    </tbody>
+                    <tfoot id="inventoryFooter" style="display:none;">
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding:12px;">
+                                <button class="btn btn-secondary btn-sm" id="loadMoreInventoryBtn"><i class="fas fa-plus"></i> عرض المزيد</button>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- Orders Section -->
+        <section id="ordersSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">سجل عمليات وفواتير الزبائن</h2>
+<div style="display:flex;gap:8px;">
+                         <button class="btn btn-secondary btn-sm" id="exportOrdersBtn" data-tooltip="تصدير الفواتير إلى ملف CSV"><i class="fas fa-download"></i> تصدير CSV</button>
+                         <button class="btn btn-secondary btn-sm" id="refreshOrdersBtn" data-tooltip="تحديث قائمة الفواتير"><i class="fas fa-redo"></i> تحديث</button>
+                     </div>
+                </div>
+                <div class="orders-search-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                    <input type="text" id="ordersSearchInput" placeholder="بحث بالبريد أو رقم الطلب..." style="flex:1;min-width:200px;padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                    <input type="date" id="ordersDateFrom" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                    <input type="date" id="ordersDateTo" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
+                </div>
+                <div class="order-filter-bar" id="orderFilterBar">
+                    <button class="filter-chip active" data-tooltip="الكل" data-status="all">الكل</button>
+                    <button class="filter-chip" data-tooltip="معلق" data-status="pending">معلق</button>
+                    <button class="filter-chip" data-tooltip="قيد التنفيذ" data-status="processing">قيد التنفيذ</button>
+                    <button class="filter-chip" data-tooltip="مكتمل" data-status="completed">مكتمل</button>
+                    <button class="filter-chip" data-tooltip="فشل" data-status="failed">فشل</button>
+                    <button class="filter-chip" data-tooltip="مرفوض" data-status="refunded">مرفوض</button>
+                </div>
+                <div id="ordersBulkBar" style="display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap;" hidden>
+                    <span id="ordersBulkCount" style="font-size:0.85rem;color:var(--text-muted);">0 محدد</span>
+                    <button class="btn btn-approve btn-sm" id="bulkApproveBtn" data-tooltip="تأكيد الاختيارSelected"><i class="fas fa-check"></i> تأكيد المحدد</button>
+                    <button class="btn btn-reject btn-sm" id="bulkRejectBtn" data-tooltip="رفض الطلبات المحددة"><i class="fas fa-times"></i> رفض المحدد</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="ordersSelectAll"></th>
+                            <th>رقم الطلب</th>
+                            <th>الزبون</th>
+                            <th>البريد الإلكتروني</th>
+                            <th>المنتجات</th>
+                            <th>المبلغ</th>
+                            <th>الحالة</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersList">
+                        <tr><td colspan="8" class="loading-cell">جاري جلب الفواتير...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Categories Section -->
+        <section id="categoriesSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">إدارة الأقسام</h2>
+                    <button class="btn btn-approve" id="addCategoryBtn"><i class="fas fa-plus"></i> إضافة قسم</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المفتاح</th>
+                            <th>الاسم (عربي)</th>
+                            <th>الاسم (إنجليزي)</th>
+                            <th>المنتجات</th>
+                            <th>الترتيب</th>
+                            <th>الحالة</th>
+                            <th>العمليات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoryList">
+                        <tr><td colspan="7" class="loading-cell">جاري تحميل الأقسام...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section id="reportsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-chart-line"></i> تقرير الأرباح</h2>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button class="btn btn-secondary btn-sm" data-report-days="7">7 أيام</button>
+                        <button class="btn btn-secondary btn-sm" data-report-days="30">30 يوم</button>
+                        <button class="btn btn-secondary btn-sm" data-report-days="90">90 يوم</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshReportsBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                    </div>
+                </div>
+                <div class="reports-summary" id="reportsSummary">جاري التحميل...</div>
+                <h3 class="reports-sub-title">🏆 أفضل المنتجات مبيعاً</h3>
+                <div class="reports-scroll" id="reportsByProduct">جاري التحميل...</div>
+                <h3 class="reports-sub-title">📁 حسب القسم</h3>
+                <div class="reports-scroll" id="reportsByCategory">جاري التحميل...</div>
+                <h3 class="reports-sub-title">🏢 حسب المزود</h3>
+                <div class="reports-scroll" id="reportsByProvider">جاري التحميل...</div>
+            </div>
+        </section>
+
+        <!-- Live Pricing (Provider Comparison) Section -->
+        <section id="pricingSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-tags"></i> مقارنة أسعار المزودين</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshPricingBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div class="reports-scroll" id="livePricingList">
+                    <div style="text-align:center; padding:20px; color:var(--text-muted);">جاري تحميل الأسعار...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Abandoned Carts Section -->
+        <section id="abandonedSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-shopping-basket"></i> السلال المهجورة</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshAbandonedBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:10px;">سلال لم يكمل أصحابها الشراء لأكثر من ساعة — يمكن التواصل معهم عبر البريد.</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>البريد</th>
+                            <th>المنتجات</th>
+                            <th>الإجمالي</th>
+                            <th>منذ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="abandonedList">
+                        <tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="usersSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-users"></i> المستخدمون ونقاط الولاء</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshUsersBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>البريد</th>
+                            <th>الرصيد</th>
+                            <th>النقاط</th>
+                            <th>تاريخ التسجيل</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersList">
+                        <tr><td colspan="4" class="loading-cell">جاري التحميل...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Logs Section -->
+        <section id="logsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title">سجل النشاطات</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-secondary btn-sm" id="refreshLogsBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                        <button class="btn btn-secondary btn-sm" id="exportLogsBtn"><i class="fas fa-download"></i> تصدير</button>
+                        <button class="btn btn-reject btn-sm" id="clearLogsBtn"><i class="fas fa-trash"></i> مسح الكل</button>
+                    </div>
+                </div>
+                <div style="max-height: 500px; overflow-y: auto;" id="logsContainer">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري تحميل السجلات...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Promotions Section -->
+        <section id="promotionsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-tags"></i> العروض والخصومات</h2>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-primary btn-sm" id="addPromoBtn"><i class="fas fa-plus"></i> عرض جديد</button>
+                        <button class="btn btn-secondary btn-sm" id="refreshPromosBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
+                    </div>
+                </div>
+                <div id="promosContainer">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري تحميل العروض...</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settingsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-bell"></i> إشعارات Web Push</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshPushBtn" data-tooltip="تحديث الإحصائيات"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div id="pushSettingsBody">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري التحميل...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ticketsSection" class="hidden">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="section-title"><i class="fas fa-headset"></i> تذاكر الدعم</h2>
+                    <button class="btn btn-secondary btn-sm" id="refreshTicketsBtn" data-tooltip="تحديث القائمة"><i class="fas fa-sync-alt"></i> تحديث</button>
+                </div>
+                <div id="ticketsList">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">جاري التحميل...</div>
+                </div>
+            </div>
+        </section>
+    </div>
+    <div class="modal-overlay" id="importCsvModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeImportCsvBtn">&times;</button>
+            <h3 class="modal-title"><i class="fas fa-upload"></i> استيراد منتجات من CSV</h3>
+            <div class="form-group">
+                <label>اختر ملف CSV</label>
+                <input type="file" id="csvFileInput" accept=".csv" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>أو لصق محتوى CSV هنا</label>
+                <textarea id="csvTextInput" class="form-control" rows="8" placeholder="الاسم عربي,Name English,الفئة,المنطقة,السعر,هامش الربح,السعر الأساسي,نوع المنتج,نوع الاشتراك,مدة الاشتراك,المزود,معرف المزود,رابط الصورة,الوصف عربي,Description English,الحالة"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelImportCsvBtn">إلغاء</button>
+                <button class="btn btn-primary" id="confirmImportCsvBtn"><i class="fas fa-upload"></i> استيراد</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لتعديل المنتج -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeModalBtn">×</button>
+            <h3 class="modal-title"><i class="fas fa-edit"></i> تعديل بيانات المنتج</h3>
+            <input type="hidden" id="editId">
+            <div class="form-group">
+                <label>اسم المنتج</label>
+                <input type="text" id="editName" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>السعر (دولار)</label>
+                <input type="number" id="editPrice" step="0.01" class="form-control">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>التقييم (0 - 5)</label>
+                    <input type="number" id="editRating" step="0.1" min="0" max="5" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label>عدد التقييمات</label>
+                    <input type="number" id="editReviewsCount" step="1" min="0" class="form-control" value="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>هامش الربح (%)</label>
+                <input type="number" id="editMargin" step="1" class="form-control" value="15">
+                <small style="color: var(--text-muted);">30 يعني +30% على سعر الشراء</small>
+            </div>
+            <div class="form-group">
+                <label>صورة المنتج</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img id="editImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.14);display:none;">
+                    <input type="file" id="editProductImage" accept="image/*" class="form-control">
+                </div>
+                <input type="text" id="editImageUrl" class="form-control" placeholder="https://... أو /uploads/xxx.png" style="margin-top:6px;">
+                <div id="editExtraImages" style="margin-top:8px;">
+                    <label style="font-size:0.82rem;color:var(--text-muted);">صور إضافية</label>
+                    <div id="editImagesList" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;"></div>
+                    <div style="display:flex;gap:6px;margin-top:6px;">
+                        <input type="text" id="editNewImageUrl" class="form-control" placeholder="رابط الصورة الجديدة" style="flex:1;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="addExtraImageBtn"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelEditBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveEditBtn"><i class="fas fa-save"></i> حفظ التغييرات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة منتج يدوي مع كودات -->
+    <div class="modal-overlay" id="addManualModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeAddManualModalBtn">×</button>
+            <h3 class="modal-title"><i class="fas fa-plus-circle"></i> إضافة منتج يدوي</h3>
+
+            <!-- معلومات المنتج -->
+            <div class="form-group">
+                <label>اسم المنتج بالعربية</label>
+                <input type="text" id="manualProductNameAr" class="form-control" placeholder="مثال: بطاقة ستيم 10₪">
+            </div>
+            <div class="form-group">
+                <label>اسم المنتج بالإنجليزية</label>
+                <input type="text" id="manualProductNameEn" class="form-control" placeholder="مثال: Steam Card ₪10">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الفئة</label>
+                    <input type="text" id="manualCategory" list="categoryList" class="form-control" placeholder="مثال: steam">
+                    <datalist id="categoryList">
+                        <option value="gaming_general"></option>
+                        <option value="pubg"></option>
+                        <option value="fortnite"></option>
+                        <option value="playstation"></option>
+                        <option value="xbox"></option>
+                        <option value="microsoft_windows"></option>
+                        <option value="adobe"></option>
+                        <option value="antivirus"></option>
+                        <option value="vpn"></option>
+                        <option value="google"></option>
+                        <option value="itunes"></option>
+                        <option value="razer_gold"></option>
+                        <option value="amazon"></option>
+                        <option value="steam"></option>
+                    </datalist>
+                </div>
+                <div class="form-group">
+                    <label>السعر (دولار)</label>
+                    <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="10.00">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>هامش الربح (%)</label>
+                <input type="number" id="manualProfitMargin" step="1" class="form-control" value="15">
+                <small style="color: var(--text-muted);">30 يعني +30% على سعر الشراء</small>
+            </div>
+
+            <div class="form-group">
+                <label>صورة المنتج (اختياري)</label>
+                <input type="file" id="manualProductImage" accept="image/*" class="form-control">
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">أو ألصق رابط صورة مباشرة</small>
+                <input type="text" id="manualProductImageUrl" class="form-control" placeholder="https://... أو /uploads/xxx.png" style="margin-top: 6px;">
+            </div>
+
+            <!-- رفع كودات -->
+            <div class="form-group">
+                <label>الكودات (كل كود على سطر جديد)</label>
+                <textarea id="manualCodesTextarea" class="form-control" rows="6" placeholder="XXXX-XXXX-XXXX
+YYYY-YYYY-YYYY
+ZZZZ-ZZZZ-ZZZZ"></textarea>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">أو استخدم زرّ الرفع أدناه</small>
+            </div>
+
+            <div class="form-group">
+                <label>أو حمّل ملف CSV (كل كود في العمود الأول)</label>
+                <input type="file" id="manualCodesFile" accept=".csv,.txt,.json" class="form-control">
+            </div>
+
+            <!-- عداد الكودات -->
+            <div class="form-group" id="codeCountInfo" style="display: none;">
+                <div class="badge badge-accent">تم اكتشاف <strong id="codeCountValue">0</strong> كود</div>
+            </div>
+
+            <!-- زر الإرسال -->
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAddManualBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveAddManualBtn" style="min-width: 140px;">
+                    <span id="saveBtnText"><i class="fas fa-save"></i> حفظ المنتج</span>
+                    <span id="saveBtnLoading" class="hidden"><i class="fas fa-spinner fa-pulse"></i> جاري الحفظ...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة كودات لمنتج موجود -->
+    <div class="modal-overlay" id="addCodesModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeAddCodesModalBtn">×</button>
+            <h3 class="modal-title"><i class="fas fa-key"></i> إضافة كودات للمنتج</h3>
+            <div class="form-group">
+                <label>الكودات (كل كود على سطر جديد)</label>
+                <textarea id="addCodesTextarea" class="form-control" rows="8" placeholder="XXXX-XXXX-XXXX
+YYYY-YYYY-YYYY
+ZZZZ-ZZZZ-ZZZZ"></textarea>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px;">الكودات المكررة سيتم تجاهلها تلقائياً.</small>
+            </div>
+            <div class="form-group">
+                <label>أو حمّل ملف CSV / TXT / JSON</label>
+                <input type="file" id="addCodesFile" accept=".csv,.txt,.json" class="form-control">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAddCodesBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveAddCodesBtn" style="min-width: 140px;">
+                    <span id="saveAddCodesText"><i class="fas fa-save"></i> إضافة الكودات</span>
+                    <span id="saveAddCodesLoading" class="hidden"><i class="fas fa-spinner fa-pulse"></i> جاري الحفظ...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة/تعديل قسم -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeCategoryModalBtn">&times;</button>
+            <h3 class="modal-title" id="categoryModalTitle"><i class="fas fa-tag"></i> إضافة قسم جديد</h3>
+            <input type="hidden" id="categoryId">
+            <div class="form-group">
+                <label>المفتاح (Key)</label>
+                <input type="text" id="categoryKey" class="form-control" placeholder="مثال: steam_cards">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الاسم بالعربية</label>
+                    <input type="text" id="categoryTitleAr" class="form-control" placeholder="مثال: بطاقات ستيم">
+                </div>
+                <div class="form-group">
+                    <label>الاسم بالإنجليزية</label>
+                    <input type="text" id="categoryTitleEn" class="form-control" placeholder="مثال: Steam Cards">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الوصف بالعربية</label>
+                    <textarea id="categoryDescAr" class="form-control" rows="2" placeholder="وصف القسم بالعربية"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>الوصف بالإنجليزية</label>
+                    <textarea id="categoryDescEn" class="form-control" rows="2" placeholder="Description in English"></textarea>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>الصورة</label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <img id="categoryImagePreview" alt="" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,0.14);display:none;">
+                        <input type="file" id="categoryImageFile" accept="image/*" class="form-control">
+                    </div>
+                    <input type="text" id="categoryImage" class="form-control" placeholder="image/steam.png أو رابط صورة" style="margin-top:6px;">
+                </div>
+                <div class="form-group">
+                    <label>الترتيب</label>
+                    <input type="number" id="categoryOrder" class="form-control" value="0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelCategoryBtn">إلغاء</button>
+                <button class="btn btn-primary" id="saveCategoryBtn"><i class="fas fa-save"></i> حفظ القسم</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal لإضافة/تعديل عرض -->
+    <div class="modal-overlay" id="promoModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closePromoModalBtn">&times;</button>
+            <h3 class="modal-title" id="promoModalTitle"><i class="fas fa-tags"></i> عرض جديد</h3>
+            <input type="hidden" id="promoEditId">
+            <div class="form-group">
+                <label>العنوان بالعربية *</label>
+                <input type="text" id="promoTitleAr" class="form-control" maxlength="100" placeholder="مثال: خصم 20% على بطاقة ستيم">
+            </div>
+            <div class="form-group">
+                <label>العنوان بالإنجليزية</label>
+                <input type="text" id="promoTitleEn" class="form-control" maxlength="100" placeholder="مثال: 20% off Steam Card">
+            </div>
+            <div class="form-group">
+                <label>الوصف بالعربية</label>
+                <textarea id="promoDescAr" class="form-control" rows="2" maxlength="300" placeholder="تفاصيل العرض"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>نسبة الخصم (%) *</label>
+                    <input type="number" id="promoDiscount" class="form-control" min="1" max="99" placeholder="20">
+                </div>
+                <div class="form-group">
+                    <label>تاريخ الانتهاء *</label>
+                    <input type="datetime-local" id="promoExpires" class="form-control">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>كود الخصم (اختياري)</label>
+                    <input type="text" id="promoCode" class="form-control" maxlength="20" placeholder="SAVE20" style="text-transform:uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>الحالة</label>
+                    <select id="promoActive" class="form-control">
+                        <option value="true">مفعّل</option>
+                        <option value="false">معطّل</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>نطاق العرض *</label>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="promoProductSearch" class="form-control" placeholder="ابحث عن منتج..." autocomplete="off">
+                        <div id="promoProductDropdown" style="display:none;position:absolute;background:rgba(13,17,30,0.96);border:1px solid rgba(255,255,255,0.14);backdrop-filter:blur(18px);border-radius:12px;max-height:150px;overflow-y:auto;width:calc(100% - 32px);z-index:10;"></div>
+                        <input type="hidden" id="promoProductId">
+                        <small id="promoProductLabel" style="color:var(--primary-neon);display:none;"></small>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="promoCategory" class="form-control" placeholder="أو اسم القسم (مثلاً: steam)">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelPromoBtn">إلغاء</button>
+                <button class="btn btn-primary" id="savePromoBtn"><i class="fas fa-save"></i> حفظ العرض</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Toast -->
+    <div id="adminToast" class="admin-toast"></div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 10000;"></div>
+
+    <script src="/vendor/socket.io/socket.io.min.js"></script>
+    <script src="/admin-boot.js"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+node_modules/
+.kilo/
+.env
+.env.local
+.env.*.local
+.venv/
+npm-debug.log*
+*.exe
+logs/
+*.log
+.vscode/
+server.log
+.DS_Store
+public/uploads/
+
+# Capacitor / Android build
+/android/
+/keystore.properties
+*.keystore
+*.jks
+/app-release*.apk
+/joker-store.apk
+www/icon.png

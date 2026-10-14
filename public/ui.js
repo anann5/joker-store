@@ -1,0 +1,902 @@
+import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
+import { formatPrice } from './currency.js';
+import { t, getCurrentLanguage } from './i18n.js';
+
+let toastContainer = null;
+let _bumpQty = null;
+
+/**
+ * تهريب القيم لإدراجها بأمان في HTML (منع XSS).
+ */
+export function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
+ * تجهيز صورة الكرت: يربط حالة "تحميل الصورة" لإيقاف الـ shimmer عند اكتمالها.
+ * @param {HTMLImageElement} img - عنصر الصورة داخل بطاقة منتج.
+ */
+export function bindCardImageState(img) {
+    if (!img) return;
+    const container = img.closest('.card-img-container');
+    if (!container) return;
+    const done = () => container.classList.add('img-loaded');
+    if (img.complete && img.naturalWidth > 0) done();
+    else {
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+    }
+}
+
+/**
+ * إظهار/إخفاء شريط الضمانات داخل منطقة القسم والمنتجات.
+ * @param {boolean} visible
+ */
+export function setGuaranteeStripVisible(visible) {
+    const strip = document.getElementById('trustGuardStrip');
+    if (strip) strip.hidden = !visible;
+}
+
+/**
+ * دالة لمشاركة المنتج على وسائل التواصل الاجتماعي.
+ * تستخدم Web Share API إذا كانت متاحة، أو توفر خياراً احتياطياً.
+ * @param {object} product - بيانات المنتج للمشاركة.
+ */
+export function shareProduct(product) {
+    const pageUrl = window.location.href; // مشاركة رابط الصفحة الحالية
+    const shareText = t('share_text').replace('{name}', product.name);
+
+    if (navigator.share) {
+        navigator.share({
+            title: product.name,
+            text: shareText,
+            url: pageUrl,
+        }).then(() => {
+            console.log('Product shared successfully');
+        }).catch((error) => {
+            console.error('Error sharing product:', error);
+        });
+    } else {
+        // خيار احتياطي للمتصفحات التي لا تدعم Web Share API
+        // يمكن إضافة المزيد من خيارات المشاركة هنا (تويتر، واتساب، إلخ)
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareText)}`;
+        const shareWindow = window.open(facebookUrl, '_blank', 'width=600,height=400');
+        if (shareWindow) shareWindow.focus();
+        else showToast(t('share_popup_required'), 'info');
+    }
+}
+
+/**
+ * تهيئة حاوية الإشعارات.
+ */
+export function initToastContainer() {
+    if (!document.getElementById('toast-container')) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = 'position:fixed; top:20px; left:20px; z-index:10000; display:flex; flex-direction:column; gap:10px;';
+        document.body.appendChild(toastContainer);
+    } else {
+        toastContainer = document.getElementById('toast-container');
+    }
+}
+
+/**
+ * عرض إشعار منبثق (Toast).
+ * @param {string} message - الرسالة.
+ * @param {string} type - النوع (success, error, info).
+ */
+export function showToast(message, type = 'info') {
+    if (!toastContainer) initToastContainer();
+
+    const toast = document.createElement('div');
+    toast.className = `neon-toast toast-${type}`;
+    const header = document.createElement('div');
+    header.className = 'toast-header';
+    header.textContent = type.toUpperCase();
+    const body = document.createElement('div');
+    body.textContent = message;
+    toast.append(header, body);
+
+    // تحديد لون الشريط الجانبي بناءً على النوع
+    const colors = { success: '#2ecc71', error: '#e74c3c', info: '#3498db' };
+    toast.style.borderLeft = `4px solid ${colors[type] || colors.info}`;
+
+    toastContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-fade-out');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 4000);
+}
+
+/**
+ * عرض جميع الأقسام الرئيسية.
+ */
+export function showAllCategories() {
+    const grid = document.getElementById('mainCategories');
+    if (!grid) return;
+
+    // استعادة العنوان الافتراضي عند مغادرة صفحة تفاصيل المنتج
+    document.title = t('site_title');
+
+    // إعادة الرابط إلى الواجهة الرئيسية عند العودة للأقسام
+    if (history.replaceState && window.location.pathname.startsWith('/product/')) {
+        history.replaceState(null, '', '/');
+    }
+
+    const homeSections = document.getElementById('homeSections');
+    if (homeSections) homeSections.classList.remove('hidden');
+
+    grid.className = '';
+    grid.removeAttribute('style');
+    grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:30px;';
+
+    const backContainer = document.getElementById('back-container');
+    if (backContainer) backContainer.style.display = 'none';
+
+    const regionBar = document.getElementById('regionFilterBar');
+    if (regionBar) regionBar.style.display = 'none';
+
+    const toolbar = document.getElementById('categoryToolbar');
+    if (toolbar) toolbar.classList.add('hidden');
+
+    const categoryBanner = document.getElementById('categoryBanner');
+    if (categoryBanner) categoryBanner.hidden = true;
+    setGuaranteeStripVisible(false);
+
+    document.querySelectorAll('#filterTabs .filter-btn').forEach(b => b.classList.remove('active'));
+    const allBtn = document.querySelector('#filterTabs .filter-btn[data-filter="all"]');
+    if (allBtn) allBtn.classList.add('active');
+
+    const template = document.getElementById('category-card-template');
+    grid.innerHTML = ''; // تفريغ المحتوى قبل الإضافة
+
+    Object.entries(rawServerData.categories).forEach(([key, cat], idx) => {
+        const card = template.content.cloneNode(true);
+        const cardElement = card.querySelector('.category-card');
+        cardElement.dataset.category = key;
+        cardElement.style.setProperty('--i', String(idx));
+        const theme = getCategoryTheme(key);
+        cardElement.style.setProperty('--cat-color', theme.color);
+        card.querySelector('img').src = resolveImageUrl(cat.image);
+        card.querySelector('img').alt = cat.title;
+        card.querySelector('h3').textContent = cat.title;
+        card.querySelector('p').textContent = cat.desc;
+        card.querySelector('.enter-btn').dataset.category = key;
+        grid.appendChild(card);
+    });
+    setupReveal(grid);
+}
+
+/**
+ * عرض تفاصيل المنتج.
+ * @param {object} product - بيانات المنتج.
+ */
+export function showProductDetails(product, currentCategory = '') {
+    const grid = document.getElementById('mainCategories');
+    if (!grid) return;
+
+    const homeSections = document.getElementById('homeSections');
+    if (homeSections) homeSections.classList.add('hidden');
+
+    const toolbar = document.getElementById('categoryToolbar');
+    if (toolbar) toolbar.classList.add('hidden');
+
+    // تحديث عنوان الصفحة (SEO/UX): اسم المنتج باللغة الحالية.
+    if (product.name) {
+        document.title = `${product.name} | Joker Store`;
+    }
+
+    setGuaranteeStripVisible(true);
+
+    // استخدام القالب الجاهز من HTML
+    const template = document.getElementById('product-details-template');
+    if (!template) {
+        console.error('Product details template not found!');
+        return;
+    }
+
+    // 🔥 نقل تعريف الدالة إلى هنا، حيث يتم استخدامها فقط
+    const renderRelatedProducts = async (productId) => {
+        const relatedContainer = view.querySelector('#related-products-grid');
+        if (!relatedContainer) return;
+
+        relatedContainer.innerHTML = `<div class="loader-container" style="grid-column:1/-1; text-align:center; padding:40px 0;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary-neon);"></i></div>`;
+
+        try {
+            const lang = (await import('./i18n.js')).getCurrentLanguage();
+            const res = await fetch(`/api/products/related/${productId}?lang=${lang}`);
+            const data = await res.json();
+
+            if (data.success && data.products.length > 0) {
+                relatedContainer.innerHTML = '';
+                const productCardTemplate = document.getElementById('product-card-template');
+                const { productCache, formatItem, detectRegion, getRegionDetails } = await import('./script.js');
+
+                data.products.forEach((item, idx) => {
+                    const localizedName = item.productName[lang] || item.productName['ar'];
+                    const detectedRegion = detectRegion(item);
+                    const regionInfo = getRegionDetails(detectedRegion);
+                    const clientItem = formatItem({ ...item, name: localizedName }, item.category, detectedRegion);
+
+                    productCache.set(clientItem.id, clientItem);
+
+                    const card = productCardTemplate.content.cloneNode(true);
+                    const cardElement = card.querySelector('.product-item-card');
+                    cardElement.dataset.productId = clientItem.id;
+                    cardElement.dataset.region = detectedRegion;
+                    cardElement.style.setProperty('--i', String(idx));
+                    card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+                    const imgElement = card.querySelector('.card-inner-img');
+                    imgElement.src = clientItem.image;
+                    imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
+                    bindCardImageState(imgElement);
+                    const quickAdd = card.querySelector('[data-quick-add]');
+                    if (quickAdd) quickAdd.dataset.productId = clientItem.id;
+                    card.querySelector('.card-title').textContent = clientItem.name;
+                    card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
+                    card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;
+                    card.querySelector('[data-rating]').innerHTML = renderRatingStars(clientItem.rating, clientItem.reviewsCount);
+                    const stockBadge = card.querySelector('[data-stock-badge]');
+                    if (stockBadge) {
+                        const stockText = renderStockBadge(clientItem.availableStock);
+                        stockBadge.textContent = stockText;
+                        stockBadge.classList.toggle('out-of-stock', Number(clientItem.availableStock) <= 0);
+                    }
+                    const badge = card.querySelector('.product-badge');
+                    if (badge) {
+                        applyProductBadge(badge, { productId: clientItem.id });
+                    }
+                    relatedContainer.appendChild(card);
+                });
+                syncWishlistButtons();
+                setupReveal(relatedContainer);
+            } else {
+                relatedContainer.parentElement.style.display = 'none';
+            }
+        } catch (error) {
+            console.error("Failed to render related products:", error);
+            relatedContainer.parentElement.style.display = 'none';
+        }
+    };
+
+    const view = template.content.cloneNode(true);
+
+    // ملء القالب ببيانات المنتج — صور متعددة + Lightbox
+    const allImages = (product.images && product.images.length > 0) ? product.images : [product.image || ''];
+    const resolvedImages = allImages.map(img => resolveImageUrl(img) || resolveImageUrl(`image/${currentCategory || 'all'}.png`)).filter(Boolean);
+    if (resolvedImages.length === 0) resolvedImages.push('/image/logo.png');
+
+    const detailImgElement = view.querySelector('.detail-img');
+    detailImgElement.src = resolvedImages[0];
+    detailImgElement.onerror = () => { detailImgElement.src = '/image/logo.png'; };
+    view.querySelector('.detail-img').alt = product.name;
+
+    // عرض thumbnails إذا كانت هناك أكثر من صورة
+    const thumbnailsContainer = view.querySelector('[data-thumbnails]');
+    let currentImageIndex = 0;
+    if (thumbnailsContainer && resolvedImages.length > 1) {
+        resolvedImages.forEach((src, idx) => {
+            const thumb = document.createElement('img');
+            thumb.src = src;
+            thumb.className = 'detail-thumbnail' + (idx === 0 ? ' active' : '');
+            thumb.alt = `${product.name} ${idx + 1}`;
+            thumb.loading = 'lazy';
+            thumb.addEventListener('click', () => {
+                currentImageIndex = idx;
+                detailImgElement.src = src;
+                thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((t, i) => t.classList.toggle('active', i === idx));
+            });
+            thumbnailsContainer.appendChild(thumb);
+        });
+    } else if (thumbnailsContainer) {
+        thumbnailsContainer.style.display = 'none';
+    }
+
+    // زر التكبير — Lightbox
+    const zoomBtn = view.querySelector('[data-zoom-btn]');
+    if (zoomBtn) {
+        zoomBtn.addEventListener('click', () => {
+            const overlay = document.getElementById('lightboxOverlay');
+            const lbImg = overlay.querySelector('[data-lightbox-img]');
+            lbImg.src = resolvedImages[currentImageIndex];
+            overlay.classList.add('active');
+            overlay.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+
+            const closeBtn = overlay.querySelector('[data-lightbox-close]');
+            const prevBtn = overlay.querySelector('[data-lightbox-prev]');
+            const nextBtn = overlay.querySelector('[data-lightbox-next]');
+
+            const closeLightbox = () => {
+                overlay.classList.remove('active');
+                overlay.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            };
+            const showImage = (idx) => {
+                currentImageIndex = (idx + resolvedImages.length) % resolvedImages.length;
+                lbImg.src = resolvedImages[currentImageIndex];
+                if (thumbnailsContainer) {
+                    thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((t, i) => t.classList.toggle('active', i === currentImageIndex));
+                }
+                detailImgElement.src = resolvedImages[currentImageIndex];
+            };
+
+            closeBtn.onclick = closeLightbox;
+            prevBtn.onclick = () => showImage(currentImageIndex - 1);
+            nextBtn.onclick = () => showImage(currentImageIndex + 1);
+            overlay.onclick = (e) => { if (e.target === overlay) closeLightbox(); };
+            document.onkeydown = (e) => {
+                if (!overlay.classList.contains('active')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') showImage(currentImageIndex - 1);
+                if (e.key === 'ArrowRight') showImage(currentImageIndex + 1);
+            };
+        });
+    }
+
+    view.querySelector('.product-name').textContent = product.name;
+    view.querySelector('.product-price').textContent = formatPrice(product.price);
+    const ratingZone = view.querySelector('[data-rating]');
+    if (ratingZone) {
+        ratingZone.innerHTML = renderRatingStars(product.rating, product.reviewsCount);
+    }
+    const wishlistBtn = view.querySelector('[data-wishlist-btn]');
+    if (wishlistBtn) {
+        wishlistBtn.dataset.productId = product.id;
+        wishlistBtn.classList.toggle('active', (JSON.parse(localStorage.getItem('joker_wishlist') || '[]') || []).includes(String(product.id)));
+        if (wishlistBtn.classList.contains('active')) wishlistBtn.querySelector('i').className = 'fas fa-heart';
+    }
+    const regionSpan = view.querySelector('.product-region');
+    if (regionSpan) {
+        regionSpan.textContent = product.region;
+    }
+
+    // عرض مؤشر المخزون
+    const stockBadge = view.querySelector('[data-stock-badge]');
+    if (stockBadge) {
+        const stockText = renderStockBadge(product.availableStock);
+        stockBadge.textContent = stockText;
+        stockBadge.classList.toggle('out-of-stock', Number(product.availableStock) <= 0);
+        if (!stockText) stockBadge.style.display = 'none';
+    }
+    const lastUpdateEl = view.querySelector('[data-last-update]');
+    if (lastUpdateEl && product.updatedAt) {
+        const diff = Date.now() - new Date(product.updatedAt).getTime();
+        const mins = Math.floor(diff / 60000);
+        const hours = Math.floor(mins / 60);
+        const days = Math.floor(hours / 24);
+        const lang = getCurrentLanguage();
+        let txt = '';
+        if (days > 0) txt = lang === 'en' ? `Updated ${days}d ago` : `آخر تحديث: منذ ${days} يوم`;
+        else if (hours > 0) txt = lang === 'en' ? `Updated ${hours}h ago` : `آخر تحديث: منذ ${hours} ساعة`;
+        else if (mins > 0) txt = lang === 'en' ? `Updated ${mins}m ago` : `آخر تحديث: منذ ${mins} دقيقة`;
+        else txt = lang === 'en' ? 'Updated just now' : 'آخر تحديث: الآن';
+        lastUpdateEl.textContent = txt;
+    }
+
+    // عرض الوصف الحقيقي من قاعدة البيانات (إن وُجد)
+    const descriptionEl = view.querySelector('[data-detail-description]');
+    if (descriptionEl && product.description && product.description.trim()) {
+        descriptionEl.textContent = product.description;
+    }
+
+    // شريط الثقة — عدد مرات البيع
+    const trustSoldText = view.querySelector('[data-trust-sold-text]');
+    if (trustSoldText) {
+        const sold = product.totalSold || 0;
+        if (sold > 0) {
+            const lang = getCurrentLanguage();
+            trustSoldText.textContent = lang === 'ar'
+                ? `تم بيع ${sold} مرة`
+                : `Sold ${sold} times`;
+        } else {
+            const trustSold = view.querySelector('[data-trust-sold]');
+            if (trustSold) trustSold.style.display = 'none';
+        }
+    }
+
+    // مواصفات المنتج
+    const specRegionValue = view.querySelector('[data-spec-region-value]');
+    if (specRegionValue) specRegionValue.textContent = product.region || '—';
+    const specCategoryValue = view.querySelector('[data-spec-category-value]');
+    if (specCategoryValue) {
+        const lang = getCurrentLanguage();
+        const categories = { ps: 'PlayStation', xbox: 'Xbox', nintendo: 'Nintendo', steam: 'Steam', pubg: 'PUBG', freefire: 'Free Fire', mobilelegends: 'Mobile Legends', roblox: 'Roblox', valorant: 'Valorant', leagueoflegends: 'League of Legends', spotify: 'Spotify', netflix: 'Netflix', itunes: 'iTunes', google: 'Google Play', amazon: 'Amazon', other: lang === 'ar' ? 'أخرى' : 'Other' };
+        specCategoryValue.textContent = categories[product.category] || product.category || '—';
+    }
+    const specTypeValue = view.querySelector('[data-spec-type-value]');
+    if (specTypeValue) {
+        const lang = getCurrentLanguage();
+        if (product.isSubscription) {
+            const subTypes = { fixed: lang === 'ar' ? 'اشتراك ثابت' : 'Fixed Subscription', recurring: lang === 'ar' ? 'اشتراك متجدد' : 'Recurring Subscription' };
+            specTypeValue.textContent = subTypes[product.subscriptionType] || (lang === 'ar' ? 'اشتراك' : 'Subscription');
+        } else {
+            specTypeValue.textContent = lang === 'ar' ? 'كود شحن' : 'Gift Code';
+        }
+    }
+    // إخفاء صفوف فارغة
+    ['region', 'category', 'type'].forEach(key => {
+        const row = view.querySelector(`[data-spec-${key}]`);
+        const val = view.querySelector(`[data-spec-${key}-value]`);
+        if (row && val && (!val.textContent || val.textContent === '—')) row.style.display = 'none';
+    });
+    
+    // منطق اختيار الكمية
+    const qtyInput = view.querySelector('[data-qty-input]');
+    const qtyDec = view.querySelector('[data-qty-dec]');
+    const qtyInc = view.querySelector('[data-qty-inc]');
+    if (qtyDec && qtyInc && qtyInput) {
+        qtyDec.addEventListener('click', () => {
+            const cur = parseInt(qtyInput.value, 10) || 1;
+            if (cur > 1) qtyInput.value = cur - 1;
+        });
+        qtyInc.addEventListener('click', () => {
+            const cur = parseInt(qtyInput.value, 10) || 1;
+            if (cur < 10) qtyInput.value = cur + 1;
+        });
+    }
+
+    // إضافة منطق لزر "إضافة للسلة"
+    const buyButton = view.querySelector('.buy-btn');
+    buyButton.addEventListener('click', async () => {
+        const { addToCart } = await import('./cart.js');
+        const qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
+        addToCart(product, qty);
+    });
+
+    // إضافة منطق لزر "مشاركة المنتج"
+    const shareButton = view.querySelector('.share-btn');
+    if (shareButton) {
+        shareButton.addEventListener('click', () => shareProduct(product));
+    }
+
+    // إضافة منطق لزر "العودة"
+    const backButton = view.querySelector('.back-to-main-btn');
+    backButton.addEventListener('click', async () => {
+        const { selectCategory } = await import('./script.js');
+        selectCategory(currentCategory);
+    });
+
+    // === نظام التقييمات (رجوع 1-5 + تعليق + عرض التقييمات) ===
+    const renderProductReviews = async (productId, container) => {
+        const reviewsContainer = container || view.querySelector('#product-reviews-list');
+        if (!reviewsContainer) return;
+        try {
+            const res = await fetch(`/api/products/${productId}/reviews`);
+            const data = await res.json();
+            if (!data.success || !Array.isArray(data.reviews) || data.reviews.length === 0) {
+                reviewsContainer.innerHTML = `<div class="reviews-empty">${t('reviews_empty')}</div>`;
+                return;
+            }
+            reviewsContainer.innerHTML = data.reviews.map(review => `
+                <div class="review-item">
+                    <div class="review-meta">
+                        ${renderRatingStars(review.rating, 0)}
+                        ${review.verified ? `<span style="background:rgba(34,197,94,0.12);color:#22c55e;border:1px solid rgba(34,197,94,0.22);padding:2px 7px;border-radius:999px;font-size:0.72rem;font-weight:800;"><i class="fas fa-check-circle"></i> ${getCurrentLanguage()==='en'?'Verified Purchase':'شراء موثّق'}</span>` : ''}
+                        <span class="review-date">${new Date(review.createdAt).toLocaleDateString(getCurrentLanguage() === 'en' ? 'en-US' : 'ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                    </div>
+                    ${review.comment ? `<p class="review-comment">${escapeHtml(review.comment)}</p>` : ''}
+                    ${Array.isArray(review.images) && review.images.length > 0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">${review.images.map(u => `<img src="${escapeHtml(u)}" alt="review" loading="lazy" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.1);">`).join('')}</div>` : ''}
+                </div>
+            `).join('');
+        } catch (_err) {
+            reviewsContainer.innerHTML = `<div class="reviews-empty">${t('reviews_load_error')}</div>`;
+        }
+    };
+
+    const reviewStars = view.querySelector('[data-review-stars]');
+    const reviewComment = view.querySelector('[data-review-comment]');
+    const reviewSubmitBtn = view.querySelector('.review-submit-btn');
+    const reviewImagesInput = view.querySelector('[data-review-images]');
+    const reviewImagesPreview = view.querySelector('[data-review-images-preview]');
+    let selectedRating = 0;
+    let reviewImageUrls = [];
+    if (reviewImagesInput && reviewImagesPreview) {
+        reviewImagesInput.addEventListener('change', async () => {
+            const files = Array.from(reviewImagesInput.files || []).slice(0, 3);
+            reviewImagesPreview.innerHTML = '';
+            reviewImageUrls = [];
+            for (const f of files) {
+                if (!f.type.startsWith('image/')) continue;
+                const form = new FormData();
+                form.append('image', f);
+                try {
+                    const r = await fetch('/api/upload/review-image', { method: 'POST', body: form });
+                    const d = await r.json();
+                    if (d.success && d.url) {
+                        reviewImageUrls.push(d.url);
+                        const img = document.createElement('img');
+                        img.src = d.url;
+                        img.loading = 'lazy';
+                        img.decoding = 'async';
+                        img.style.cssText = 'width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.12);';
+                        reviewImagesPreview.appendChild(img);
+                    }
+                } catch (_e) {}
+            }
+            if (reviewImageUrls.length >= 3) reviewImagesInput.value = '';
+        });
+    }
+
+    const updateStarDisplay = () => {
+        if (!reviewStars) return;
+        reviewStars.querySelectorAll('i').forEach(star => {
+            const value = Number(star.dataset.star);
+            star.className = value <= selectedRating ? 'fas fa-star star-active' : 'far fa-star';
+        });
+    };
+    if (reviewStars) {
+        reviewStars.querySelectorAll('i').forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = Number(star.dataset.star);
+                updateStarDisplay();
+            });
+        });
+    }
+    if (reviewSubmitBtn) {
+        reviewSubmitBtn.addEventListener('click', async () => {
+            if (selectedRating < 1) {
+                showToast(t('review_select_first'), 'error');
+                return;
+            }
+            reviewSubmitBtn.disabled = true;
+            try {
+                const res = await fetch(`/api/products/${product.id}/review`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rating: selectedRating, comment: reviewComment ? reviewComment.value : '', images: reviewImageUrls })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message || t('review_thanks'), 'success');
+                    selectedRating = 0;
+                    if (reviewStars) updateStarDisplay();
+                    if (reviewComment) reviewComment.value = '';
+                    reviewImageUrls = [];
+                    if (reviewImagesPreview) reviewImagesPreview.innerHTML = '';
+                    if (reviewImagesInput) reviewImagesInput.value = '';
+                    renderProductReviews(product.id);
+                    const ratingZoneEl = view.querySelector('[data-rating]');
+                    if (ratingZoneEl && data.rating) {
+                        ratingZoneEl.innerHTML = renderRatingStars(data.rating, data.reviewsCount);
+                    }
+                } else {
+                    showToast(`❌ ${escapeHtml(data.error || data.message || t('review_failed'))}`, 'error');
+                }
+            } catch (_err) {
+                showToast(t('review_error'), 'error');
+            } finally {
+                reviewSubmitBtn.disabled = false;
+            }
+        });
+    }
+    renderProductReviews(product.id);
+
+    grid.className = 'product-details-wrapper';
+    grid.innerHTML = ''; // تفريغ الشبكة أولاً
+    grid.appendChild(view);
+
+    // بعد عرض المنتج، نقوم بجلب وعرض المنتجات ذات الصلة
+    renderRelatedProducts(product.id);
+
+    // حفظ في شوهد مؤخراً (حقيقي — localStorage فقط)
+    try { addRecentlyViewed(product); } catch(_e) {}
+    renderRecentlyViewed();
+
+    // تحديث عنوان الرابط ليتوافق مع المنتج (رابط قابل للمشاركة/الفهرسة)
+    if (history.replaceState && product.id) {
+        history.replaceState(null, '', `/product/${product.id}`);
+    }
+}
+
+const RECENT_KEY='joker_recently_viewed';
+const RECENT_MAX=8;
+export function addRecentlyViewed(product){
+    if(!product||!product.id) return;
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'); }catch(_e){ arr=[]; }
+    arr=arr.filter(p=>String(p.id)!==String(product.id));
+    arr.unshift({ id:product.id, name:product.name, price:product.price, image:product.image, category:product.category||'' });
+    if(arr.length>RECENT_MAX) arr=arr.slice(0,RECENT_MAX);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(arr));
+}
+export function renderRecentlyViewed(){
+    const section=document.getElementById('recentlyViewedSection');
+    const grid=document.getElementById('recentlyViewedGrid');
+    if(!section||!grid) return;
+    let arr=[]; try{ arr=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]'); }catch(_e){ arr=[]; }
+    if(arr.length===0){ section.hidden=true; return; }
+    section.hidden=false;
+    const tpl=document.getElementById('product-card-template');
+    if(!tpl){ grid.innerHTML=''; return; }
+    grid.innerHTML='';
+    arr.forEach((item,idx)=>{
+        const card=tpl.content.cloneNode(true);
+        const el=card.querySelector('.product-item-card');
+        if(!el) return;
+        el.dataset.productId=item.id;
+        el.style.setProperty('--i', String(idx));
+        const img=card.querySelector('.card-inner-img');
+        if(img){ img.src=resolveImageUrl(item.image)||'/image/logo.png'; img.alt=item.name||''; bindCardImageState(img); }
+        const title=card.querySelector('.card-title'); if(title) title.textContent=item.name||'';
+        const priceEl=card.querySelector('.card-price'); if(priceEl) priceEl.textContent=formatPrice(item.price||0);
+        const wish=card.querySelector('[data-wishlist-btn]'); if(wish) wish.dataset.productId=item.id;
+        const quick=card.querySelector('[data-quick-add]'); if(quick) quick.dataset.productId=item.id;
+        const badge=card.querySelector('.product-badge'); if(badge) applyProductBadge(badge,{productId:item.id});
+        const ratingEl=card.querySelector('[data-rating]'); if(ratingEl) ratingEl.innerHTML='';
+        grid.appendChild(card);
+    });
+    syncWishlistButtons();
+    setupReveal(grid);
+}
+if(document.readyState!=='loading') setTimeout(()=>{ try{renderRecentlyViewed();}catch(_e){} }, 600);
+else document.addEventListener('DOMContentLoaded', ()=>{ try{renderRecentlyViewed();}catch(_e){} });
+
+// تحديث واجهة السلة: العدّاد + قائمة العناصر + المجموع الإجمالي
+export function updateCartUI() {
+    const items = JSON.parse(localStorage.getItem('joker_cart') || '[]');
+    const badge = document.getElementById('cartCountBadge');
+    const list = document.getElementById('cartItemsList');
+    const totalEl = document.getElementById('cartTotalAmount');
+
+    const totalQty = items.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
+    if (badge) {
+        badge.textContent = String(totalQty);
+        badge.classList.toggle('has-items', totalQty > 0);
+    }
+
+    if (list) {
+        if (items.length === 0) {
+            list.innerHTML = `<p style="text-align:center; color: var(--text-muted); padding: 20px 0;">${t('cart_empty')}</p>`;
+        } else {
+            list.innerHTML = items.map((item, index) => `
+                <div class="cart-item">
+                    <div class="cart-item-details">
+                        <span class="cart-item-name">${escapeHtml(item.name)}</span>
+                        <span class="cart-item-price">${formatPrice(item.price)}</span>
+                    </div>
+                    <button type="button" class="cart-qty-btn" data-cart-dec="${index}" aria-label="${t('cart_decrease')}">−</button>
+                    <input type="text" class="cart-item-qty" value="${Number(item.qty) || 1}" readonly>
+                    <button type="button" class="cart-qty-btn" data-cart-inc="${index}" aria-label="${t('cart_increase')}">+</button>
+                    <button type="button" class="cart-item-remove" data-cart-remove="${index}" aria-label="${t('cart_remove')}">×</button>
+                </div>`).join('');
+        }
+    }
+
+    const totals = cartTotals(items);
+    if (totalEl) totalEl.textContent = formatPrice(totals.total);
+
+    // شريط السلة الثابت للجوال
+    const mobileBar = document.getElementById('mobileCartBar');
+    if (mobileBar) {
+        const countEl = document.getElementById('mobileCartCount');
+        const totalElBar = document.getElementById('mobileCartTotal');
+        if (countEl) countEl.textContent = String(totalQty);
+        if (totalElBar) totalElBar.textContent = formatPrice(totals.total);
+        const hasItems = items.length > 0;
+        mobileBar.classList.toggle('bar-visible', hasItems);
+        mobileBar.setAttribute('aria-hidden', hasItems ? 'false' : 'true');
+        document.body.classList.toggle('mobile-cart-open', hasItems);
+    }
+
+    // نبضة "زد" عند إضافة عنصر: شارة الهيدر وعداد الشريط للجوال فقط عند زيادة العدد
+    if (_bumpQty !== null && totalQty > _bumpQty) {
+        ['cartCountBadge', 'mobileCartCount'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('bump');
+                void el.offsetWidth;
+                el.classList.add('bump');
+            }
+        });
+    }
+    _bumpQty = totalQty;
+
+    // صف الخصم في الخطوة 1 (يظهر فقط عند وجود كود مطبّق)
+    const cartDiscountRow = document.getElementById('cartDiscountRow');
+    const cartDiscountLabel = document.getElementById('cartDiscountLabel');
+    const cartDiscountAmount = document.getElementById('cartDiscountAmount');
+    const promo = getAppliedPromo();
+    if (cartDiscountRow && cartDiscountLabel && cartDiscountAmount) {
+        if (promo && totals.discount > 0) {
+            cartDiscountRow.hidden = false;
+            cartDiscountLabel.textContent = t('cart_discount').replace('{code}', promo.code || '');
+            cartDiscountAmount.textContent = `-${formatPrice(totals.discount)}`;
+        } else {
+            cartDiscountRow.hidden = true;
+        }
+    }
+
+    // ملخص المراجعة (الخطوة 3) — قائمة قراءة فقط
+    const reviewList = document.getElementById('cartReviewList');
+    if (reviewList) {
+        reviewList.innerHTML = items.length === 0
+            ? ''
+            : items.map(item => `
+                <div class="review-cart-item">
+                    <span class="review-cart-name">${escapeHtml(item.name)}</span>
+                    <span class="review-cart-qty">× ${Number(item.qty) || 1}</span>
+                    <span class="review-cart-price">${formatPrice(Number(item.price || 0) * (Number(item.qty) || 1))}</span>
+                </div>`).join('');
+        const reviewTotalEl = document.querySelector('.review-total-row .cart-total-amount');
+        if (reviewTotalEl) reviewTotalEl.textContent = formatPrice(totals.total);
+        const reviewDiscountRow = document.getElementById('reviewDiscountRow');
+        const reviewDiscountLabel = document.getElementById('reviewDiscountLabel');
+        const reviewDiscountAmount = document.getElementById('reviewDiscountAmount');
+        if (reviewDiscountRow && reviewDiscountLabel && reviewDiscountAmount) {
+            if (promo && totals.discount > 0) {
+                reviewDiscountRow.hidden = false;
+                reviewDiscountLabel.textContent = t('cart_discount').replace('{code}', promo.code || '');
+                reviewDiscountAmount.textContent = `-${formatPrice(totals.discount)}`;
+            } else {
+                reviewDiscountRow.hidden = true;
+            }
+        }
+    }
+
+    bindCartListEvents(list);
+
+    // عرض المنتجات المقترحة في السلة
+    renderCartSuggestions();
+
+    // تحديث قسم نقاط الولاء
+    refreshLoyaltySection();
+
+    // تتبع السلة المهجورة (غير حرج)
+    try {
+        const emailEl = document.getElementById('user-email');
+        const email = emailEl ? emailEl.value.trim() : '';
+        const total = cartTotals(items).total;
+        if (items.length > 0) {
+            fetch('/api/cart/track', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: items.map(i => ({ productId: i.id, productName: i.name, qty: i.qty, price: i.price })), email: email || null, total })
+            }).catch(() => {});
+        }
+    } catch (_e) {}
+}
+
+async function renderCartSuggestions() {
+    const container = document.getElementById('cartSuggested');
+    const list = document.getElementById('cartSuggestedList');
+    if (!container || !list) return;
+
+    const items = JSON.parse(localStorage.getItem('joker_cart') || '[]');
+    if (items.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    try {
+        const { fetchSuggestedProducts } = await import('./cart.js');
+        const suggested = await fetchSuggestedProducts();
+        if (suggested.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        const lang = getCurrentLanguage();
+        list.innerHTML = suggested.map(product => {
+            const name = product.productName?.[lang] || product.productName?.ar || '';
+            const img = resolveImageUrl(product.image) || '/image/logo.png';
+            return `
+                <div class="cart-suggested-item" data-suggested-id="${product._id}">
+                    <img src="${img}" alt="${escapeHtml(name)}" loading="lazy">
+                    <span class="suggested-name">${escapeHtml(name)}</span>
+                    <span class="suggested-price">${formatPrice(product.price)}</span>
+                    <button class="suggested-add" data-add-suggested="${product._id}" data-name="${escapeHtml(name)}" data-price="${product.price}" data-image="${escapeHtml(product.image || '')}">+</button>
+                </div>
+            `;
+        }).join('');
+        container.style.display = '';
+
+        // ربط أزرار الإضافة
+        list.querySelectorAll('[data-add-suggested]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const { addToCart } = await import('./cart.js');
+                addToCart({
+                    id: btn.dataset.addSuggested,
+                    name: btn.dataset.name,
+                    price: Number(btn.dataset.price),
+                    image: btn.dataset.image
+                }, 1);
+            });
+        });
+    } catch (_err) {
+        container.style.display = 'none';
+    }
+}
+
+let _loyaltyFetched = false;
+let _loyaltyBalance = 0;
+let _loyaltyBound = false;
+
+export async function refreshLoyaltySection() {
+    const section = document.getElementById('loyaltySection');
+    const balEl = document.getElementById('loyaltyBalance');
+    const preview = document.getElementById('loyaltyDiscountPreview');
+    const input = document.getElementById('loyaltyRedeemInput');
+    const redeemBtn = document.getElementById('loyaltyRedeemBtn');
+    const removeBtn = document.getElementById('loyaltyRemoveBtn');
+    const feedback = document.getElementById('loyaltyFeedback');
+    if (!section) return;
+    try {
+        const res = await fetch('/api/loyalty/balance', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok && data.success && typeof data.points === 'number') {
+            _loyaltyBalance = data.points;
+            _loyaltyFetched = true;
+            section.hidden = false;
+            if (balEl) balEl.textContent = String(data.points);
+            const applied = getAppliedLoyalty();
+            if (applied) {
+                if (preview) preview.textContent = `-${formatPrice(applied.discount)}`;
+                if (input) input.value = String(applied.points);
+                if (redeemBtn) redeemBtn.hidden = true;
+                if (removeBtn) removeBtn.hidden = false;
+                if (feedback) { feedback.hidden = false; feedback.textContent = t('loyalty_discount') + ': -' + formatPrice(applied.discount); feedback.dataset.state = 'success'; }
+            } else {
+                if (preview) preview.textContent = data.points >= 10 ? '(' + t('loyalty_min_redeem') + ')' : '';
+                if (redeemBtn) redeemBtn.hidden = false;
+                if (removeBtn) removeBtn.hidden = true;
+                if (feedback) feedback.hidden = true;
+            }
+        } else {
+            section.hidden = true;
+        }
+    } catch (_err) {
+        section.hidden = true;
+    }
+    if (!_loyaltyBound) {
+        _loyaltyBound = true;
+        const rBtn = document.getElementById('loyaltyRedeemBtn');
+        const rmBtn = document.getElementById('loyaltyRemoveBtn');
+        const inp = document.getElementById('loyaltyRedeemInput');
+        const fb = document.getElementById('loyaltyFeedback');
+        if (rBtn) rBtn.addEventListener('click', () => {
+            const pts = Number.parseInt(inp ? inp.value : '0', 10);
+            if (!Number.isFinite(pts) || pts < 10) { if (fb) { fb.hidden = false; fb.textContent = t('loyalty_min_redeem'); fb.dataset.state = 'error'; } return; }
+            if (pts > _loyaltyBalance) { if (fb) { fb.hidden = false; fb.textContent = t('loyalty_insufficient'); fb.dataset.state = 'error'; } return; }
+            const discount = Math.round(pts * 0.10 * 100) / 100;
+            setAppliedLoyalty({ points: pts, discount });
+            showToast(t('loyalty_discount') + ': -' + formatPrice(discount), 'success');
+            updateCartUI();
+        });
+        if (rmBtn) rmBtn.addEventListener('click', () => {
+            clearAppliedLoyalty();
+            if (inp) inp.value = '';
+            showToast(t('promo_remove'), 'info');
+            updateCartUI();
+        });
+    }
+}
+
+// ربط أزرار الكمية والحذف داخل قائمة السلة (تفويض، مع منع التكرار)
+let _cartListBound = false;
+function bindCartListEvents(list) {
+    if (!list || _cartListBound) return;
+    _cartListBound = true;
+    list.addEventListener('click', async (e) => {
+        const incBtn = e.target.closest('[data-cart-inc]');
+        const decBtn = e.target.closest('[data-cart-dec]');
+        const rmBtn = e.target.closest('[data-cart-remove]');
+        if (!incBtn && !decBtn && !rmBtn) return;
+
+        const { increaseQuantity, decreaseQuantity, removeFromCart } = await import('./cart.js');
+        const index = incBtn ? Number(incBtn.dataset.cartInc)
+                     : decBtn ? Number(decBtn.dataset.cartDec)
+                     : Number(rmBtn.dataset.cartRemove);
+        if (incBtn) increaseQuantity(index);
+        else if (decBtn) decreaseQuantity(index);
+        else removeFromCart(index);
+    });
+}
