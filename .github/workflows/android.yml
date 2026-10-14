@@ -85,24 +85,6 @@ jobs:
           } > build.log
           ./gradlew assembleRelease --no-daemon --stacktrace >> build.log 2>&1
 
-      - name: Report build failure
-        if: failure() && steps.build.outcome == 'failure'
-        run: |
-          tail -c 25000 android/build.log > error-report.txt 2>/dev/null || true
-          {
-            echo "### Android build failed — run #$GITHUB_RUN_NUMBER"
-            echo ""
-            echo "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-            echo ""
-            echo '```'
-            cat error-report.txt
-            echo '```'
-          } > issue-body.md
-          gh label create build --description "Automated build failures" --color B60205 || true
-          gh issue create --title "Android build failed (run #$GITHUB_RUN_NUMBER)" --body-file issue-body.md || true
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
