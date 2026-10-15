@@ -513,6 +513,28 @@
                     <input type="email" id="user-email" data-autofocus data-i18n-key="email_placeholder" data-i18n-placeholder="true" placeholder="ادخل بريدك الإلكتروني" required>
                 </div>
 
+                <div class="gift-toggle-row">
+                    <label class="gift-toggle" for="giftToggle">
+                        <input type="checkbox" id="giftToggle">
+                        <span class="gift-toggle-box" aria-hidden="true"><i class="fas fa-check"></i></span>
+                        <span data-i18n-key="gift_toggle">🎁 إهداء لصديق</span>
+                    </label>
+                </div>
+                <div id="giftFields" hidden>
+                    <div class="form-group">
+                        <label for="giftToName" data-i18n-key="gift_to_name">اسم المستلم</label>
+                        <input type="text" id="giftToName" maxlength="60" data-i18n-key="gift_to_name_ph" data-i18n-placeholder="true" placeholder="اسم صديقك" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="giftToPhone" data-i18n-key="gift_to_phone">جوال المستلم (اختياري)</label>
+                        <input type="tel" id="giftToPhone" maxlength="20" dir="ltr" placeholder="05XXXXXXXX" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="giftMessage" data-i18n-key="gift_message">رسالة الإهداء</label>
+                        <textarea id="giftMessage" rows="2" maxlength="300" data-i18n-key="gift_message_ph" data-i18n-placeholder="true" placeholder="اكتب كلماتك له..."></textarea>
+                    </div>
+                </div>
+
                 <button id="clearCartBtn" class="clear-cart-btn">
                     <i class="fas fa-trash"></i> <span data-i18n-key="clear_cart_label">تفريغ السلة</span>
                 </button>
@@ -710,6 +732,9 @@
                 <i class="fas fa-search"></i> <span data-i18n-key="receipt_open_tracking">فتح تتبع الطلب</span>
             </button>
         </div>
+
+        <!-- رابط الإهداء (يظهر فقط لطلبات الهدايا) -->
+        <div id="receiptGiftBox" class="receipt-gift-box" hidden></div>
     </div>
 </div>
 

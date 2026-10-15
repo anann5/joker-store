@@ -575,10 +575,55 @@ function renderReceiptCodes(order) {
     _receiptCountdownTimer = setInterval(tick, 1000);
 }
 
-function renderOrderReceipt({ email, orderId }) {
+function giftShareUrl(token) {
+    return `${window.location.origin}/gift/${token}`;
+}
+
+function renderReceiptGiftBox(giftToken) {
+    const box = document.getElementById('receiptGiftBox');
+    if (!box) return;
+    if (!giftToken) {
+        box.hidden = true;
+        box.innerHTML = '';
+        return;
+    }
+    const url = giftShareUrl(giftToken);
+    const waHref = `https://wa.me/?text=${encodeURIComponent(`${t('gift_share_text')} ${url}`)}`;
+    box.innerHTML = `
+        <p class="receipt-gift-title">🎁 ${escapeHtml(t('gift_link_title'))}</p>
+        <p class="receipt-gift-hint">${escapeHtml(t('gift_link_hint'))}</p>
+        <div class="receipt-gift-row">
+            <input type="text" class="receipt-gift-link" dir="ltr" readonly value="${escapeHtml(url)}" aria-label="${escapeHtml(t('gift_link_title'))}">
+            <button type="button" class="copy-code-btn" data-gift-copy="${escapeHtml(url)}"><i class="fas fa-copy"></i> ${escapeHtml(t('gift_copy'))}</button>
+            <a class="copy-code-btn receipt-track-btn" href="${waHref}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> ${escapeHtml(t('gift_share_whatsapp'))}</a>
+        </div>`;
+    box.hidden = false;
+    const copyBtn = box.querySelector('[data-gift-copy]');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            const link = copyBtn.getAttribute('data-gift-copy') || '';
+            try {
+                await navigator.clipboard.writeText(link);
+            } catch (_e) {
+                const ta = document.createElement('textarea');
+                ta.value = link;
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch (_e2) {}
+                ta.remove();
+            }
+            showToast(t('gift_copied'), 'success');
+        });
+    }
+    const linkInput = box.querySelector('.receipt-gift-link');
+    if (linkInput) linkInput.addEventListener('click', () => linkInput.select());
+}
+
+function renderOrderReceipt({ email, orderId, giftToken }) {
     stopReceiptPolling();
     stopReceiptCountdown();
     _receiptContext = { email, orderId };
+    renderReceiptGiftBox(giftToken);
 
     const titleEl = document.getElementById('modalProductTitle');
     const codeEl = document.getElementById('generatedCode');
@@ -2109,6 +2154,15 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         checkoutPrevBtn.addEventListener('click', () => setCheckoutStep(checkoutStep - 1));
     }
 
+    // تبديل حقول الإهداء لصديق
+    const giftToggle = document.getElementById('giftToggle');
+    const giftFields = document.getElementById('giftFields');
+    if (giftToggle && giftFields) {
+        giftToggle.addEventListener('change', () => {
+            giftFields.hidden = !giftToggle.checked;
+        });
+    }
+
     // تغيير المحافظ ديناميكياً داخل المودال
     const paymentOptionsContainer = document.querySelector('.payment-options');
     const instructionsZone = document.getElementById('paymentInstructions');
@@ -2163,6 +2217,14 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
             const appliedPromo = getAppliedPromo();
             const appliedLoyalty = getAppliedLoyalty();
+            const giftToggle = document.getElementById('giftToggle');
+            let gift = null;
+            if (giftToggle && giftToggle.checked) {
+                const toName = document.getElementById('giftToName')?.value.trim() || '';
+                const toPhone = document.getElementById('giftToPhone')?.value.trim() || '';
+                const message = document.getElementById('giftMessage')?.value.trim() || '';
+                if (toName || toPhone || message) gift = { toName, toPhone, message };
+            }
             const orderData = {
                 cartItems: cart.map(item => ({ id: item.id, qty: item.qty })),
                 customerEmail: email,
@@ -2170,7 +2232,8 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 paymentRef: paymentRef,
                 ...(paymentProofUrl ? { paymentProofUrl } : {}),
                 ...(appliedPromo ? { promoCode: appliedPromo.code } : {}),
-                ...(appliedLoyalty ? { loyaltyPoints: appliedLoyalty.points } : {})
+                ...(appliedLoyalty ? { loyaltyPoints: appliedLoyalty.points } : {}),
+                ...(gift ? { gift } : {})
             };
 
             submitOrderBtn.disabled = true;
@@ -2203,7 +2266,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                         window.open(result.stripeUrl, '_blank', 'noopener');
                         showToast(t('checkout_stripe_success'), 'success');
                     } else {
-                        renderOrderReceipt({ email, orderId: result.orderId || '' });
+                        renderOrderReceipt({ email, orderId: result.orderId || '', giftToken: result.giftToken || null });
                         showToast(t('checkout_success'), 'success');
                     }
                 } else {

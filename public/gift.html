@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="/image/logo.png">
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json?v=6">
+    <meta name="theme-color" content="#0B0F1C">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Joker Store">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Joker Store | هدية لك 🎁</title>
+    <meta name="description" content="وصلكت هدية من Joker Store — افتحها واستلم كودك.">
+    <script src="/theme.js?v=13"></script>
+    <link rel="stylesheet" href="style.css?v=13">
+    <style>
+        .gift-page {
+            min-height: 100vh;
+            padding: 48px 20px 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .gift-box-anim {
+            font-size: 5rem;
+            line-height: 1;
+            filter: drop-shadow(0 0 28px rgba(251, 191, 36, 0.45));
+            animation: giftFloat 3s ease-in-out infinite;
+        }
+        @keyframes giftFloat {
+            0%, 100% { transform: translateY(0) rotate(-3deg); }
+            50% { transform: translateY(-12px) rotate(3deg); }
+        }
+        @media (hover: none) {
+            .gift-box-anim { animation: none; }
+        }
+        .gift-title {
+            font-size: clamp(1.6rem, 5vw, 2.2rem);
+            color: var(--text-1);
+            margin: 18px 0 6px;
+            font-weight: 800;
+        }
+        .gift-for {
+            color: var(--primary-neon);
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+        .gift-product {
+            margin-top: 18px;
+            background: var(--glass-strong);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 22px;
+            width: 100%;
+            max-width: 560px;
+            backdrop-filter: blur(var(--blur));
+            -webkit-backdrop-filter: blur(var(--blur));
+        }
+        .gift-product-name {
+            color: var(--text-1);
+            font-weight: 800;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        .gift-message {
+            color: var(--text-2);
+            line-height: 1.8;
+            font-size: 0.95rem;
+            background: var(--glass-soft);
+            border: 1px dashed var(--glass-border-strong);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            margin: 0 0 16px;
+            white-space: pre-wrap;
+        }
+        .gift-code-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 8px 0;
+            flex-wrap: wrap;
+        }
+        .gift-code-row code {
+            font-family: var(--font-num);
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.4);
+            color: var(--success);
+            border-radius: var(--radius-sm);
+            padding: 10px 18px;
+        }
+        .gift-copy-btn {
+            border: 0;
+            cursor: pointer;
+            font-family: var(--font-sans);
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: #fff;
+            background: var(--grad-primary);
+            border-radius: var(--radius-pill);
+            padding: 9px 18px;
+        }
+        .gift-wait {
+            color: var(--text-2);
+            line-height: 1.8;
+            margin-top: 14px;
+        }
+        .gift-error {
+            color: var(--danger);
+            font-weight: 700;
+            margin-top: 20px;
+            line-height: 1.7;
+        }
+        .gift-back {
+            margin-top: 30px;
+            color: var(--primary-neon);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .gift-back:hover { text-decoration: underline; }
+        .gift-brand {
+            margin-top: 26px;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <main class="gift-page">
+        <div class="gift-box-anim" aria-hidden="true">🎁</div>
+        <h1 class="gift-title" id="giftTitle">هدية لك!</h1>
+        <div class="gift-for" id="giftFor" hidden></div>
+        <div class="gift-product" id="giftBody">
+            <p style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i></p>
+        </div>
+        <a class="gift-back" href="/" id="giftBack">→ Joker Store</a>
+        <div class="gift-brand">Joker Store — أكواد أصلية مضمونة 100%</div>
+    </main>
+
+    <script type="module" src="sub-page.js"></script>
+    <script src="/sw-register.js" defer></script>
+    <script src="/install-prompt.js" defer></script>
+    <script type="module" src="/gift-page.js"></script>
+</body>
+</html>

@@ -131,6 +131,10 @@ async function trackOrder() {
             const waLink = WHATSAPP_NUMBER
                 ? `https://wa.me/${String(WHATSAPP_NUMBER).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`${t('invoice_whatsapp_msg')} #${order.orderId}`)}`
                 : '';
+            const giftUrl = (order.isGift && order.giftToken) ? `${window.location.origin}/gift/${order.giftToken}` : '';
+            const giftHtml = giftUrl
+                ? `<div class="track-gift-box"><span class="track-gift-title">🎁 ${escapeHtml(t('gift_link_title'))}</span><span class="track-gift-row"><code class="track-code track-gift-link" dir="ltr">${escapeHtml(giftUrl)}</code><button type="button" class="track-copy-btn" data-code="${escapeHtml(giftUrl)}" title="${escapeHtml(t('gift_copy'))}" aria-label="${escapeHtml(t('gift_copy'))}"><i class="fas fa-copy"></i></button><a href="https://wa.me/?text=${encodeURIComponent(`${t('gift_share_text')} ${giftUrl}`)}" target="_blank" rel="noopener" class="enter-btn track-action-btn wa"><i class="fab fa-whatsapp"></i> ${escapeHtml(t('gift_share_whatsapp'))}</a></span></div>`
+                : '';
             const actionsHtml = `
                 <div class="track-actions">
                     <a href="${invoiceLink}" class="enter-btn track-action-btn"><i class="fas fa-file-invoice"></i> ${escapeHtml(t('track_invoice_btn'))}</a>
@@ -146,6 +150,7 @@ async function trackOrder() {
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b>${formatPrice(order.price)}</b></div>
                     ${codesHtml}
+                    ${giftHtml}
                     ${actionsHtml}
                 </div>`;
         }).join('');

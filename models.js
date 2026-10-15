@@ -223,6 +223,13 @@ const orderSchema = new mongoose.Schema({
     discountPercent: { type: Number, default: 0 },
     loyaltyPoints: { type: Number, default: 0, min: 0 },
     loyaltyDiscount: { type: Number, default: 0, min: 0 },
+    // الإهداء لصديق — رابط مشاركة برمز غير قابل للتخمين
+    isGift: { type: Boolean, default: false },
+    giftToName: { type: String, trim: true, maxlength: 60, default: null },
+    giftToPhone: { type: String, trim: true, maxlength: 20, default: null },
+    giftMessage: { type: String, trim: true, maxlength: 300, default: null },
+    giftToken: { type: String, default: null, index: true, sparse: true },
+    giftOpenedAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now },
     completedAt: { type: Date, default: null },
     failedAt: { type: Date, default: null }

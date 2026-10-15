@@ -7812,3 +7812,133 @@ body.pwa-bar-visible .social-proof {
     font-size: .82rem;
     padding: 6px 8px;
 }
+
+/* ==================== Gift (إهداء لصديق) ==================== */
+.gift-toggle-row {
+    margin: 14px 0 4px;
+}
+
+.gift-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: var(--text-1);
+    user-select: none;
+}
+
+.gift-toggle input {
+    display: none;
+}
+
+.gift-toggle-box {
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    border: 1px solid var(--glass-border-strong);
+    background: var(--glass);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: transparent;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.gift-toggle input:checked + .gift-toggle-box {
+    background: var(--grad-primary);
+    border-color: transparent;
+    color: #fff;
+}
+
+.gift-toggle input:focus-visible + .gift-toggle-box {
+    outline: 2px solid var(--primary-neon);
+    outline-offset: 2px;
+}
+
+#giftFields {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px dashed rgba(129, 140, 248, 0.35);
+    border-radius: var(--radius-md);
+    background: rgba(129, 140, 248, 0.05);
+}
+
+#giftFields .form-group {
+    margin-bottom: 10px;
+}
+
+#giftFields .form-group:last-child {
+    margin-bottom: 0;
+}
+
+#giftFields input,
+#giftFields textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.receipt-gift-box,
+.track-gift-box,
+.invoice-gift-box {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    background: rgba(251, 191, 36, 0.07);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.receipt-gift-title,
+.track-gift-title {
+    font-weight: 800;
+    color: var(--text-1);
+    margin: 0 0 4px;
+    font-size: 0.95rem;
+}
+
+.receipt-gift-hint {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin: 0 0 10px;
+}
+
+.receipt-gift-row,
+.track-gift-row,
+.invoice-gift-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.receipt-gift-link,
+.invoice-gift-box input {
+    flex: 1 1 200px;
+    min-width: 0;
+    font-family: var(--font-num);
+    font-size: 0.8rem;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-soft);
+    color: var(--text-1);
+}
+
+.track-gift-box {
+    margin-top: 12px;
+}
+
+.track-gift-row {
+    margin-top: 8px;
+}
+
+.track-gift-link {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

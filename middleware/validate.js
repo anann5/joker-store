@@ -143,7 +143,14 @@ exports.checkoutSchema = Joi.object({
     }),
     paymentProofUrl: Joi.string().trim().max(500).allow('', null).optional().messages({
         'string.max': 'رابط إثبات الدفع طويل جداً'
-    })
+    }),
+    gift: Joi.object({
+        toName: Joi.string().trim().max(60).allow('', null).optional(),
+        toPhone: Joi.string().trim().max(20).pattern(/^[+\d][\d\s-]{6,19}$/).allow('', null).optional().messages({
+            'string.pattern.base': 'رقم جوال المستلم غير صالح'
+        }),
+        message: Joi.string().trim().max(300).allow('', null).optional()
+    }).optional()
 });
 
 exports.contactSchema = Joi.object({

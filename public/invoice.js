@@ -50,6 +50,11 @@ function renderInvoice(inv, lang, symbol) {
         ? `<div class="invoice-codes"><b>${escapeHtml(t('invoice_codes'))}</b>${inv.codes.map(c => `<code dir="ltr">${escapeHtml(c)}</code>`).join('')}</div>`
         : `<div class="invoice-codes"><b>${escapeHtml(t('invoice_delivery_pending'))}</b></div>`;
 
+    const giftUrl = (inv.isGift && inv.giftToken) ? `${window.location.origin}/gift/${inv.giftToken}` : '';
+    const giftHtml = giftUrl
+        ? `<div class="invoice-gift-box"><b>🎁 ${escapeHtml(t('gift_link_title'))}</b><p style="color:var(--text-muted);font-size:0.82rem;">${escapeHtml(t('gift_link_hint'))}</p><div class="invoice-gift-row"><input type="text" dir="ltr" readonly value="${escapeHtml(giftUrl)}" aria-label="${escapeHtml(t('gift_link_title'))}"><a href="https://wa.me/?text=${encodeURIComponent(`${t('gift_share_text')} ${giftUrl}`)}" target="_blank" rel="noopener" class="enter-btn track-action-btn wa"><i class="fab fa-whatsapp"></i> ${escapeHtml(t('gift_share_whatsapp'))}</a></div></div>`
+        : '';
+
     sheet.innerHTML = `
         <div class="inv-head">
             <div>
@@ -82,7 +87,8 @@ function renderInvoice(inv, lang, symbol) {
             ${discount > 0 ? `<div><span>${escapeHtml(t('invoice_discount'))}${inv.discountCode ? ` (${escapeHtml(inv.discountCode)})` : ''}</span><span class="num">-${formatPrice(discount, symbol)}</span></div>` : ''}
             <div class="grand"><span>${escapeHtml(t('invoice_paid'))}</span><span class="num">${formatPrice(inv.price, symbol)}</span></div>
         </div>
-        ${codesHtml}`;
+        ${codesHtml}
+        ${giftHtml}`;
 }
 
 async function loadInvoice() {

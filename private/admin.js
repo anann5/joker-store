@@ -1339,6 +1339,9 @@ function renderOrders(orders) {
     tbody.innerHTML = orders.map(order => {
         const customerName = order.buyerEmail?.split('@')[0] || 'زبون';
         const email = order.buyerEmail || order.email || '—';
+        const giftMark = order.isGift
+            ? ` <span title="هدية لـ: ${escapeHtml(order.giftToName || '')}${order.giftToPhone ? ` (${escapeHtml(order.giftToPhone)})` : ''}">🎁</span>`
+            : '';
         const itemsBase = order.items && order.items.length > 0
             ? order.items.map(i => {
                 const itemName = (i.name && typeof i.name === 'object')
@@ -1366,7 +1369,7 @@ function renderOrders(orders) {
             <tr>
                 <td><input type="checkbox" class="order-check" value="${escapeHtml(order.orderId)}" ${canBulk ? '' : 'disabled'}></td>
                 <td style="color:var(--primary);font-weight:700;">#${escapeHtml(order.orderId)}</td>
-                <td class="customer-name-cell">${escapeHtml(customerName)}</td>
+                <td class="customer-name-cell">${escapeHtml(customerName)}${giftMark}</td>
                 <td class="customer-email-cell">${escapeHtml(email)}</td>
                 <td>${items}</td>
                 <td class="price-cell">${formatMoney(total)}</td>

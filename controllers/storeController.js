@@ -284,7 +284,8 @@ exports.trackOrder = async (req, res) => {
                 createdAt: order.createdAt,
                 completedAt: order.completedAt || null,
                 items,
-                codes
+                codes,
+                ...(orderId ? { isGift: Boolean(order.isGift), giftToken: order.giftToken || null } : {})
             };
         });
 
@@ -310,7 +311,7 @@ exports.getInvoice = async (req, res) => {
         }
 
         const order = await Order.findOne({ orderId, buyerEmail: email })
-            .select('orderId status price discount discountCode buyerEmail paymentGateway items.name items.qty items.unitPrice items.price items.fulfilmentStatus code deliveredCodes completedAt createdAt');
+            .select('orderId status price discount discountCode buyerEmail paymentGateway items.name items.qty items.unitPrice items.price items.fulfilmentStatus code deliveredCodes completedAt createdAt isGift giftToken');
         if (!order) {
             return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
         }
@@ -331,6 +332,8 @@ exports.getInvoice = async (req, res) => {
                 paymentGateway: order.paymentGateway || '',
                 createdAt: order.createdAt,
                 completedAt: order.completedAt || null,
+                isGift: Boolean(order.isGift),
+                giftToken: order.giftToken || null,
                 items: (order.items || []).map(item => ({
                     name: getLocalizedValue(item.name).ar,
                     qty: item.qty,
@@ -576,7 +579,7 @@ exports.getActivePromotions = async (_req, res) => {
 
 exports.createOrder = async (req, res) => {
     try {
-        const { cartItems, customerEmail, paymentGateway, paymentRef, paymentProofUrl: rawProofUrl, promoCode: rawPromoCode } = req.body;
+        const { cartItems, customerEmail, paymentGateway, paymentRef, paymentProofUrl: rawProofUrl, promoCode: rawPromoCode, gift: rawGift } = req.body;
         const paymentProofUrl = typeof rawProofUrl === 'string' && rawProofUrl.trim() && (/^\/uploads\//.test(rawProofUrl.trim()) || /^https?:\/\//.test(rawProofUrl.trim())) ? rawProofUrl.trim().slice(0,500) : null;
         if (paymentGateway === 'stripe' && !stripeController.isStripeEnabled()) {
             return res.status(400).json({ success: false, error: 'الدفع بالبطاقة غير مفعل حالياً.' });
@@ -689,6 +692,12 @@ exports.createOrder = async (req, res) => {
         }
 
         const orderId = uuidv4().split('-')[0].toUpperCase();
+        // الإهداء: يُفعّل فقط عند وجود اسم/جوال/رسالة فعلياً
+        const giftToName = rawGift && typeof rawGift.toName === 'string' ? rawGift.toName.trim().slice(0, 60) : '';
+        const giftToPhone = rawGift && typeof rawGift.toPhone === 'string' ? rawGift.toPhone.trim().slice(0, 20) : '';
+        const giftMessage = rawGift && typeof rawGift.message === 'string' ? rawGift.message.trim().slice(0, 300) : '';
+        const isGift = Boolean(giftToName || giftToPhone || giftMessage);
+        const giftToken = isGift ? crypto.randomUUID() : null;
         const newOrder = new Order({
             orderId,
             productName: itemsForOrder.map(item => item.name.ar).join('، '),
@@ -704,7 +713,12 @@ exports.createOrder = async (req, res) => {
             discountCode: promoCode || null,
             discountPercent: promoCode ? promoPercent : 0,
             loyaltyPoints: loyaltyPointsUsed,
-            loyaltyDiscount
+            loyaltyDiscount,
+            isGift,
+            giftToName: giftToName || null,
+            giftToPhone: giftToPhone || null,
+            giftMessage: giftMessage || null,
+            giftToken
         });
 
         await newOrder.save();
@@ -765,7 +779,8 @@ exports.createOrder = async (req, res) => {
             discount: newOrder.discount,
             discountCode: newOrder.discountCode,
             total: newOrder.price,
-            ...(stripeUrl ? { stripeUrl, gateway: 'stripe' } : {})
+            ...(stripeUrl ? { stripeUrl, gateway: 'stripe' } : {}),
+            ...(isGift ? { giftToken } : {})
         });
     } catch (err) {
         console.error('Order creation error:', err);

@@ -3,6 +3,7 @@ const router = express.Router();
 const storeController = require('../controllers/storeController');
 const pushController = require('../controllers/pushController');
 const alertsController = require('../controllers/alertsController');
+const giftController = require('../controllers/giftController');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
@@ -133,11 +134,18 @@ const notifyLimiter = rateLimit({
     max: 30,
     message: 'محاولات كثيرة لتنبيهات المخزون، يرجى الانتظار قليلاً.'
 });
-
 // Stock-alert subscriptions — MUST be before :categoryKey catch-all
 router.post('/products/:productId/notify', notifyLimiter, verifyUserTokenOptional, validate(stockAlertSubscribeSchema), alertsController.subscribeStockAlert);
 router.delete('/products/:productId/notify', notifyLimiter, verifyUserTokenOptional, validate(stockAlertUnsubscribeSchema), alertsController.unsubscribeStockAlert);
 router.get('/products/:productId/notify', notifyLimiter, alertsController.getStockAlertStatus);
+
+// Gift reveal (public, token-gated)
+const giftLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: 'محاولات كثيرة، يرجى الانتظار قليلاً.'
+});
+router.get('/gift/:token', giftLimiter, giftController.getGift);
 
 // Route to get products by category — MUST be last (catch-all with :categoryKey)
 router.get('/products/:categoryKey', storeController.getProductsByCategory);

@@ -334,6 +334,13 @@ app.get('/download', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'download.html'));
 });
 
+app.get('/gift/:token', (req, res, next) => {
+    if (!/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(req.params.token || ''))) {
+        return next();
+    }
+    res.sendFile(path.join(__dirname, 'public', 'gift.html'));
+});
+
 /**
  * تهريب قيمة نصية ديناميكية لإدراجها بأمان داخل HTML (يمنع حقن الوسوم).
  */
