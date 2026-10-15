@@ -72,10 +72,8 @@ jobs:
         run: |
           set -e
           RES="android/app/src/main/res"
-          # replace Capacitor's default splash asset (styles.xml references @drawable/splash)
           rm -f "$RES/drawable/splash.png"
           rm -f $RES/drawable-*/splash.png
-          # replace Capacitor's default launcher background colour
           rm -f "$RES/values/ic_launcher_background.xml"
           cp -r mobile-assets/res/. "$RES/"
           test -f "$RES/drawable/splash.xml" && echo "branding applied"
