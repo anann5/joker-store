@@ -44,6 +44,7 @@ async function applyItem(product, provider, item) {
 
     const oldBase = Number(product.basePrice) || 0;
     const previousPrice = Number(product.price) || 0;
+    const wasOutOfStock = product.providerStock != null && Number(product.providerStock) <= 0;
 
     product.isExternal = true;
     product.externalId = item.id;
@@ -69,6 +70,12 @@ async function applyItem(product, provider, item) {
     }
 
     await product.save();
+
+    // 0 -> متوفر عند المزود: إشعار المشتركين بتنبيهات المخزون (غير حاجب للمزامنة)
+    if (wasOutOfStock && product.providerStock != null && Number(product.providerStock) > 0) {
+        const alerts = require('../controllers/alertsController');
+        alerts.fireStockAlerts(product).catch(() => {});
+    }
 
     if (oldBase > 0 && roundedBase > oldBase * PRICE_ALERT_RATIO) {
         await sendTelegramAlert(

@@ -105,6 +105,10 @@ router.post('/push/broadcast', validate(pushBroadcastSchema), pushController.bro
 const storeController = require('../controllers/storeController');
 router.get('/abandoned-carts', storeController.getAbandonedCarts);
 
+// Stock alerts (back-in-stock subscriptions)
+const alertsController = require('../controllers/alertsController');
+router.get('/stock-alerts', alertsController.listStockAlerts);
+
 // Health dashboard
 const healthController = require('../controllers/healthController');
 router.get('/health', healthController.getHealth);

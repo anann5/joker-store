@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const storeController = require('../controllers/storeController');
 const pushController = require('../controllers/pushController');
+const alertsController = require('../controllers/alertsController');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
-const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema } = require('../middleware/validate');
+const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
 
 // ليميتر خاص بإنشاء الطلبات (منع إغراق قاعدة البيانات بطلبات وهمية)
@@ -125,6 +126,18 @@ router.get('/testimonials', storeController.getTestimonials);
 
 // Route for suggested products based on cart contents
 router.post('/products/suggested', storeController.getSuggestedProducts);
+
+// ليميتر خاص بتنبيهات المخزون (منع إغراق الاشتراكات)
+const notifyLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'محاولات كثيرة لتنبيهات المخزون، يرجى الانتظار قليلاً.'
+});
+
+// Stock-alert subscriptions — MUST be before :categoryKey catch-all
+router.post('/products/:productId/notify', notifyLimiter, verifyUserTokenOptional, validate(stockAlertSubscribeSchema), alertsController.subscribeStockAlert);
+router.delete('/products/:productId/notify', notifyLimiter, verifyUserTokenOptional, validate(stockAlertUnsubscribeSchema), alertsController.unsubscribeStockAlert);
+router.get('/products/:productId/notify', notifyLimiter, alertsController.getStockAlertStatus);
 
 // Route to get products by category — MUST be last (catch-all with :categoryKey)
 router.get('/products/:categoryKey', storeController.getProductsByCategory);

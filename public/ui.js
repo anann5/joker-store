@@ -174,6 +174,56 @@ export function showAllCategories() {
 }
 
 /**
+ * تنبيهات عودة المخزون — حالة الزر وتسجيل الاشتراك عبر Web Push.
+ */
+function setNotifyStockState(btn, active) {
+    btn.classList.toggle('active', Boolean(active));
+    const label = btn.querySelector('span');
+    if (label) label.textContent = t(active ? 'notify_stock_active' : 'notify_stock_btn');
+}
+
+async function refreshNotifyStockState(productId, btn) {
+    try {
+        const { getPushEndpoint: getEp } = await import('./push.js');
+        const endpoint = await getEp();
+        if (!endpoint) return;
+        const res = await fetch(`/api/products/${productId}/notify?endpoint=${encodeURIComponent(endpoint)}`);
+        const data = await res.json();
+        if (data.success && data.subscribed) setNotifyStockState(btn, true);
+    } catch (_e) {}
+}
+
+async function handleNotifyStock(productId, btn) {
+    if (btn.classList.contains('active')) return;
+    btn.disabled = true;
+    try {
+        const { getPushEndpoint: getEp } = await import('./push.js');
+        const endpoint = await getEp();
+        if (!endpoint) {
+            showToast(t('notify_stock_need_push'), 'error');
+            return;
+        }
+        const res = await fetch(`/api/products/${productId}/notify`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endpoint, lang: getCurrentLanguage() })
+        });
+        const data = await res.json();
+        if (data.success) {
+            setNotifyStockState(btn, true);
+            showToast(t('notify_stock_active'), 'success');
+        } else {
+            showToast(data.error || t('notify_stock_fail'), 'error');
+        }
+    } catch (_e) {
+        showToast(t('notify_stock_fail'), 'error');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+/**
  * عرض تفاصيل المنتج.
  * @param {object} product - بيانات المنتج.
  */
@@ -449,6 +499,20 @@ export function showProductDetails(product, currentCategory = '') {
         const qty = qtyInput ? parseInt(qtyInput.value, 10) || 1 : 1;
         addToCart(product, qty);
     });
+
+    // زر "أعلمني عند التوفر" — يظهر فقط عند نفاد مخزون منتج محلي
+    // (المنتجات الخارجية availableStock=null فلا يشملها الشرط)
+    const notifyBtn = view.querySelector('[data-notify-stock]');
+    if (notifyBtn) {
+        const stockVal = product.availableStock;
+        const outOfStock = stockVal !== null && stockVal !== undefined && Number(stockVal) <= 0;
+        notifyBtn.hidden = !outOfStock;
+        if (outOfStock && product.id) {
+            if (buyButton) buyButton.style.display = 'none';
+            void refreshNotifyStockState(product.id, notifyBtn);
+            notifyBtn.addEventListener('click', () => handleNotifyStock(product.id, notifyBtn));
+        }
+    }
 
     // إضافة منطق لزر "مشاركة المنتج"
     const shareButton = view.querySelector('.share-btn');
@@ -754,11 +818,15 @@ export function updateCartUI() {
         const email = emailEl ? emailEl.value.trim() : '';
         const total = cartTotals(items).total;
         if (items.length > 0) {
-            fetch('/api/cart/track', {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: items.map(i => ({ productId: i.id, productName: i.name, qty: i.qty, price: i.price })), email: email || null, total })
+            const payload = { items: items.map(i => ({ productId: i.id, productName: i.name, qty: i.qty, price: i.price })), email: email || null, total };
+            import('./push.js').then((m) => m.getPushEndpoint()).then((endpoint) => {
+                if (endpoint) payload.pushEndpoint = endpoint;
+                fetch('/api/cart/track', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).catch(() => {});
             }).catch(() => {});
         }
     } catch (_e) {}

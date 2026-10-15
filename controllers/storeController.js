@@ -1014,16 +1014,20 @@ const crypto = require('crypto');
 
 exports.trackCartSession = async (req, res) => {
     try {
-        const { items, email, total } = req.body;
+        const { items, email, total, pushEndpoint } = req.body;
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ success: false, error: 'السلة فارغة' });
         }
 
         const sessionId = req.cookies?.cart_session || crypto.randomUUID();
+        const cleanEndpoint = typeof pushEndpoint === 'string' && pushEndpoint.length <= 600
+            ? pushEndpoint
+            : undefined;
         await CartSession.findOneAndUpdate(
             { sessionId },
             {
                 email: email || null,
+                ...(cleanEndpoint !== undefined ? { pushEndpoint: cleanEndpoint } : {}),
                 items: items.map(i => ({
                     productId: i.productId,
                     productName: i.productName || '',

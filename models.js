@@ -342,6 +342,7 @@ logSchema.index({ createdAt: -1 });
 const cartSessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true },
     email: { type: String, default: null },
+    pushEndpoint: { type: String, default: null },
     items: {
         type: [{
             productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
@@ -381,6 +382,24 @@ const pushSubscriptionSchema = new mongoose.Schema({
 pushSubscriptionSchema.index({ topics: 1 });
 pushSubscriptionSchema.index({ userId: 1 });
 
+// ======================================================
+// Schema تنبيهات عودة المخزون (Stock Alerts)
+// ======================================================
+const stockAlertSchema = new mongoose.Schema({
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    endpoint: { type: String, default: null },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    lang: { type: String, enum: ['ar', 'en'], default: 'ar' },
+    status: { type: String, enum: ['pending', 'notified', 'cancelled'], default: 'pending' },
+    createdAt: { type: Date, default: Date.now },
+    notifiedAt: { type: Date, default: null }
+});
+stockAlertSchema.index({ productId: 1, status: 1 });
+stockAlertSchema.index(
+    { productId: 1, endpoint: 1 },
+    { unique: true, partialFilterExpression: { endpoint: { $type: 'string' } } }
+);
+
 module.exports = {
     Product: mongoose.model('Product', productSchema),
     Category: mongoose.model('Category', categorySchema),
@@ -392,5 +411,6 @@ module.exports = {
     Promotion: mongoose.model('Promotion', promotionSchema),
     CartSession: mongoose.model('CartSession', cartSessionSchema),
     PushSubscription: mongoose.model('PushSubscription', pushSubscriptionSchema),
+    StockAlert: mongoose.model('StockAlert', stockAlertSchema),
     SupportTicket: mongoose.model('SupportTicket', supportTicketSchema)
 };

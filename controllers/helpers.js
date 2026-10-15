@@ -193,14 +193,40 @@ exports.checkLowStockAlert = async () => {
 };
 
 exports.checkAbandonedCarts = async () => {
-    const { CartSession } = require('../models');
+    const { CartSession, PushSubscription } = require('../models');
     const { sendAbandonedCartEmail } = require('./notification');
-    const carts = await CartSession.find({ notified: false, email: { $ne: null }, updatedAt: { $lt: new Date(Date.now() - 60 * 60 * 1000) } }).limit(20).lean();
+    const pushService = require('./push');
+    const carts = await CartSession.find({ notified: false, updatedAt: { $lt: new Date(Date.now() - 60 * 60 * 1000) } }).limit(20).lean();
     let sent = 0;
     for (const c of carts) {
         try {
-            const r = await sendAbandonedCartEmail(c);
-            if (!r.skipped) {
+            let reminded = false;
+            if (c.email) {
+                const r = await sendAbandonedCartEmail(c);
+                if (!r.skipped) reminded = true;
+            }
+            if (!reminded && c.pushEndpoint) {
+                const sub = await PushSubscription.findOne({ endpoint: c.pushEndpoint })
+                    .select('endpoint keys lang failedCount')
+                    .lean();
+                if (sub) {
+                    const count = Array.isArray(c.items)
+                        ? c.items.reduce((n, i) => n + (Number(i.qty) || 1), 0)
+                        : 0;
+                    const total = Number(c.total) || 0;
+                    const r = await pushService.sendToSubscriptions({
+                        subscriptions: [sub],
+                        messages: {
+                            ar: { title: '🛒 سلّتك بانتظارك', body: `لديك ${count} منتجات بقيمة ${total} ₪ — أكمل طلبك قبل نفاد الكمية.` },
+                            en: { title: '🛒 Your cart is waiting', body: `You have ${count} items worth ${total} ₪ — complete your order before stock runs out.` }
+                        },
+                        url: '/',
+                        tag: `cart-${c._id}`
+                    });
+                    if (r.sent > 0) reminded = true;
+                }
+            }
+            if (reminded) {
                 await CartSession.updateOne({ _id: c._id }, { $set: { notified: true } });
                 sent += 1;
             }

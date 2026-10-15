@@ -7708,3 +7708,38 @@ body.pwa-bar-visible .back-to-top-btn,
 body.pwa-bar-visible .social-proof {
     transition: bottom 0.3s ease, opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
 }
+
+/* ==================== Stock-alert notify button ==================== */
+.notify-stock-btn {
+    width: 100%;
+    padding: 12px;
+    background: rgba(129, 140, 248, 0.1);
+    color: var(--primary-neon);
+    border: 1px dashed rgba(129, 140, 248, 0.45);
+    border-radius: var(--radius-md);
+    font-weight: 800;
+    font-family: inherit;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.notify-stock-btn:hover:not(:disabled) {
+    background: rgba(129, 140, 248, 0.18);
+}
+
+.notify-stock-btn:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+.notify-stock-btn.active {
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.5);
+    color: var(--success);
+    cursor: default;
+}

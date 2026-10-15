@@ -249,6 +249,7 @@ module.exports = {
     getPushStatus,
     subscribe,
     unsubscribe,
+    sendToSubscriptions,
     broadcast,
     notifyOrderStatus,
     notifyNewProduct,

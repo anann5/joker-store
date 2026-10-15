@@ -30,6 +30,21 @@ function getCurrentSubscription(reg) {
     return reg.pushManager.getSubscription();
 }
 
+/**
+ * يُرجع endpoint اشتراك الـ push الحالي (أو null) دون طلب إذن جديد.
+ * يُستخدم لربط السلة/تنبيهات المخزون باشتراك المتصفح.
+ */
+export async function getPushEndpoint() {
+    try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        return (sub && sub.endpoint) || null;
+    } catch (_err) {
+        return null;
+    }
+}
+
 async function loadConfig() {
     try {
         const res = await fetch('/api/push/vapid-public-key');

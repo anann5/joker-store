@@ -256,6 +256,7 @@ exports.addProductCodes = async (req, res) => {
         }
 
         const existing = new Set(product.codes.filter(c => c.value).map(c => c.value));
+        const wasOutOfStock = !product.codes.some(c => c.status === 'available');
         let added = 0;
         for (const code of rawCodes) {
             const trimmed = String(code).trim();
@@ -270,6 +271,11 @@ exports.addProductCodes = async (req, res) => {
         await product.save();
 
         if (added > 0) clearStorefrontCache();
+        // 0 -> متوفر: إشعار المشتركين بتنبيهات المخزون (غير حاجب للرد)
+        if (added > 0 && wasOutOfStock) {
+            const alerts = require('./alertsController');
+            alerts.fireStockAlerts(product).catch(() => {});
+        }
         await createLog(
             'إضافة كودات يدوية',
             `تمت إضافة ${added} كود للمنتج: ${product.productName.ar || product.productName.en} (المكرر: ${rawCodes.length - added})`,

@@ -464,6 +464,18 @@ exports.pushBroadcastSchema = Joi.object({
     tag: Joi.string().allow('').trim().max(40).default('admin-broadcast')
 });
 
+exports.stockAlertSubscribeSchema = Joi.object({
+    endpoint: Joi.string().uri().min(20).max(600).optional(),
+    lang: Joi.string().valid('ar', 'en').default('ar')
+});
+
+exports.stockAlertUnsubscribeSchema = Joi.object({
+    endpoint: Joi.string().uri().min(20).max(600).required().messages({
+        'string.uri': 'نقطة الاشتراك غير صالحة',
+        'any.required': 'نقطة الاشتراك مطلوبة'
+    })
+});
+
 /**
  * مخططات تذاكر الدعم
  */
