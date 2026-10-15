@@ -53,8 +53,13 @@ async function unsubscribe(req, res) {
  */
 async function getAdminStats(_req, res) {
     try {
-        const stats = await pushService.getStats();
-        res.json({ success: true, ...stats });
+        const pushService = require('./push');
+        const fcmService = require('./fcm');
+        const [stats, fcmStats] = await Promise.all([
+            pushService.getStats(),
+            fcmService.getStats().catch(() => ({ enabled: false, totalDevices: 0 }))
+        ]);
+        res.json({ success: true, ...stats, fcm: fcmStats });
     } catch (_e) {
         res.status(500).json({ success: false, error: 'فشل جلب إحصائيات الإشعارات' });
     }
