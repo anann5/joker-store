@@ -21,3 +21,9 @@ public/uploads/
 /app-release*.apk
 /joker-store.apk
 www/icon.png
+
+# Firebase secrets - NEVER commit
+google-services.json
+*-firebase-adminsdk-*.json
+service-account*.json
+*serviceAccountKey*.json
