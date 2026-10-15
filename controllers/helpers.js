@@ -196,6 +196,7 @@ exports.checkAbandonedCarts = async () => {
     const { CartSession, PushSubscription } = require('../models');
     const { sendAbandonedCartEmail } = require('./notification');
     const pushService = require('./push');
+    const fcmService = require('./fcm');
     const carts = await CartSession.find({ notified: false, updatedAt: { $lt: new Date(Date.now() - 60 * 60 * 1000) } }).limit(20).lean();
     let sent = 0;
     for (const c of carts) {
@@ -225,6 +226,24 @@ exports.checkAbandonedCarts = async () => {
                     });
                     if (r.sent > 0) reminded = true;
                 }
+            }
+            if (!reminded && c.fcmToken) {
+                const count = Array.isArray(c.items)
+                    ? c.items.reduce((n, i) => n + (Number(i.qty) || 1), 0)
+                    : 0;
+                const total = Number(c.total) || 0;
+                try {
+                    const r = await fcmService.sendToTokensAndUsers({
+                        tokens: [c.fcmToken],
+                        messages: {
+                            ar: { title: '🛒 سلّتك بانتظارك', body: `لديك ${count} منتجات بقيمة ${total} ₪ — أكمل طلبك قبل نفاد الكمية.` },
+                            en: { title: '🛒 Your cart is waiting', body: `You have ${count} items worth ${total} ₪ — complete your order before stock runs out.` }
+                        },
+                        url: '/',
+                        tag: `cart-${c._id}`
+                    });
+                    if (r.sent > 0) reminded = true;
+                } catch (_e2) {}
             }
             if (reminded) {
                 await CartSession.updateOne({ _id: c._id }, { $set: { notified: true } });

@@ -473,6 +473,14 @@ exports.pushBroadcastSchema = Joi.object({
 
 exports.stockAlertSubscribeSchema = Joi.object({
     endpoint: Joi.string().uri().min(20).max(600).optional(),
+    fcmToken: Joi.string().trim().min(10).max(500).optional(),
+    lang: Joi.string().valid('ar', 'en').default('ar')
+});
+
+exports.fcmTokenSchema = Joi.object({
+    token: Joi.string().trim().min(10).max(500).required().messages({
+        'any.required': 'التوكن مطلوب'
+    }),
     lang: Joi.string().valid('ar', 'en').default('ar')
 });
 

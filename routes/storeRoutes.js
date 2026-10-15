@@ -5,7 +5,7 @@ const pushController = require('../controllers/pushController');
 const alertsController = require('../controllers/alertsController');
 const giftController = require('../controllers/giftController');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
-const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema } = require('../middleware/validate');
+const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema, fcmTokenSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
 
 // ليميتر خاص بإنشاء الطلبات (منع إغراق قاعدة البيانات بطلبات وهمية)
@@ -83,6 +83,7 @@ router.get('/site-config', storeController.getSiteConfig);
 router.get('/push/vapid-public-key', pushController.getStatus);
 router.post('/push/subscribe', pushLimiter, verifyUserTokenOptional, validate(pushSubscribeSchema), pushController.subscribe);
 router.post('/push/unsubscribe', pushLimiter, validate(pushUnsubscribeSchema), pushController.unsubscribe);
+router.post('/push/fcm-token', pushLimiter, verifyUserTokenOptional, validate(fcmTokenSchema), pushController.registerFcmToken);
 
 // Route for guest order tracking by email
 router.post('/track-order', trackOrderLimiter, conditionalCodeLimiter, storeController.trackOrder);

@@ -182,12 +182,24 @@ function setNotifyStockState(btn, active) {
     if (label) label.textContent = t(active ? 'notify_stock_active' : 'notify_stock_btn');
 }
 
+function getDeviceFcmToken() {
+    try {
+        return localStorage.getItem('joker_fcm_token') || null;
+    } catch (_e) {
+        return null;
+    }
+}
+
 async function refreshNotifyStockState(productId, btn) {
     try {
         const { getPushEndpoint: getEp } = await import('./push.js');
         const endpoint = await getEp();
-        if (!endpoint) return;
-        const res = await fetch(`/api/products/${productId}/notify?endpoint=${encodeURIComponent(endpoint)}`);
+        const fcmToken = getDeviceFcmToken();
+        if (!endpoint && !fcmToken) return;
+        const params = new URLSearchParams();
+        if (endpoint) params.set('endpoint', endpoint);
+        if (fcmToken) params.set('fcmToken', fcmToken);
+        const res = await fetch(`/api/products/${productId}/notify?${params.toString()}`);
         const data = await res.json();
         if (data.success && data.subscribed) setNotifyStockState(btn, true);
     } catch (_e) {}
@@ -199,15 +211,19 @@ async function handleNotifyStock(productId, btn) {
     try {
         const { getPushEndpoint: getEp } = await import('./push.js');
         const endpoint = await getEp();
-        if (!endpoint) {
+        const fcmToken = getDeviceFcmToken();
+        if (!endpoint && !fcmToken) {
             showToast(t('notify_stock_need_push'), 'error');
             return;
         }
+        const body = { lang: getCurrentLanguage() };
+        if (endpoint) body.endpoint = endpoint;
+        if (fcmToken) body.fcmToken = fcmToken;
         const res = await fetch(`/api/products/${productId}/notify`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ endpoint, lang: getCurrentLanguage() })
+            body: JSON.stringify(body)
         });
         const data = await res.json();
         if (data.success) {
@@ -822,6 +838,10 @@ export function updateCartUI() {
         const total = cartTotals(items).total;
         if (items.length > 0) {
             const payload = { items: items.map(i => ({ productId: i.id, productName: i.name, qty: i.qty, price: i.price })), email: email || null, total };
+            try {
+                const fcmToken = localStorage.getItem('joker_fcm_token');
+                if (fcmToken) payload.fcmToken = fcmToken;
+            } catch (_e2) {}
             import('./push.js').then((m) => m.getPushEndpoint()).then((endpoint) => {
                 if (endpoint) payload.pushEndpoint = endpoint;
                 fetch('/api/cart/track', {

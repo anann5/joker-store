@@ -1029,7 +1029,7 @@ const crypto = require('crypto');
 
 exports.trackCartSession = async (req, res) => {
     try {
-        const { items, email, total, pushEndpoint } = req.body;
+        const { items, email, total, pushEndpoint, fcmToken: rawFcm } = req.body;
         if (!Array.isArray(items) || items.length === 0) {
             return res.status(400).json({ success: false, error: 'السلة فارغة' });
         }
@@ -1038,11 +1038,15 @@ exports.trackCartSession = async (req, res) => {
         const cleanEndpoint = typeof pushEndpoint === 'string' && pushEndpoint.length <= 600
             ? pushEndpoint
             : undefined;
+        const cleanFcm = typeof rawFcm === 'string' && rawFcm.trim().length >= 10 && rawFcm.length <= 500
+            ? rawFcm.trim()
+            : undefined;
         await CartSession.findOneAndUpdate(
             { sessionId },
             {
                 email: email || null,
                 ...(cleanEndpoint !== undefined ? { pushEndpoint: cleanEndpoint } : {}),
+                ...(cleanFcm !== undefined ? { fcmToken: cleanFcm } : {}),
                 items: items.map(i => ({
                     productId: i.productId,
                     productName: i.productName || '',

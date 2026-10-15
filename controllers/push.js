@@ -5,6 +5,7 @@
  */
 const webPush = require('web-push');
 const { PushSubscription } = require('../models');
+const fcmService = require('./fcm');
 
 const PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
@@ -140,6 +141,10 @@ async function broadcast(messages, url = '/', tag = 'offers') {
         .select('_id endpoint keys userId lang failedCount')
         .lean();
     const result = await sendToSubscriptions({ subscriptions, messages, url, tag });
+    // Fan-out to native app installs (same return shape)
+    try {
+        await fcmService.broadcastToApps(messages, url, tag);
+    } catch (_e) {}
     return { ...result, skipped: false, total: subscriptions.length };
 }
 
@@ -184,6 +189,10 @@ async function notifyOrderStatus(order) {
         .select('_id endpoint keys userId lang failedCount')
         .lean();
     const result = await sendToSubscriptions({ subscriptions, messages, url, tag });
+    // Fan-out to the user's native app installs (same return shape)
+    try {
+        await fcmService.sendToUsers({ userIds: [userId], messages, url, tag });
+    } catch (_e) {}
     return { ...result, skipped: subscriptions.length === 0 };
 }
 

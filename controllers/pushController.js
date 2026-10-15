@@ -81,4 +81,24 @@ async function broadcast(req, res) {
     }
 }
 
-module.exports = { getStatus, subscribe, unsubscribe, getAdminStats, broadcast };
+/**
+ * POST /api/push/fcm-token
+ * تسجيل توكن FCM لتطبيق الأندرويد (يربط اختيارياً بحساب المستخدم).
+ */
+async function registerFcmToken(req, res) {
+    try {
+        const fcmService = require('./fcm');
+        const record = await fcmService.registerToken({
+            token: req.body.token,
+            userId: req.user?.userId || null,
+            lang: req.body.lang || 'ar'
+        });
+        res.status(201).json({ success: true, registeredAt: record.createdAt });
+    } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('[push] fcm register failed:', err.message);
+        res.status(500).json({ success: false, error: 'تعذر تسجيل توكن التطبيق' });
+    }
+}
+
+module.exports = { getStatus, subscribe, unsubscribe, getAdminStats, broadcast, registerFcmToken };

@@ -350,6 +350,7 @@ const cartSessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true },
     email: { type: String, default: null },
     pushEndpoint: { type: String, default: null },
+    fcmToken: { type: String, default: null },
     items: {
         type: [{
             productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
@@ -390,11 +391,26 @@ pushSubscriptionSchema.index({ topics: 1 });
 pushSubscriptionSchema.index({ userId: 1 });
 
 // ======================================================
+// Schema توكنات FCM لتطبيق الأندرويد الأصلي
+// ======================================================
+const fcmTokenSchema = new mongoose.Schema({
+    token: { type: String, required: true, unique: true, trim: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    lang: { type: String, enum: ['ar', 'en'], default: 'ar' },
+    platform: { type: String, enum: ['android'], default: 'android' },
+    failedCount: { type: Number, default: 0 },
+    lastErrorAt: { type: Date, default: null },
+    lastSuccessAt: { type: Date, default: null },
+    createdAt: { type: Date, default: Date.now }
+});
+
+// ======================================================
 // Schema تنبيهات عودة المخزون (Stock Alerts)
 // ======================================================
 const stockAlertSchema = new mongoose.Schema({
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     endpoint: { type: String, default: null },
+    fcmToken: { type: String, default: null },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
     lang: { type: String, enum: ['ar', 'en'], default: 'ar' },
     status: { type: String, enum: ['pending', 'notified', 'cancelled'], default: 'pending' },
@@ -405,6 +421,10 @@ stockAlertSchema.index({ productId: 1, status: 1 });
 stockAlertSchema.index(
     { productId: 1, endpoint: 1 },
     { unique: true, partialFilterExpression: { endpoint: { $type: 'string' } } }
+);
+stockAlertSchema.index(
+    { productId: 1, fcmToken: 1 },
+    { unique: true, partialFilterExpression: { fcmToken: { $type: 'string' } } }
 );
 
 module.exports = {
@@ -418,6 +438,7 @@ module.exports = {
     Promotion: mongoose.model('Promotion', promotionSchema),
     CartSession: mongoose.model('CartSession', cartSessionSchema),
     PushSubscription: mongoose.model('PushSubscription', pushSubscriptionSchema),
+    FcmToken: mongoose.model('FcmToken', fcmTokenSchema),
     StockAlert: mongoose.model('StockAlert', stockAlertSchema),
     SupportTicket: mongoose.model('SupportTicket', supportTicketSchema)
 };
