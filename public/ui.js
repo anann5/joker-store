@@ -1,4 +1,4 @@
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
 
@@ -287,7 +287,10 @@ export function showProductDetails(product, currentCategory = '') {
                     imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
                     bindCardImageState(imgElement);
                     const quickAdd = card.querySelector('[data-quick-add]');
-                    if (quickAdd) quickAdd.dataset.productId = clientItem.id;
+                    if (quickAdd) {
+                        quickAdd.dataset.productId = clientItem.id;
+                        setQuickAddState(quickAdd, clientItem.availableStock);
+                    }
                     card.querySelector('.card-title').textContent = clientItem.name;
                     card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
                     card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;

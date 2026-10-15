@@ -51,8 +51,19 @@ export function renderStockBadge(availableStock) {
     if (availableStock === null || availableStock === undefined) return '';
     const count = Math.max(0, Number(availableStock) || 0);
     if (count === 0) return t('stock_out');
-    if (count < 10) return t('stock_low').replace('{count}', String(count));
+    if (count <= 5) return t('stock_low').replace('{count}', String(count));
     return t('stock_in_stock');
+}
+
+/**
+ * إظهار/إخفاء زر الإضافة السريعة حسب المخزون.
+ * المنتجات الخارجية (availableStock=null) تُعتبر متوفرة دائماً.
+ */
+export function setQuickAddState(btn, availableStock) {
+    if (!btn) return;
+    const out = availableStock !== null && availableStock !== undefined && Number(availableStock) <= 0;
+    btn.hidden = out;
+    btn.disabled = out;
 }
 
 const WISHLIST_KEY = 'joker_wishlist';

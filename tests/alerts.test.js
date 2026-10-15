@@ -184,6 +184,34 @@ describe('fireStockAlerts', () => {
     });
 });
 
+describe('listStockAlerts (admin)', () => {
+    it('returns pending count and alerts', async () => {
+        const alerts = [
+            { _id: 'a1', productId: { _id: PRODUCT_ID, productName: { ar: 'x', en: 'y' } } }
+        ];
+        mockStockAlert.find.mockReturnValue({
+            populate: () => ({ sort: () => ({ limit: () => ({ lean: async () => alerts }) }) })
+        });
+        mockStockAlert.countDocuments.mockResolvedValue(1);
+        const req = {};
+        let body = null;
+        const res = { json(o) { body = o; return this; }, status() { return this; } };
+        await alertsController.listStockAlerts(req, res);
+        expect(body).toEqual({ success: true, pendingCount: 1, alerts });
+    });
+
+    it('handles db errors', async () => {
+        mockStockAlert.find.mockImplementation(() => { throw new Error('db down'); });
+        const req = {};
+        let statusCode = 200;
+        let body = null;
+        const res = { status(c) { statusCode = c; return this; }, json(o) { body = o; return this; } };
+        await alertsController.listStockAlerts(req, res);
+        expect(statusCode).toBe(500);
+        expect(body.success).toBe(false);
+    });
+});
+
 describe('trackCartSession stores pushEndpoint', () => {
     it('persists a valid endpoint on upsert', async () => {
         mockCartSession.findOneAndUpdate.mockResolvedValue({});

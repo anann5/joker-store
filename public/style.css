@@ -7743,3 +7743,72 @@ body.pwa-bar-visible .social-proof {
     color: var(--success);
     cursor: default;
 }
+
+/* Quick-add hidden when out of stock ([hidden] must beat display:inline-flex) */
+.quick-add-btn[hidden] {
+    display: none !important;
+}
+
+/* ==================== App update bar (native app only) ==================== */
+.app-update-bar {
+    position: fixed;
+    inset-inline: 12px;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    z-index: 9997;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--glass-strong);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+    color: var(--text-1);
+    font-family: var(--font-sans);
+    transform: translateY(-140%);
+    opacity: 0;
+    transition: transform .3s ease, opacity .3s ease;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.app-update-bar.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.app-update-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.app-update-text strong {
+    font-size: .88rem;
+    font-weight: 700;
+}
+
+.app-update-btn {
+    flex: 0 0 auto;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: .85rem;
+    color: #fff;
+    background: linear-gradient(135deg, #10B981, #34D399);
+    border-radius: var(--radius-pill);
+    padding: 9px 18px;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.app-update-later {
+    flex: 0 0 auto;
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: .82rem;
+    padding: 6px 8px;
+}

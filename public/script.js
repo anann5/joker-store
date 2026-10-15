@@ -3,7 +3,7 @@ import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage, t } from './i18n.js';
 import { setCurrency, formatPrice } from './currency.js';
-import { rawServerData, renderRatingStars, renderStockBadge, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, getAppliedLoyalty, clearAppliedLoyalty, setPromoDiscounts, setupReveal } from './shared.js';
+import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, getAppliedLoyalty, clearAppliedLoyalty, setPromoDiscounts, setupReveal } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime, initPublicPulse } from './realtime.js';
 
@@ -204,7 +204,10 @@ async function showWishlist() {
             img.onerror = () => { img.src = '/image/logo.png'; };
             bindCardImageState(img);
             const quickAdd = card.querySelector('[data-quick-add]');
-            if (quickAdd) quickAdd.dataset.productId = clientItem.id;
+            if (quickAdd) {
+                quickAdd.dataset.productId = clientItem.id;
+                setQuickAddState(quickAdd, clientItem.availableStock);
+            }
             card.querySelector('.card-title').textContent = clientItem.name;
             card.querySelector('.card-price').textContent = formatPrice(clientItem.price);
             card.querySelector('[data-wishlist-btn]').dataset.productId = clientItem.id;

@@ -684,6 +684,9 @@ async function loadDashboard() {
         // Low stock alerts
         loadLowStockAlerts();
 
+        // Back-in-stock subscriptions
+        loadStockAlertsMini();
+
         // Health dashboard
         loadHealth();
 
@@ -732,6 +735,62 @@ async function loadLowStockAlerts() {
         const fallbackContainer = document.getElementById('recentOrdersList');
         if (fallbackContainer) fallbackContainer.insertAdjacentHTML('beforeend', '');
     }
+}
+
+async function loadStockAlertsMini() {
+    try {
+        const res = await fetch('/api/admin/stock-alerts', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+        const pending = Number(data.pendingCount) || 0;
+
+        const statsGrid = document.getElementById('statsGrid');
+        if (statsGrid) {
+            let card = document.getElementById('statStockAlerts');
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'stat-card stat-today';
+                card.id = 'statStockAlerts';
+                card.innerHTML = `
+                    <div class="stat-icon">🔔</div>
+                    <div class="stat-value" id="statStockAlertsValue">0</div>
+                    <div class="stat-label">اشتراكات عودة المخزون</div>
+                `;
+                statsGrid.appendChild(card);
+            } else {
+                card.querySelector('.stat-value').textContent = String(pending);
+            }
+            const val = card.querySelector('.stat-value');
+            if (val) val.textContent = String(pending);
+        }
+
+        const container = document.getElementById('recentOrdersList');
+        if (!container) return;
+        container.querySelectorAll('.stock-alerts-mini').forEach(el => el.remove());
+        if (!Array.isArray(data.alerts) || data.alerts.length === 0) return;
+        const byProduct = new Map();
+        for (const alert of data.alerts) {
+            const pid = (alert.productId && alert.productId._id) || alert.productId;
+            const name = (alert.productId && (alert.productId.productName?.ar || alert.productId.productName?.en))
+                || 'منتج محذوف';
+            if (!byProduct.has(pid)) byProduct.set(pid, { name, count: 0 });
+            byProduct.get(pid).count += 1;
+        }
+        const rows = [...byProduct.entries()].slice(0, 8).map(([, g]) => `
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                <span style="font-size:1rem;">🔔</span>
+                <span style="flex:1;font-size:0.85rem;">${escapeHtml(g.name)}</span>
+                <span style="color:var(--primary-neon);font-weight:700;font-size:0.82rem;">${g.count} مشترك</span>
+            </div>
+        `).join('');
+        container.insertAdjacentHTML('beforeend', `
+            <div class="stock-alerts-mini" style="margin-top:16px;padding:14px;background:rgba(129,140,248,0.07);border:1px solid rgba(129,140,248,0.25);border-radius:var(--radius-md);">
+                <h4 style="color:var(--primary-neon);margin:0 0 10px;font-size:0.95rem;"><i class="fas fa-bell"></i> مشتركو عودة المخزون (${pending})</h4>
+                ${rows}
+            </div>
+        `);
+    } catch (_err) {}
 }
 
 async function loadHealth() {
