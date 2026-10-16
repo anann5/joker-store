@@ -98,6 +98,11 @@ async function registerFcmToken(req, res) {
             userId: req.user?.userId || null,
             lang: req.body.lang || 'ar'
         });
+        // eslint-disable-next-line no-console
+        console.log('[push] fcm token registered', JSON.stringify({
+            tokenLen: String(req.body.token || '').length,
+            hasUser: Boolean(req.user?.userId)
+        }));
         res.status(201).json({ success: true, registeredAt: record.createdAt });
     } catch (err) {
         // eslint-disable-next-line no-console

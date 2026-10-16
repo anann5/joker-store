@@ -84,6 +84,14 @@ router.get('/push/vapid-public-key', pushController.getStatus);
 router.post('/push/subscribe', pushLimiter, verifyUserTokenOptional, validate(pushSubscribeSchema), pushController.subscribe);
 router.post('/push/unsubscribe', pushLimiter, validate(pushUnsubscribeSchema), pushController.unsubscribe);
 router.post('/push/fcm-token', pushLimiter, verifyUserTokenOptional, validate(fcmTokenSchema), pushController.registerFcmToken);
+router.post('/push/app-diag', pushLimiter, (req, res) => {
+    // eslint-disable-next-line no-console
+    console.log('[push] app-diag', JSON.stringify({
+        ua: String(req.get('user-agent') || '').slice(0, 160),
+        body: req.body || {}
+    }));
+    res.json({ success: true });
+});
 
 // Route for guest order tracking by email
 router.post('/track-order', trackOrderLimiter, conditionalCodeLimiter, storeController.trackOrder);

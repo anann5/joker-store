@@ -18,6 +18,31 @@
         }
     }
 
+    function reportDiag(stage) {
+        try {
+            const ua = navigator.userAgent || '';
+            const cap = window.Capacitor || null;
+            const plugins = cap && cap.Plugins ? Object.keys(cap.Plugins) : [];
+            fetch('/api/push/app-diag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    stage: stage,
+                    hasCapacitor: Boolean(cap),
+                    isNative: cap && typeof cap.isNativePlatform === 'function' ? cap.isNativePlatform() : null,
+                    pushPlugins: plugins.filter(function (p) { return /push/i.test(p); }),
+                    ua: ua.slice(0, 140)
+                })
+            }).catch(function () {});
+        } catch (_) {}
+    }
+
+    // تشخيص: يُبلّغ حالة الجسر داخل تطبيق الأندرويد (يعمل حتى لو غاب الجسر)
+    try {
+        const _ua = navigator.userAgent || '';
+        if (/;\s*wv\)/.test(_ua) || /JokerStore/i.test(_ua)) reportDiag('load');
+    } catch (_) {}
+
     if (!isNativeApp()) return;
 
     function getLang() {
@@ -92,7 +117,7 @@
         try {
             const Plugins = window.Capacitor && window.Capacitor.Plugins;
             const Push = Plugins && Plugins.PushNotifications;
-            if (!Push || typeof Push.requestPermissions !== 'function') return;
+            if (!Push || typeof Push.requestPermissions !== 'function') { reportDiag('no-push-plugin'); return; }
 
             let perm = null;
             try {
@@ -100,11 +125,14 @@
             } catch (_) {
                 perm = null;
             }
+            reportDiag('perm:' + (perm && perm.receive ? perm.receive : 'unknown'));
             if (perm && perm.receive === 'denied') return;
 
             try {
                 await Push.register();
+                reportDiag('register-ok');
             } catch (_) {
+                reportDiag('register-failed');
                 return;
             }
 
@@ -112,7 +140,7 @@
                 Push.addListener('registration', function (t) {
                     if (t && t.value && t.value !== getStoredToken()) sendToken(t.value);
                 });
-                Push.addListener('registrationError', function () {});
+                Push.addListener('registrationError', function (e) { reportDiag('reg-error:' + JSON.stringify(e).slice(0, 160)); });
                 Push.addListener('pushNotificationReceived', function (n) {
                     let title = '';
                     let body = '';
