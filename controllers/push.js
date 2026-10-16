@@ -135,17 +135,33 @@ async function sendToSubscriptions({ subscriptions, messages, url = '/', tag = '
  * messages: { ar: { title, body }, en: { title, body } }
  */
 async function broadcast(messages, url = '/', tag = 'offers') {
-    if (!isPushEnabled() || !messages) return { sent: 0, deleted: 0, failed: 0, skipped: true };
+    if (!messages) return { sent: 0, deleted: 0, failed: 0, skipped: true };
 
-    const subscriptions = await PushSubscription.find({ topics: 'offers' })
-        .select('_id endpoint keys userId lang failedCount')
-        .lean();
-    const result = await sendToSubscriptions({ subscriptions, messages, url, tag });
-    // Fan-out to native app installs (same return shape)
+    let subscriptions = [];
+    let result = { sent: 0, deleted: 0, failed: 0 };
+    if (isPushEnabled()) {
+        subscriptions = await PushSubscription.find({ topics: 'offers' })
+            .select('_id endpoint keys userId lang failedCount')
+            .lean();
+        result = await sendToSubscriptions({ subscriptions, messages, url, tag });
+    }
+
+    // Fan-out to native app installs (independent of Web Push availability)
+    let fcm = { sent: 0, deleted: 0, failed: 0 };
     try {
-        await fcmService.broadcastToApps(messages, url, tag);
+        fcm = await fcmService.broadcastToApps(messages, url, tag);
     } catch (_e) {}
-    return { ...result, skipped: false, total: subscriptions.length };
+
+    const webSent = result.sent || 0;
+    const fcmSent = fcm.sent || 0;
+    const skipped = !isPushEnabled() && !fcmService.isFcmEnabled();
+    return {
+        sent: webSent + fcmSent,
+        deleted: (result.deleted || 0) + (fcm.deleted || 0),
+        failed: (result.failed || 0) + (fcm.failed || 0),
+        skipped,
+        total: subscriptions.length
+    };
 }
 
 /**

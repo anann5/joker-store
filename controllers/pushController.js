@@ -76,7 +76,7 @@ async function broadcast(req, res) {
         };
         const result = await pushService.broadcast(messages, req.body.url || '/', req.body.tag || 'admin-broadcast');
         if (result.skipped) {
-            return res.status(400).json({ success: false, error: 'إشعارات Web Push غير مفعّلة (اضبط VAPID keys)' });
+            return res.status(400).json({ success: false, error: 'الإشعارات غير مفعّلة (اضبط مفاتيح VAPID أو Firebase)' });
         }
         res.json({ success: true, sent: result.sent, deleted: result.deleted, failed: result.failed });
     } catch (err) {

@@ -437,16 +437,17 @@
                 </div>
                 <div class="stats-grid" id="statsGridNotifications" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px;">
                     <div class="stat-card">
-                        <div class="stat-icon">📱</div>
+                        <div class="stat-icon">🌐</div>
                         <div class="stat-value" id="statDevices">—</div>
-                        <div class="stat-label">أجهزة نشطة</div>
+                        <div class="stat-label">أجهزة المتصفح</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">📢</div>
+                        <div class="stat-icon">📱</div>
                         <div class="stat-value" id="statSent">—</div>
-                        <div class="stat-label">أُرسلت</div>
+                        <div class="stat-label">أجهزة التطبيق</div>
                     </div>
                 </div>
+                <div id="notifStatusHint" style="color:var(--text-muted); font-size:13px; margin-bottom:14px;"></div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label>عنوان الإشعار</label>
                     <input type="text" id="notifTitle" class="form-control" placeholder="مثال: عرض خاص على بطاقات ببجي">
@@ -457,7 +458,7 @@
                 </div>
                 <div class="form-group" style="margin-bottom:16px;">
                     <label>الرابط المستهدف (اختياري)</label>
-                    <input type="text" id="notifUrl" class="form-control" placeholder="/track أو /invoice أو оставь فارغاً للرئيسية">
+                    <input type="text" id="notifUrl" class="form-control" placeholder="/track أو /invoice أو اتركه فارغاً للرئيسية">
                     <small style="color:var(--text-muted);">ابدأ بشرطة مائلة مثل /track أو اتركه فارغاً للرئيسية</small>
                 </div>
                 <div class="form-actions" style="display:flex; gap:10px;">

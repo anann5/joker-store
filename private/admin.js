@@ -2712,10 +2712,17 @@ async function loadNotifications() {
     try {
         const res = await fetch('/api/admin/push/stats', { credentials: 'include' });
         const data = await res.json();
-        if (!data.success) throw new Error(data.message || 'فشل جلب الإحصائيات');
-        const s = data.stats || {};
-        document.getElementById('statDevices').textContent = s.totalDevices ?? s.total ?? 0;
-        document.getElementById('statSent').textContent = s.sent ?? 0;
+        if (!data.success) throw new Error(data.error || 'فشل جلب الإحصائيات');
+        const webDevices = data.totalDevices || 0;
+        const appDevices = (data.fcm && data.fcm.totalDevices) || 0;
+        document.getElementById('statDevices').textContent = webDevices;
+        document.getElementById('statSent').textContent = appDevices;
+        const hint = document.getElementById('notifStatusHint');
+        if (hint) {
+            const webOn = data.vapidConfigured ? 'مفعّل' : 'غير مفعّل';
+            const fcmOn = (data.fcm && data.fcm.enabled) ? 'مفعّل' : 'غير مفعّل';
+            hint.textContent = `Web Push: ${webOn} · إشعارات التطبيق (FCM): ${fcmOn}`;
+        }
     } catch (_err) {
         document.getElementById('statDevices').textContent = '—';
         document.getElementById('statSent').textContent = '—';
@@ -2740,9 +2747,11 @@ async function sendNotification() {
     resultEl.hidden = true;
 
     try {
-        const res = await fetch('/api/push/broadcast', {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch('/api/admin/push/broadcast', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', credentials: 'include' },
+            credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
             body: JSON.stringify({
                 titleAr: title,
                 titleEn: title,
@@ -2753,13 +2762,13 @@ async function sendNotification() {
             })
         });
         const data = await res.json();
-        if (!data.success) throw new Error(data.message || 'فشل الإرسال');
+        if (!data.success) throw new Error(data.error || 'فشل الإرسال');
 
         resultEl.hidden = false;
         resultEl.style.background = 'rgba(52,211,153,0.12)';
         resultEl.style.border = '1px solid rgba(52,211,153,0.35)';
         resultEl.style.color = 'var(--success)';
-        resultEl.textContent = '✅ تم الإرسال بنجاح! (تم إرسال ' + (data.sent || 0) + ' إشعار' + (data.sent !== 1 ? 'ات' : '') + ')';
+        resultEl.textContent = '✅ تم الإرسال بنجاح! (أُرسل إلى ' + (data.sent || 0) + ' جهاز)';
 
         titleInput.value = '';
         bodyInput.value = '';
@@ -2786,3 +2795,5 @@ document.getElementById('clearNotifBtn')?.addEventListener('click', () => {
     document.getElementById('notifUrl').value = '';
     document.getElementById('notifResult').hidden = true;
 });
+
+loadNotifications();
