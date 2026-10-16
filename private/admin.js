@@ -252,7 +252,8 @@ const initAdmin = async () => {
         { btn: 'pricingTabBtn', section: 'pricingSection' },
         { btn: 'logsTabBtn', section: 'logsSection' },
         { btn: 'promotionsTabBtn', section: 'promotionsSection' },
-        { btn: 'settingsTabBtn', section: 'settingsSection' }
+        { btn: 'settingsTabBtn', section: 'settingsSection' },
+        { btn: 'notificationsTabBtn', section: 'notificationsSection' }
     ];
 
     tabs.forEach(({ btn: btnId, section: sectionId }) => {
@@ -282,6 +283,7 @@ const initAdmin = async () => {
             else if (sectionId === 'promotionsSection') loadPromotions();
             else if (sectionId === 'settingsSection') loadPushSettings();
             else if (sectionId === 'ticketsSection') loadTickets();
+            else if (sectionId === 'notificationsSection') loadNotifications();
         });
     });
 
@@ -2702,3 +2704,85 @@ document.addEventListener('click', async (e) => {
 });
 
 document.getElementById('refreshTicketsBtn')?.addEventListener('click', loadTickets);
+
+// ======================================================
+//  إشعارات الجوال (FCM Push)
+// ======================================================
+async function loadNotifications() {
+    try {
+        const res = await fetch('/api/admin/push/stats', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'فشل جلب الإحصائيات');
+        const s = data.stats || {};
+        document.getElementById('statDevices').textContent = s.totalDevices ?? s.total ?? 0;
+        document.getElementById('statSent').textContent = s.sent ?? 0;
+    } catch (_err) {
+        document.getElementById('statDevices').textContent = '—';
+        document.getElementById('statSent').textContent = '—';
+    }
+}
+
+async function sendNotification() {
+    const titleInput = document.getElementById('notifTitle');
+    const bodyInput = document.getElementById('notifBody');
+    const urlInput = document.getElementById('notifUrl');
+    const btn = document.getElementById('sendNotifBtn');
+    const resultEl = document.getElementById('notifResult');
+
+    const title = titleInput.value.trim();
+    const body = bodyInput.value.trim();
+    const url = urlInput.value.trim();
+
+    if (!title) { showAdminToast('الرجاء إدخال عنوان الإشعار', 'error'); titleInput.focus(); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'جاري الإرسال...';
+    resultEl.hidden = true;
+
+    try {
+        const res = await fetch('/api/push/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', credentials: 'include' },
+            body: JSON.stringify({
+                titleAr: title,
+                titleEn: title,
+                bodyAr: body,
+                bodyEn: body,
+                url: url || '/',
+                tag: 'admin-broadcast'
+            })
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'فشل الإرسال');
+
+        resultEl.hidden = false;
+        resultEl.style.background = 'rgba(52,211,153,0.12)';
+        resultEl.style.border = '1px solid rgba(52,211,153,0.35)';
+        resultEl.style.color = 'var(--success)';
+        resultEl.textContent = '✅ تم الإرسال بنجاح! (تم إرسال ' + (data.sent || 0) + ' إشعار' + (data.sent !== 1 ? 'ات' : '') + ')';
+
+        titleInput.value = '';
+        bodyInput.value = '';
+        urlInput.value = '';
+
+        try { await loadNotifications(); } catch (_e) {}
+    } catch (err) {
+        resultEl.hidden = false;
+        resultEl.style.background = 'rgba(239,68,68,0.12)';
+        resultEl.style.border = '1px solid rgba(239,68,68,0.35)';
+        resultEl.style.color = 'var(--danger)';
+        resultEl.textContent = '❌ ' + (err.message || 'فشل إرسال الإشعار');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'إرسال الإشعار للجميع';
+    }
+}
+
+document.getElementById('refreshStatsBtn')?.addEventListener('click', loadNotifications);
+document.getElementById('sendNotifBtn')?.addEventListener('click', sendNotification);
+document.getElementById('clearNotifBtn')?.addEventListener('click', () => {
+    document.getElementById('notifTitle').value = '';
+    document.getElementById('notifBody').value = '';
+    document.getElementById('notifUrl').value = '';
+    document.getElementById('notifResult').hidden = true;
+});
