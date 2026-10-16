@@ -46,6 +46,15 @@ function validate(req, res, next) {
     const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
 
     if (!token || !cookieToken || token !== cookieToken) {
+        // eslint-disable-next-line no-console
+        console.warn('[csrf] reject', JSON.stringify({
+            path: req.originalUrl,
+            method: req.method,
+            hasHeader: !!token,
+            hasCookie: !!cookieToken,
+            match: token === cookieToken,
+            cookieNames: Object.keys(req.cookies || {})
+        }));
         if (token) csrfTokens.delete(token);
         return res.status(403).json({ success: false, message: 'CSRF token missing or invalid' });
     }

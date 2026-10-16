@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-const CACHE_NAME = 'joker-store-v18';
+const CACHE_NAME = 'joker-store-v19';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -35,20 +35,10 @@ self.addEventListener('fetch', event => {
     if (url.origin !== self.location.origin) return;
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
-            fetch(event.request)
-                .then(response => {
-                    if (response.ok && event.request.method === 'GET') {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                    }
-                    return response;
-                })
-                .catch(() => {
-                    return caches.match(event.request).then(cached => cached || new Response(
-                        JSON.stringify({ success: false, error: 'Offline' }),
-                        { status: 503, headers: { 'Content-Type': 'application/json' } }
-                    ));
-                })
+            fetch(event.request).catch(() => new Response(
+                JSON.stringify({ success: false, error: 'Offline' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            ))
         );
         return;
     }
