@@ -25,7 +25,7 @@ function issueToken(req, res) {
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
         path: '/',
-        maxAge: TOKEN_TTL_MS / 1000
+        maxAge: TOKEN_TTL_MS
     };
 
     csrfTokens.set(token, Date.now() + TOKEN_TTL_MS);
