@@ -5,6 +5,7 @@
 
 let isSoundEnabled = true;
 let adminCsrfToken = null;
+let adminCsrfTokenPromise = null;
 let _allOrdersCache = [];
 let _allProducts = [];
 let _allCategories = [];
@@ -107,15 +108,28 @@ function playNotificationSound() {
 
 async function ensureAdminCsrfToken() {
     if (adminCsrfToken) return adminCsrfToken;
+    if (adminCsrfTokenPromise) return adminCsrfTokenPromise;
+    adminCsrfTokenPromise = (async () => {
+        try {
+            const res = await fetch('/api/csrf-token', { credentials: 'include' });
+            const data = await res.json();
+            if (data.success && data.csrfToken) {
+                adminCsrfToken = data.csrfToken;
+                return adminCsrfToken;
+            }
+        } catch (_err) { /* تجاهل - لا يوجد توكن */ }
+        return null;
+    })();
     try {
-        const res = await fetch('/api/csrf-token', { credentials: 'include' });
-        const data = await res.json();
-        if (data.success && data.csrfToken) {
-            adminCsrfToken = data.csrfToken;
-            return adminCsrfToken;
-        }
-    } catch (_err) { /* تجاهل - لا يوجد توكن */ }
-    return null;
+        return await adminCsrfTokenPromise;
+    } finally {
+        adminCsrfTokenPromise = null;
+    }
+}
+
+function resetAdminCsrfToken() {
+    adminCsrfToken = null;
+    adminCsrfTokenPromise = null;
 }
 
 function buildJsonHeaders(extraHeaders = {}) {
@@ -2747,22 +2761,30 @@ async function sendNotification() {
     resultEl.hidden = true;
 
     try {
-        const csrfToken = await ensureAdminCsrfToken();
-        const res = await fetch('/api/admin/push/broadcast', {
-            method: 'POST',
-            credentials: 'include',
-            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
-            body: JSON.stringify({
-                titleAr: title,
-                titleEn: title,
-                bodyAr: body,
-                bodyEn: body,
-                url: url || '/',
-                tag: 'admin-broadcast'
-            })
+        const payload = JSON.stringify({
+            titleAr: title,
+            titleEn: title,
+            bodyAr: body,
+            bodyEn: body,
+            url: url || '/',
+            tag: 'admin-broadcast'
         });
+        const sendBroadcast = async () => {
+            const csrfToken = await ensureAdminCsrfToken();
+            return fetch('/api/admin/push/broadcast', {
+                method: 'POST',
+                credentials: 'include',
+                headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+                body: payload
+            });
+        };
+        let res = await sendBroadcast();
+        if (res.status === 403) {
+            resetAdminCsrfToken();
+            res = await sendBroadcast();
+        }
         const data = await res.json();
-        if (!data.success) throw new Error(data.error || 'فشل الإرسال');
+        if (!data.success) throw new Error(data.error || data.message || 'فشل الإرسال');
 
         resultEl.hidden = false;
         resultEl.style.background = 'rgba(52,211,153,0.12)';
