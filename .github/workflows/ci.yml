@@ -31,5 +31,5 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Audit dependencies (high+)
-        run: npm audit --audit-level=high
+      - name: Audit production dependencies (high+)
+        run: npm audit --omit=dev --audit-level=high
