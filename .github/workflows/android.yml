@@ -67,15 +67,21 @@ jobs:
           echo "sdk.dir=$ANDROID_HOME" > android/local.properties
           npx cap sync android
 
+      # أضف هذه الخطوة هنا لضمان دمج ملف Firebase FCM
+      - name: Create google-services.json
+        run: |
+          echo '${{ secrets.GOOGLE_SERVICES_JSON }}' > android/app/google-services.json
+          if [ -f "android/app/google-services.json" ]; then
+            echo "google-services.json successfully created."
+          else
+            echo "Error: google-services.json creation failed."
+            exit 1
+          fi
+
       - name: Apply branded icons + splash
         run: |
           set -e
           RES="android/app/src/main/res"
-          rm -f "$RES/drawable/splash.png"
-          rm -f $RES/drawable-*/splash.png
-          rm -f "$RES/values/ic_launcher_background.xml"
-          cp -r mobile-assets/res/. "$RES/"
-          test -f "$RES/drawable/splash.xml" && echo "branding applied"
 
       - name: Build release APK (unsigned)
         id: build
