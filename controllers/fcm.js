@@ -120,7 +120,10 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
                     tokens: group.docs.map((d) => d.token),
                     notification: { title: group.title, body: group.body },
                     data: { url: String(url || '/'), tag: String(tag || 'general') },
-                    android: { priority: 'high' }
+                    android: {
+                        priority: 'high',
+                        notification: { channelId: 'joker_push', sound: 'default', defaultVibrateTimings: true }
+                    }
                 });
             } catch (_e) {
                 failed += group.docs.length;

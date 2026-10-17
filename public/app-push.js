@@ -77,6 +77,45 @@
         } catch (_) {}
     }
 
+    function getPlugin(name) {
+        try {
+            return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function ensureNotifChannel() {
+        const LN = getPlugin('LocalNotifications');
+        if (!LN || typeof LN.createChannel !== 'function') return;
+        try {
+            LN.createChannel({
+                id: 'joker_push',
+                name: 'Joker Store',
+                description: 'إشعارات المتجر والعروض',
+                importance: 5,
+                visibility: 1,
+                vibration: true
+            }).catch(function () {});
+        } catch (_) {}
+    }
+
+    function showSystemNotification(title, body, url) {
+        const LN = getPlugin('LocalNotifications');
+        if (!LN || typeof LN.schedule !== 'function') return;
+        try {
+            LN.schedule({
+                notifications: [{
+                    id: Math.floor(Math.random() * 2147483000),
+                    title: title || 'Joker Store',
+                    body: body || '',
+                    channelId: 'joker_push',
+                    extra: { url: url || '/' }
+                }]
+            }).catch(function () {});
+        } catch (_) {}
+    }
+
     function inAppToast(title, body) {
         try {
             if (document.getElementById('app-push-toast')) return;
@@ -134,6 +173,17 @@
                 return;
             }
 
+            ensureNotifChannel();
+            const LocalNotif = getPlugin('LocalNotifications');
+            if (LocalNotif && typeof LocalNotif.addListener === 'function') {
+                LocalNotif.addListener('localNotificationActionPerformed', function (a) {
+                    try {
+                        const url = a && a.notification && a.notification.extra && a.notification.extra.url;
+                        if (typeof url === 'string' && url.charAt(0) === '/') window.location.href = url;
+                    } catch (_) {}
+                });
+            }
+
             if (typeof Push.addListener === 'function') {
                 Push.addListener('registration', function (t) {
                     if (t && t.value) { reportDiag('got-token'); if (t.value !== getStoredToken()) sendToken(t.value); }
@@ -149,6 +199,8 @@
                         url = (n && n.data && n.data.url) || '';
                     } catch (_) {}
                     if (title || body) inAppToast(title, body);
+                    // إظهار الإشعار في شريط إشعارات النظام حتى والتطبيق مفتوح
+                    showSystemNotification(title, body, url);
                     if (url && typeof url === 'string' && url.charAt(0) === '/') {
                         // foreground tap-through: keep the toast tappable to open
                         const el = document.getElementById('app-push-toast');
