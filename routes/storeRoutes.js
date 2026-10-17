@@ -4,6 +4,7 @@ const storeController = require('../controllers/storeController');
 const pushController = require('../controllers/pushController');
 const alertsController = require('../controllers/alertsController');
 const giftController = require('../controllers/giftController');
+const diagStore = require('../controllers/diagStore');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema, fcmTokenSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
@@ -85,11 +86,14 @@ router.post('/push/subscribe', pushLimiter, verifyUserTokenOptional, validate(pu
 router.post('/push/unsubscribe', pushLimiter, validate(pushUnsubscribeSchema), pushController.unsubscribe);
 router.post('/push/fcm-token', pushLimiter, verifyUserTokenOptional, validate(fcmTokenSchema), pushController.registerFcmToken);
 router.post('/push/app-diag', pushLimiter, (req, res) => {
-    // eslint-disable-next-line no-console
-    console.log('[push] app-diag', JSON.stringify({
-        ua: String(req.get('user-agent') || '').slice(0, 160),
+    const entry = {
+        ua: String(req.get('user-agent') || '').slice(0, 200),
+        ip: String(req.ip || ''),
         body: req.body || {}
-    }));
+    };
+    // eslint-disable-next-line no-console
+    console.log('[push] app-diag', JSON.stringify(entry));
+    diagStore.push(entry);
     res.json({ success: true });
 });
 

@@ -72,6 +72,7 @@
                 try {
                     localStorage.setItem(LS_TOKEN, token);
                 } catch (_) {}
+                reportDiag('token-saved');
             }
         } catch (_) {}
     }
@@ -135,7 +136,7 @@
 
             if (typeof Push.addListener === 'function') {
                 Push.addListener('registration', function (t) {
-                    if (t && t.value && t.value !== getStoredToken()) sendToken(t.value);
+                    if (t && t.value) { reportDiag('got-token'); if (t.value !== getStoredToken()) sendToken(t.value); }
                 });
                 Push.addListener('registrationError', function (e) { reportDiag('reg-error:' + JSON.stringify(e).slice(0, 160)); });
                 Push.addListener('pushNotificationReceived', function (n) {

@@ -297,7 +297,7 @@ const initAdmin = async () => {
             else if (sectionId === 'promotionsSection') loadPromotions();
             else if (sectionId === 'settingsSection') loadPushSettings();
             else if (sectionId === 'ticketsSection') loadTickets();
-            else if (sectionId === 'notificationsSection') loadNotifications();
+            else if (sectionId === 'notificationsSection') { loadNotifications(); loadDiag(); }
         });
     });
 
@@ -2809,8 +2809,39 @@ async function sendNotification() {
     }
 }
 
-document.getElementById('refreshStatsBtn')?.addEventListener('click', loadNotifications);
+async function loadDiag() {
+    const el = document.getElementById('diagList');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/admin/push/diag', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.entries)) throw new Error('fail');
+        if (!data.entries.length) { el.textContent = 'لا توجد تقارير بعد — افتح تطبيق الجوال.'; return; }
+        el.textContent = data.entries.map(function (e) {
+            const b = e.body || {};
+            return '[' + e.ts + ']  stage=' + (b.stage || '?')
+                + '  |  hasCapacitor=' + b.hasCapacitor
+                + '  |  isNative=' + b.isNative
+                + '  |  pushPlugins=' + JSON.stringify(b.pushPlugins || [])
+                + '\n    ua=' + (e.ua || '');
+        }).join('\n');
+    } catch (_e) {
+        el.textContent = 'تعذّر جلب التشخيص.';
+    }
+}
+
+document.getElementById('refreshStatsBtn')?.addEventListener('click', () => { loadNotifications(); loadDiag(); });
 document.getElementById('sendNotifBtn')?.addEventListener('click', sendNotification);
+document.getElementById('refreshDiagBtn')?.addEventListener('click', loadDiag);
+document.getElementById('clearDiagBtn')?.addEventListener('click', async () => {
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        await fetch('/api/admin/push/diag/clear', {
+            method: 'POST', credentials: 'include', headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' })
+        });
+    } catch (_e) {}
+    loadDiag();
+});
 document.getElementById('clearNotifBtn')?.addEventListener('click', () => {
     document.getElementById('notifTitle').value = '';
     document.getElementById('notifBody').value = '';
@@ -2819,3 +2850,4 @@ document.getElementById('clearNotifBtn')?.addEventListener('click', () => {
 });
 
 loadNotifications();
+loadDiag();

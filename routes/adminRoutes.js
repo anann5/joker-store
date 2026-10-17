@@ -101,6 +101,11 @@ router.delete('/promotions/:promotionId', validateParams(promotionIdParamSchema)
 router.get('/push/stats', pushController.getAdminStats);
 router.post('/push/broadcast', validate(pushBroadcastSchema), pushController.broadcast);
 
+// تشخيص تطبيق الجوال (مؤقت) — لعرض آخر تقارير app-diag
+const diagStore = require('../controllers/diagStore');
+router.get('/push/diag', (req, res) => res.json({ success: true, entries: diagStore.list() }));
+router.post('/push/diag/clear', (req, res) => { diagStore.clear(); res.json({ success: true }); });
+
 // Abandoned carts
 const storeController = require('../controllers/storeController');
 router.get('/abandoned-carts', storeController.getAbandonedCarts);
