@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-const CACHE_NAME = 'joker-store-v19';
+const CACHE_NAME = 'joker-store-v20';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -43,21 +43,19 @@ self.addEventListener('fetch', event => {
         return;
     }
     event.respondWith(
-        caches.match(event.request).then(cached => {
+        fetch(event.request).then(response => {
+            if (response.ok && event.request.method === 'GET') {
+                const clone = response.clone();
+                caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+            }
+            return response;
+        }).catch(() => caches.match(event.request).then(cached => {
             if (cached) return cached;
-            return fetch(event.request).then(response => {
-                if (response.ok && event.request.method === 'GET') {
-                    const clone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-                }
-                return response;
-            }).catch(() => {
-                if (event.request.destination === 'image') {
-                    return caches.match('/image/logo.png');
-                }
-                return new Response('Offline', { status: 503 });
-            });
-        })
+            if (event.request.destination === 'image') {
+                return caches.match('/image/logo.png');
+            }
+            return new Response('Offline', { status: 503 });
+        }))
     );
 });
 

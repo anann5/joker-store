@@ -37,11 +37,8 @@
         } catch (_) {}
     }
 
-    // تشخيص: يُبلّغ حالة الجسر داخل تطبيق الأندرويد (يعمل حتى لو غاب الجسر)
-    try {
-        const _ua = navigator.userAgent || '';
-        if (/;\s*wv\)/.test(_ua) || /JokerStore/i.test(_ua)) reportDiag('load');
-    } catch (_) {}
+    // تشخيص: يُبلّغ حالة الجسر (يعمل حتى لو غاب الجسر) — مؤقت
+    reportDiag('load');
 
     if (!isNativeApp()) return;
 
