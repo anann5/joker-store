@@ -3,8 +3,12 @@
     'use strict';
 
     const STORAGE_KEY = 'joker_install_dismissed';
+    const APK_URL = 'https://github.com/anann5/joker-store/releases/download/latest-apk/joker-store.apk';
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     if (isStandalone) return; // already installed as app
+
+    // داخل تطبيق أندرويد (Capacitor) لا نعرض البانر إطلاقاً
+    if (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) return;
 
     const isIOS = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     const isAndroid = /android/i.test(window.navigator.userAgent);
@@ -17,7 +21,9 @@
 
     const i18n = {
         title: isEn ? 'Install Joker Store App' : 'ثبّت تطبيق Joker Store',
-        body: isEn ? 'Add to your home screen — opens instantly like a native app.' : 'أضفه لشاشة هاتفك — يفتح فوراً مثل التطبيقات.',
+        body: isAndroid
+            ? (isEn ? 'Download the official Android app (APK file).' : 'حمّل تطبيق أندرويد الرسمي (ملف APK).')
+            : (isEn ? 'Add to your home screen — opens instantly like a native app.' : 'أضفه لشاشة هاتفك — يفتح فوراً مثل التطبيقات.'),
         btn: isEn ? 'Install' : 'تثبيت',
         iosBtn: isEn ? 'How to install' : 'طريقة التثبيت',
         iosSteps: isEn
@@ -57,19 +63,10 @@
                 iosBox.hidden = !iosBox.hidden;
             });
         } else {
+            // أندرويد: زر التثبيت ينزّل ملف APK الحقيقي (وليس إضافة الصفحة للشاشة)
+            btn.textContent = isEn ? 'Download app' : 'تحميل التطبيق';
             btn.addEventListener('click', function () {
-                if (deferredPrompt) {
-                    deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then(function () {
-                        deferredPrompt = null;
-                        dismiss();
-                    }).catch(function () {});
-                } else {
-                    iosBox.hidden = false;
-                    iosBox.innerHTML = isEn
-                        ? 'Open the browser menu <b>⋮</b> and choose <b>"Install app"</b> / <b>"Add to Home screen"</b>.'
-                        : 'افتح قائمة المتصفح <b>⋮</b> واختر <b>"تثبيت التطبيق"</b> / <b>"إضافة إلى الشاشة الرئيسية"</b>.';
-                }
+                window.location.href = APK_URL;
             });
         }
 
@@ -85,12 +82,6 @@
         if (document.body) document.body.classList.remove('pwa-bar-visible');
         try { localStorage.setItem(STORAGE_KEY, '1'); } catch (_) {}
     }
-
-    let deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', function (e) {
-        e.preventDefault();
-        deferredPrompt = e;
-    });
 
     function init() {
         try { if (localStorage.getItem(STORAGE_KEY)) return; } catch (_) {}
