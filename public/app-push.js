@@ -122,11 +122,11 @@
             const el = document.createElement('div');
             el.id = 'app-push-toast';
             el.setAttribute('role', 'status');
-            el.style.cssText = 'position:fixed;inset-inline:12px;bottom:12px;z-index:10001;'
+            el.style.cssText = 'position:fixed;inset-inline:12px;top:calc(env(safe-area-inset-top, 0px) + 12px);z-index:10001;'
                 + 'background:rgba(13,17,30,0.95);border:1px solid rgba(129,140,248,0.35);'
                 + 'border-radius:14px;padding:12px 14px;color:#EDF1F8;'
                 + 'font-family:inherit;box-shadow:0 14px 34px rgba(3,6,14,0.6);'
-                + 'transform:translateY(140%);opacity:0;transition:transform .3s ease,opacity .3s ease;'
+                + 'transform:translateY(-140%);opacity:0;transition:transform .3s ease,opacity .3s ease;'
                 + 'max-width:560px;margin:0 auto;';
             const strong = document.createElement('strong');
             strong.style.cssText = 'display:block;font-size:.9rem;margin-bottom:2px;';
@@ -142,7 +142,7 @@
                 el.style.opacity = '1';
             });
             setTimeout(function () {
-                el.style.transform = 'translateY(140%)';
+                el.style.transform = 'translateY(-140%)';
                 el.style.opacity = '0';
                 setTimeout(function () { el.remove(); }, 350);
             }, 5000);
