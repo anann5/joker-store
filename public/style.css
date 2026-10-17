@@ -7942,3 +7942,7 @@ body.pwa-bar-visible .social-proof {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* Android edge-to-edge (Android 15/16): keep content below the status bar */
+body { padding-top: env(safe-area-inset-top, 0px); }
+header { top: env(safe-area-inset-top, 0px); }

@@ -1,12 +1,12 @@
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=12').then(reg => {
+        navigator.serviceWorker.register('/sw.js?v=13').then(reg => {
             if (reg) reg.update().catch(()=>{});
         }).catch(() => {});
         // إجبار تحديث الـ SW القديم عند وجوده
         navigator.serviceWorker.getRegistrations().then(regs => {
             regs.forEach(r => {
-                if (r.active && r.active.scriptURL && !r.active.scriptURL.includes('v=12')) r.update().catch(()=>{});
+                if (r.active && r.active.scriptURL && !r.active.scriptURL.includes('v=13')) r.update().catch(()=>{});
             });
         }).catch(()=>{});
     });
