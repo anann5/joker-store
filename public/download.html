@@ -154,6 +154,9 @@
             .then(function (rel) {
                 var asset = (rel.assets || []).find(function (a) { return /\.apk$/i.test(a.name); });
                 if (asset) {
+                    if (asset.browser_download_url) {
+                        apkBtn.href = asset.browser_download_url + '?v=' + encodeURIComponent(asset.updated_at || Date.now());
+                    }
                     apkSize.textContent = Math.round(asset.size / 1048576) + ' ميجابايت';
                     apkNote.textContent = 'آخر تحديث: ' + new Date(asset.updated_at).toLocaleDateString('ar-EG');
                 }
