@@ -94,6 +94,9 @@ jobs:
       - name: Apply FCM (Firebase) Gradle wiring
         run: node mobile-assets/android-fcm-patch.js
 
+      - name: Re-assert launcher icon in manifest
+        run: node mobile-assets/android-icon-patch.js
+
       - name: Build release APK (unsigned)
         id: build
         working-directory: android
