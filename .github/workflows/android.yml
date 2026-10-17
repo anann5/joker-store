@@ -86,7 +86,9 @@ jobs:
       - name: Apply branded icons + splash
         run: |
           set -e
-          RES="android/app/src/main/res"
+          cp -R mobile-assets/res/. android/app/src/main/res/
+          echo "Copied branded resources:"
+          find android/app/src/main/res -name 'ic_launcher*' -o -name 'splash*' | sort
 
       # ربط Firebase FCM بمشروع Capacitor (يضيف إضافة google-services في Gradle)
       - name: Apply FCM (Firebase) Gradle wiring

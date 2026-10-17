@@ -74,7 +74,14 @@ router.get('/products/latest-orders', storeController.getLatestOrders);
 const pushLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
-    message: 'محاولات كثيرة لإدارة الإشعارات، يرجى الانتظار قليلاً.'
+    message: 'عدد الطلبات كبير جداً، يرجى المحاولة لاحقاً.'
+});
+
+// ليميتر مستقل لتشخيص التطبيق (لا يستهلك حصة الإشعارات)
+const diagLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 300,
+    message: 'too many requests'
 });
 
 // Route for site-wide config (payment numbers, social links, stats)
@@ -85,7 +92,7 @@ router.get('/push/vapid-public-key', pushController.getStatus);
 router.post('/push/subscribe', pushLimiter, verifyUserTokenOptional, validate(pushSubscribeSchema), pushController.subscribe);
 router.post('/push/unsubscribe', pushLimiter, validate(pushUnsubscribeSchema), pushController.unsubscribe);
 router.post('/push/fcm-token', pushLimiter, verifyUserTokenOptional, validate(fcmTokenSchema), pushController.registerFcmToken);
-router.post('/push/app-diag', pushLimiter, (req, res) => {
+router.post('/push/app-diag', diagLimiter, (req, res) => {
     const entry = {
         ua: String(req.get('user-agent') || '').slice(0, 200),
         ip: String(req.ip || ''),

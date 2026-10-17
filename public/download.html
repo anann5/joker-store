@@ -93,7 +93,7 @@
                 <div class="logo-os">🤖</div>
                 <h2>أندرويد</h2>
                 <p>ملف APK تُثبّته مباشرة بدون متجر Google Play. الإصدار <span id="apkSize">—</span></p>
-                <a class="dl-btn" id="apkBtn" href="https://github.com/anann5/joker-store/releases/latest/download/joker-store.apk">
+                <a class="dl-btn" id="apkBtn" href="https://github.com/anann5/joker-store/releases/download/latest-apk/joker-store.apk">
                     ⬇ تحميل تطبيق أندرويد
                 </a>
                 <p class="dl-note" id="apkNote">عند التثبيت: فعّل "التثبيت من مصادر غير معروفة" لو طلب منك الهاتف.</p>
@@ -148,25 +148,17 @@
         var apkSize = document.getElementById('apkSize');
         var androidSteps = document.getElementById('androidSteps');
 
-        // تحقق إن ملف الـ APK منشور فعلاً
-        fetch('https://api.github.com/repos/anann5/joker-store/releases/latest', { headers: { 'Accept': 'application/vnd.github+json' } })
+        // تحقق إن ملف الـ APK منشور فعلاً (لا يعطّل الزر عند فشل الفحص)
+        fetch('https://api.github.com/repos/anann5/joker-store/releases/tags/latest-apk', { headers: { 'Accept': 'application/vnd.github+json' } })
             .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
             .then(function (rel) {
                 var asset = (rel.assets || []).find(function (a) { return /\.apk$/i.test(a.name); });
                 if (asset) {
                     apkSize.textContent = Math.round(asset.size / 1048576) + ' ميجابايت';
                     apkNote.textContent = 'آخر تحديث: ' + new Date(asset.updated_at).toLocaleDateString('ar-EG');
-                } else {
-                    apkBtn.classList.add('disabled');
-                    apkBtn.removeAttribute('href');
-                    apkNote.textContent = 'التطبيق قيد النشر — استخدم التثبيت من المتجر مؤقتاً.';
                 }
             })
-            .catch(function () {
-                apkBtn.classList.add('disabled');
-                apkBtn.removeAttribute('href');
-                apkNote.textContent = 'التطبيق قيد النشر — استخدم المتجر من المتصفح مؤقتاً.';
-            });
+            .catch(function () { /* أبقِ زر التحميل مفعّلاً */ });
 
         apkBtn.addEventListener('click', function (e) {
             if (apkBtn.classList.contains('disabled')) { e.preventDefault(); return; }
