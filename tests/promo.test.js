@@ -342,4 +342,23 @@ describe('POST /api/checkout with promo code', () => {
         expect(res.body.discount).toBe(0);
         expect(res.body.discountCode).toBeNull();
     });
+
+    it('caps the discount so the total never drops below the order cost', async () => {
+        mockPromotionFindOne.mockResolvedValue(makePromotion({ discountPercent: 50 }));
+        mockProductFind.mockResolvedValue([makeProduct({ price: 10, costPrice: 9 })]);
+
+        const res = await request(app)
+            .post('/api/checkout')
+            .send({
+                customerEmail: 'test@example.com',
+                cartItems: [{ id: PRODUCT_ID, qty: 1 }],
+                paymentGateway: 'jawwal_pay',
+                paymentRef: 'test-reference-123',
+                promoCode: 'JOKER10'
+            });
+
+        expect(res.statusCode).toBe(201);
+        expect(res.body.discount).toBe(1);
+        expect(res.body.total).toBe(9);
+    });
 });

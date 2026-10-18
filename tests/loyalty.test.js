@@ -14,7 +14,7 @@ const mockOrderSave = jest.fn().mockResolvedValue(true);
 
 jest.mock('../models', () => ({
     Product: { find: jest.fn() },
-    Order: jest.fn().mockImplementation(() => ({ save: mockOrderSave })),
+    Order: jest.fn().mockImplementation(cfg => ({ ...cfg, save: mockOrderSave })),
     Category: {},
     User: {
         findOneAndUpdate: jest.fn(),
@@ -57,7 +57,7 @@ async function csrfCookies() {
     return { token: res.body.csrfToken, cookie };
 }
 
-function makeProduct() {
+function makeProduct(overrides = {}) {
     return {
         _id: PRODUCT_ID,
         productName: { ar: 'منتج', en: 'Product' },
@@ -66,7 +66,8 @@ function makeProduct() {
         isExternal: false,
         codes: [{ value: 'C1', status: 'available' }],
         category: 'pubg',
-        region: 'global'
+        region: 'global',
+        ...overrides
     };
 }
 
@@ -161,5 +162,24 @@ describe('POST /api/checkout — نقاط الولاء', () => {
             expect.objectContaining({ _id: USER_ID }),
             expect.objectContaining({ $inc: { loyaltyPoints: 10 } })
         );
+    });
+
+    it('يقيّد خصم النقاط بأرضية التكلفة فلا يقل الإجمالي عن التكلفة', async () => {
+        Product.find.mockResolvedValue([makeProduct({ price: 10, costPrice: 9.5 })]);
+        User.findOneAndUpdate.mockResolvedValue({ loyaltyPoints: 0 });
+
+        const res = await checkout(10);
+
+        expect(res.statusCode).toBe(201);
+        expect(res.body.total).toBe(9.5);
+    });
+
+    it('يرفض استخدام النقاط ولا يخصمها إذا كانت الأرضية تمنع أي خصم', async () => {
+        Product.find.mockResolvedValue([makeProduct({ price: 10, costPrice: 10 })]);
+
+        const res = await checkout(10);
+
+        expect(res.statusCode).toBe(400);
+        expect(User.findOneAndUpdate).not.toHaveBeenCalled();
     });
 });

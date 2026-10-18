@@ -632,6 +632,7 @@ exports.createOrder = async (req, res) => {
 
         const itemsForOrder = [];
         let total = 0;
+        let orderCost = 0;
 
         for (const [productId, qty] of quantities) {
             const product = productMap.get(productId);
@@ -651,6 +652,7 @@ exports.createOrder = async (req, res) => {
             const unitPrice = Number(product.price);
             const itemPrice = round2(unitPrice * qty);
             total += itemPrice;
+            orderCost += (Number(product.costPrice) || 0) * qty;
             itemsForOrder.push({
                 productId: product._id,
                 name: getLocalizedValue(product.productName),
@@ -666,8 +668,15 @@ exports.createOrder = async (req, res) => {
             return res.status(400).json({ success: false, error: 'تعذر إنشاء طلب صالح من السلة.' });
         }
 
+        // الحدّ الأدنى المقبول للإجمالي: تكلفة المنتجات (حماية الهامش) مع أرضية 0.5₪.
+        // يمنع أي خصم (كود/نقاط) من خفض الإجمالي تحت التكلفة فيتحوّل الطلب إلى خسارة.
+        orderCost = round2(orderCost);
+        const minTotal = Math.max(orderCost, 0.5);
+
         // الخصم يُحسب على إجمالي الطلب ويبقى سعر العناصر على حاله (الخادم هو المرجع)
-        const discountAmount = promoCode && promoPercent > 0 ? round2(total * promoPercent / 100) : 0;
+        let discountAmount = promoCode && promoPercent > 0 ? round2(total * promoPercent / 100) : 0;
+        const promoCap = round2(Math.max(0, total - minTotal));
+        if (discountAmount > promoCap) discountAmount = promoCap;
         if (discountAmount > 0) {
             total = round2(total - discountAmount);
         }
@@ -684,6 +693,13 @@ exports.createOrder = async (req, res) => {
             }
             if (!req.user?.userId) {
                 return res.status(401).json({ success: false, error: 'يجب تسجيل الدخول لاستخدام نقاط الولاء' });
+            }
+            // الخصم الناتج عن النقاط، مقيّداً بالأرضية (تكلفة الطلب) كي لا يتجاوز total
+            loyaltyDiscount = Math.round(pts * 0.10 * 100) / 100;
+            const loyaltyCap = round2(Math.max(0, total - minTotal));
+            if (loyaltyDiscount > loyaltyCap) loyaltyDiscount = loyaltyCap;
+            if (loyaltyDiscount <= 0) {
+                return res.status(400).json({ success: false, error: 'لا يمكن استخدام النقاط على هذا الطلب' });
             }
             // خصم ذرّي للنقاط: لا ينجح إلا إذا كان الرصيد كافياً لحظة الخصم،
             // فيمنع استبدال النقاط نفسها مرتين عبر طلبين متزامنين.
@@ -704,8 +720,6 @@ exports.createOrder = async (req, res) => {
                 return res.status(400).json({ success: false, error: 'نقاط غير كافية' });
             }
             loyaltyPointsUsed = pts;
-            loyaltyDiscount = Math.round(pts * 0.10 * 100) / 100;
-            if (loyaltyDiscount >= total) loyaltyDiscount = round2(total - 0.5);
             total = round2(total - loyaltyDiscount);
         }
 
