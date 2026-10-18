@@ -106,11 +106,15 @@ export function initI18n() {
     const initialLang = getInitialLanguage();
     const ready = setLanguage(initialLang);
 
-    document.getElementById('lang-switcher').addEventListener('click', () => {
-        const newLang = currentLang === 'ar' ? 'en' : 'ar';
-        // إعادة تحميل الصفحة مع اللغة الجديدة في الرابط
-        window.location.href = `${window.location.pathname  }?lang=${newLang}`;
-    });
+    // بعض الصفحات (gift/download) لا تحتوي مبدّل اللغة — تجاهل غيابه بأمان
+    const switcher = document.getElementById('lang-switcher');
+    if (switcher) {
+        switcher.addEventListener('click', () => {
+            const newLang = currentLang === 'ar' ? 'en' : 'ar';
+            // إعادة تحميل الصفحة مع اللغة الجديدة في الرابط
+            window.location.href = `${window.location.pathname}?lang=${newLang}`;
+        });
+    }
 
     return ready;
 }

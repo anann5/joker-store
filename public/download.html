@@ -134,40 +134,6 @@
     <script type="module" src="sub-page.js"></script>
     <script src="/sw-register.js" defer></script>
     <script src="/install-prompt.js" defer></script>
-    <script>
-        document.getElementById('siteUrl').textContent = location.host || 'joker-store.onrender.com';
-
-        var iosBtn = document.getElementById('iosBtn');
-        var iosSteps = document.getElementById('iosSteps');
-        iosBtn.addEventListener('click', function () {
-            iosSteps.hidden = !iosSteps.hidden;
-        });
-
-        var apkBtn = document.getElementById('apkBtn');
-        var apkNote = document.getElementById('apkNote');
-        var apkSize = document.getElementById('apkSize');
-        var androidSteps = document.getElementById('androidSteps');
-
-        // تحقق إن ملف الـ APK منشور فعلاً (لا يعطّل الزر عند فشل الفحص)
-        fetch('https://api.github.com/repos/anann5/joker-store/releases/tags/latest-apk', { headers: { 'Accept': 'application/vnd.github+json' } })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-            .then(function (rel) {
-                var asset = (rel.assets || []).find(function (a) { return /\.apk$/i.test(a.name); });
-                if (asset) {
-                    if (asset.browser_download_url) {
-                        apkBtn.href = asset.browser_download_url + '?v=' + encodeURIComponent(asset.updated_at || Date.now());
-                    }
-                    apkSize.textContent = Math.round(asset.size / 1048576) + ' ميجابايت';
-                    apkNote.textContent = 'آخر تحديث: ' + new Date(asset.updated_at).toLocaleDateString('ar-EG');
-                }
-            })
-            .catch(function () { /* أبقِ زر التحميل مفعّلاً */ });
-
-        apkBtn.addEventListener('click', function (e) {
-            if (apkBtn.classList.contains('disabled')) { e.preventDefault(); return; }
-            androidSteps.hidden = false;
-            androidSteps.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        });
-    </script>
+    <script src="/download-page.js?v=1" defer></script>
 </body>
 </html>

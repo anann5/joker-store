@@ -50,7 +50,8 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: (() => {
-                const list = ["'self'", 'https://cdn.jsdelivr.net'];
+                // api.github.com: فحص إصدار التطبيق من GitHub Releases (app-update.js / download.html)
+                const list = ["'self'", 'https://cdn.jsdelivr.net', 'https://api.github.com'];
                 try {
                     // أصل الموقع يُشتق من SITE_URL بدل نطاق مكتوب يدوياً،
                     // حتى لا تتقادم قيمة WebSocket/الأصل عند تغيير النطاق.
