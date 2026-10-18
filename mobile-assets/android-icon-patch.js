@@ -10,6 +10,28 @@ const path = require('path');
 const manifest = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
 const bgColorXml = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res', 'values', 'ic_launcher_background.xml');
 
+function walk(dir, cb) {
+    if (!fs.existsSync(dir)) return;
+    for (const name of fs.readdirSync(dir)) {
+        const full = path.join(dir, name);
+        if (fs.statSync(full).isDirectory()) walk(full, cb);
+        else cb(full);
+    }
+}
+
+function removeStrayIconVectors() {
+    const resDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
+    const kill = new Set(['ic_launcher_foreground.xml', 'ic_launcher_background.xml']);
+    const removed = [];
+    walk(resDir, (full) => {
+        if (kill.has(path.basename(full))) {
+            fs.unlinkSync(full);
+            removed.push(path.relative(resDir, full));
+        }
+    });
+    console.log('[icon-patch] removed stray icon vectors:', removed.length ? removed.join(', ') : 'none');
+}
+
 function patchAdaptiveBackground() {
     if (!fs.existsSync(bgColorXml)) {
         console.log('[icon-patch] ic_launcher_background.xml not found — skipping background color');
@@ -25,6 +47,8 @@ function main() {
     if (!fs.existsSync(manifest)) {
         throw new Error('[icon-patch] AndroidManifest.xml not found — run `npx cap add android` first');
     }
+    removeStrayIconVectors();
+    patchAdaptiveBackground();
     let text = fs.readFileSync(manifest, 'utf8');
     const m = text.match(/<application\b[^>]*>/);
     if (!m) {
@@ -41,7 +65,6 @@ function main() {
     text = text.replace(m[0], tag);
     fs.writeFileSync(manifest, text);
     console.log('[icon-patch] applied ->', tag);
-    patchAdaptiveBackground();
 }
 
 main();
