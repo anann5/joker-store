@@ -50,7 +50,6 @@ docker run -p 5850:5850 --env-file .env joker-store
 - `ADMIN_PASSWORD_HASH`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
-- `STRIPE_SECRET_KEY`
 
 ## هيكل المشروع
 - server.js: نقطة دخول التطبيق

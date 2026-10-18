@@ -279,12 +279,6 @@ function applySiteConfig() {
         paymentOptionsEl.style.display = 'none';
     }
 
-    // Stripe: نُظهر خيار الدفع بالبطاقة فقط عندما يكون مفعلاً في الخادم
-    const stripeOption = document.getElementById('stripePaymentOption');
-    if (stripeOption) {
-        stripeOption.style.display = (siteConfig.stripe && siteConfig.stripe.enabled) ? 'flex' : 'none';
-    }
-
     // إثبات المبيعات الحي: يُملأ من إحصائيات حقيقية من قاعدة البيانات
     const proofEl = document.getElementById('liveSalesProof');
     const proofText = proofEl ? proofEl.querySelector('span') : null;
@@ -2140,9 +2134,8 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 if (!email || !email.value.trim()) { showToast(t('checkout_email_required'), 'error'); return; }
             }
             if (checkoutStep === 2) {
-                const gateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
                 const refInput = document.getElementById('paymentRefInput');
-                if (gateway !== 'stripe' && (!refInput || !refInput.value.trim())) {
+                if (!refInput || !refInput.value.trim()) {
                     showToast(t('checkout_ref_required'), 'error');
                     return;
                 }
@@ -2183,8 +2176,6 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             instructionsZone.innerHTML = palpay
                 ? `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> ${t('pay_inst_palpay_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${palpay}</span></p>${foot}${t('pay_inst_followup_palpay')}</p>`
                 : `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> ${t('pay_inst_palpay_title')}</p>${foot}${t('pay_inst_later')}</p>`;
-        } else if (method === 'stripe') {
-            instructionsZone.innerHTML = `<p style="margin: 0 0 8px 0; color: #635bff; font-weight: bold;"><i class="fas fa-credit-card"></i> ${t('stripe_heading')}</p><p style="margin: 5px 0; color: #b9bbbe;">${t('stripe_desc')}</p>`;
         } else if (method === 'refakt') {
             instructionsZone.innerHTML = refakt
                 ? `<p style="margin: 0 0 8px 0; color: #12b489; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_reflect_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${refakt}</span></p>${foot}${t('pay_inst_followup')}</p>`
@@ -2211,7 +2202,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             const gateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
 
             if (!email) { showToast(t('checkout_email_required'), 'error'); return; }
-            if (gateway !== 'stripe' && !paymentRef) { showToast(t('checkout_ref_required'), 'error'); return; }
+            if (!paymentRef) { showToast(t('checkout_ref_required'), 'error'); return; }
             if (cart.length === 0) { showToast(t('checkout_cart_empty'), 'error'); return; }
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
@@ -2262,13 +2253,8 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                     const ppImg=document.getElementById('paymentProofImg'); if(ppImg) ppImg.src='';
                     const ppInput=document.getElementById('paymentProofInput'); if(ppInput) ppInput.value='';
                     updateCartUI();
-                    if (result.gateway === 'stripe' && result.stripeUrl) {
-                        window.open(result.stripeUrl, '_blank', 'noopener');
-                        showToast(t('checkout_stripe_success'), 'success');
-                    } else {
-                        renderOrderReceipt({ email, orderId: result.orderId || '', giftToken: result.giftToken || null });
-                        showToast(t('checkout_success'), 'success');
-                    }
+                    renderOrderReceipt({ email, orderId: result.orderId || '', giftToken: result.giftToken || null });
+                    showToast(t('checkout_success'), 'success');
                 } else {
                     showToast(`❌ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');
                 }

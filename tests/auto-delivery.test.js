@@ -8,10 +8,13 @@ const express = require('express');
 jest.mock('../models', () => ({
     Product: {
         findById: jest.fn(),
-        claimCodeAtomic: jest.fn()
+        claimCodeAtomic: jest.fn(),
+        confirmReservedCodes: jest.fn().mockResolvedValue({ acknowledged: true }),
+        releaseReservedCodes: jest.fn().mockResolvedValue({ acknowledged: true })
     },
     Order: {
-        findOne: jest.fn()
+        findOne: jest.fn(),
+        findOneAndUpdate: jest.fn()
     }
 }));
 
@@ -82,7 +85,7 @@ describe('autoFulfilOrder — التسليم التلقائي', () => {
 
     it('ينجز الطلب المعلّق (pending) آلياً من المخزون المحلي', async () => {
         const order = makeOrder('pending');
-        Order.findOne.mockResolvedValue(order);
+        Order.findOneAndUpdate.mockResolvedValue(order);
         Product.findById.mockResolvedValue({
             _id: PRODUCT_ID,
             isActive: true,
@@ -103,14 +106,15 @@ describe('autoFulfilOrder — التسليم التلقائي', () => {
     });
 
     it('يفشل بهدوء عندما يكون الطلب خارج حالة pending (لا تنفيذ مزدوج)', async () => {
-        const order = makeOrder('processing');
-        Order.findOne.mockResolvedValue(order);
+        // القفل الذرّي لا يلتقط الطلب (ليس pending)، ثم نُبلّغ بالحالة الحالية
+        Order.findOneAndUpdate.mockResolvedValue(null);
+        Order.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue({ status: 'processing' }) });
 
         const res = await request(app).post('/api/internal/auto-fulfil/AUTO1');
 
         expect(res.statusCode).toBe(200);
-        expect(order.save).not.toHaveBeenCalled();
         expect(Product.claimCodeAtomic).not.toHaveBeenCalled();
+        expect(Product.confirmReservedCodes).not.toHaveBeenCalled();
     });
 });
 
@@ -127,7 +131,7 @@ describe('getInvoice — الفاتورة', () => {
             discount: 0,
             discountCode: null,
             buyerEmail: 'buyer@example.com',
-            paymentGateway: 'stripe',
+            paymentGateway: 'jawwal_pay',
             createdAt: new Date(),
             completedAt: status === 'completed' ? new Date() : null,
             items: [{

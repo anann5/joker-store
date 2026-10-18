@@ -242,6 +242,8 @@ exports.approveOrder = async (req, res) => {
                 }
             });
             await order.save();
+            // حرّر أي أكواد محلية حُجزت قبل الفشل لتعود متاحة للبيع
+            await Product.releaseReservedCodes(order.orderId).catch(() => {});
             await createLog('فشل تنفيذ طلب', `يتطلب الطلب #${order.orderId} تدخلاً يدوياً.`, req);
             await sendTelegramAlert(`🚨 فشل تنفيذ الطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
         }
@@ -327,9 +329,18 @@ async function performFulfilment(order, io, req) {
     order.completedAt = new Date();
     await order.save();
 
+    // تأكيد حجز الأكواد المحلية بعد نجاح الحفظ (reserved → sold).
+    // لا نُفشل الطلب المكتمل إن تعذّر التأكيد؛ الأكواد محجوزة باسم الطلب فلا تُباع مرتين.
+    try {
+        await Product.confirmReservedCodes(order.orderId);
+    } catch (confirmErr) {
+        // eslint-disable-next-line no-console
+        console.error('[fulfilment] فشل تأكيد حجز الأكواد:', confirmErr.message);
+    }
+
     // نقاط الولاء: 1 نقطة لكل 10₪
     if (order.userId) {
-        const pointsEarned = Math.floor((order.totalPrice || 0) / 10);
+        const pointsEarned = Math.floor((Number(order.price) || 0) / 10);
         if (pointsEarned > 0) {
             const User = require('../models').User;
             await User.findByIdAndUpdate(order.userId, {
@@ -381,23 +392,27 @@ async function performFulfilment(order, io, req) {
 }
 
 /**
- * تسليم تلقائي للطلب المدفوع (يُستدعى من Webhook Stripe أو مهمة تسوية دورية).
+ * تسليم تلقائي للطلب المدفوع (يُستدعى عند تأكيد الدفع).
  * يعمل على أي طلب بحالة pending فقط؛ أي محاولة تكرار تُرفض بأمان.
  */
 exports.autoFulfilOrder = async (orderId, io) => {
     let order;
 
     try {
-        order = await Order.findOne({ orderId });
+        // قفل ذرّي: انتقال واحد فقط pending → processing لمنع التنفيذ المزدوج
+        // (قد يصل إشعار الدفع أكثر من مرة، أو يُستدعى المسار من أكثر من مصدر).
+        order = await Order.findOneAndUpdate(
+            { orderId, status: 'pending' },
+            { $set: { status: 'processing' } },
+            { new: true }
+        );
         if (!order) {
-            return { success: false, reason: 'الطلب غير موجود' };
+            const existing = await Order.findOne({ orderId }).select('status');
+            if (!existing) {
+                return { success: false, reason: 'الطلب غير موجود' };
+            }
+            return { success: false, reason: `الطلب بحالة ${existing.status}` };
         }
-        if (order.status !== 'pending') {
-            return { success: false, reason: `الطلب بحالة ${order.status}` };
-        }
-
-        order.status = 'processing';
-        await order.save();
 
         await performFulfilment(order, io, null);
         await sendTelegramAlert(`⚡ *تسليم تلقائي ناجح*\n🧾 *الطلب:* #${order.orderId}`);
@@ -416,6 +431,8 @@ exports.autoFulfilOrder = async (orderId, io) => {
                 }
             });
             await order.save();
+            // حرّر أي أكواد محلية حُجزت قبل الفشل لتعود متاحة للبيع
+            await Product.releaseReservedCodes(order.orderId).catch(() => {});
             await sendTelegramAlert(`🚨 فشل التسليم التلقائي للطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
         }
 

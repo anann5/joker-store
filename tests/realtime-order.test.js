@@ -13,11 +13,16 @@ jest.mock('jsonwebtoken', () => ({
 jest.mock('../models', () => ({
     Product: {
         findById: jest.fn(),
-        claimCodeAtomic: jest.fn()
+        claimCodeAtomic: jest.fn(),
+        confirmReservedCodes: jest.fn().mockResolvedValue({ acknowledged: true }),
+        releaseReservedCodes: jest.fn().mockResolvedValue({ acknowledged: true })
     },
     Order: {
         findOneAndUpdate: jest.fn(),
         findOne: jest.fn()
+    },
+    User: {
+        findByIdAndUpdate: jest.fn().mockResolvedValue({})
     }
 }));
 

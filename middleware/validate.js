@@ -121,26 +121,22 @@ exports.checkoutSchema = Joi.object({
         'number.integer': 'النقاط يجب أن تكون رقماً صحيحاً'
     }),
     paymentGateway: Joi.string()
-        .valid('jawwal_pay', 'palpay', 'reflect', 'stripe')
+        .valid('jawwal_pay', 'palpay', 'reflect')
         .required()
         .messages({
             'any.only': 'بوابة الدفع غير صالحة',
             'any.required': 'بوابة الدفع مطلوبة'
         }),
-    paymentRef: Joi.when('paymentGateway', {
-        is: 'stripe',
-        then: Joi.string().allow('').optional(),
-        otherwise: Joi.string()
-            .trim()
-            .min(2)
-            .max(100)
-            .required()
-            .messages({
-                'string.empty': 'رقم العملية/الاسم مطلوب',
-                'string.min': 'رقم العملية/الاسم قصير جداً',
-                'any.required': 'رقم العملية/الاسم مطلوب'
-            })
-    }),
+    paymentRef: Joi.string()
+        .trim()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+            'string.empty': 'رقم العملية/الاسم مطلوب',
+            'string.min': 'رقم العملية/الاسم قصير جداً',
+            'any.required': 'رقم العملية/الاسم مطلوب'
+        }),
     paymentProofUrl: Joi.string().trim().max(500).allow('', null).optional().messages({
         'string.max': 'رابط إثبات الدفع طويل جداً'
     }),

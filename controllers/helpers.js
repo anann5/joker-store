@@ -23,7 +23,7 @@ exports.createLog = async (action, details, req, targetId = null, targetName = n
     }
 };
 
-// عنوان مضيف آمن لبناء روابط مطلقة (إعادة توجيه HTTPS / روابط Stripe):
+// عنوان مضيف آمن لبناء روابط مطلقة (إعادة توجيه HTTPS):
 // - يفضّل النطاق الثابت SITE_URL إن وُجد (مصدر واحد للحقيقة)
 // - وإلا يُعيد Host الخام بعد تنظيفه من أي حرف خطر (يمنع CRLF والحقن في Location)
 exports.getSafeBaseHost = (req) => {

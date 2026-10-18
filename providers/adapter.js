@@ -99,6 +99,19 @@ async function postJson(provider, url, body) {
     });
 }
 
+/**
+ * طلب POST JSON بدون إعادة محاولة — للعمليات غير الآمنة التكرار (الشراء).
+ * إعادة إرسال طلب شراء قد تُنشئ عملية مزدوجة وتُهدر رصيد المزود.
+ */
+async function postJsonNoRetry(provider, url, body) {
+    const options = buildRequestOptions(provider, url);
+    const response = await axios.post(options.url, body, {
+        headers: options.headers,
+        timeout: options.timeout
+    });
+    return response.data;
+}
+
 function mapValue(provider, value) {
     const raw = String(value == null ? '' : value).trim();
     if (!raw) return null;
@@ -231,7 +244,8 @@ async function purchaseItem(provider, { externalId, quantity, basePrice }) {
     if (isAdapter(provider, 'fazercards')) {
         return fazercards.purchaseItem(provider, { externalId, quantity, basePrice });
     }
-    const data = await postJson(provider, provider.purchaseUrl, {
+    // بلا إعادة محاولة: طلب الشراء غير آمن التكرار
+    const data = await postJsonNoRetry(provider, provider.purchaseUrl, {
         api_key: provider.apiKey,
         product_id: externalId,
         amount: quantity

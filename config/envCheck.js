@@ -10,7 +10,7 @@ const REQUIRED_VARS = [
 /**
  * تحقق من المتغيرات الأساسية عند الإقلاع.
  * يعرض تحذيراً واضحاً للمتغيرات المطلوبة الناقصة بدل فشل غامض لاحقاً.
- * المتغيرات الاختيارية (Stripe/Telegram/...) تُسجَّل كتنبيه فقط.
+ * المتغيرات الاختيارية (Telegram/Email/Push/...) تُسجَّل كتنبيه فقط.
  */
 function validateEnv() {
     const missingRequired = REQUIRED_VARS
@@ -26,9 +26,6 @@ function validateEnv() {
     const optionalWarnings = [];
     if (!process.env.SITE_URL) {
         optionalWarnings.push('SITE_URL غير مضبوط — sitemap.xml سيرجع 503 حتى يُحدد');
-    }
-    if (!process.env.STRIPE_SECRET_KEY) {
-        optionalWarnings.push('STRIPE_SECRET_KEY غير مضبوط — بوابة Stripe غير مفعلة');
     }
     if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
         optionalWarnings.push('TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID غير مضبوطين — تنبيهات Telegram غير مفعلة');

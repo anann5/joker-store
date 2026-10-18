@@ -14,7 +14,6 @@ const csrfProtection = require('./middleware/csrf');
 const authController = require('./controllers/authController');
 const { validate, contactSchema } = require('./middleware/validate');
 const seoController = require('./controllers/seoController');
-const stripeController = require('./controllers/stripeController');
 const { getSafeBaseHost } = require('./controllers/helpers');
 const { Product } = require('./models');
 const siteSettings = require('./config/siteSettings');
@@ -100,10 +99,6 @@ app.use(helmet({
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginEmbedderPolicy: false
 }));
-
-// Webhook Stripe: يُسجَّل قبل express.json للحصول على النص الخام (RAW)
-// للتحقق من توقيع HMAC ومنع استدعاءات مزيفة.
-app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeController.stripeWebhook);
 
 app.use(express.json({ limit: '10kb' }));
 app.disable('x-powered-by');

@@ -127,19 +127,23 @@ async function trackOrder() {
             const codesHtml = (!isFailure && order.codes && order.codes.length)
                 ? `<div class="track-code-box"><span class="track-code-label">${escapeHtml(t('track_shipping_code'))}</span>${order.codes.map(c => `<span class="track-code-row"><code class="track-code" dir="ltr">${escapeHtml(c)}</code><button type="button" class="track-copy-btn" data-code="${escapeHtml(c)}" title="${escapeHtml(t('track_copy_code'))}" aria-label="${escapeHtml(t('track_copy_code'))}"><i class="fas fa-copy"></i></button></span>`).join('')}</div>`
                 : '';
-            const invoiceLink = `/invoice?order=${encodeURIComponent(order.orderId)}&email=${encodeURIComponent(email)}`;
-            const waLink = WHATSAPP_NUMBER
+            const masked = Boolean(order.masked);
+            const invoiceLink = masked ? '' : `/invoice?order=${encodeURIComponent(order.orderId)}&email=${encodeURIComponent(email)}`;
+            const waLink = (!masked && WHATSAPP_NUMBER)
                 ? `https://wa.me/${String(WHATSAPP_NUMBER).replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`${t('invoice_whatsapp_msg')} #${order.orderId}`)}`
                 : '';
             const giftUrl = (order.isGift && order.giftToken) ? `${window.location.origin}/gift/${order.giftToken}` : '';
             const giftHtml = giftUrl
                 ? `<div class="track-gift-box"><span class="track-gift-title">🎁 ${escapeHtml(t('gift_link_title'))}</span><span class="track-gift-row"><code class="track-code track-gift-link" dir="ltr">${escapeHtml(giftUrl)}</code><button type="button" class="track-copy-btn" data-code="${escapeHtml(giftUrl)}" title="${escapeHtml(t('gift_copy'))}" aria-label="${escapeHtml(t('gift_copy'))}"><i class="fas fa-copy"></i></button><a href="https://wa.me/?text=${encodeURIComponent(`${t('gift_share_text')} ${giftUrl}`)}" target="_blank" rel="noopener" class="enter-btn track-action-btn wa"><i class="fab fa-whatsapp"></i> ${escapeHtml(t('gift_share_whatsapp'))}</a></span></div>`
                 : '';
-            const actionsHtml = `
+            const actionsHtml = (invoiceLink || waLink) ? `
                 <div class="track-actions">
-                    <a href="${invoiceLink}" class="enter-btn track-action-btn"><i class="fas fa-file-invoice"></i> ${escapeHtml(t('track_invoice_btn'))}</a>
+                    ${invoiceLink ? `<a href="${invoiceLink}" class="enter-btn track-action-btn"><i class="fas fa-file-invoice"></i> ${escapeHtml(t('track_invoice_btn'))}</a>` : ''}
                     ${waLink ? `<a href="${waLink}" target="_blank" rel="noopener" class="enter-btn track-action-btn wa"><i class="fab fa-whatsapp"></i> ${escapeHtml(t('track_whatsapp_btn'))}</a>` : ''}
-                </div>`;
+                </div>` : '';
+            const maskedHint = masked
+                ? `<p class="track-masked-hint" style="font-size:0.82rem; color:var(--text-muted); margin-top:8px;"><i class="fas fa-lock"></i> ${escapeHtml(t('track_masked_hint'))}</p>`
+                : '';
             return `
                 <div class="track-result-card">
                     <div class="track-head">
@@ -151,6 +155,7 @@ async function trackOrder() {
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b>${formatPrice(order.price)}</b></div>
                     ${codesHtml}
                     ${giftHtml}
+                    ${maskedHint}
                     ${actionsHtml}
                 </div>`;
         }).join('');

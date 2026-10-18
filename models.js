@@ -161,7 +161,7 @@ productSchema.statics.claimCodeAtomic = async function(productId, orderId, buyer
         { _id: productId, 'codes.status': 'available' },
         {
             $set: {
-                'codes.$.status': 'sold',
+                'codes.$.status': 'reserved',
                 'codes.$.soldAt': new Date(),
                 'codes.$.soldTo': buyerEmail,
                 'codes.$.orderId': orderId,
@@ -177,6 +177,38 @@ productSchema.statics.claimCodeAtomic = async function(productId, orderId, buyer
     }
 
     return updatedProduct.codes[0].value;
+};
+
+/**
+ * تأكيد حجز أكواد طلب بعد نجاح التسليم وحفظه (reserved → sold).
+ * يُستدعى من performFulfilment بعد نجاح order.save.
+ */
+productSchema.statics.confirmReservedCodes = async function(orderId) {
+    return this.updateMany(
+        { codes: { $elemMatch: { orderId, status: 'reserved' } } },
+        { $set: { 'codes.$[c].status': 'sold' } },
+        { arrayFilters: [{ 'c.orderId': orderId, 'c.status': 'reserved' }] }
+    );
+};
+
+/**
+ * تحرير أكواد طلب فشل تسليمه (reserved → available) لإعادتها للمخزون.
+ * يمنع ضياع الأكواد عند الفشل في منتصف التسليم.
+ */
+productSchema.statics.releaseReservedCodes = async function(orderId) {
+    return this.updateMany(
+        { codes: { $elemMatch: { orderId, status: 'reserved' } } },
+        {
+            $set: { 'codes.$[c].status': 'available' },
+            $unset: {
+                'codes.$[c].soldAt': '',
+                'codes.$[c].soldTo': '',
+                'codes.$[c].orderId': '',
+                'codes.$[c].claimId': ''
+            }
+        },
+        { arrayFilters: [{ 'c.orderId': orderId, 'c.status': 'reserved' }] }
+    );
 };
 
 // ======================================================
@@ -216,7 +248,6 @@ const orderSchema = new mongoose.Schema({
     paymentGateway: { type: String, default: 'manual' },
     paymentRef: { type: String, default: null },
     paymentProofUrl: { type: String, default: null },
-    stripePaymentIntentId: { type: String, default: null },
     // خصم رموز العروض (اختياري) — يُسجّل على مستوى الطلب فقط
     discount: { type: Number, default: 0, min: 0 },
     discountCode: { type: String, default: null },

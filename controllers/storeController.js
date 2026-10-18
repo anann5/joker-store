@@ -2,11 +2,9 @@ const mongoose = require('mongoose');
 const { Product, Order, Category, Promotion } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const siteSettings = require('../config/siteSettings');
-const stripeController = require('./stripeController');
 const notification = require('./notification');
 const pushService = require('./push');
 const { applyPromoCode, applyPromoCodeToProducts, applyPromoCodeToProductIds, round2 } = require('./promo');
-const { getSafeBaseHost } = require('./helpers');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
@@ -225,7 +223,6 @@ exports.getSiteConfig = async (_req, res) => {
                 currency: siteSettings.currency,
                 social: siteSettings.social,
                 analytics: siteSettings.analytics,
-                stripe: { enabled: stripeController.isStripeEnabled() },
                 push: {
                     enabled: pushService.isPushEnabled(),
                     publicKey: pushService.getPushStatus().publicKey,
@@ -244,6 +241,15 @@ exports.getSiteConfig = async (_req, res) => {
         res.status(500).json({ success: false, error: 'فشل في تحميل إعدادات المتجر' });
     }
 };
+
+/**
+ * إخفاء معظم رقم الطلب عند عرضه دون التحقق منه، لمنع تعداد الطلبات بالبريد وحده.
+ */
+function maskOrderId(orderId) {
+    const value = String(orderId || '');
+    if (value.length <= 2) return '••••';
+    return `••••••${value.slice(-2)}`;
+}
 
 /**
  * تتبع طلبات المشتري عبر البريد الإلكتروني (للواجهة دون الحاجة لتسجيل دخول).
@@ -268,24 +274,28 @@ exports.trackOrder = async (req, res) => {
             .limit(10)
             .select('orderId status price items.name items.qty items.createdAt code deliveredCodes completedAt');
 
+        // عند البحث بالبريد وحده نُخفي رقم الطلب الكامل، فلا يمكن الانتقال لخطوة
+        // لاحقة لسحب الأكواد بتخمين رقم الطلب (نمنع تعداد الطلبات بالبريد).
+        const revealId = Boolean(query.orderId);
         const safeOrders = orders.map(order => {
             const items = (order.items || []).map(item => ({
                 name: getLocalizedValue(item.name),
                 qty: item.qty
             }));
             // الأكواد تُكشف فقط عند تقديم رقم طلب مطابق (منع سحب الأكواد بالبريد فقط)
-            const codes = (orderId && order.status === 'completed')
+            const codes = (revealId && order.status === 'completed')
                 ? (order.deliveredCodes?.length ? order.deliveredCodes : (order.code ? [order.code] : []))
                 : [];
             return {
-                orderId: order.orderId,
+                orderId: revealId ? order.orderId : maskOrderId(order.orderId),
+                masked: !revealId,
                 status: order.status,
                 price: order.price,
                 createdAt: order.createdAt,
                 completedAt: order.completedAt || null,
                 items,
                 codes,
-                ...(orderId ? { isGift: Boolean(order.isGift), giftToken: order.giftToken || null } : {})
+                ...(revealId ? { isGift: Boolean(order.isGift), giftToken: order.giftToken || null } : {})
             };
         });
 
@@ -581,9 +591,6 @@ exports.createOrder = async (req, res) => {
     try {
         const { cartItems, customerEmail, paymentGateway, paymentRef, paymentProofUrl: rawProofUrl, promoCode: rawPromoCode, gift: rawGift } = req.body;
         const paymentProofUrl = typeof rawProofUrl === 'string' && rawProofUrl.trim() && (/^\/uploads\//.test(rawProofUrl.trim()) || /^https?:\/\//.test(rawProofUrl.trim())) ? rawProofUrl.trim().slice(0,500) : null;
-        if (paymentGateway === 'stripe' && !stripeController.isStripeEnabled()) {
-            return res.status(400).json({ success: false, error: 'الدفع بالبطاقة غير مفعل حالياً.' });
-        }
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
             return res.status(400).json({ success: false, error: 'سلة المشتريات فارغة.' });
         }
@@ -738,28 +745,6 @@ exports.createOrder = async (req, res) => {
             );
         }
 
-        // Stripe: إنشاء جلسة دفع آمنة مستضافة على Stripe (لا حاجة لمكتبة عميل)
-        let stripeUrl = null;
-        if (paymentGateway === 'stripe') {
-            try {
-                const session = await stripeController.createCheckoutSession({
-                    orderId,
-                    amount: total,
-                    currency: siteSettings.currency.code,
-                    name: itemsForOrder.map(item => item.name.ar).join('، '),
-                    baseUrl: `${req.protocol}://${getSafeBaseHost(req)}`
-                });
-                newOrder.paymentRef = session.id;
-                await newOrder.save();
-                stripeUrl = session.url;
-            } catch (err) {
-                console.error('Stripe checkout error:', err.message);
-                newOrder.status = 'failed';
-                await newOrder.save();
-                return res.status(502).json({ success: false, error: 'تعذر إنشاء جلسة الدفع عبر Stripe، حاول بطريقة أخرى.' });
-            }
-        }
-
         // Emit real-time notification to authenticated admin sockets only
         const io = req.app?.get('io');
         if (io) {
@@ -779,7 +764,6 @@ exports.createOrder = async (req, res) => {
             discount: newOrder.discount,
             discountCode: newOrder.discountCode,
             total: newOrder.price,
-            ...(stripeUrl ? { stripeUrl, gateway: 'stripe' } : {}),
             ...(isGift ? { giftToken } : {})
         });
     } catch (err) {

@@ -19,7 +19,6 @@ Create a local copy from [.env.example](.env.example) and fill the missing secre
 | `JWT_SECRET` | Signing key for JWT | ✅ |
 | `ADMIN_PASSWORD_HASH` | Bcrypt hash for admin login | ✅ |
 | `PORT` | Server port | ⚠️ |
-| `STRIPE_SECRET_KEY` | Stripe integration | ⚠️ |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Alerts | ⚠️ |
 
 ## Project Structure
