@@ -10,26 +10,19 @@ const path = require('path');
 const manifest = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
 const bgColorXml = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res', 'values', 'ic_launcher_background.xml');
 
-function walk(dir, cb) {
-    if (!fs.existsSync(dir)) return;
-    for (const name of fs.readdirSync(dir)) {
-        const full = path.join(dir, name);
-        if (fs.statSync(full).isDirectory()) walk(full, cb);
-        else cb(full);
-    }
-}
-
-function removeStrayIconVectors() {
+function syncMipmapForeground() {
     const resDir = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res');
-    const kill = new Set(['ic_launcher_foreground.xml', 'ic_launcher_background.xml']);
-    const removed = [];
-    walk(resDir, (full) => {
-        if (kill.has(path.basename(full))) {
-            fs.unlinkSync(full);
-            removed.push(path.relative(resDir, full));
+    const densities = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'];
+    const copied = [];
+    for (const d of densities) {
+        const src = path.join(resDir, 'drawable-' + d, 'ic_launcher_foreground.png');
+        const dst = path.join(resDir, 'mipmap-' + d, 'ic_launcher_foreground.png');
+        if (fs.existsSync(src) && fs.existsSync(path.dirname(dst))) {
+            fs.copyFileSync(src, dst);
+            copied.push(d);
         }
-    });
-    console.log('[icon-patch] removed stray icon vectors:', removed.length ? removed.join(', ') : 'none');
+    }
+    console.log('[icon-patch] joker foreground -> mipmap:', copied.length ? copied.join(', ') : 'none');
 }
 
 function patchAdaptiveBackground() {
@@ -47,7 +40,7 @@ function main() {
     if (!fs.existsSync(manifest)) {
         throw new Error('[icon-patch] AndroidManifest.xml not found — run `npx cap add android` first');
     }
-    removeStrayIconVectors();
+    syncMipmapForeground();
     patchAdaptiveBackground();
     let text = fs.readFileSync(manifest, 'utf8');
     const m = text.match(/<application\b[^>]*>/);
