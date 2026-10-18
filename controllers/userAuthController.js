@@ -139,7 +139,8 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+        // req.ip (وفق trust proxy) يتجاهل X-Forwarded-For المزوّر، فلا يمكن تجاوز قفل المحاولات
+        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
 
         // Check for account lockout
         const attemptKey = `${email.toLowerCase()}:${ip}`;

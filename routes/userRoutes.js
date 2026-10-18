@@ -3,6 +3,7 @@ const router = express.Router();
 const userAuthController = require('../controllers/userAuthController');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, loginSchema, registerSchema } = require('../middleware/validate');
+const csrfProtection = require('../middleware/csrf');
 const rateLimit = require("express-rate-limit");
 
 // Rate limiter for authentication routes (prevent brute force)
@@ -23,7 +24,7 @@ router.get('/users/referral', verifyUserToken, userAuthController.getReferralInf
 
 // مزامنة السلة السحابية (يتطلب تسجيل الدخول — للتزامن بين الأجهزة)
 router.get('/users/cart', verifyUserToken, userAuthController.getUserCart);
-router.put('/users/cart', verifyUserToken, userAuthController.saveUserCart);
+router.put('/users/cart', csrfProtection.validate, verifyUserToken, userAuthController.saveUserCart);
 
 // ليميتر لتسجيل الخروج (منع إغراق المسار أو استنزاف الموارد بتكرار الطلب)
 const logoutLimiter = rateLimit({

@@ -675,6 +675,7 @@ exports.createOrder = async (req, res) => {
         // نقاط الولاء: 10 نقاط = 1₪
         let loyaltyPointsUsed = 0;
         let loyaltyDiscount = 0;
+        let redemptionId = null;
         const rawLoyalty = req.body?.loyaltyPoints;
         if (rawLoyalty !== undefined && rawLoyalty !== null && rawLoyalty !== '') {
             const pts = Number.parseInt(rawLoyalty, 10);
@@ -684,18 +685,28 @@ exports.createOrder = async (req, res) => {
             if (!req.user?.userId) {
                 return res.status(401).json({ success: false, error: 'يجب تسجيل الدخول لاستخدام نقاط الولاء' });
             }
+            // خصم ذرّي للنقاط: لا ينجح إلا إذا كان الرصيد كافياً لحظة الخصم،
+            // فيمنع استبدال النقاط نفسها مرتين عبر طلبين متزامنين.
             const { User } = require('../models');
-            const loyaltyUser = await User.findById(req.user.userId).select('loyaltyPoints');
-            if (!loyaltyUser || (loyaltyUser.loyaltyPoints || 0) < pts) {
+            redemptionId = crypto.randomUUID();
+            const deductedUser = await User.findOneAndUpdate(
+                { _id: req.user.userId, loyaltyPoints: { $gte: pts } },
+                {
+                    $inc: { loyaltyPoints: -pts },
+                    $push: {
+                        loyaltyHistory: { points: pts, type: 'redeemed', redemptionId, createdAt: new Date() }
+                    }
+                },
+                { new: true }
+            );
+            if (!deductedUser) {
+                redemptionId = null;
                 return res.status(400).json({ success: false, error: 'نقاط غير كافية' });
             }
             loyaltyPointsUsed = pts;
             loyaltyDiscount = Math.round(pts * 0.10 * 100) / 100;
             if (loyaltyDiscount >= total) loyaltyDiscount = round2(total - 0.5);
             total = round2(total - loyaltyDiscount);
-            loyaltyUser.loyaltyPoints -= pts;
-            loyaltyUser.loyaltyHistory.push({ points: pts, type: 'redeemed', createdAt: new Date() });
-            await loyaltyUser.save();
         }
 
         const orderId = uuidv4().split('-')[0].toUpperCase();
@@ -728,7 +739,19 @@ exports.createOrder = async (req, res) => {
             giftToken
         });
 
-        await newOrder.save();
+        try {
+            await newOrder.save();
+        } catch (saveErr) {
+            // تعويض بدل معاملة موزّعة: أعِد النقاط المخصومة إن فشل حفظ الطلب
+            if (redemptionId) {
+                const { User } = require('../models');
+                await User.updateOne(
+                    { _id: req.user.userId },
+                    { $inc: { loyaltyPoints: loyaltyPointsUsed }, $pull: { loyaltyHistory: { redemptionId } } }
+                ).catch(() => {});
+            }
+            throw saveErr;
+        }
 
         // إشعار الزبون فور الاستلام (لا يُعطّل عملية الدفع عند الفشل)
         notification.sendOrderCreatedEmail(newOrder).catch(err => {
@@ -1099,26 +1122,23 @@ exports.redeemLoyaltyPoints = async (req, res) => {
             return res.status(400).json({ success: false, error: 'الحد الأدنى 10 نقاط' });
         }
 
+        // خصم ذرّي: لا ينجح إلا إذا كان الرصيد كافياً لحظة الخصم (يمنع الاستبدال المزدوج)
         const { User } = require('../models');
-        const user = await User.findById(req.user.userId).select('loyaltyPoints');
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });
-        }
-        if ((user.loyaltyPoints || 0) < points) {
+        const updated = await User.findOneAndUpdate(
+            { _id: req.user.userId, loyaltyPoints: { $gte: points } },
+            {
+                $inc: { loyaltyPoints: -points },
+                $push: { loyaltyHistory: { points, type: 'redeemed', createdAt: new Date() } }
+            },
+            { new: true, select: 'loyaltyPoints' }
+        );
+        if (!updated) {
             return res.status(400).json({ success: false, error: 'نقاط غير كافية' });
         }
 
         // 1 نقطة = 0.10₪
         const discount = Math.round(points * 0.10 * 100) / 100;
-        user.loyaltyPoints -= points;
-        user.loyaltyHistory.push({
-            points,
-            type: 'redeemed',
-            createdAt: new Date()
-        });
-        await user.save();
-
-        res.json({ success: true, discount, remaining: user.loyaltyPoints });
+        res.json({ success: true, discount, remaining: updated.loyaltyPoints });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل استبدال النقاط' });
     }

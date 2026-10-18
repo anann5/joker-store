@@ -7,6 +7,7 @@ const giftController = require('../controllers/giftController');
 const diagStore = require('../controllers/diagStore');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema, fcmTokenSchema } = require('../middleware/validate');
+const csrfProtection = require('../middleware/csrf');
 const rateLimit = require('express-rate-limit');
 
 // ليميتر خاص بإنشاء الطلبات (منع إغراق قاعدة البيانات بطلبات وهمية)
@@ -181,7 +182,7 @@ router.post('/cart/track', storeController.trackCartSession);
 
 // Loyalty points
 router.get('/loyalty/balance', verifyUserTokenOptional, storeController.getLoyaltyBalance);
-router.post('/loyalty/redeem', verifyUserTokenOptional, storeController.redeemLoyaltyPoints);
+router.post('/loyalty/redeem', csrfProtection.validate, verifyUserTokenOptional, storeController.redeemLoyaltyPoints);
 
 // Review image upload (public, rate-limited)
 const upload = require('../middleware/upload');

@@ -4,6 +4,7 @@ import { t, getCurrentLanguage } from './i18n.js';
 import { openModal, closeModal } from './modals.js';
 import { mergeCarts } from './shared.js';
 import { cart } from './cart.js';
+import { csrfFetch } from './csrf.js';
 
 let currentUser = null;
 
@@ -340,9 +341,8 @@ async function syncUserCart() {
         const merged = mergeCarts(cart, serverCart);
         if (merged.length === 0) return;
 
-        const putRes = await fetch('/api/users/cart', {
+        const putRes = await csrfFetch('/api/users/cart', {
             method: 'PUT',
-            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cart: merged })
         });

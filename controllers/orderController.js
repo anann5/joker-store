@@ -259,7 +259,7 @@ exports.buyExternalCodes = buyExternalCodes;
 
 /**
  * تنفيذ التسليم الفعلي للطلب (أكواد خارجية من أرخص مزود / أكواد محلية ذرية).
- * مشترك بين الموافقة اليدوية (approveOrder) والتسليم التلقائي (autoFulfilOrder).
+ * يُستدعى من الموافقة اليدوية على الطلب (approveOrder).
  * عند الفشل يُرمى خطأ فيُحوَّل الطلب للمراجعة اليدوية من قبل المتصل.
  */
 async function performFulfilment(order, io, req) {
@@ -390,52 +390,3 @@ async function performFulfilment(order, io, req) {
 
     return { success: true };
 }
-
-/**
- * تسليم تلقائي للطلب المدفوع (يُستدعى عند تأكيد الدفع).
- * يعمل على أي طلب بحالة pending فقط؛ أي محاولة تكرار تُرفض بأمان.
- */
-exports.autoFulfilOrder = async (orderId, io) => {
-    let order;
-
-    try {
-        // قفل ذرّي: انتقال واحد فقط pending → processing لمنع التنفيذ المزدوج
-        // (قد يصل إشعار الدفع أكثر من مرة، أو يُستدعى المسار من أكثر من مصدر).
-        order = await Order.findOneAndUpdate(
-            { orderId, status: 'pending' },
-            { $set: { status: 'processing' } },
-            { new: true }
-        );
-        if (!order) {
-            const existing = await Order.findOne({ orderId }).select('status');
-            if (!existing) {
-                return { success: false, reason: 'الطلب غير موجود' };
-            }
-            return { success: false, reason: `الطلب بحالة ${existing.status}` };
-        }
-
-        await performFulfilment(order, io, null);
-        await sendTelegramAlert(`⚡ *تسليم تلقائي ناجح*\n🧾 *الطلب:* #${order.orderId}`);
-
-        return { success: true, orderId: order.orderId };
-    } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error('Auto Fulfilment Error:', err.message);
-
-        if (order) {
-            order.status = 'failed';
-            order.failedAt = new Date();
-            order.items.forEach(item => {
-                if (item.fulfilmentStatus === 'processing') {
-                    item.fulfilmentStatus = 'failed';
-                }
-            });
-            await order.save();
-            // حرّر أي أكواد محلية حُجزت قبل الفشل لتعود متاحة للبيع
-            await Product.releaseReservedCodes(order.orderId).catch(() => {});
-            await sendTelegramAlert(`🚨 فشل التسليم التلقائي للطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
-        }
-
-        return { success: false, reason: err.message };
-    }
-};

@@ -17,21 +17,17 @@ const computeFingerprint = (ip, userAgent) => {
 };
 
 const getClientIp = (req) => {
-    // خلف وسطاء (Cloudflare/Render) يحوي x-forwarded-for قائمة IPs مفصولة بفواصل
-    // ويغيّر ترتيبها بين الطلبات، لذا نأخذ أول عنوان فقط لثبات البصمة.
-    const xff = req.headers['x-forwarded-for'];
-    if (xff) {
-        const first = String(xff).split(',')[0].trim();
-        if (first) return first;
-    }
-    return req.socket.remoteAddress || 'unknown';
+    // نعتمد على req.ip المحسوب من Express باستخدام app.set('trust proxy', ...)
+    // فهو يتجاهل القيم التي قد يضيفها العميل في X-Forwarded-For، بعكس قراءة الترويسة الخام.
+    return req.ip || req.socket?.remoteAddress || 'unknown';
 };
 
-// نفس منطق getClientIp لكن للسياق الخاص الصادرة من مآخذ الويب (socket.io)
+// نفس المنطق لسياق مآخذ الويب (socket.io) التي لا تمرّ عبر Express:
+// آخر عنوان في القائمة هو ما أضافه الوسيط الموثوق، وما قبله قابل للتزوير من العميل.
 const clientIpFrom = (xff, remoteAddress) => {
     if (xff) {
-        const first = String(xff).split(',')[0].trim();
-        if (first) return first;
+        const parts = String(xff).split(',').map(entry => entry.trim()).filter(Boolean);
+        if (parts.length) return parts[parts.length - 1];
     }
     return remoteAddress || 'unknown';
 };

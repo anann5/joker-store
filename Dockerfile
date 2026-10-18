@@ -11,6 +11,10 @@ WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY . .
 
+# تشغيل التطبيق بمستخدم غير متميز (بلا صلاحيات root)
+RUN addgroup -S app && adduser -S -G app app && chown -R app:app /app
+USER app
+
 EXPOSE 5850
 # فحص صحة للـ orchestrator/لوحة السحابة (أعدّله لو غيّرت المنفذ عبر PORT)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
