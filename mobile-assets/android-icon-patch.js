@@ -8,6 +8,18 @@ const fs = require('fs');
 const path = require('path');
 
 const manifest = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
+const bgColorXml = path.join(__dirname, '..', 'android', 'app', 'src', 'main', 'res', 'values', 'ic_launcher_background.xml');
+
+function patchAdaptiveBackground() {
+    if (!fs.existsSync(bgColorXml)) {
+        console.log('[icon-patch] ic_launcher_background.xml not found — skipping background color');
+        return;
+    }
+    const original = fs.readFileSync(bgColorXml, 'utf8');
+    const updated = original.replace(/(<color\s+name="ic_launcher_background"\s*>)#[0-9a-fA-F]{6,8}(<\/color>)/, '$1#0F172A$2');
+    fs.writeFileSync(bgColorXml, updated);
+    console.log('[icon-patch] adaptive background color -> #0F172A');
+}
 
 function main() {
     if (!fs.existsSync(manifest)) {
@@ -29,6 +41,7 @@ function main() {
     text = text.replace(m[0], tag);
     fs.writeFileSync(manifest, text);
     console.log('[icon-patch] applied ->', tag);
+    patchAdaptiveBackground();
 }
 
 main();
