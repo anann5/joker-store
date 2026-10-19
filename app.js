@@ -87,19 +87,17 @@ app.use(helmet({
     xssFilter: true,
     noSniff: true,
     frameguard: { action: 'deny' },
-    permissionsPolicy: {
-        features: {
-            camera: ["'none'"],
-            microphone: ["'none'"],
-            geolocation: ["'none'"],
-            payment: ["'self'"],
-            usb: ["'none'"]
-        }
-    },
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     crossOriginEmbedderPolicy: false
 }));
+
+// helmet v8 أزال ميدلوير Permissions-Policy (فتجاهل الخيار بصمت)، لذا نضبط الترويسة يدوياً:
+// تعطيل الوصول للكاميرا/الميكروفون/الموقع/USB مع السماح بالدفع لنفس الأصل فقط.
+app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self), usb=()');
+    next();
+});
 
 app.use(express.json({ limit: '10kb' }));
 app.disable('x-powered-by');
