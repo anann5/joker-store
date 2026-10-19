@@ -46,7 +46,7 @@ function validate(req, res, next) {
     const cookieToken = req.cookies?.[CSRF_COOKIE_NAME];
 
     if (!token || !cookieToken || token !== cookieToken) {
-        // eslint-disable-next-line no-console
+         
         console.warn('[csrf] reject', JSON.stringify({
             path: req.originalUrl,
             method: req.method,

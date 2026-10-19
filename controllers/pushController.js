@@ -27,7 +27,7 @@ async function subscribe(req, res) {
         });
         res.status(201).json({ success: true, registeredAt: subscription.createdAt });
     } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error('[push] فشل تسجيل الاشتراك:', err.message);
         res.status(500).json({ success: false, error: 'فشل تسجيل الاشتراك، حاول لاحقاً' });
     }
@@ -42,7 +42,7 @@ async function unsubscribe(req, res) {
         await pushService.unsubscribe(req.body.endpoint);
         res.json({ success: true });
     } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error('[push] فشل إلغاء الاشتراك:', err.message);
         res.status(500).json({ success: false, error: 'فشل إلغاء الاشتراك، حاول لاحقاً' });
     }
@@ -53,7 +53,6 @@ async function unsubscribe(req, res) {
  */
 async function getAdminStats(_req, res) {
     try {
-        const pushService = require('./push');
         const fcmService = require('./fcm');
         const [stats, fcmStats] = await Promise.all([
             pushService.getStats(),
@@ -80,7 +79,7 @@ async function broadcast(req, res) {
         }
         res.json({ success: true, sent: result.sent, deleted: result.deleted, failed: result.failed });
     } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error('[push] فشل البث:', err.message);
         res.status(500).json({ success: false, error: 'فشل إرسال الإشعارات' });
     }
@@ -98,14 +97,14 @@ async function registerFcmToken(req, res) {
             userId: req.user?.userId || null,
             lang: req.body.lang || 'ar'
         });
-        // eslint-disable-next-line no-console
+         
         console.log('[push] fcm token registered', JSON.stringify({
             tokenLen: String(req.body.token || '').length,
             hasUser: Boolean(req.user?.userId)
         }));
         res.status(201).json({ success: true, registeredAt: record.createdAt });
     } catch (err) {
-        // eslint-disable-next-line no-console
+         
         console.error('[push] fcm register failed:', err.message);
         res.status(500).json({ success: false, error: 'تعذر تسجيل توكن التطبيق' });
     }

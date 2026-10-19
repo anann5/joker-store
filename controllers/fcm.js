@@ -4,6 +4,7 @@
  * - التفعيل يتطلب FIREBASE_SERVICE_ACCOUNT (محتوى JSON لحساب الخدمة).
  * - التوكنات الميتة (not-registered/invalid) تُحذف تلقائياً.
  */
+/* eslint-disable no-await-in-loop -- إرسال وتحديث تسلسلي مقصود لكل رمز (تجنّب إغراق المزوّد) */
 const { FcmToken } = require('../models');
 
 const MAX_FAILED = 10;
@@ -33,7 +34,7 @@ function getAdmin() {
     if (!cred) return null;
     let admin;
     try {
-        // eslint-disable-next-line global-require
+         
         admin = require('firebase-admin');
     } catch (_e) {
         return null;

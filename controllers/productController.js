@@ -205,7 +205,7 @@ exports.createProduct = async (req, res) => {
 
         // Web Push — إعلام المشتركين بمنتج جديد
         pushService.notifyNewProduct(productName.ar, productName.en, newProduct._id).catch((err) => {
-            // eslint-disable-next-line no-console
+             
             console.error('[push] فشل إشعار المنتج الجديد:', err.message);
         });
 
@@ -293,7 +293,7 @@ exports.addProductCodes = async (req, res) => {
             available
         });
     } catch (err) {
-        res.status(500).json({ success: false, error: 'فشل إضافة الكودات: ' + err.message });
+        res.status(500).json({ success: false, error: `فشل إضافة الكودات: ${  err.message}` });
     }
 };
 

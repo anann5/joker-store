@@ -2208,9 +2208,9 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
             const appliedPromo = getAppliedPromo();
             const appliedLoyalty = getAppliedLoyalty();
-            const giftToggle = document.getElementById('giftToggle');
+            const giftToggleInput = document.getElementById('giftToggle');
             let gift = null;
-            if (giftToggle && giftToggle.checked) {
+            if (giftToggleInput && giftToggleInput.checked) {
                 const toName = document.getElementById('giftToName')?.value.trim() || '';
                 const toPhone = document.getElementById('giftToPhone')?.value.trim() || '';
                 const message = document.getElementById('giftMessage')?.value.trim() || '';

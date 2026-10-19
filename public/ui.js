@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- رفع صور المراجعة تسلسلياً مقصود (حد أقصى 3 + تجنّب حدود المعدّل) */
 import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
 import { formatPrice } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
@@ -342,7 +343,8 @@ export function showProductDetails(product, currentCategory = '') {
     if (resolvedImages.length === 0) resolvedImages.push('/image/logo.png');
 
     const detailImgElement = view.querySelector('.detail-img');
-    detailImgElement.src = resolvedImages[0];
+    const [firstImage] = resolvedImages;
+    detailImgElement.src = firstImage;
     detailImgElement.onerror = () => { detailImgElement.src = '/image/logo.png'; };
     view.querySelector('.detail-img').alt = product.name;
 
@@ -353,13 +355,13 @@ export function showProductDetails(product, currentCategory = '') {
         resolvedImages.forEach((src, idx) => {
             const thumb = document.createElement('img');
             thumb.src = src;
-            thumb.className = 'detail-thumbnail' + (idx === 0 ? ' active' : '');
+            thumb.className = `detail-thumbnail${  idx === 0 ? ' active' : ''}`;
             thumb.alt = `${product.name} ${idx + 1}`;
             thumb.loading = 'lazy';
             thumb.addEventListener('click', () => {
                 currentImageIndex = idx;
                 detailImgElement.src = src;
-                thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((t, i) => t.classList.toggle('active', i === idx));
+                thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((thumbEl, i) => thumbEl.classList.toggle('active', i === idx));
             });
             thumbnailsContainer.appendChild(thumb);
         });
@@ -391,7 +393,7 @@ export function showProductDetails(product, currentCategory = '') {
                 currentImageIndex = (idx + resolvedImages.length) % resolvedImages.length;
                 lbImg.src = resolvedImages[currentImageIndex];
                 if (thumbnailsContainer) {
-                    thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((t, i) => t.classList.toggle('active', i === currentImageIndex));
+                    thumbnailsContainer.querySelectorAll('.detail-thumbnail').forEach((thumbEl, i) => thumbEl.classList.toggle('active', i === currentImageIndex));
                 }
                 detailImgElement.src = resolvedImages[currentImageIndex];
             };
@@ -835,7 +837,7 @@ export function updateCartUI() {
     try {
         const emailEl = document.getElementById('user-email');
         const email = emailEl ? emailEl.value.trim() : '';
-        const total = cartTotals(items).total;
+        const {total} = cartTotals(items);
         if (items.length > 0) {
             const payload = { items: items.map(i => ({ productId: i.id, productName: i.name, qty: i.qty, price: i.price })), email: email || null, total };
             try {
@@ -934,9 +936,9 @@ export async function refreshLoyaltySection() {
                 if (input) input.value = String(applied.points);
                 if (redeemBtn) redeemBtn.hidden = true;
                 if (removeBtn) removeBtn.hidden = false;
-                if (feedback) { feedback.hidden = false; feedback.textContent = t('loyalty_discount') + ': -' + formatPrice(applied.discount); feedback.dataset.state = 'success'; }
+                if (feedback) { feedback.hidden = false; feedback.textContent = `${t('loyalty_discount')  }: -${  formatPrice(applied.discount)}`; feedback.dataset.state = 'success'; }
             } else {
-                if (preview) preview.textContent = data.points >= 10 ? '(' + t('loyalty_min_redeem') + ')' : '';
+                if (preview) preview.textContent = data.points >= 10 ? `(${  t('loyalty_min_redeem')  })` : '';
                 if (redeemBtn) redeemBtn.hidden = false;
                 if (removeBtn) removeBtn.hidden = true;
                 if (feedback) feedback.hidden = true;
@@ -959,7 +961,7 @@ export async function refreshLoyaltySection() {
             if (pts > _loyaltyBalance) { if (fb) { fb.hidden = false; fb.textContent = t('loyalty_insufficient'); fb.dataset.state = 'error'; } return; }
             const discount = Math.round(pts * 0.10 * 100) / 100;
             setAppliedLoyalty({ points: pts, discount });
-            showToast(t('loyalty_discount') + ': -' + formatPrice(discount), 'success');
+            showToast(`${t('loyalty_discount')  }: -${  formatPrice(discount)}`, 'success');
             updateCartUI();
         });
         if (rmBtn) rmBtn.addEventListener('click', () => {

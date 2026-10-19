@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- حلقة إعادة المحاولة لتوليد كود إحالة فريد يجب أن تكون تسلسلية */
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');

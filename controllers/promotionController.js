@@ -90,7 +90,7 @@ exports.createPromotion = async (req, res) => {
             code: promo.code,
             promotionId: promo._id
         }).catch((err) => {
-            // eslint-disable-next-line no-console
+             
             console.error('[push] فشل إشعار العرض الجديد:', err.message);
         });
 

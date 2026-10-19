@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+ 
 /**
  * Web Push — بطاقة تفعيل إشعارات المتصفح (تظهر مرة ونعود بعد أسبوع إذا أُرجئت).
  * تعتمد على: /api/push/vapid-public-key (حالة+مفتاح) و /api/push/subscribe (تسجيل).

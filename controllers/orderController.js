@@ -104,7 +104,7 @@ exports.getOrders = async (req, res) => {
         if (req.query.from || req.query.to) {
             query.createdAt = {};
             if (req.query.from) query.createdAt.$gte = new Date(req.query.from);
-            if (req.query.to) query.createdAt.$lte = new Date(req.query.to + 'T23:59:59.999Z');
+            if (req.query.to) query.createdAt.$lte = new Date(`${req.query.to  }T23:59:59.999Z`);
         }
 
         const [orders, total] = await Promise.all([
@@ -134,7 +134,7 @@ exports.exportOrdersCSV = async (req, res) => {
         if (req.query.from || req.query.to) {
             query.createdAt = {};
             if (req.query.from) query.createdAt.$gte = new Date(req.query.from);
-            if (req.query.to) query.createdAt.$lte = new Date(req.query.to + 'T23:59:59.999Z');
+            if (req.query.to) query.createdAt.$lte = new Date(`${req.query.to  }T23:59:59.999Z`);
         }
 
         const orders = await Order.find(query).sort({ createdAt: -1 }).limit(5000);
@@ -142,7 +142,7 @@ exports.exportOrdersCSV = async (req, res) => {
         const escapeCSV = (val) => {
             const str = String(val ?? '');
             if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-                return '"' + str.replace(/"/g, '""') + '"';
+                return `"${  str.replace(/"/g, '""')  }"`;
             }
             return str;
         };
@@ -159,7 +159,7 @@ exports.exportOrdersCSV = async (req, res) => {
             escapeCSV(o.createdAt?.toISOString())
         ].join(','));
 
-        const csv = '\uFEFF' + header + '\n' + rows.join('\n');
+        const csv = `\uFEFF${  header  }\n${  rows.join('\n')}`;
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', 'attachment; filename=orders.csv');
         res.send(csv);
@@ -188,7 +188,7 @@ exports.rejectOrder = async (req, res) => {
 
         // Web Push — إشعار خاص بمالك الطلب إن كان مسجلاً
         pushService.notifyOrderStatus(order).catch((err) => {
-            // eslint-disable-next-line no-console
+             
             console.error('[push] فشل إشعار رفض الطلب:', err.message);
         });
 
@@ -334,7 +334,7 @@ async function performFulfilment(order, io, req) {
     try {
         await Product.confirmReservedCodes(order.orderId);
     } catch (confirmErr) {
-        // eslint-disable-next-line no-console
+         
         console.error('[fulfilment] فشل تأكيد حجز الأكواد:', confirmErr.message);
     }
 
@@ -342,7 +342,7 @@ async function performFulfilment(order, io, req) {
     if (order.userId) {
         const pointsEarned = Math.floor((Number(order.price) || 0) / 10);
         if (pointsEarned > 0) {
-            const User = require('../models').User;
+            const {User} = require('../models');
             await User.findByIdAndUpdate(order.userId, {
                 $inc: { loyaltyPoints: pointsEarned },
                 $push: {
@@ -362,7 +362,7 @@ async function performFulfilment(order, io, req) {
 
     // Web Push — إشعار خاص بمالك الطلب إن كان مسجلاً
     pushService.notifyOrderStatus(order).catch((err) => {
-        // eslint-disable-next-line no-console
+         
         console.error('[push] فشل إشعار إكمال الطلب:', err.message);
     });
 

@@ -47,7 +47,7 @@ async function loadGift() {
             body.innerHTML = `<p class="gift-error">${escapeHtml(data.error || t('gift_invalid_body'))}</p>`;
             return;
         }
-        const gift = data.gift;
+        const {gift} = data;
         if (gift.toName) {
             forEl.hidden = false;
             forEl.textContent = `${t('gift_for_prefix')} ${gift.toName}`;

@@ -99,7 +99,7 @@ router.post('/push/app-diag', diagLimiter, (req, res) => {
         ip: String(req.ip || ''),
         body: req.body || {}
     };
-    // eslint-disable-next-line no-console
+     
     console.log('[push] app-diag', JSON.stringify(entry));
     diagStore.push(entry);
     res.json({ success: true });

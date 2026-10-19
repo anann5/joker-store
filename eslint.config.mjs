@@ -44,7 +44,9 @@ export default [
       'no-unreachable': 'error',
       'no-console': 'off',
       'no-cond-assign': 'error',
-      'no-empty': 'warn',
+      // الكتل الفارغة مسموحة داخل catch فقط: حراسات "best effort" مقصودة
+      // (تنظيف/قياس اختياري) بلا أي إجراء عند الفشل.
+      'no-empty': ['warn', { allowEmptyCatch: true }],
       'no-useless-escape': 'warn',
       'no-dupe-keys': 'error',
       'no-sparse-arrays': 'error',
@@ -129,7 +131,8 @@ export default [
       'no-unreachable': 'error',
       'no-console': 'off',
       'no-cond-assign': 'error',
-      'no-empty': 'warn',
+      // الكتل الفارغة مسموحة داخل catch فقط: حراسات "best effort" مقصودة.
+      'no-empty': ['warn', { allowEmptyCatch: true }],
       'no-useless-escape': 'warn',
       'no-dupe-keys': 'error',
       'no-sparse-arrays': 'error',

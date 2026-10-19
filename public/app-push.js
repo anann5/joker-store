@@ -162,7 +162,7 @@
             } catch (_) {
                 perm = null;
             }
-            reportDiag('perm:' + (perm && perm.receive ? perm.receive : 'unknown'));
+            reportDiag(`perm:${  perm && perm.receive ? perm.receive : 'unknown'}`);
             if (perm && perm.receive === 'denied') return;
 
             try {
@@ -188,7 +188,7 @@
                 Push.addListener('registration', function (t) {
                     if (t && t.value) { reportDiag('got-token'); if (t.value !== getStoredToken()) sendToken(t.value); }
                 });
-                Push.addListener('registrationError', function (e) { reportDiag('reg-error:' + JSON.stringify(e).slice(0, 160)); });
+                Push.addListener('registrationError', function (e) { reportDiag(`reg-error:${  JSON.stringify(e).slice(0, 160)}`); });
                 Push.addListener('pushNotificationReceived', function (n) {
                     let title = '';
                     let body = '';

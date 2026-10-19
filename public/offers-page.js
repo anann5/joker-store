@@ -49,7 +49,7 @@ async function loadOffers() {
             `;
         }).join('');
         container.querySelectorAll('[data-product-id]').forEach(el => {
-            el.addEventListener('click', () => { window.location.href = '/product/' + el.dataset.productId; });
+            el.addEventListener('click', () => { window.location.href = `/product/${  el.dataset.productId}`; });
         });
     } catch (_err) {
         container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 0;color:var(--danger);">${t('offers_load_failed')}</div>`;
@@ -59,4 +59,4 @@ function escapeHtml(str) { const d=document.createElement('div'); d.textContent=
 loadOffers();
 const btt=document.getElementById('backToTop');
 if(btt){ window.addEventListener('scroll',()=>{ if(window.scrollY>300) btt.classList.add('is-visible'); else btt.classList.remove('is-visible'); }); btt.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'})); }
-fetch('/api/site-config').then(r=>r.json()).then(d=>{ const wa=d?.siteConfig?.social?.whatsapp; const btn=document.getElementById('whatsappFloatBtn'); if(wa&&btn){ btn.href='https://wa.me/'+String(wa).replace(/[^0-9]/g,''); btn.style.display='flex'; } }).catch(()=>{});
+fetch('/api/site-config').then(r=>r.json()).then(d=>{ const wa=d?.siteConfig?.social?.whatsapp; const btn=document.getElementById('whatsappFloatBtn'); if(wa&&btn){ btn.href=`https://wa.me/${String(wa).replace(/[^0-9]/g,'')}`; btn.style.display='flex'; } }).catch(()=>{});

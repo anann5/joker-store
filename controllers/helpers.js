@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- معالجة تسلسلية مقصودة للتنبيهات/السلات (ترتيب + حدود معدّل المزوّد) */
 const { Log } = require('../models');
 const axios = require('axios');
 const registry = require('../providers/registry');
@@ -9,7 +10,7 @@ const adapter = require('../providers/adapter');
 exports.externalProviders = registry.getProviders();
 
 function mdEscape(text) {
-    return String(text).replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+    return String(text).replace(/([_*[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
 // Helper function to create logs

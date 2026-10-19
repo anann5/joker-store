@@ -1,3 +1,4 @@
+/* eslint-disable no-await-in-loop -- جلب منتجات العروض تسلسلياً مقصود (عدد صغير ومحدود) */
 const mongoose = require('mongoose');
 const { Product, Order, Category, Promotion } = require('../models');
 const { v4: uuidv4 } = require('uuid');

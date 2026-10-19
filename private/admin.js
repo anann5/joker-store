@@ -3,6 +3,7 @@
 //  Dashboard, المخزون, الطلبات, الأقسام, السجلات
 // ======================================================
 
+/* eslint-disable no-await-in-loop -- عمليات لوحة التحكم تسلسلية مقصودة (ترتيب الطلبات + حدود المعدّل) */
 let isSoundEnabled = true;
 let adminCsrfToken = null;
 let adminCsrfTokenPromise = null;
@@ -833,7 +834,7 @@ async function loadHealth() {
         </div>`).join('');
         if (mini) {
             if (h.providers && h.providers.length > 0) {
-                mini.innerHTML = h.providers.map(p => `${escapeHtml(p.name)}: ${p.error ? '<span style="color:#ef4444;">⚠️ ' + escapeHtml(p.error) + '</span>' : '<span style="color:#22c55e;">' + escapeHtml(String(p.balance ?? '—')) + ' ' + escapeHtml(p.currency) + '</span>'}`).join(' &nbsp;|&nbsp; ');
+                mini.innerHTML = h.providers.map(p => `${escapeHtml(p.name)}: ${p.error ? `<span style="color:#ef4444;">⚠️ ${  escapeHtml(p.error)  }</span>` : `<span style="color:#22c55e;">${  escapeHtml(String(p.balance ?? '—'))  } ${  escapeHtml(p.currency)  }</span>`}`).join(' &nbsp;|&nbsp; ');
             } else mini.textContent = 'لا يوجد مزودون معدون';
         }
     } catch (_err) {
@@ -2616,7 +2617,7 @@ async function loadTickets() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'failed');
         renderTickets(data.tickets || []);
-    } catch (e) {
+    } catch (_e) {
         listEl.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">❌ فشل تحميل التذاكر</div>`;
     }
 }
@@ -2632,9 +2633,6 @@ function renderTickets(tickets) {
 
     listEl.innerHTML = tickets.map(ticket => {
         const st = TICKET_STATUS_LABELS[ticket.status] || TICKET_STATUS_LABELS.open;
-        const lastMsg = ticket.messages && ticket.messages.length
-            ? ticket.messages[ticket.messages.length - 1]
-            : null;
         return `
             <div class="ticket-item" data-ticket-id="${escapeTicketHtml(ticket.ticketId)}" style="border:1px solid var(--glass-border-strong); border-radius:16px; padding:14px 16px; margin-bottom:12px; background:var(--glass-soft);">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -2696,7 +2694,7 @@ document.addEventListener('click', async (e) => {
             await replyTicket(replyBtn.dataset.replyTo, message);
             showAdminToast('تم إرسال الرد ✅', 'success');
             await loadTickets();
-        } catch (err) {
+        } catch (_err) {
             showAdminToast('❌ فشل إرسال الرد', 'error');
             replyBtn.disabled = false;
         }
@@ -2790,7 +2788,7 @@ async function sendNotification() {
         resultEl.style.background = 'rgba(52,211,153,0.12)';
         resultEl.style.border = '1px solid rgba(52,211,153,0.35)';
         resultEl.style.color = 'var(--success)';
-        resultEl.textContent = '✅ تم الإرسال بنجاح! (أُرسل إلى ' + (data.sent || 0) + ' جهاز)';
+        resultEl.textContent = `✅ تم الإرسال بنجاح! (أُرسل إلى ${  data.sent || 0  } جهاز)`;
 
         titleInput.value = '';
         bodyInput.value = '';
@@ -2802,7 +2800,7 @@ async function sendNotification() {
         resultEl.style.background = 'rgba(239,68,68,0.12)';
         resultEl.style.border = '1px solid rgba(239,68,68,0.35)';
         resultEl.style.color = 'var(--danger)';
-        resultEl.textContent = '❌ ' + (err.message || 'فشل إرسال الإشعار');
+        resultEl.textContent = `❌ ${  err.message || 'فشل إرسال الإشعار'}`;
     } finally {
         btn.disabled = false;
         btn.textContent = 'إرسال الإشعار للجميع';
@@ -2819,11 +2817,11 @@ async function loadDiag() {
         if (!data.entries.length) { el.textContent = 'لا توجد تقارير بعد — افتح تطبيق الجوال.'; return; }
         el.textContent = data.entries.map(function (e) {
             const b = e.body || {};
-            return '[' + e.ts + ']  stage=' + (b.stage || '?')
-                + '  |  hasCapacitor=' + b.hasCapacitor
-                + '  |  isNative=' + b.isNative
-                + '  |  pushPlugins=' + JSON.stringify(b.pushPlugins || [])
-                + '\n    ua=' + (e.ua || '');
+            return `[${  e.ts  }]  stage=${  b.stage || '?'
+                 }  |  hasCapacitor=${  b.hasCapacitor
+                 }  |  isNative=${  b.isNative
+                 }  |  pushPlugins=${  JSON.stringify(b.pushPlugins || [])
+                 }\n    ua=${  e.ua || ''}`;
         }).join('\n');
     } catch (_e) {
         el.textContent = 'تعذّر جلب التشخيص.';

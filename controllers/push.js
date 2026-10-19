@@ -3,6 +3,7 @@
  * تعتمد على web-push وتخزين الاشتراكات في PushSubscription.
  * العتبات: تُتجاهل الاشتراكات الفاشلة 10 مرات متتالية، وتُحذف عند 404/410.
  */
+/* eslint-disable no-await-in-loop -- إرسال وتحديث تسلسلي مقصود لكل اشتراك (تجنّب إغراق المزوّد) */
 const webPush = require('web-push');
 const { PushSubscription } = require('../models');
 const fcmService = require('./fcm');
@@ -169,7 +170,7 @@ async function broadcast(messages, url = '/', tag = 'offers') {
  */
 async function notifyOrderStatus(order) {
     if (!isPushEnabled() || !order) return { skipped: true };
-    const userId = order.userId;
+    const {userId} = order;
     if (!userId) return { skipped: true };
 
     let messages = null;
@@ -234,7 +235,7 @@ async function purgeStaleSubscriptions(olderThanMs = 30 * 24 * 60 * 60 * 1000) {
         $or: [{ lastSuccessAt: null }, { lastSuccessAt: { $lt: cutoff } }]
     });
     if (res.deletedCount) {
-        // eslint-disable-next-line no-console
+         
         console.log(`[push] تم تنظيف ${res.deletedCount} اشتراك قديم فاشل.`);
     }
     return res.deletedCount || 0;
