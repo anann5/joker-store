@@ -221,14 +221,14 @@ app.use((req, res, next) => {
 
 // Cache headers للملفات الثابتة
 app.use(express.static(path.join(__dirname, 'public'), {
-    maxAge: '7d',
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.html') || filePath.endsWith('.htm')) {
-            res.setHeader('Cache-Control', 'no-cache');
-        } else if (/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i.test(filePath)) {
+        if (/\.(jpg|jpeg|png|gif|webp|svg|ico)$/i.test(filePath)) {
+            // الصور نادراً ما تتغيّر — كاش طويل
             res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
-        } else if (/\.(css|js)$/i.test(filePath)) {
-            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        } else {
+            // HTML/JS/CSS/JSON: وحدات الـ ES تُحمَّل بلا بصمة إصدار، لذا نُلزم المتصفح
+            // بالتحقق من الحداثة (ETag → 304 رخيصة) بدل خدمة نسخة قديمة حتى ٧ أيام.
+            res.setHeader('Cache-Control', 'no-cache');
         }
     }
 }));

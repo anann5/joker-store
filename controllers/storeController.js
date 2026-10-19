@@ -1127,36 +1127,4 @@ exports.getLoyaltyBalance = async (req, res) => {
     }
 };
 
-exports.redeemLoyaltyPoints = async (req, res) => {
-    try {
-        if (!req.user?.userId) {
-            return res.status(401).json({ success: false, error: 'غير مصرح' });
-        }
-        const { points } = req.body;
-        if (!Number.isFinite(points) || points < 10) {
-            return res.status(400).json({ success: false, error: 'الحد الأدنى 10 نقاط' });
-        }
-
-        // خصم ذرّي: لا ينجح إلا إذا كان الرصيد كافياً لحظة الخصم (يمنع الاستبدال المزدوج)
-        const { User } = require('../models');
-        const updated = await User.findOneAndUpdate(
-            { _id: req.user.userId, loyaltyPoints: { $gte: points } },
-            {
-                $inc: { loyaltyPoints: -points },
-                $push: { loyaltyHistory: { points, type: 'redeemed', createdAt: new Date() } }
-            },
-            { new: true, select: 'loyaltyPoints' }
-        );
-        if (!updated) {
-            return res.status(400).json({ success: false, error: 'نقاط غير كافية' });
-        }
-
-        // 1 نقطة = 0.10₪
-        const discount = Math.round(points * 0.10 * 100) / 100;
-        res.json({ success: true, discount, remaining: updated.loyaltyPoints });
-    } catch (_err) {
-        res.status(500).json({ success: false, error: 'فشل استبدال النقاط' });
-    }
-};
-
 exports.toPublicProduct = toPublicProduct;
