@@ -29,7 +29,10 @@
 //   PROVIDER_1_DESCRIPTION_FIELD=description
 //   PROVIDER_1_CATEGORY_MAPPING=steam:steam,psn:playstation
 //   PROVIDER_1_REGION_MAPPING=global:global,tr:tr
+//   PROVIDER_1_REGIONS=tr,us,ae      (اختياري: المناطق المدعومة؛ فارغ = الكل)
 // ======================================================
+
+const { parseRegionList } = require('./regions');
 
 const DEFAULT_FIELDS = {
     itemsPath: 'data.items',
@@ -97,6 +100,7 @@ function buildProvider(index) {
         margin: Number.isFinite(margin) && margin >= 1 ? margin : null,
         defaultCategory: read('DEFAULT_CATEGORY') || 'gaming_general',
         defaultRegion: read('DEFAULT_REGION') || 'global',
+        regions: parseRegionList(read('REGIONS')),
         itemsUrl: read('ITEMS_URL') || `${baseUrl}/items`,
         balanceUrl: read('BALANCE_URL') || `${baseUrl}/balance`,
         purchaseUrl: read('PURCHASE_URL') || `${baseUrl}/buy`,
@@ -149,6 +153,8 @@ function getProvidersSafe() {
         currency: provider.currency,
         margin: provider.margin,
         defaultCategory: provider.defaultCategory,
+        defaultRegion: provider.defaultRegion,
+        regions: provider.regions || [],
         itemsUrl: provider.itemsUrl,
         authType: provider.authType,
         hasApiKey: Boolean(provider.apiKey)

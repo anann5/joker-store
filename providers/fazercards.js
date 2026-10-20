@@ -21,6 +21,7 @@
 
 const axios = require('axios');
 const { buildGroupKey } = require('./bestPrice');
+const { normalizeRegion } = require('./regions');
 
 const TIMEOUT_MS = Math.max(3000, Number.parseInt(process.env.PROVIDER_TIMEOUT_MS, 10) || 15000);
 const POLL_INTERVAL_MS = 2000;
@@ -31,8 +32,6 @@ const STORE_CATEGORIES = new Set([
     'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
     'itunes', 'razer_gold', 'amazon', 'steam'
 ]);
-
-const STORE_REGIONS = new Set(['global', 'us', 'tr', 'eu', 'sa']);
 
 const KIND_GIFT_CARD = 'gift_card';
 const KIND_GAME_KEY = 'game_key';
@@ -117,13 +116,12 @@ function inferCategory(name, provider) {
 }
 
 /**
- * خرائط منطقة FazerCards إلى منطقة المتجر المسموحة (إلا توجد خارج القائمة المسموحة).
+ * خرائط منطقة FazerCards إلى رمز منطقة موحّد.
+ * لا نقيّد القائمة: أي منطقة يرسلها المزوّد تُطبَّع وتُعرض
+ * (الفلترة الفعلية تتم عبر قائمة PROVIDER_n_REGIONS عند ضبطها).
  */
 function inferRegion(rawRegion, provider) {
-    const raw = String(rawRegion || '').trim().toLowerCase();
-    if (!raw) return provider.defaultRegion || 'global';
-    const mapped = provider.regionMapping?.[raw] || raw;
-    return STORE_REGIONS.has(mapped) ? mapped : (provider.defaultRegion || 'global');
+    return normalizeRegion(rawRegion, normalizeRegion(provider.defaultRegion || 'global'));
 }
 
 /**
@@ -165,7 +163,9 @@ async function fetchCatalog(provider) {
         );
         for (const offer of offers) {
             if (offer?.card_id && offer.price_usd != null) {
-                items.push(toUnifiedItem(KIND_GIFT_CARD, category.category_id, category.name, offer));
+                items.push(toUnifiedItem(KIND_GIFT_CARD, category.category_id, category.name, offer, {
+                    region: category.region
+                }));
             }
         }
     }
@@ -196,18 +196,16 @@ async function fetchCatalog(provider) {
  * (نفس حقول النموذج العام: groupKey للربط مع المزودين الآخرين).
  */
 function normalizeItem(provider, item) {
-    const kind = String(item.id || '').startsWith(`${KIND_GIFT_CARD}:`) ? KIND_GIFT_CARD : KIND_GAME_KEY;
     const name = item.name?.en || item.name?.ar || '';
     const category = inferCategory(name, provider);
-    const region = kind === KIND_GAME_KEY
-        ? inferRegion(item.region, provider)
-        : (provider.defaultRegion || 'global');
+    const region = inferRegion(item.region, provider);
+    const safeCategory = STORE_CATEGORIES.has(category) ? category : (provider.defaultCategory || 'gaming_general');
 
     return {
         ...item,
         region,
-        category: STORE_CATEGORIES.has(category) ? category : (provider.defaultCategory || 'gaming_general'),
-        groupKey: buildGroupKey({ category, region, name })
+        category: safeCategory,
+        groupKey: buildGroupKey({ category: safeCategory, region, name })
     };
 }
 

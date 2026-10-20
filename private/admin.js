@@ -1179,6 +1179,8 @@ function removeExtraImage(index) {
 function fillEditProductForm(product) {
     document.getElementById('editId').value = product._id;
     document.getElementById('editName').value = product.productName?.en || product.productName;
+    const editRegionInput = document.getElementById('editRegion');
+    if (editRegionInput) editRegionInput.value = product.region || 'global';
     document.getElementById('editPrice').value = product.price || '';
     document.getElementById('editMargin').value = marginToPercent(product.profitMargin);
     const ratingInput = document.getElementById('editRating');
@@ -1257,6 +1259,9 @@ async function saveProductEdit() {
             (document.getElementById('editImageUrl') || {}).value || ''
         );
         const payload = { price, profitMargin: margin, image, images: _editExtraImages };
+        const editRegionInput = document.getElementById('editRegion');
+        const region = editRegionInput ? editRegionInput.value.trim().toLowerCase() : '';
+        if (region) payload.region = region;
         if (ratingInput) {
             const rating = parseFloat(ratingInput.value);
             payload.rating = Number.isFinite(rating) ? Math.max(0, Math.min(5, rating)) : 0;
@@ -1551,6 +1556,8 @@ function openAddManualModal() {
     document.getElementById('manualProductNameAr').value = '';
     document.getElementById('manualProductNameEn').value = '';
     document.getElementById('manualCategory').value = '';
+    const manualRegionInput = document.getElementById('manualRegion');
+    if (manualRegionInput) manualRegionInput.value = 'global';
     document.getElementById('manualPrice').value = '';
     document.getElementById('manualProfitMargin').value = '15';
     document.getElementById('manualCodesTextarea').value = '';
@@ -1702,6 +1709,8 @@ async function saveManualProduct() {
     const productNameAr = document.getElementById('manualProductNameAr').value.trim();
     const productNameEn = document.getElementById('manualProductNameEn').value.trim();
     const category = document.getElementById('manualCategory').value.trim();
+    const manualRegionInput = document.getElementById('manualRegion');
+    const region = manualRegionInput ? manualRegionInput.value.trim().toLowerCase() : '';
     const price = parseFloat(document.getElementById('manualPrice').value) || 0;
     const profitMargin = percentToMargin(document.getElementById('manualProfitMargin').value);
 
@@ -1729,7 +1738,7 @@ async function saveManualProduct() {
         const res = await fetch('/api/admin/inventory/add-manual', {
             method: 'POST', credentials: 'include',
             headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
-            body: JSON.stringify({ productName: { ar: productNameAr, en: productNameEn }, category, price, profitMargin, manualCodes: codes, image })
+            body: JSON.stringify({ productName: { ar: productNameAr, en: productNameEn }, category, region: region || 'global', price, profitMargin, manualCodes: codes, image })
         });
         const data = await res.json();
 

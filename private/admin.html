@@ -509,6 +509,11 @@
                 <input type="text" id="editName" class="form-control">
             </div>
             <div class="form-group">
+                <label>المنطقة</label>
+                <input type="text" id="editRegion" list="regionList" class="form-control" placeholder="مثال: global أو tr">
+                <small style="color: var(--text-muted);">رمز قصير موحّد: global, us, tr, ae, sa, eu, vn, cn ...</small>
+            </div>
+            <div class="form-group">
                 <label>السعر (دولار)</label>
                 <input type="number" id="editPrice" step="0.01" class="form-control">
             </div>
@@ -591,6 +596,47 @@
                     <label>السعر (دولار)</label>
                     <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="10.00">
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label>المنطقة</label>
+                <input type="text" id="manualRegion" list="regionList" class="form-control" placeholder="global" value="global">
+                <small style="color: var(--text-muted);">رمز قصير موحّد: global, us, tr, ae, sa, eu, vn, cn ...</small>
+                <datalist id="regionList">
+                    <option value="global"></option>
+                    <option value="us"></option>
+                    <option value="tr"></option>
+                    <option value="ae"></option>
+                    <option value="sa"></option>
+                    <option value="eu"></option>
+                    <option value="vn"></option>
+                    <option value="cn"></option>
+                    <option value="gb"></option>
+                    <option value="iq"></option>
+                    <option value="jo"></option>
+                    <option value="eg"></option>
+                    <option value="kw"></option>
+                    <option value="qa"></option>
+                    <option value="om"></option>
+                    <option value="bh"></option>
+                    <option value="ps"></option>
+                    <option value="in"></option>
+                    <option value="id"></option>
+                    <option value="my"></option>
+                    <option value="ph"></option>
+                    <option value="pk"></option>
+                    <option value="ru"></option>
+                    <option value="br"></option>
+                    <option value="ca"></option>
+                    <option value="au"></option>
+                    <option value="mx"></option>
+                    <option value="de"></option>
+                    <option value="fr"></option>
+                    <option value="es"></option>
+                    <option value="it"></option>
+                    <option value="nl"></option>
+                    <option value="pl"></option>
+                </datalist>
             </div>
 
             <div class="form-group">

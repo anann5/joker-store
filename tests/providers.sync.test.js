@@ -80,11 +80,11 @@ describe('applyBestPrice — اختيار الأرخص المتوفر بالمخ
         expect(Product.updateOne).toHaveBeenCalledTimes(2);
         expect(Product.updateOne).toHaveBeenCalledWith(
             { _id: cheaperOutOfStock._id },
-            { $set: { isActive: false, providerOptions: expect.any(Array) } }
+            { $set: { isActive: false, autoHidden: true, providerOptions: expect.any(Array) } }
         );
         expect(Product.updateOne).toHaveBeenCalledWith(
             { _id: dearerInStock._id },
-            { $set: { isActive: true, providerOptions: expect.any(Array) } }
+            { $set: { isActive: true, autoHidden: false, providerOptions: expect.any(Array) } }
         );
         expect(summary).toEqual({ grouped: 1, winners: 1 });
     });
@@ -139,6 +139,19 @@ describe('applyBestPrice — اختيار الأرخص المتوفر بالمخ
         await applyBestPrice();
 
         expect(single.isActive).toBe(false);
+        expect(single.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('يعيد تفعيل منتج أحادي أُخفي تلقائياً عند عودة المخزون', async () => {
+        const single = makeMember({ id: 's', basePrice: 15, stock: 4, groupKey: 'g2' });
+        single.autoHidden = true;
+        single.isActive = false;
+        Product.find.mockResolvedValue([single]);
+
+        await applyBestPrice();
+
+        expect(single.isActive).toBe(true);
+        expect(single.autoHidden).toBe(false);
         expect(single.save).toHaveBeenCalledTimes(1);
     });
 });

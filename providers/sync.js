@@ -4,6 +4,7 @@ const adapter = require('./adapter');
 const currency = require('./currency');
 const pricing = require('./pricing');
 const { rankGroup } = require('./bestPrice');
+const { isRegionAllowed } = require('./regions');
 const { sendTelegramAlert, createLog } = require('../controllers/helpers');
 
 const PRICE_ALERT_RATIO = Number.parseFloat(process.env.PRICE_ALERT_RATIO) || 1.20;
@@ -121,6 +122,7 @@ async function recordState(provider, state) {
                 fetched: state.fetched,
                 created: state.created,
                 updated: state.updated,
+                skipped: state.skipped || 0,
                 errorCount: state.errorCount,
                 lastError: state.lastError || null,
                 ratesSource: state.ratesSource || null,
@@ -171,15 +173,21 @@ async function applyBestPrice() {
     for (const [groupKey, members] of groups) {
         if (members.length < 2) {
             // سلعة يقدمها مزود واحد فقط — تُعرض دون خيارات بديلة
-            // (نحفظ providerOptions فقط ولا نتدخل في isActive لاحترام تعطيل الأدمن،
-            // إلا عند نفاد المخزون فيُخفى المنتج تلقائياً)
+            // (لا نتدخل في تعطيل الأدمن إلا إذا كان الإخفاء تلقائياً بنفاد المخزون)
             const single = members[0];
             single.providerOptions = [{
                 provider: single.currentProvider,
                 externalId: single.externalId,
                 basePrice: Number(single.basePrice) || 0
             }];
-            if (isOutOfStock(single)) single.isActive = false;
+            if (isOutOfStock(single)) {
+                single.isActive = false;
+                single.autoHidden = true;
+            } else if (single.autoHidden) {
+                // عاد المخزون → نُعيد ظهور ما أخفيناه تلقائياً سابقاً
+                single.isActive = true;
+                single.autoHidden = false;
+            }
             await single.save();
             continue;
         }
@@ -204,6 +212,7 @@ async function applyBestPrice() {
                 {
                     $set: {
                         isActive: isWinner,
+                        autoHidden: !isWinner,
                         providerOptions: options
                     }
                 }
@@ -326,6 +335,7 @@ async function syncCatalog() {
             fetched: 0,
             created: 0,
             updated: 0,
+            skipped: 0,
             errorCount: 0,
             lastError: null
         };
@@ -339,6 +349,11 @@ async function syncCatalog() {
                     const item = adapter.normalizeItem(provider, raw);
                     if (!item.id) {
                         state.errorCount += 1;
+                        continue;
+                    }
+
+                    if (!isRegionAllowed(provider, item.region)) {
+                        state.skipped += 1;
                         continue;
                     }
 
@@ -359,6 +374,18 @@ async function syncCatalog() {
                 } catch (err) {
                     state.errorCount += 1;
                 }
+            }
+
+            // عند ضبط قائمة مناطق للمزود: إخفاء منتجاته القديمة خارج القائمة
+            if (Array.isArray(provider.regions) && provider.regions.length > 0) {
+                await Product.updateMany(
+                    {
+                        currentProvider: provider.name,
+                        isExternal: true,
+                        region: { $nin: provider.regions }
+                    },
+                    { $set: { isActive: false, autoHidden: true } }
+                );
             }
         } catch (err) {
             state.status = 'failed';

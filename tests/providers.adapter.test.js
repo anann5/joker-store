@@ -49,7 +49,7 @@ describe('Provider Adapter', () => {
         expect(normalized.name.ar).toBe('تذاكر فورتنايت');
         expect(normalized.name.en).toBe('Fortnite 1000 V-Bucks');
         expect(normalized.category).toBe('steam');
-        expect(normalized.region).toBe('united-states');
+        expect(normalized.region).toBe('us');
         expect(normalized.price).toBe(25);
         expect(normalized.currency).toBe('USD');
         expect(normalized.stock).toBe(5);
@@ -73,8 +73,10 @@ describe('Provider Adapter', () => {
         expect(mapCategory(fakeProvider, 'games')).toBe('steam');
         expect(mapCategory(fakeProvider, 'other')).toBe('other');
         expect(mapCategory(fakeProvider, null)).toBeNull();
-        expect(mapRegion(fakeProvider, 'US')).toBe('united-states');
-        expect(mapRegion(fakeProvider, 'DE')).toBe('DE');
+        expect(mapRegion(fakeProvider, 'US')).toBe('us');
+        expect(mapRegion(fakeProvider, 'DE')).toBe('de');
+        expect(mapRegion(fakeProvider, 'تركيا')).toBe('tr');
+        expect(mapRegion(fakeProvider, null)).toBeNull();
     });
 
     it('يستخرج الأكواد من استجابات الشراء بصيغ متعددة', () => {

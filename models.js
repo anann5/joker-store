@@ -142,6 +142,7 @@ const productSchema = new mongoose.Schema({
         default: []
     },
     isActive: { type: Boolean, default: true },
+    autoHidden: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });
@@ -337,6 +338,7 @@ const providerSyncStateSchema = new mongoose.Schema({
     fetched: { type: Number, default: 0 },
     created: { type: Number, default: 0 },
     updated: { type: Number, default: 0 },
+    skipped: { type: Number, default: 0 },
     errorCount: { type: Number, default: 0 },
     lastError: { type: String, default: null },
     ratesSource: { type: String, default: null },

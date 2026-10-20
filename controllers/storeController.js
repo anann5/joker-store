@@ -6,6 +6,7 @@ const siteSettings = require('../config/siteSettings');
 const notification = require('./notification');
 const pushService = require('./push');
 const { applyPromoCode, applyPromoCodeToProducts, applyPromoCodeToProductIds, round2 } = require('./promo');
+const { normalizeRegion } = require('../providers/regions');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
@@ -158,7 +159,13 @@ exports.getProductsByCategory = async (req, res) => {
             return res.status(400).json({ success: false, error: 'مفتاح الفئة غير صالح' });
         }
 
-        const products = await Product.find({ category: categoryKey, isActive: true });
+        const requestedRegion = typeof req.query.region === 'string'
+            ? normalizeRegion(req.query.region, '')
+            : '';
+        const filter = { category: categoryKey, isActive: true };
+        if (requestedRegion) filter.region = requestedRegion;
+
+        const products = await Product.find(filter);
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل في جلب المنتجات' });

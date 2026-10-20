@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { buildGroupKey } = require('./bestPrice');
+const { normalizeRegion, normalizeKey } = require('./regions');
 const fazercards = require('./fazercards');
 
 // ======================================================
@@ -127,7 +128,9 @@ function mapCategory(provider, rawValue) {
 function mapRegion(provider, rawValue) {
     const value = mapValue(provider, rawValue);
     if (!value) return null;
-    return provider.regionMapping?.[value] || value;
+    const mapped = provider.regionMapping?.[value] || value;
+    // نوحّد الصيغ (TR / Turkey / تركيا → tr) مع الحفاظ على أي قيمة غير معروفة
+    return normalizeRegion(mapped, normalizeKey(mapped) || null);
 }
 
 /**
@@ -150,6 +153,8 @@ function normalizeItem(provider, raw) {
 
     const rawId = resolvePath(raw, fields.id);
     const normalizedId = rawId != null && String(rawId).trim() !== '' ? String(rawId).trim() : null;
+    const category = mapCategory(provider, resolvePath(raw, fields.category)) || provider.defaultCategory;
+    const region = mapRegion(provider, resolvePath(raw, fields.region)) || normalizeRegion(provider.defaultRegion);
     return {
         id: normalizedId || null,
         name: {
@@ -160,15 +165,15 @@ function normalizeItem(provider, raw) {
         currency: currencyRaw || provider.currency,
         stock: Number.isFinite(stock) ? stock : null,
         image: mapValue(provider, resolvePath(raw, fields.image)) || '',
-        category: mapCategory(provider, resolvePath(raw, fields.category)) || provider.defaultCategory,
-        region: mapRegion(provider, resolvePath(raw, fields.region)) || provider.defaultRegion,
+        category,
+        region,
         description: {
             ar: (typeof descriptionRaw === 'string' ? descriptionRaw : '') || '',
             en: ''
         },
         groupKey: buildGroupKey({
-            category: mapCategory(provider, resolvePath(raw, fields.category)) || provider.defaultCategory,
-            region: mapRegion(provider, resolvePath(raw, fields.region)) || provider.defaultRegion,
+            category,
+            region,
             name: nameAr || nameEn || name || ''
         })
     };

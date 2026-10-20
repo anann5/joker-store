@@ -6,6 +6,7 @@ import { setCurrency, formatPrice } from './currency.js';
 import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, getAppliedLoyalty, clearAppliedLoyalty, setPromoDiscounts, setupReveal } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime, initPublicPulse } from './realtime.js';
+import { normalizeRegion, regionMeta, REGION_ORDER } from './regions.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
@@ -122,12 +123,25 @@ function showNextSocialProof() {
 //  دوالمساعدة (Helper Functions)
 // ======================================================
 function detectRegion(item) {
-    const text = (`${item.productName || item.name || ""  } ${  item._id || item.id || ""}`).toLowerCase();
-    if (text.includes('tr') || text.includes('تركي')) return 'tr';
-    if (text.includes('ae') || text.includes('امارات')) return 'ae';
-    if (text.includes('sa') || text.includes('سعودي')) return 'sa';
-    if (text.includes('us') || text.includes('امريكي')) return 'us';
-    if (text.includes('eu') || text.includes('اوروب')) return 'eu';
+    if (!item) return 'global';
+
+    // 1) مصدر الحقيقة: حقل المنطقة القادم من الخادم (إن وُجد)
+    const stored = normalizeRegion(item.region, '');
+    if (stored) return stored;
+
+    // 2) احتياطي: استنتاج من الاسم (للمنتجات القديمة بلا منطقة)
+    const rawName = typeof item.productName === 'string'
+        ? item.productName
+        : (item.productName?.ar || item.productName?.en || item.name || '');
+    const text = String(rawName).toLowerCase();
+
+    if (/تركي|turkey|türkiye|turkiye|(^|\s)tr(\s|$)/.test(text)) return 'tr';
+    if (/امارات|إمارات|uae|emirates|(^|\s)ae(\s|$)/.test(text)) return 'ae';
+    if (/سعودي|saudi|ksa|(^|\s)sa(\s|$)/.test(text)) return 'sa';
+    if (/امريك|أمريك|american|united states|(^|\s)us(\s|$)/.test(text)) return 'us';
+    if (/فيتنام|vietnam|(^|\s)vn(\s|$)/.test(text)) return 'vn';
+    if (/صيني|china|chinese|(^|\s)cn(\s|$)/.test(text)) return 'cn';
+    if (/اوروب|أوروب|europe|(^|\s)eu(\s|$)/.test(text)) return 'eu';
     return 'global';
 }
 
@@ -730,16 +744,13 @@ document.addEventListener('click', function(e) {
 //  دالة تحديد الريجن وجلب روابط الأعلام المحلية
 // ======================================================
 function getRegionDetails(region) {
-    const reg = String(region || 'global').toLowerCase();
-    
-    if (reg.includes('tr')) return { cls: 'badge-tr', flagUrl: '/image/flags/tr.png', isIcon: false };
-    if (reg.includes('ae')) return { cls: 'badge-ae', flagUrl: '/image/flags/ae.png', isIcon: false };
-    if (reg.includes('sa')) return { cls: 'badge-sa', flagUrl: '/image/flags/sa.png', isIcon: false };
-    if (reg.includes('vn') || reg.includes('viet')) return { cls: 'badge-vn', flagUrl: '/image/flags/vn.png', isIcon: false };
-    if (reg.includes('cn') || reg.includes('china')) return { cls: 'badge-cn', flagUrl: '/image/flags/cn.png', isIcon: false };
-    if (reg.includes('us')) return { cls: 'badge-us', flagUrl: '/image/flags/us.png', isIcon: false };
-    
-    return { cls: 'badge-global', flagUrl: '', isIcon: true }; 
+    const meta = regionMeta(region);
+    const hasFlag = Boolean(meta.flag);
+    return {
+        cls: hasFlag ? `badge-${meta.code}` : 'badge-global',
+        flagUrl: hasFlag ? `/image/flags/${meta.flag}` : '',
+        isIcon: !hasFlag
+    };
 }
 
 // ======================================================
@@ -776,11 +787,9 @@ export function selectCategory(categoryKey) {
     if (backContainer) backContainer.classList.remove('hidden');
     if (toolbar) toolbar.classList.remove('hidden');
     if (regionBar) {
-        regionBar.classList.remove('hidden');
-        regionBar.style.display = 'flex';
-        regionBar.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        const allBtn = regionBar.querySelector('[data-target="all"]');
-        if (allBtn) allBtn.classList.add('active');
+        // نُفرّغ الشريط أثناء الجلب حتى لا تظهر أزرار القسم السابق
+        regionBar.innerHTML = '';
+        regionBar.style.display = 'none';
     }
 
     // استخدام مؤشر تحميل مرئي أفضل
@@ -808,6 +817,7 @@ export function selectCategory(categoryKey) {
             }
 
             _categoryProducts = data.products; // حفظ المنتجات للترتيب والفلترة
+            renderRegionFilterButtons(); // أزرار المناطق تُبنى من منتجات القسم الفعلية
             productCache.clear(); // تفريغ الكاش قبل ملئه من جديد
             renderCategoryProducts(grid);
         }).catch(err => console.error("Error fetching products:", err));
@@ -876,11 +886,12 @@ function renderCategoryProducts(grid) {
     // 3) فلترة المنطقة الحالية
     const activeRegion = document.querySelector('#regionFilterBar .filter-btn.active');
     const currentRegion = activeRegion ? activeRegion.dataset.target : 'all';
+    const regionFiltered = currentRegion === 'all'
+        ? visible
+        : visible.filter(item => detectRegion(item) === currentRegion);
 
     // عدد البطاقات الظاهرة فعلياً (بعد فلترة المنطقة) لعرضه في بانر القسم
-    const displayedCount = visible.filter(item =>
-        currentRegion === 'all' || detectRegion(item) === currentRegion
-    ).length;
+    const displayedCount = regionFiltered.length;
 
     const bannerCountEl = document.querySelector('#categoryBanner [data-banner-count]');
     if (bannerCountEl) {
@@ -890,7 +901,7 @@ function renderCategoryProducts(grid) {
     targetGrid.innerHTML = '';
     const template = document.getElementById('product-card-template');
 
-    if (visible.length === 0) {
+    if (regionFiltered.length === 0) {
         const emptyTitle = inStockOnly
             ? (lang === 'en' ? 'No items are currently in stock.' : 'لا توجد عناصر متوفرة حالياً.')
             : (lang === 'en' ? 'No cards are available in this category yet.' : 'لا توجد بطاقات متاحة في هذا القسم حالياً.');
@@ -904,9 +915,8 @@ function renderCategoryProducts(grid) {
         return;
     }
 
-    visible.forEach(function(item, idx) {
+    regionFiltered.forEach(function(item, idx) {
         const detectedRegion = detectRegion(item);
-        if (currentRegion !== 'all' && detectedRegion !== currentRegion) return;
         const regionInfo = getRegionDetails(detectedRegion);
         const localizedName = item.productName[lang] || item.productName['ar'];
         const clientItem = formatItem({ ...item, name: localizedName }, _currentCategoryKey, detectedRegion);
@@ -981,35 +991,49 @@ function renderRegionFilterButtons() {
     const regionFilterBar = document.getElementById('regionFilterBar');
     if (!regionFilterBar) return;
 
+    const lang = getCurrentLanguage();
+    const present = new Set(_categoryProducts.map(detectRegion));
+    const ordered = REGION_ORDER.filter(code => present.has(code));
+    const unknown = [...present]
+        .filter(code => !REGION_ORDER.includes(code))
+        .sort();
+    const codes = [...ordered, ...unknown];
+
     regionFilterBar.innerHTML = ''; // تفريغ الأزرار القديمة
 
-    const regions = [
-        { key: 'all', text: t('filter_all'), icon: null },
-        { key: 'global', text: t('filter_global'), icon: '🌐' },
-        { key: 'tr', text: t('filter_tr'), flag: 'tr.png' },
-        { key: 'ae', text: t('filter_ae'), flag: 'ae.png' },
-        { key: 'sa', text: t('filter_sa'), flag: 'sa.png' },
-        { key: 'vn', text: t('filter_vn'), flag: 'vn.png' },
-        { key: 'cn', text: t('filter_cn'), flag: 'cn.png' },
-        { key: 'us', text: t('filter_us'), flag: 'us.png' }
-    ];
+    // لا مناطق فعلية لهذا القسم → يبقى الشريط مخفياً
+    if (codes.length === 0) {
+        regionFilterBar.style.display = 'none';
+        return;
+    }
+    regionFilterBar.style.display = 'flex';
 
-    regions.forEach(region => {
+    const makeButton = (key, label, flag) => {
         const btn = document.createElement('button');
         btn.className = 'filter-btn';
-        btn.dataset.target = region.key;
-
-        let content = '';
-        if (region.icon) {
-            content = `${region.icon} ${region.text}`;
-        } else if (region.flag) {
-            content = `<img src="/image/flags/${region.flag}" class="flag-img" alt="${region.key.toUpperCase()}"> ${region.text}`;
+        btn.dataset.target = key;
+        if (flag) {
+            const img = document.createElement('img');
+            img.src = `/image/flags/${flag}`;
+            img.className = 'flag-img';
+            img.alt = key.toUpperCase();
+            btn.appendChild(img);
+            btn.appendChild(document.createTextNode(` ${label}`));
+        } else if (key === 'global') {
+            btn.textContent = `🌐 ${label}`;
         } else {
-            content = region.text;
+            btn.textContent = label;
         }
-        btn.innerHTML = content;
-        regionFilterBar.appendChild(btn);
-    });
+        return btn;
+    };
+
+    regionFilterBar.appendChild(makeButton('all', t('filter_all'), null));
+
+    for (const code of codes) {
+        const meta = regionMeta(code);
+        const fallback = lang === 'en' ? meta.en : meta.ar;
+        regionFilterBar.appendChild(makeButton(code, t(`filter_${code}`, fallback), meta.flag));
+    }
 
     // تفعيل زر "الكل" افتراضياً
     const allBtn = regionFilterBar.querySelector('[data-target="all"]');
