@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { createLog, sendTelegramAlert } = require('./helpers');
 const { logSecurityEvent } = require('../middleware/securityLogger');
 const { verifyTotp } = require('../middleware/totp');
+const { resolveClientIp } = require('../middleware/clientIp');
 const { AdminSession } = require('../models');
 
 // Rate limiting storage for admin login attempts
@@ -16,26 +17,28 @@ const computeFingerprint = (ip, userAgent) => {
     return crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex');
 };
 
+// IP الزائر الحقيقي كما حدده middleware/clientIp (CF-Connecting-IP)،
+// مع رجوع آمن لـ req.ip في السياقات التي لا تمرّ عبر الميدلوير.
 const getClientIp = (req) => {
-    // نعتمد على req.ip المحسوب من Express باستخدام app.set('trust proxy', ...)
-    // فهو يتجاهل القيم التي قد يضيفها العميل في X-Forwarded-For، بعكس قراءة الترويسة الخام.
-    return req.ip || req.socket?.remoteAddress || 'unknown';
-};
-
-// نفس المنطق لسياق مآخذ الويب (socket.io) التي لا تمرّ عبر Express:
-// آخر عنوان في القائمة هو ما أضافه الوسيط الموثوق، وما قبله قابل للتزوير من العميل.
-const clientIpFrom = (xff, remoteAddress) => {
-    if (xff) {
-        const parts = String(xff).split(',').map(entry => entry.trim()).filter(Boolean);
-        if (parts.length) return parts[parts.length - 1];
-    }
-    return remoteAddress || 'unknown';
+    return req.clientIp || resolveClientIp(req.headers, req.ip || req.socket?.remoteAddress);
 };
 
 const getClientFingerprint = (req) => {
     const ip = getClientIp(req);
     const userAgent = req.headers['user-agent'] || 'unknown';
     return computeFingerprint(ip, userAgent);
+};
+
+// تُحتسب محاولات كلمة المرور الخاطئة ورمز TOTP الخاطئ معاً، وإلا أمكن
+// تخمين الرمز (6 أرقام) بلا حدّ حتى مع وجود كلمة المرور الصحيحة.
+const registerFailedAdminAttempt = (attemptKey, attempts, req, reason, eventType = 'ADMIN_LOGIN_FAILED') => {
+    attempts.count += 1;
+    if (attempts.count >= MAX_FAILED_ATTEMPTS) {
+        attempts.lockedUntil = Date.now() + LOCKOUT_DURATION;
+        logSecurityEvent('ADMIN_LOCKED_OUT', `تم إغلاق حساب الأدمن مؤقتاً بعد ${attempts.count} محاولات فاشلة`, req);
+    }
+    adminFailedAttempts.set(attemptKey, attempts);
+    logSecurityEvent(eventType, reason, req);
 };
 
 /**
@@ -75,7 +78,7 @@ exports.verifyAdminSocket = async (socket, next) => {
 
     const decoded = await verifyAdminSession(
         token,
-        clientIpFrom(socket.handshake.headers['x-forwarded-for'], socket.handshake.address),
+        resolveClientIp(socket.handshake.headers, socket.handshake.address),
         socket.handshake.headers['user-agent'] || 'unknown'
     );
     if (!decoded) return next(new Error('unauthorized'));
@@ -175,6 +178,12 @@ exports.login = async (req, res) => {
                 message: `تم إغلاق الحساب مؤقتاً. يرجى المحاولة بعد ${remaining} دقيقة.`
             });
         }
+        // انتهى القفل: نبدأ عدّاً جديداً بدل إعادة القفل بعد محاولة واحدة.
+        if (attempts.lockedUntil) {
+            attempts.count = 0;
+            attempts.lockedUntil = 0;
+            adminFailedAttempts.delete(attemptKey);
+        }
 
         const isMatch = await bcrypt.compare(password, adminHash);
         // 2FA: TOTP حقيقي (RFC 6238) إذا ضُبط ADMIN_TOTP_SECRET،
@@ -185,7 +194,7 @@ exports.login = async (req, res) => {
             const provided = String(req.body?.totp || '').trim();
             const verdict = verifyTotp(totpSecret, provided);
             if (!verdict.valid) {
-                logSecurityEvent('ADMIN_2FA_FAILED', 'رمز TOTP غير صحيح', req);
+                registerFailedAdminAttempt(attemptKey, attempts, req, 'رمز TOTP غير صحيح', 'ADMIN_2FA_FAILED');
                 return res.status(401).json({
                     success: false,
                     requireTotp: true,
@@ -195,8 +204,8 @@ exports.login = async (req, res) => {
         } else if (isMatch && legacy2FA) {
             const provided = String(req.body?.totp || '').trim();
             if (provided !== legacy2FA) {
-                logSecurityEvent('ADMIN_2FA_FAILED', 'رمز تحقق ثنائي خاطئ', req);
-                return res.status(401).json({ success: false, message: 'رمز التحقق الثنائي غير صحيح' });
+                registerFailedAdminAttempt(attemptKey, attempts, req, 'رمز تحقق ثنائي خاطئ', 'ADMIN_2FA_FAILED');
+                return res.status(401).json({ success: false, requireTotp: true, message: 'رمز التحقق الثنائي غير صحيح' });
             }
         }
         if (isMatch) {
@@ -244,15 +253,7 @@ exports.login = async (req, res) => {
             // لا يُعاد التوكن صريحاً في الاستجابة؛ المتصفح يحمله في HttpOnly cookie فقط
             res.json({ success: true, message: "تم تسجيل الدخول بنجاح" });
         } else {
-            // Increment failed attempts
-            attempts.count++;
-            if (attempts.count >= MAX_FAILED_ATTEMPTS) {
-                attempts.lockedUntil = Date.now() + LOCKOUT_DURATION;
-                logSecurityEvent('ADMIN_LOCKED_OUT', `تم إغلاق حساب الأدمن مؤقتاً بعد ${attempts.count} محاولات فاشلة`, req);
-            }
-            adminFailedAttempts.set(attemptKey, attempts);
-            
-            logSecurityEvent('ADMIN_LOGIN_FAILED', 'فشل تسجيل دخول الأدمن - كلمة مرور خاطئة', req);
+            registerFailedAdminAttempt(attemptKey, attempts, req, 'فشل تسجيل دخول الأدمن - كلمة مرور خاطئة');
             res.status(401).json({ success: false, message: "كلمة المرور غير صحيحة" });
         }
     } catch (err) {

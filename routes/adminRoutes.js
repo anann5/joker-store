@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const rateLimit = require("express-rate-limit");
+const { rateLimitKey } = require('../middleware/clientIp');
 
 // استيراد المتحكمات الجديدة
 const authController = require('../controllers/authController');
@@ -35,6 +36,7 @@ const {
 const adminLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 50,
+    keyGenerator: rateLimitKey,
     message: "محاولات كثيرة، يرجى الانتظار." //
 });
 

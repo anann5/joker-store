@@ -16,8 +16,8 @@ function mdEscape(text) {
 // Helper function to create logs
 exports.createLog = async (action, details, req, targetId = null, targetName = null) => {
     try {
-        // req.ip يُحسب وفق إعداد trust proxy فيتجاهل X-Forwarded-For المزوّر من العميل
-        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+        // req.clientIp يضبطه middleware/clientIp من CF-Connecting-IP
+        const ip = req.clientIp || req.ip || req.socket?.remoteAddress || 'unknown';
         const newLog = new Log({ action, details, ip, targetId, targetName });
         await newLog.save();
     } catch (err) {

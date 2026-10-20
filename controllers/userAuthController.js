@@ -140,8 +140,8 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        // req.ip (وفق trust proxy) يتجاهل X-Forwarded-For المزوّر، فلا يمكن تجاوز قفل المحاولات
-        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+        // req.clientIp يضبطه middleware/clientIp من CF-Connecting-IP
+        const ip = req.clientIp || req.ip || req.socket?.remoteAddress || 'unknown';
 
         // Check for account lockout
         const attemptKey = `${email.toLowerCase()}:${ip}`;

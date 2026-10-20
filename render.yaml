@@ -19,6 +19,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD_HASH
         sync: false
+      # يُولّد بأمر: node scripts/generate-totp.js — تركه فارغاً يعطّل 2FA
+      - key: ADMIN_TOTP_SECRET
+        sync: false
       - key: JWT_USER_SECRET
         sync: false
       - key: TELEGRAM_BOT_TOKEN

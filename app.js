@@ -11,6 +11,7 @@ const userRoutes = require('./routes/userRoutes');
 const { verifyAdminToken } = require('./controllers/authController');
 const { logSecurityEvent } = require('./middleware/securityLogger');
 const csrfProtection = require('./middleware/csrf');
+const { clientIpMiddleware, rateLimitKey } = require('./middleware/clientIp');
 const authController = require('./controllers/authController');
 const { validate, contactSchema } = require('./middleware/validate');
 const seoController = require('./controllers/seoController');
@@ -102,9 +103,13 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10kb' }));
 app.disable('x-powered-by');
 
+// قبل أي rate limiter: يحدد IP الزائر الحقيقي (CF-Connecting-IP) بدل IP الوكيل المشترك.
+app.use(clientIpMiddleware);
+
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: Math.max(120, Number.parseInt(process.env.API_RATE_LIMIT_MAX, 10) || 300),
+    keyGenerator: rateLimitKey,
     message: 'عدد طلبات كبير جداً، يرجى المحاولة لاحقاً.'
 });
 app.use('/api/', limiter);
@@ -503,6 +508,7 @@ app.get('/product/:productId', async (req, res, next) => {
 const csrfTokenLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
+    keyGenerator: rateLimitKey,
     message: 'عدد طلبات توليد توكن الحماية كبير جداً، يرجى المحاولة لاحقاً.'
 });
 
@@ -511,6 +517,7 @@ app.get('/api/csrf-token', csrfTokenLimiter, csrfProtection.issueToken);
 const contactLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 5,
+    keyGenerator: rateLimitKey,
     message: 'عدد رسائل الاتصال كبير جداً، يرجى المحاولة لاحقاً.'
 });
 

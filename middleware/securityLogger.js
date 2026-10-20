@@ -32,8 +32,8 @@ function rotateIfNeeded() {
 exports.logSecurityEvent = (eventType, message, req) => {
     try {
         const timestamp = new Date().toISOString();
-        // req.ip يحترم إعداد trust proxy ويتجاهل X-Forwarded-For الذي يرسله العميل
-        const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+        // req.clientIp يضبطه middleware/clientIp من CF-Connecting-IP
+        const ip = req.clientIp || req.ip || req.socket?.remoteAddress || 'unknown';
         const userAgent = req.headers['user-agent'] || 'unknown';
         const userId = req.user?.userId || req.admin?.userId || 'anonymous';
         

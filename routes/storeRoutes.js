@@ -8,11 +8,13 @@ const diagStore = require('../controllers/diagStore');
 const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/authMiddleware');
 const { validate, checkoutSchema, pushSubscribeSchema, pushUnsubscribeSchema, stockAlertSubscribeSchema, stockAlertUnsubscribeSchema, fcmTokenSchema } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
+const { rateLimitKey } = require('../middleware/clientIp');
 
 // ليميتر خاص بإنشاء الطلبات (منع إغراق قاعدة البيانات بطلبات وهمية)
 const checkoutLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 8,
+    keyGenerator: rateLimitKey,
     message: 'عدد الطلبات كبير جداً، يرجى المحاولة لاحقاً.'
 });
 
@@ -20,6 +22,7 @@ const checkoutLimiter = rateLimit({
 const trackOrderLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 20,
+    keyGenerator: rateLimitKey,
     message: 'محاولات كثيرة، يرجى الانتظار قليلاً.'
 });
 
@@ -27,6 +30,7 @@ const trackOrderLimiter = rateLimit({
 const codeRevealLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
+    keyGenerator: rateLimitKey,
     message: 'محاولات كثيرة لكشف الأكواد، يرجى الانتظار قليلاً.'
 });
 
@@ -49,6 +53,7 @@ const { supportTicketSchema, supportTicketTrackingSchema } = require('../middlew
 const captchaLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 60,
+    keyGenerator: rateLimitKey,
     message: 'طلبات كثيرة جداً، يرجى الانتظار قليلاً.'
 });
 router.get('/security/captcha', captchaLimiter, (req, res) => {
@@ -59,6 +64,7 @@ router.get('/security/captcha', captchaLimiter, (req, res) => {
 const ticketLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
+    keyGenerator: rateLimitKey,
     message: 'عدد التذاكر كبير جداً، يرجى المحاولة لاحقاً.'
 });
 router.post('/support/tickets', ticketLimiter, validate(supportTicketSchema), supportController.createTicket);
@@ -74,6 +80,7 @@ router.get('/products/latest-orders', storeController.getLatestOrders);
 const pushLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
+    keyGenerator: rateLimitKey,
     message: 'عدد الطلبات كبير جداً، يرجى المحاولة لاحقاً.'
 });
 
@@ -81,6 +88,7 @@ const pushLimiter = rateLimit({
 const diagLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 300,
+    keyGenerator: rateLimitKey,
     message: 'too many requests'
 });
 
@@ -95,7 +103,7 @@ router.post('/push/fcm-token', pushLimiter, verifyUserTokenOptional, validate(fc
 router.post('/push/app-diag', diagLimiter, (req, res) => {
     const entry = {
         ua: String(req.get('user-agent') || '').slice(0, 200),
-        ip: String(req.ip || ''),
+        ip: String(req.clientIp || req.ip || ''),
         body: req.body || {}
     };
      

@@ -1,0 +1,32 @@
+name: MongoDB backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  dump:
+    name: Dump database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create compressed dump
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          if [ -z "$MONGODB_URI" ]; then
+            echo "MONGODB_URI repository secret is required."
+            exit 1
+          fi
+          mkdir -p backup
+          docker run --rm -e MONGODB_URI -v "$PWD/backup:/backup" mongo:7 \
+            sh -c 'mongodump --uri="$MONGODB_URI" --gzip --archive=/backup/joker-store.gz'
+          ls -lh backup/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongodb-backup-${{ github.run_number }}
+          path: backup/joker-store.gz
+          retention-days: 30
+          if-no-files-found: error
