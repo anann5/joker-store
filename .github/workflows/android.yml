@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-build-log
           path: android/build.log
@@ -131,7 +131,7 @@ jobs:
           ls -lh "$APK_OUT"
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: joker-store-apk
           path: joker-store.apk
