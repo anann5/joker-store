@@ -276,7 +276,9 @@ app.get('/favicon.ico', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-    res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
+    // RENDER_GIT_COMMIT يوفره Render — يسمح بالتأكد من الإصدار المنشور فعلاً.
+    const commit = String(process.env.RENDER_GIT_COMMIT || '').slice(0, 7);
+    res.json({ success: true, status: 'ok', timestamp: new Date().toISOString(), ...(commit ? { commit } : {}) });
 });
 
 app.get('/robots.txt', seoController.robotsTxt);
