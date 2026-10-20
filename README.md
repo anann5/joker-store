@@ -70,10 +70,10 @@ docker run -p 5850:5850 --env-file .env joker-store
 4. بعد إعادة النشر سيُطلب رمز 6 أرقام مع كلمة المرور، وتُحتسب المحاولات الخاطئة ضمن قفل الدخول.
 
 ## النسخ الاحتياطي والمراقبة
-- نسخ احتياطي يومي: [backup.yml](.github/workflows/backup.yml) يشغّل `mongodump` ويرفع أرشيفاً مضغوطاً كـ Artifact لمدة 30 يوماً.
-  - أضف سرّ المستودع `MONGODB_URI` (Settings → Secrets and variables → Actions).
+- نسخ احتياطي يومي: [backup.yml](.github/workflows/backup.yml) يشغّل `mongodump` ثم يشفّر الأرشيف (AES-256) قبل رفعه كـ Artifact لمدة 30 يوماً.
+  - أضف السرّين `MONGODB_URI` و `BACKUP_PASSPHRASE` (Settings → Secrets and variables → Actions).
   - يجب أن يسمح Atlas لعناوين GitHub Actions (عادةً `0.0.0.0/0`).
-  - للاستعادة: `mongorestore --uri="$MONGODB_URI" --gzip --archive=joker-store.gz`.
+  - للاستعادة: `openssl enc -d -aes-256-cbc -pbkdf2 -in joker-store.gz.enc -out joker-store.gz -pass env:BACKUP_PASSPHRASE` ثم `mongorestore --uri="$MONGODB_URI" --gzip --archive=joker-store.gz`.
 - مراقبة كل 10 دقائق: [uptime.yml](.github/workflows/uptime.yml) يفحص `/health` ويرسل تنبيهاً على تيليجرام عند الفشل.
   - أضف السرّين `TELEGRAM_BOT_TOKEN` و `TELEGRAM_CHAT_ID` (اختياري).
   - الفحص الدوري يقلل أيضاً من سبات Render المجاني.
@@ -82,3 +82,4 @@ docker run -p 5850:5850 --env-file .env joker-store
 - استخدم HTTPS دائماً في الإنتاج.
 - لا تشارك قيم `.env` أو مفاتيح الحسابات.
 - راقب السجلات والخدمة بعد النشر.
+- حافة Cloudflare المشتركة في `onrender.com` لا تخزّن الأصول (`cf-cache-status: DYNAMIC`). لتفعيل الكاش استخدم نطاقاً مخصصاً مع حساب Cloudflare وقواعد Cache Rules لـ `/image/*` و `/vendor/*`.
