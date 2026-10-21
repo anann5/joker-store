@@ -40,10 +40,12 @@ function getAdmin() {
         return null;
     }
     try {
-        adminInstance = admin.initializeApp({ credential: admin.credential.cert(cred) });
+        // firebase-admin v14: cert() أصبحت دالة عليا بدل admin.credential.cert()
+        const cert = typeof admin.cert === 'function' ? admin.cert : admin.credential.cert;
+        adminInstance = admin.initializeApp({ credential: cert(cred) });
     } catch (_e) {
         try {
-            adminInstance = admin.app();
+            [adminInstance] = admin.getApps();
         } catch (_e2) {
             return null;
         }

@@ -10,7 +10,7 @@
     "test": "jest --detectOpenHandles --forceExit"
   },
   "engines": {
-    "node": ">=20.0.0 <25.0.0"
+    "node": ">=22.0.0 <25.0.0"
   },
   "keywords": [],
   "author": "",
@@ -24,7 +24,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^14.5.0",
     "helmet": "^8.2.0",
     "joi": "^18.2.3",
     "jsonwebtoken": "^9.0.3",

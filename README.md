@@ -3,7 +3,7 @@
 متجر إلكتروني يدعم عرض المنتجات، السلة، الدفع، وإدارة الأدمن. المشروع مبني بـ Node.js + Express + MongoDB وموجه لخدمة متجر بطاقات رقمية وألعاب.
 
 ## المتطلبات
-- Node.js 20+
+- Node.js 22+
 - MongoDB
 - npm
 
@@ -52,6 +52,17 @@ docker run -p 5850:5850 --env-file .env joker-store
 - `ADMIN_PASSWORD_HASH`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_CHAT_ID`
+
+## النطاق المخصص وكاش Cloudflare
+1. Render → Settings → Custom Domains → أضف النطاق واحصل على هدف CNAME.
+2. Cloudflare → DNS → أضف CNAME (Proxy مفعّل) إلى هدف Render، ثم SSL/TLS → Full (strict).
+3. Render → Environment → `SITE_URL=https://<domain>` (يُستخدم في canonical وCSP وSocket).
+4. Cache Rules: كاش لـ `/image/*` و `/vendor/*` (Edge TTL: شهر)، وBypass لـ `/api/*` و `/admin*` و `/login*`. لا تفعّل Cache Everything على HTML.
+5. حدّث `capacitor.config.json` (`server.url` و`allowNavigation`) ثم أعد بناء APK، وإلا بقي التطبيق على النطاق القديم.
+
+## تفعيل مزوّد أو الدفع التلقائي
+- المزوّدون: املأ `PROVIDER_1_*` (انظر [.env.example](.env.example)) ثم `PROVIDERS_COUNT=1` وأعد النشر، ثم اضغط «مزامنة» من لوحة الأدمن. يتطلب API key وBase URL ومسارات items/balance/purchase وطريقة المصادقة.
+- الدفع التلقائي غير مفعّل حالياً (التحويل يدوي). يتطلب من مزوّد الدفع: merchant ID وAPI key/secret وwebhook URL ووثائق API.
 
 ## هيكل المشروع
 - server.js: نقطة دخول التطبيق
