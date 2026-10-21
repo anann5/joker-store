@@ -17,9 +17,14 @@ jobs:
       - name: Ping /health
         id: health
         run: |
-          code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 25 https://joker-store.onrender.com/health || true)
+          code=000
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 25 https://joker-store.onrender.com/health || true)
+            echo "attempt $attempt: HTTP $code"
+            if [ "$code" = "200" ]; then break; fi
+            sleep 15
+          done
           echo "code=$code" >> "$GITHUB_OUTPUT"
-          echo "HTTP $code"
           cat /tmp/health.json 2>/dev/null || true
           test "$code" = "200"
 
