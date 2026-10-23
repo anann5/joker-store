@@ -158,6 +158,51 @@ function clearCache() {
     cachedAt = 0;
 }
 
+/**
+ * إعدادات عرض العملة للواجهة: العملة الرسمية + سعر صرف الدولار اليومي.
+ * السعر يُجلب من نفس محرك العملة (مخزّن مؤقتاً حسب FX_CACHE_TTL_MIN).
+ */
+async function getDisplayConfig() {
+    let ilsPerUsd = null;
+    let updatedAt = null;
+    let source = 'none';
+    const timeoutMs = Math.max(500, Number.parseInt(process.env.FX_DISPLAY_TIMEOUT_MS, 10) || 3000);
+    let timer = null;
+    try {
+        const ratePromise = getRate('USD', 'ILS').catch(() => null);
+        const timeoutPromise = new Promise(resolve => {
+            timer = setTimeout(() => resolve(null), timeoutMs);
+        });
+        ilsPerUsd = await Promise.race([ratePromise, timeoutPromise]);
+        if (Number.isFinite(ilsPerUsd) && ilsPerUsd > 0) {
+            const state = await status();
+            updatedAt = state.updatedAt;
+            source = state.source;
+        }
+    } finally {
+        if (timer) clearTimeout(timer);
+    }
+
+    if (!Number.isFinite(ilsPerUsd) || ilsPerUsd <= 0) {
+        const manual = Number.parseFloat(process.env.FX_USD_ILS);
+        if (Number.isFinite(manual) && manual > 0) {
+            ilsPerUsd = manual;
+            source = 'manual';
+        }
+    }
+
+    return {
+        code: STORE_CURRENCY,
+        symbol: STORE_CURRENCY_SYMBOL,
+        supported: ['ILS', 'USD'],
+        ilsPerUsd: Number.isFinite(ilsPerUsd) && ilsPerUsd > 0
+            ? Number(ilsPerUsd.toFixed(4))
+            : null,
+        rateUpdatedAt: updatedAt,
+        rateSource: source
+    };
+}
+
 async function status() {
     const manual = manualRates();
     let source = Object.keys(manual).length > 0 ? 'manual' : 'none';
@@ -181,5 +226,6 @@ module.exports = {
     roundMoney,
     clearCache,
     status,
+    getDisplayConfig,
     _internal: { manualRates, getUsdRates }
 };

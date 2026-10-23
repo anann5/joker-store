@@ -2,7 +2,7 @@ import { showAllCategories, showProductDetails, updateCartUI, showToast, initToa
 import { cart, addToCart, clearCart } from './cart.js';
 import { initAuth, getCurrentUser } from './auth.js';
 import { initI18n, getCurrentLanguage, t } from './i18n.js';
-import { setCurrency, formatPrice } from './currency.js';
+import { setCurrency, formatPrice, formatStorePrice, getDisplayCurrency, setDisplayCurrency } from './currency.js';
 import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, toggleWishlistKey, getWishlist, resolveImageUrl, getCategoryTheme, bestSellerIds, applyProductBadge, getAppliedPromo, setAppliedPromo, clearAppliedPromo, getAppliedLoyalty, clearAppliedLoyalty, setPromoDiscounts, setupReveal } from './shared.js';
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime, initPublicPulse } from './realtime.js';
@@ -247,14 +247,43 @@ async function showWishlist() {
 let siteConfig = null;
 let paymentProofUrl = null;
 
+function syncCurrencySwitcher() {
+    const btn = document.getElementById('currencySwitcher');
+    const label = document.getElementById('currencySwitcherLabel');
+    if (!btn || !label) return;
+
+    const display = getDisplayCurrency();
+    label.textContent = display.symbol;
+    btn.dataset.code = display.code;
+    btn.hidden = display.available.length < 2;
+
+    const nextLabel = display.code === 'USD'
+        ? 'عرض الأسعار بالشيكل'
+        : 'عرض الأسعار بالدولار';
+    btn.title = nextLabel;
+    btn.setAttribute('aria-label', nextLabel);
+
+    if (btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+        const current = getDisplayCurrency();
+        const next = current.code === 'USD' ? 'ILS' : 'USD';
+        if (!setDisplayCurrency(next)) {
+            showToast('سعر الصرف غير متاح حالياً، حاول لاحقاً', 'info');
+            return;
+        }
+        window.location.reload();
+    });
+}
+
 async function fetchSiteConfig() {
     try {
         const res = await fetch('/api/site-config');
         const data = await res.json();
         if (data.success) {
             siteConfig = data.config;
-            const currency = siteConfig.currency || {};
-            setCurrency(currency.code, currency.symbol);
+            setCurrency(siteConfig.currency || {});
+            syncCurrencySwitcher();
         }
     } catch (_e) {
         siteConfig = null;
@@ -470,7 +499,7 @@ async function handleTrackOrder() {
                     </div>
                     ${isFailure ? buildOrderFailureTimeline() : buildOrderTimeline(order.status)}
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
-                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${formatPrice(order.price)}</b></div>
+                    <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${formatStorePrice(order.price)}</b></div>
                     ${codesHtml}
                 </div>`;
         }).join('');
@@ -1713,6 +1742,10 @@ async function initializeApp() {
     // 0. 🔥 خطوة حاسمة: ربط المستمع أولاً لضمان التقاط الحدث الأولي
     window.addEventListener('languageChanged', handleLanguageChange);
 
+    // 0. جلب إعدادات الموقع أولاً حتى تُعرض الأسعار بعملة العرض المختارة
+    // (شيكل/دولار) منذ أول رسم للبطاقات، دون انتظار إعادة الرسم.
+    await fetchSiteConfig();
+
     // 1. تهيئة نظام الترجمة أولاً. سيقوم هذا تلقائياً بتحديد اللغة الصحيحة،
     // تحميل الترجمات، وإطلاق حدث 'languageChanged'. ننتظر اكتماله قبل
     // عرض المحتوى الديناميكي لضمان ترجمته باللغة الصحيحة منذ البداية.
@@ -1739,8 +1772,7 @@ async function initializeApp() {
     setupReveal(document); // ظهور متدرّج لعناوين الأقسام وبطاقاتها الثابتة
     renderPromotions(); // عرض قسم "عروض جاهزة الشحن"
 
-    // ⚙️ جلب إعدادات الموقع (أرقام الدفع، السوشيال، الإحصائيات) قبل ربط الأحداث
-    await fetchSiteConfig();
+    // ⚙️ تطبيق إعدادات الموقع (أرقام الدفع، السوشيال، الإحصائيات) قبل ربط الأحداث
     applySiteConfig();
     
     updateCartUI(); // تحديث السلة فور فتح الصفحة

@@ -68,6 +68,16 @@ describe('Currency Engine', () => {
         expect(result).toBeCloseTo(185, 5);
     });
 
+    it('يوفر سعر صرف الدولار اليومي لعملة العرض', async () => {
+        process.env.FX_USD_ILS = '3.7';
+        currency.clearCache();
+        const config = await currency.getDisplayConfig();
+        expect(config.code).toBe(currency.STORE_CURRENCY);
+        expect(config.supported).toEqual(['ILS', 'USD']);
+        expect(config.ilsPerUsd).toBeCloseTo(3.7, 4);
+        delete process.env.FX_USD_ILS;
+    });
+
     it('يعرض رمز ورمز عملة المتجر في الحالة', async () => {
         const status = await currency.status();
         expect(status.code).toBe(currency.STORE_CURRENCY);

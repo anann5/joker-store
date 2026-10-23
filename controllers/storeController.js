@@ -7,6 +7,8 @@ const notification = require('./notification');
 const pushService = require('./push');
 const { applyPromoCode, applyPromoCodeToProducts, applyPromoCodeToProductIds, round2 } = require('./promo');
 const { normalizeRegion } = require('../providers/regions');
+const currency = require('../providers/currency');
+const fxPricing = require('../providers/fxPricing');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
@@ -202,6 +204,13 @@ exports.getLatestOrders = async (_req, res) => {
  */
 exports.getSiteConfig = async (_req, res) => {
     try {
+        // تحديث أسعار الدولار إذا مرّ 12 ساعة على آخر مزامنة (مرة واحدة فقط لكل فترة)
+        const fxResult = await fxPricing.refreshIfStale().catch(err => {
+            console.error('[fx] تعذر تحديث الأسعار عند تحميل الإعدادات:', err.message);
+            return null;
+        });
+        if (fxResult && fxResult.updated > 0) exports.clearStorefrontCache();
+
         // إحصائيات حقيقية من قاعدة البيانات: عدد الطلبات المكتملة والناجحة زائداً عدد العملاء المميزين
         // مخزنة مؤقتاً (TTL قصير) لأنها تُستدعى في كل تحميل للواجهة وهي تكلفة تجميع كاملة على الطلبات
         const config = await cacheWrap('siteConfig', 60, async () => {
@@ -221,6 +230,7 @@ exports.getSiteConfig = async (_req, res) => {
             ]);
 
             const aggregate = orderStats[0] || { total: 0, completed: 0 };
+            const displayCurrency = await currency.getDisplayConfig();
 
             return {
                 payment: {
@@ -228,7 +238,7 @@ exports.getSiteConfig = async (_req, res) => {
                     palpayNumber: siteSettings.payment.palpayNumber,
                     refaktNumber: siteSettings.payment.refaktNumber
                 },
-                currency: siteSettings.currency,
+                currency: { ...siteSettings.currency, ...displayCurrency },
                 social: siteSettings.social,
                 analytics: siteSettings.analytics,
                 push: {
@@ -642,6 +652,15 @@ exports.createOrder = async (req, res) => {
         let total = 0;
         let orderCost = 0;
 
+        // أسعار الصرف الحالية هي المرجع النهائي عند الدفع (وليس السعر المخزّن مسبقاً)
+        const hasAutoPricedItem = productsInCart.some(product => product.autoPrice);
+        const fxRates = hasAutoPricedItem
+            ? await fxPricing.getRatesForProducts(productsInCart).catch(err => {
+                console.error('[order] تعذر جلب أسعار الصرف، سيُستخدم السعر المحفوظ:', err.message);
+                return new Map();
+            })
+            : new Map();
+
         for (const [productId, qty] of quantities) {
             const product = productMap.get(productId);
             if (!product || !product.isActive) {
@@ -657,7 +676,10 @@ exports.createOrder = async (req, res) => {
                 }
             }
 
-            const unitPrice = Number(product.price);
+            const unitPrice = fxPricing.resolveUnitPrice(product, fxRates);
+            if (!(unitPrice > 0)) {
+                return res.status(400).json({ success: false, error: 'تعذر تحديد سعر أحد المنتجات.' });
+            }
             const itemPrice = round2(unitPrice * qty);
             total += itemPrice;
             orderCost += (Number(product.costPrice) || 0) * qty;

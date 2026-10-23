@@ -7946,3 +7946,32 @@ body.pwa-bar-visible .social-proof {
 /* Android edge-to-edge (Android 15/16): keep content below the status bar */
 body { padding-top: env(safe-area-inset-top, 0px); }
 header { top: env(safe-area-inset-top, 0px); }
+
+/* عملة العرض: تبديل الشيكل/الدولار + ملاحظة الدفع النهائي */
+.currency-switcher {
+    min-width: 56px;
+    gap: 6px;
+}
+
+.currency-switcher span {
+    font-weight: 700;
+    font-size: 0.82rem;
+}
+
+.currency-note {
+    margin: 10px 0 0;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    border: 1px dashed rgba(250, 204, 21, 0.35);
+    background: rgba(250, 204, 21, 0.08);
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+    .currency-switcher {
+        min-width: 48px;
+        padding-inline: 8px;
+    }
+}

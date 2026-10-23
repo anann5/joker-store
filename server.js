@@ -137,6 +137,9 @@ if (hasConfiguredProviders) {
     }, Math.max(10, Number.parseInt(process.env.INITIAL_SYNC_DELAY_SEC, 10) || 30) * 1000);
 }
 
+// مزامنة أسعار الدولار تلقائياً (USD → ILS) كل عدة ساعات
+require('./providers/fxPricing').start();
+
 // فحص دوري للمخزون المنخفض مع تنبيه تيليجرام
 const { checkLowStockAlert } = require('./controllers/helpers');
 const LOW_STOCK_INTERVAL_HOURS = Math.max(1, Number.parseInt(process.env.LOW_STOCK_CHECK_INTERVAL_HOURS, 10) || 6);

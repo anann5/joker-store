@@ -1,6 +1,6 @@
 /* eslint-disable no-await-in-loop -- رفع صور المراجعة تسلسلياً مقصود (حد أقصى 3 + تجنّب حدود المعدّل) */
 import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
-import { formatPrice } from './currency.js';
+import { formatPrice, formatStorePrice, getDisplayCurrency } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
 
 let toastContainer = null;
@@ -413,6 +413,16 @@ export function showProductDetails(product, currentCategory = '') {
 
     view.querySelector('.product-name').textContent = product.name;
     view.querySelector('.product-price').textContent = formatPrice(product.price);
+    const priceNote = view.querySelector('[data-price-note]');
+    if (priceNote) {
+        const display = getDisplayCurrency();
+        priceNote.hidden = !display.isConverted;
+        if (display.isConverted) {
+            priceNote.textContent = getCurrentLanguage() === 'en'
+                ? `Final charge: ${formatStorePrice(product.price)} (USD display is approximate).`
+                : `المبلغ النهائي عند الدفع: ${formatStorePrice(product.price)} (عرض الدولار تقريبي).`;
+        }
+    }
     const ratingZone = view.querySelector('[data-rating]');
     if (ratingZone) {
         ratingZone.innerHTML = renderRatingStars(product.rating, product.reviewsCount);
@@ -744,7 +754,7 @@ export function updateCartUI() {
                 <div class="cart-item">
                     <div class="cart-item-details">
                         <span class="cart-item-name">${escapeHtml(item.name)}</span>
-                        <span class="cart-item-price">${formatPrice(item.price)}</span>
+                        <span class="cart-item-price">${formatStorePrice(item.price)}</span>
                     </div>
                     <button type="button" class="cart-qty-btn" data-cart-dec="${index}" aria-label="${t('cart_decrease')}">−</button>
                     <input type="text" class="cart-item-qty" value="${Number(item.qty) || 1}" readonly>
@@ -755,7 +765,21 @@ export function updateCartUI() {
     }
 
     const totals = cartTotals(items);
-    if (totalEl) totalEl.textContent = formatPrice(totals.total);
+    if (totalEl) totalEl.textContent = formatStorePrice(totals.total);
+
+    const display = getDisplayCurrency();
+    const showNote = display.isConverted && items.length > 0;
+    const noteText = showNote
+        ? (getCurrentLanguage() === 'en'
+            ? `Final payment is charged in ${display.storeCode}: ${formatStorePrice(totals.total)}. USD display is approximate at today's rate.`
+            : `الدفع النهائي بعملة المتجر: ${formatStorePrice(totals.total)}. عرض الدولار تقريبي حسب سعر الصرف اليوم.`)
+        : '';
+    ['cartCurrencyNote', 'reviewCurrencyNote'].forEach(id => {
+        const note = document.getElementById(id);
+        if (!note) return;
+        note.hidden = !showNote;
+        note.textContent = noteText;
+    });
 
     // شريط السلة الثابت للجوال
     const mobileBar = document.getElementById('mobileCartBar');
@@ -763,7 +787,7 @@ export function updateCartUI() {
         const countEl = document.getElementById('mobileCartCount');
         const totalElBar = document.getElementById('mobileCartTotal');
         if (countEl) countEl.textContent = String(totalQty);
-        if (totalElBar) totalElBar.textContent = formatPrice(totals.total);
+        if (totalElBar) totalElBar.textContent = formatStorePrice(totals.total);
         const hasItems = items.length > 0;
         mobileBar.classList.toggle('bar-visible', hasItems);
         mobileBar.setAttribute('aria-hidden', hasItems ? 'false' : 'true');
@@ -792,7 +816,7 @@ export function updateCartUI() {
         if (promo && totals.discount > 0) {
             cartDiscountRow.hidden = false;
             cartDiscountLabel.textContent = t('cart_discount').replace('{code}', promo.code || '');
-            cartDiscountAmount.textContent = `-${formatPrice(totals.discount)}`;
+            cartDiscountAmount.textContent = `-${formatStorePrice(totals.discount)}`;
         } else {
             cartDiscountRow.hidden = true;
         }
@@ -807,10 +831,10 @@ export function updateCartUI() {
                 <div class="review-cart-item">
                     <span class="review-cart-name">${escapeHtml(item.name)}</span>
                     <span class="review-cart-qty">× ${Number(item.qty) || 1}</span>
-                    <span class="review-cart-price">${formatPrice(Number(item.price || 0) * (Number(item.qty) || 1))}</span>
+                    <span class="review-cart-price">${formatStorePrice(Number(item.price || 0) * (Number(item.qty) || 1))}</span>
                 </div>`).join('');
         const reviewTotalEl = document.querySelector('.review-total-row .cart-total-amount');
-        if (reviewTotalEl) reviewTotalEl.textContent = formatPrice(totals.total);
+        if (reviewTotalEl) reviewTotalEl.textContent = formatStorePrice(totals.total);
         const reviewDiscountRow = document.getElementById('reviewDiscountRow');
         const reviewDiscountLabel = document.getElementById('reviewDiscountLabel');
         const reviewDiscountAmount = document.getElementById('reviewDiscountAmount');
@@ -818,7 +842,7 @@ export function updateCartUI() {
             if (promo && totals.discount > 0) {
                 reviewDiscountRow.hidden = false;
                 reviewDiscountLabel.textContent = t('cart_discount').replace('{code}', promo.code || '');
-                reviewDiscountAmount.textContent = `-${formatPrice(totals.discount)}`;
+                reviewDiscountAmount.textContent = `-${formatStorePrice(totals.discount)}`;
             } else {
                 reviewDiscountRow.hidden = true;
             }
@@ -932,11 +956,11 @@ export async function refreshLoyaltySection() {
             if (balEl) balEl.textContent = String(data.points);
             const applied = getAppliedLoyalty();
             if (applied) {
-                if (preview) preview.textContent = `-${formatPrice(applied.discount)}`;
+                if (preview) preview.textContent = `-${formatStorePrice(applied.discount)}`;
                 if (input) input.value = String(applied.points);
                 if (redeemBtn) redeemBtn.hidden = true;
                 if (removeBtn) removeBtn.hidden = false;
-                if (feedback) { feedback.hidden = false; feedback.textContent = `${t('loyalty_discount')  }: -${  formatPrice(applied.discount)}`; feedback.dataset.state = 'success'; }
+                if (feedback) { feedback.hidden = false; feedback.textContent = `${t('loyalty_discount')  }: -${  formatStorePrice(applied.discount)}`; feedback.dataset.state = 'success'; }
             } else {
                 if (preview) preview.textContent = data.points >= 10 ? `(${  t('loyalty_min_redeem')  })` : '';
                 if (redeemBtn) redeemBtn.hidden = false;
@@ -961,7 +985,7 @@ export async function refreshLoyaltySection() {
             if (pts > _loyaltyBalance) { if (fb) { fb.hidden = false; fb.textContent = t('loyalty_insufficient'); fb.dataset.state = 'error'; } return; }
             const discount = Math.round(pts * 0.10 * 100) / 100;
             setAppliedLoyalty({ points: pts, discount });
-            showToast(`${t('loyalty_discount')  }: -${  formatPrice(discount)}`, 'success');
+            showToast(`${t('loyalty_discount')  }: -${  formatStorePrice(discount)}`, 'success');
             updateCartUI();
         });
         if (rmBtn) rmBtn.addEventListener('click', () => {

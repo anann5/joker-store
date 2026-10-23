@@ -98,6 +98,13 @@ const productSchema = new mongoose.Schema({
     },
     price: { type: Number, required: true, min: 0 },
     priceCurrency: { type: String, default: 'USD' },
+    // سعر البيع بالدولار + تحويل تلقائي إلى الشيكل حسب سعر الصرف اليومي
+    priceUsd: { type: Number, default: 0, min: 0 },
+    // عملة السعر المصدر (USD, EUR, TRY, ...) — تُحوَّل إلى ILS بسعر الصرف اليومي
+    priceSourceCurrency: { type: String, default: 'USD', uppercase: true, trim: true },
+    autoPrice: { type: Boolean, default: false },
+    lastFxRate: { type: Number, default: 0 },
+    lastFxSyncAt: { type: Date, default: null },
     description: {
         ar: { type: String, default: 'لا يوجد وصف متاح حالياً لهذا المنتج.' },
         en: { type: String, default: 'No description is available for this product at the moment.' }

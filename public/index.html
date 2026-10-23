@@ -104,6 +104,10 @@
                 <i class="fas fa-globe"></i>
                 <span>EN</span>
             </button>
+            <button id="currencySwitcher" class="header-btn currency-switcher" title="عرض الأسعار بالدولار" aria-label="عرض الأسعار بالدولار">
+                <i class="fas fa-money-bill-wave"></i>
+                <span id="currencySwitcherLabel">₪</span>
+            </button>
         </div>
 
         <div id="userAuthContainer" class="user-auth-zone">
@@ -575,6 +579,7 @@
                     <span class="cart-total-label promo-discount-label" id="cartDiscountLabel"></span>
                     <span class="cart-total-amount promo-discount-amount" id="cartDiscountAmount"></span>
                 </div>
+                <p class="currency-note" id="cartCurrencyNote" hidden></p>
             </div>
 
         <!-- الخطوة 2: الدفع -->
@@ -639,6 +644,7 @@
                         <span class="cart-total-label promo-discount-label" id="reviewDiscountLabel"></span>
                         <span class="cart-total-amount promo-discount-amount" id="reviewDiscountAmount"></span>
                     </div>
+                    <p class="currency-note" id="reviewCurrencyNote" hidden></p>
                 </div>
 
                 <div class="trust-badges" aria-label="Trust badges">
@@ -886,7 +892,8 @@
             </div>
             <div class="detail-stock" data-stock-badge></div>
             <div class="detail-last-update" data-last-update style="font-size:0.75rem;color:var(--text-muted);margin-top:6px;"></div>
-            <div class="price-tag product-price"></div>
+                        <div class="price-tag product-price"></div>
+                        <div class="currency-note" data-price-note hidden></div>
             <div class="qty-selector">
                 <button type="button" class="qty-btn qty-dec" data-qty-dec aria-label="تقليل الكمية">−</button>
                 <input type="number" class="qty-input" value="1" min="1" max="10" data-qty-input aria-label="الكمية">

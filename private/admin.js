@@ -39,7 +39,7 @@ function marginToPercent(multiplier) {
  */
 function percentToMargin(percent) {
     const value = parseFloat(percent);
-    return Number.isFinite(value) && value > 0 ? 1 + value / 100 : 1.15;
+    return Number.isFinite(value) && value > 0 ? 1 + value / 100 : null;
 }
 
 /**
@@ -1181,8 +1181,15 @@ function fillEditProductForm(product) {
     document.getElementById('editName').value = product.productName?.en || product.productName;
     const editRegionInput = document.getElementById('editRegion');
     if (editRegionInput) editRegionInput.value = product.region || 'global';
-    document.getElementById('editPrice').value = product.price || '';
-    document.getElementById('editMargin').value = marginToPercent(product.profitMargin);
+    const isAutoPrice = product.autoPrice === true;
+    document.getElementById('editPrice').value = isAutoPrice
+        ? (product.priceUsd || '')
+        : (product.price || '');
+    document.getElementById('editAutoPrice').checked = isAutoPrice;
+    document.getElementById('editPriceCurrency').value = product.priceSourceCurrency || 'USD';
+    document.getElementById('editMargin').value = product.profitMarginOverride
+        ? marginToPercent(product.profitMargin)
+        : '';
     const ratingInput = document.getElementById('editRating');
     if (ratingInput) ratingInput.value = product.rating || 0;
     const reviewsInput = document.getElementById('editReviewsCount');
@@ -1250,6 +1257,8 @@ async function saveProductEdit() {
     const productId = document.getElementById('editId').value;
     const price = parseFloat(document.getElementById('editPrice').value);
     const margin = percentToMargin(document.getElementById('editMargin').value);
+    const autoPrice = document.getElementById('editAutoPrice')?.checked === true;
+    const priceSourceCurrency = (document.getElementById('editPriceCurrency')?.value || 'USD').trim().toUpperCase();
     const ratingInput = document.getElementById('editRating');
     const reviewsInput = document.getElementById('editReviewsCount');
 
@@ -1258,7 +1267,15 @@ async function saveProductEdit() {
             document.getElementById('editProductImage'),
             (document.getElementById('editImageUrl') || {}).value || ''
         );
-        const payload = { price, profitMargin: margin, image, images: _editExtraImages };
+        const payload = {
+            price: autoPrice ? 0 : price,
+            priceUsd: autoPrice ? price : 0,
+            priceSourceCurrency,
+            autoPrice,
+            profitMargin: margin,
+            image,
+            images: _editExtraImages
+        };
         const editRegionInput = document.getElementById('editRegion');
         const region = editRegionInput ? editRegionInput.value.trim().toLowerCase() : '';
         if (region) payload.region = region;
@@ -1559,7 +1576,11 @@ function openAddManualModal() {
     const manualRegionInput = document.getElementById('manualRegion');
     if (manualRegionInput) manualRegionInput.value = 'global';
     document.getElementById('manualPrice').value = '';
-    document.getElementById('manualProfitMargin').value = '15';
+    const manualPriceCurrency = document.getElementById('manualPriceCurrency');
+    if (manualPriceCurrency) manualPriceCurrency.value = 'USD';
+    document.getElementById('manualProfitMargin').value = '';
+    const manualAutoPrice = document.getElementById('manualAutoPrice');
+    if (manualAutoPrice) manualAutoPrice.checked = true;
     document.getElementById('manualCodesTextarea').value = '';
     document.getElementById('manualCodesFile').value = '';
     const manualImageInput = document.getElementById('manualProductImage');
@@ -1713,6 +1734,8 @@ async function saveManualProduct() {
     const region = manualRegionInput ? manualRegionInput.value.trim().toLowerCase() : '';
     const price = parseFloat(document.getElementById('manualPrice').value) || 0;
     const profitMargin = percentToMargin(document.getElementById('manualProfitMargin').value);
+    const autoPrice = document.getElementById('manualAutoPrice')?.checked !== false;
+    const priceSourceCurrency = (document.getElementById('manualPriceCurrency')?.value || 'USD').trim().toUpperCase();
 
     if (!productNameAr || !productNameEn || !category) {
         showAdminToast('❌ يرجى ملء جميع الحقول المطلوبة', 'error');
@@ -1738,7 +1761,18 @@ async function saveManualProduct() {
         const res = await fetch('/api/admin/inventory/add-manual', {
             method: 'POST', credentials: 'include',
             headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
-            body: JSON.stringify({ productName: { ar: productNameAr, en: productNameEn }, category, region: region || 'global', price, profitMargin, manualCodes: codes, image })
+            body: JSON.stringify({
+                productName: { ar: productNameAr, en: productNameEn },
+                category,
+                region: region || 'global',
+                price: autoPrice ? 0 : price,
+                priceUsd: autoPrice ? price : 0,
+                priceSourceCurrency,
+                autoPrice,
+                profitMargin: profitMargin || null,
+                manualCodes: codes,
+                image
+            })
         });
         const data = await res.json();
 

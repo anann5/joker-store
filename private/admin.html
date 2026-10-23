@@ -514,8 +514,13 @@
                 <small style="color: var(--text-muted);">رمز قصير موحّد: global, us, tr, ae, sa, eu, vn, cn ...</small>
             </div>
             <div class="form-group">
-                <label>السعر (دولار)</label>
+                <label>سعر المنتج (بعملة المصدر)</label>
                 <input type="number" id="editPrice" step="0.01" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>عملة سعر المنتج</label>
+                <input type="text" id="editPriceCurrency" class="form-control" value="USD" maxlength="3" placeholder="USD / EUR / TRY / AED">
+                <small style="color: var(--text-muted);">رمز ISO من 3 أحرف. يُحوَّل إلى الشيكل بسعر الصرف اليومي.</small>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -528,9 +533,16 @@
                 </div>
             </div>
             <div class="form-group">
-                <label>هامش الربح (%)</label>
-                <input type="number" id="editMargin" step="1" class="form-control" value="15">
-                <small style="color: var(--text-muted);">30 يعني +30% على سعر الشراء</small>
+                <label>هامش الربح (%) — اختياري</label>
+                <input type="number" id="editMargin" step="1" min="0" class="form-control" placeholder="تلقائي: +5₪ أو +15%">
+                <small style="color: var(--text-muted);">اتركه فارغاً: أقل من 50₪ يُضاف 5₪، و50₪ فأكثر يُضاف 15%، ثم تقريب لأعلى لأقرب عدد صحيح. أي نسبة هنا تستبدل القاعدة.</small>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="editAutoPrice" style="width:auto;">
+                    ربط بسعر الصرف اليومي (تحديث تلقائي)
+                </label>
+                <small style="color: var(--text-muted);">السعر المدخل أعلاه بعملة المصدر، ويُحوَّل تلقائياً إلى شيكل + الربح.</small>
             </div>
             <div class="form-group">
                 <label>صورة المنتج</label>
@@ -593,9 +605,15 @@
                     </datalist>
                 </div>
                 <div class="form-group">
-                    <label>السعر (دولار)</label>
+                    <label>سعر المنتج (بعملة المصدر)</label>
                     <input type="number" id="manualPrice" step="0.01" class="form-control" placeholder="10.00">
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label>عملة سعر المنتج</label>
+                <input type="text" id="manualPriceCurrency" class="form-control" value="USD" maxlength="3" placeholder="USD / EUR / TRY / AED">
+                <small style="color: var(--text-muted);">رمز ISO من 3 أحرف. يُحوَّل إلى الشيكل بسعر الصرف اليومي.</small>
             </div>
 
             <div class="form-group">
@@ -640,9 +658,16 @@
             </div>
 
             <div class="form-group">
-                <label>هامش الربح (%)</label>
-                <input type="number" id="manualProfitMargin" step="1" class="form-control" value="15">
-                <small style="color: var(--text-muted);">30 يعني +30% على سعر الشراء</small>
+                <label>هامش الربح (%) — اختياري</label>
+                <input type="number" id="manualProfitMargin" step="1" min="0" class="form-control" placeholder="تلقائي: +5₪ أو +15%">
+                <small style="color: var(--text-muted);">اتركه فارغاً: أقل من 50₪ يُضاف 5₪، و50₪ فأكثر يُضاف 15%، ثم تقريب لأعلى لأقرب عدد صحيح. أي نسبة هنا تستبدل القاعدة.</small>
+            </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="manualAutoPrice" style="width:auto;" checked>
+                    ربط بسعر الصرف اليومي (تحديث تلقائي)
+                </label>
+                <small style="color: var(--text-muted);">مثال: 10 دولار × 3.098 = 30.98 + ربح 5 = 35.98 → 36 شيكل.</small>
             </div>
 
             <div class="form-group">

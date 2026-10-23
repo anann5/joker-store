@@ -4,6 +4,7 @@ const { clearStorefrontCache } = require('./storeController');
 const providerSync = require('../providers/sync');
 const currency = require('../providers/currency');
 const pricing = require('../providers/pricing');
+const fxPricing = require('../providers/fxPricing');
 const pushService = require('./push');
 
 function getLocalizedValue(value, fallback = '') {
@@ -19,6 +20,7 @@ const ALLOWED_CATEGORIES = ['gaming_general', 'pubg', 'fortnite', 'playstation',
 // من تمرير حقول النظام مثل _id / createdAt / updatedAt عبر req.body
 const MANUAL_ADD_FIELDS = [
     'productName', 'category', 'region', 'price', 'priceCurrency',
+    'priceUsd', 'priceSourceCurrency', 'autoPrice', 'lastFxRate', 'lastFxSyncAt',
     'description', 'image', 'codes', 'isExternal', 'externalId',
     'profitMargin', 'profitMarginOverride', 'basePrice', 'lastProviderPrice',
     'providerCurrency', 'currentProvider', 'isSubscription',
@@ -30,6 +32,25 @@ function validateCategory(category) {
     return typeof category === 'string' && ALLOWED_CATEGORIES.includes(category);
 }
 
+/**
+ * يحوّل سعر البيع بالدولار إلى شيكل بسعر الصرف الحالي + الربح.
+ * يعيد false إذا تعذّر جلب سعر الصرف (يبقى السعر المرسل كما هو).
+ */
+async function applyAutoPrice(productData) {
+    if (!productData || !productData.autoPrice) return false;
+    const amount = Number(productData.priceUsd);
+    if (!Number.isFinite(amount) || amount <= 0) return false;
+    const sourceCurrency = fxPricing.normalizeCurrencyCode(productData.priceSourceCurrency);
+    const rate = await fxPricing.getRateToIls(sourceCurrency).catch(() => null);
+    if (!rate) return false;
+    productData.priceSourceCurrency = sourceCurrency;
+    productData.price = fxPricing.computeIlsPrice(amount, rate, productData);
+    productData.priceCurrency = currency.STORE_CURRENCY;
+    productData.lastFxRate = rate;
+    productData.lastFxSyncAt = new Date();
+    return true;
+}
+
 exports.getInventory = async (req, res) => {
     try {
         const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -38,7 +59,7 @@ exports.getInventory = async (req, res) => {
 
         const [products, total] = await Promise.all([
             Product.find({ isActive: true })
-                .select('productName category region price codes updatedAt isExternal externalId profitMargin basePrice currentProvider')
+                .select('productName category region price priceUsd priceSourceCurrency autoPrice codes updatedAt isExternal externalId profitMargin profitMarginOverride basePrice currentProvider')
                 .sort({ updatedAt: -1 })
                 .skip(skip)
                 .limit(limit),
@@ -59,6 +80,16 @@ exports.addProductManual = async (req, res) => {
                 productData[field] = req.body[field];
             }
         });
+        if (productData.priceUsd !== undefined) productData.priceUsd = parseFloat(productData.priceUsd) || 0;
+        if (productData.priceSourceCurrency !== undefined) productData.priceSourceCurrency = fxPricing.normalizeCurrencyCode(productData.priceSourceCurrency);
+        if (productData.autoPrice !== undefined) productData.autoPrice = productData.autoPrice === true || productData.autoPrice === 'true';
+        if (productData.autoPrice && !(productData.priceUsd > 0)) {
+            return res.status(400).json({ success: false, error: 'سعر الدولار مطلوب عند تفعيل التسعير التلقائي.' });
+        }
+        const priced = await applyAutoPrice(productData);
+        if (productData.autoPrice && !priced) {
+            return res.status(503).json({ success: false, error: 'تعذر جلب سعر الصرف حالياً. حاول مجدداً.' });
+        }
 
         const newProduct = new Product(productData);
         await newProduct.save();
@@ -124,7 +155,14 @@ exports.updateProductMargin = async (req, res) => {
         product.profitMargin = margin;
         product.profitMarginOverride = true;
         
-        if (product.isExternal && product.basePrice > 0) {
+        if (product.autoPrice && product.priceUsd > 0) {
+            const rate = await fxPricing.getRateToIls(product.priceSourceCurrency).catch(() => null);
+            if (rate) {
+                product.price = fxPricing.computeIlsPrice(product.priceUsd, rate, product);
+                product.lastFxRate = rate;
+                product.lastFxSyncAt = new Date();
+            }
+        } else if (product.isExternal && product.basePrice > 0) {
             product.price = pricing.computeSellingPrice({ basePrice: product.basePrice, margin });
         }
         
@@ -147,6 +185,9 @@ exports.createProduct = async (req, res) => {
             category,
             region,
             price,
+            priceUsd,
+            priceSourceCurrency,
+            autoPrice,
             description,
             image,
             isExternal,
@@ -172,6 +213,9 @@ exports.createProduct = async (req, res) => {
             category,
             region: region || 'global',
             price: parseFloat(price) || 0,
+            priceUsd: parseFloat(priceUsd) || 0,
+            priceSourceCurrency: fxPricing.normalizeCurrencyCode(priceSourceCurrency),
+            autoPrice: autoPrice === true || autoPrice === 'true',
             priceCurrency: currency.STORE_CURRENCY,
             description: description || {
                 ar: 'لا يوجد وصف متاح حالياً لهذا المنتج.',
@@ -190,6 +234,14 @@ exports.createProduct = async (req, res) => {
 
         if (isExternal && externalId) {
             productData.externalId = externalId;
+        }
+
+        if (productData.autoPrice && !(productData.priceUsd > 0)) {
+            return res.status(400).json({ success: false, message: 'سعر الدولار مطلوب عند تفعيل التسعير التلقائي.' });
+        }
+        const priced = await applyAutoPrice(productData);
+        if (productData.autoPrice && !priced) {
+            return res.status(503).json({ success: false, message: 'تعذر جلب سعر الصرف حالياً. حاول مجدداً.' });
         }
 
         const newProduct = new Product(productData);
@@ -310,6 +362,9 @@ exports.createProductWithManualCodes = async (req, res) => {
             category,
             region = 'global',
             price = 0,
+            priceUsd = 0,
+            priceSourceCurrency = 'USD',
+            autoPrice = false,
             description,
             image = '',
             isExternal = false,
@@ -357,6 +412,9 @@ exports.createProductWithManualCodes = async (req, res) => {
             category,
             region,
             price: parseFloat(price) || 0,
+            priceUsd: parseFloat(priceUsd) || 0,
+            priceSourceCurrency: fxPricing.normalizeCurrencyCode(priceSourceCurrency),
+            autoPrice: autoPrice === true || autoPrice === 'true',
             priceCurrency: currency.STORE_CURRENCY,
             description: description || {
                 ar: 'لا يوجد وصف متاح حالياً لهذا المنتج.',
@@ -376,6 +434,14 @@ exports.createProductWithManualCodes = async (req, res) => {
 
         if (isExternal && externalId) {
             productData.externalId = externalId;
+        }
+
+        if (productData.autoPrice && !(productData.priceUsd > 0)) {
+            return res.status(400).json({ success: false, message: 'سعر الدولار مطلوب عند تفعيل التسعير التلقائي.' });
+        }
+        const priced = await applyAutoPrice(productData);
+        if (productData.autoPrice && !priced) {
+            return res.status(503).json({ success: false, message: 'تعذر جلب سعر الصرف حالياً. حاول مجدداً.' });
         }
 
         const newProduct = new Product(productData);
@@ -433,9 +499,9 @@ exports.updateProduct = async (req, res) => {
         }
 
         // Update allowed fields
-        const allowedFields = ['productName', 'category', 'region', 'price', 'description', 'image', 
-                               'isExternal', 'externalId', 'profitMargin', 'basePrice', 
-                               'currentProvider', 'isActive', 'isSubscription', 'subscriptionType', 
+        const allowedFields = ['productName', 'category', 'region', 'price', 'priceUsd', 'priceSourceCurrency', 'autoPrice',
+                               'description', 'image', 'isExternal', 'externalId', 'profitMargin', 'basePrice',
+                               'currentProvider', 'isActive', 'isSubscription', 'subscriptionType',
                                'subscriptionDuration', 'rating', 'reviewsCount'];
 
         allowedFields.forEach(field => {
@@ -443,6 +509,12 @@ exports.updateProduct = async (req, res) => {
                 if (field === 'profitMargin') {
                     const normalized = pricing.normalizeMargin(updates[field]);
                     if (normalized) product[field] = normalized;
+                } else if (field === 'priceUsd') {
+                    product[field] = parseFloat(updates[field]) || 0;
+                } else if (field === 'priceSourceCurrency') {
+                    product[field] = fxPricing.normalizeCurrencyCode(updates[field]);
+                } else if (field === 'autoPrice') {
+                    product[field] = updates[field] === true || updates[field] === 'true';
                 } else {
                     product[field] = updates[field];
                 }
@@ -460,8 +532,20 @@ exports.updateProduct = async (req, res) => {
             product.priceCurrency = currency.STORE_CURRENCY;
         }
 
-        // Recalculate price if basePrice or margin changed
-        if (product.isExternal && product.basePrice > 0) {
+        if (product.autoPrice && !(product.priceUsd > 0)) {
+            return res.status(400).json({ success: false, message: 'سعر الدولار مطلوب عند تفعيل التسعير التلقائي.' });
+        }
+
+        // التسعير التلقائي بالدولار له الأولوية على أسعار المزود
+        if (product.autoPrice && product.priceUsd > 0) {
+            const rate = await fxPricing.getRateToIls(product.priceSourceCurrency).catch(() => null);
+            if (rate) {
+                product.price = fxPricing.computeIlsPrice(product.priceUsd, rate, product);
+                product.priceCurrency = currency.STORE_CURRENCY;
+                product.lastFxRate = rate;
+                product.lastFxSyncAt = new Date();
+            }
+        } else if (product.isExternal && product.basePrice > 0) {
             product.price = pricing.computeSellingPrice({ basePrice: product.basePrice, margin: product.profitMargin });
         }
 

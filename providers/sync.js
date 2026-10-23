@@ -3,6 +3,7 @@ const registry = require('./registry');
 const adapter = require('./adapter');
 const currency = require('./currency');
 const pricing = require('./pricing');
+const fxPricing = require('./fxPricing');
 const { rankGroup } = require('./bestPrice');
 const { isRegionAllowed } = require('./regions');
 const { sendTelegramAlert, createLog } = require('../controllers/helpers');
@@ -57,7 +58,18 @@ async function applyItem(product, provider, item) {
     product.lastProviderPrice = roundedBase;
     product.providerStock = item.stock == null ? null : Number(item.stock);
     product.lastPriceSyncAt = new Date();
-    product.price = newPrice;
+    if (product.autoPrice && product.priceUsd > 0) {
+        const fxRate = await currency.getRate(product.priceSourceCurrency || 'USD', 'ILS').catch(() => null);
+        product.price = fxRate
+            ? fxPricing.computeIlsPrice(product.priceUsd, fxRate, product)
+            : newPrice;
+        if (fxRate) {
+            product.lastFxRate = fxRate;
+            product.lastFxSyncAt = new Date();
+        }
+    } else {
+        product.price = newPrice;
+    }
     product.updatedAt = new Date();
 
     if (item.name.ar) product.productName.ar = item.name.ar;
