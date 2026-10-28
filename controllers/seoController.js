@@ -1,5 +1,8 @@
+const fs = require('fs');
+const path = require('path');
 const { Product, Category } = require('../models');
 const siteSettings = require('../config/siteSettings');
+const objectStorage = require('../services/objectStorage');
 
 const STATIC_PAGES = [
     { path: '', ar: 'الرئيسية', en: 'Home' },
@@ -16,6 +19,44 @@ const STATIC_PAGES = [
  */
 function getBaseUrl() {
     return String(process.env.SITE_URL || '').replace(/\/+$/, '');
+}
+
+function resolveProductImage(image, baseUrl) {
+    const raw = String(image || '').trim();
+    if (/^https?:\/\//i.test(raw)) return raw;
+
+    let local = raw;
+    if (!local) {
+        local = '/image/logo.png';
+    } else if (!local.startsWith('/image/') && !local.startsWith('/uploads/')) {
+        local = `/image/${path.basename(local)}`;
+    }
+
+    // صور /uploads/ تُخزَّن في R2 عند تفعيله، فلا يمكن التحقق من وجودها على القرص.
+    const isRemoteUpload = local.startsWith('/uploads/') && objectStorage.isEnabled();
+    if (!isRemoteUpload) {
+        const diskPath = path.join(__dirname, '..', 'public', local.replace(/^\/+/, ''));
+        if (!fs.existsSync(diskPath)) local = '/image/logo.png';
+    }
+    return baseUrl ? `${baseUrl}${local}` : local;
+}
+
+function getProductAvailability(product) {
+    let stock = null;
+    if (product.availableStock !== null && product.availableStock !== undefined) {
+        const value = Number(product.availableStock);
+        if (Number.isFinite(value)) stock = value;
+    } else if (product.isExternal) {
+        if (product.providerStock === null || product.providerStock === undefined) {
+            return 'https://schema.org/InStock';
+        }
+        stock = Number(product.providerStock);
+    } else if (Array.isArray(product.codes)) {
+        stock = product.codes.filter(code => code && code.status === 'available').length;
+    }
+    return stock !== null && Number.isFinite(stock) && stock <= 0
+        ? 'https://schema.org/OutOfStock'
+        : 'https://schema.org/InStock';
 }
 
 /**
@@ -131,7 +172,7 @@ exports.productSchema = async (req, res) => {
             '@context': 'https://schema.org',
             '@type': 'Product',
             'name': name,
-            'image': product.image ? xmlEscape(String(product.image)) : undefined,
+            'image': resolveProductImage(product.image, baseUrl),
             'description': String(product.description.ar || product.description.en || ''),
             'sku': String(product._id),
             'brand': { '@type': 'Brand', 'name': siteSettings.name || 'Joker Store' },
@@ -139,7 +180,7 @@ exports.productSchema = async (req, res) => {
                 '@type': 'Offer',
                 'priceCurrency': siteSettings.currency.code,
                 'price': Number.isFinite(price) && price > 0 ? price : undefined,
-                'availability': 'https://schema.org/InStock',
+                'availability': getProductAvailability(product),
                 'url': baseUrl ? `${baseUrl}/product/${product._id}` : undefined
             }
         };

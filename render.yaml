@@ -36,6 +36,8 @@ services:
         sync: false
       - key: PALPAY_NUMBER
         sync: false
+      - key: REFLECT_NUMBER
+        sync: false
       - key: WHATSAPP_NUMBER
         sync: false
       - key: TELEGRAM_LINK
@@ -43,4 +45,28 @@ services:
       - key: INSTAGRAM_LINK
         sync: false
       - key: TIKTOK_LINK
+        sync: false
+      # SMTP (اختياري) — Hotmail/Outlook: استخدم App Password وليس كلمة مرور الحساب
+      - key: EMAIL_NOTIFICATIONS_ENABLED
+        value: "true"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # Cloudflare R2 — تخزين دائم لصور المتجر وإثباتات الدفع (مجاني حتى 10GB).
+      # أنشئ دلوًا خاصًا وAPI Token بصلاحية Object Read & Write على الدلو فقط.
+      # عند تركها فارغة يعمل التطبيق بتخزين محلي مؤقت (يُفقد عند النشر).
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
         sync: false

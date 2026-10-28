@@ -18,6 +18,9 @@ function buildStatusMessage(payload) {
     if (status === 'refunded') {
         return t('realtime_order_rejected').replace('{orderId}', orderId || '');
     }
+    if (status === 'cancelled') {
+        return t('realtime_order_cancelled').replace('{orderId}', orderId || '');
+    }
     return t('realtime_order_updated').replace('{orderId}', orderId || '');
 }
 
@@ -26,7 +29,7 @@ function buildStatusMessage(payload) {
  */
 function toastTypeFor(status) {
     if (status === 'completed') return 'success';
-    if (status === 'refunded') return 'error';
+    if (status === 'refunded' || status === 'cancelled') return 'error';
     return 'info';
 }
 

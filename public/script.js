@@ -16,6 +16,7 @@ let searchIndex = []; // 🚀 فهرس البحث السريع
 let _currentCategoryKey = 'all'; // متغير داخلي لمتابعة القسم الحالي
 let _categoryProducts = []; // منتجات القسم الحالي (للترتيب والفلترة)
 let _currentSort = 'latest'; // الترتيب الحالي: latest | price_asc | price_desc | rating
+let _initialCategoryApplied = false; // هل طُبّق ?category= من الرابط عند أول تحميل؟
 const productCache = new Map(); // ذاكرة تخزين مؤقت للمنتجات التي يتم جلبها
 
 // ======================================================
@@ -212,7 +213,7 @@ async function showWishlist() {
             cardElement.dataset.productId = clientItem.id;
             cardElement.dataset.region = detectedRegion;
             cardElement.style.setProperty('--i', String(idx));
-            card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+            card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
             const img = card.querySelector('.card-inner-img');
             img.src = clientItem.image;
             img.onerror = () => { img.src = '/image/logo.png'; };
@@ -246,6 +247,7 @@ async function showWishlist() {
 // ======================================================
 let siteConfig = null;
 let paymentProofUrl = null;
+let paymentProofObjectUrl = null;
 
 function syncCurrencySwitcher() {
     const btn = document.getElementById('currencySwitcher');
@@ -445,6 +447,26 @@ function buildOrderFailureTimeline() {
         </div>`;
 }
 
+// سطر حالة الدفع (مهلة الدفع/المراجعة) في نتيجة التتبع
+function buildTrackPaymentLine(order) {
+    const ps = order.paymentStatus;
+    if (!ps || ps === 'paid' || order.status === 'completed') return '';
+    let key = '';
+    let deadlineText = '';
+    if (ps === 'awaiting_payment' || ps === 'under_review') {
+        const deadline = order.reservationExpiresAt ? new Date(order.reservationExpiresAt) : null;
+        if (deadline && !Number.isNaN(deadline.getTime())) {
+            deadlineText = deadline.toLocaleString(getCurrentLanguage() === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
+        }
+        if (ps === 'under_review') key = deadlineText ? 'track_payment_review_deadline' : 'track_payment_review';
+        else key = deadlineText ? 'track_payment_awaiting_deadline' : 'track_payment_awaiting';
+    } else if (ps === 'expired') {
+        key = 'track_payment_expired';
+    }
+    if (!key) return '';
+    return `<div class="track-payment-line">${escapeHtml(t(key).replace('{time}', deadlineText))}</div>`;
+}
+
 async function handleTrackOrder() {
     const emailInput = document.getElementById('trackEmailInput');
     const orderIdInput = document.getElementById('trackOrderIdInput');
@@ -480,12 +502,13 @@ async function handleTrackOrder() {
             pending: { text: t('track_status_pending'), cls: 'pending' },
             processing: { text: t('track_status_processing'), cls: 'processing' },
             failed: { text: t('track_status_failed'), cls: 'failed' },
-            refunded: { text: t('track_status_refunded'), cls: 'refunded' }
+            refunded: { text: t('track_status_refunded'), cls: 'refunded' },
+            cancelled: { text: t('track_status_cancelled'), cls: 'failed' }
         };
 
         results.innerHTML = data.orders.map(order => {
             const st = statusMap[order.status] || { text: order.status, cls: '' };
-            const isFailure = order.status === 'failed' || order.status === 'refunded';
+            const isFailure = order.status === 'failed' || order.status === 'refunded' || order.status === 'cancelled';
             const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
             const items = order.items.map(i => escapeHtml(i.name[lang] || i.name.ar)).join('، ');
             const codesHtml = (!isFailure && order.codes && order.codes.length)
@@ -500,6 +523,7 @@ async function handleTrackOrder() {
                     ${isFailure ? buildOrderFailureTimeline() : buildOrderTimeline(order.status)}
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b style="color:#fff;">${formatStorePrice(order.price)}</b></div>
+                    ${buildTrackPaymentLine(order)}
                     ${codesHtml}
                 </div>`;
         }).join('');
@@ -656,7 +680,7 @@ function renderReceiptGiftBox(giftToken) {
     if (linkInput) linkInput.addEventListener('click', () => linkInput.select());
 }
 
-function renderOrderReceipt({ email, orderId, giftToken }) {
+function renderOrderReceipt({ email, orderId, giftToken, paymentStatus, reservationExpiresAt }) {
     stopReceiptPolling();
     stopReceiptCountdown();
     _receiptContext = { email, orderId };
@@ -679,14 +703,62 @@ function renderOrderReceipt({ email, orderId, giftToken }) {
     if (openTrackingBtn) openTrackingBtn.hidden = false;
     openModal(document.getElementById('codeModal'));
 
-    if (statusZone) {
+    let currentPaymentStatus = paymentStatus || 'awaiting_payment';
+    let currentDeadline = reservationExpiresAt ? new Date(reservationExpiresAt).getTime() : 0;
+
+    const renderPaymentState = () => {
+        if (!statusZone) return;
+        stopReceiptCountdown();
+        const isAwaiting = currentPaymentStatus === 'awaiting_payment';
+        const isReview = currentPaymentStatus === 'under_review';
+        const titleKey = isAwaiting ? 'receipt_payment_awaiting_title'
+            : (isReview ? 'receipt_payment_review_title' : 'receipt_waiting_title');
+        const descKey = isAwaiting ? 'receipt_payment_awaiting_desc'
+            : (isReview ? 'receipt_payment_review_desc' : 'receipt_waiting_desc');
         statusZone.innerHTML = `
             <div class="receipt-waiting">
-                <span class="receipt-spinner"><i class="fas fa-circle-notch fa-spin"></i></span>
-                <p class="receipt-waiting-title">${escapeHtml(t('receipt_waiting_title'))}</p>
-                <p class="receipt-waiting-desc">${escapeHtml(t('receipt_waiting_desc'))}</p>
+                <span class="receipt-spinner">${isReview ? '<i class="fas fa-shield-halved"></i>' : '<i class="fas fa-circle-notch fa-spin"></i>'}</span>
+                <p class="receipt-waiting-title">${escapeHtml(t(titleKey))}</p>
+                <p class="receipt-waiting-desc">${escapeHtml(t(descKey))}</p>
+                <p class="receipt-payment-timer" id="receiptPaymentTimer"></p>
             </div>`;
-    }
+
+        const timerEl = document.getElementById('receiptPaymentTimer');
+        if (!timerEl) return;
+        if (!(isAwaiting || isReview) || !currentDeadline) { timerEl.remove(); return; }
+        const deadline = currentDeadline;
+        const timerKey = isReview ? 'receipt_payment_review_deadline' : 'receipt_payment_deadline';
+        const tick = () => {
+            const remain = deadline - Date.now();
+            timerEl.textContent = remain > 0
+                ? t(timerKey).replace('{time}', formatCountdown(remain))
+                : t('receipt_payment_expired_hint');
+        };
+        tick();
+        _receiptCountdownTimer = setInterval(tick, 1000);
+    };
+
+    const showTerminal = (kind) => {
+        stopReceiptPolling();
+        stopReceiptCountdown();
+        if (!statusZone) return;
+        const titles = {
+            expired: 'receipt_payment_expired_title',
+            failed: 'receipt_failed_title'
+        };
+        const descs = {
+            expired: 'receipt_payment_expired_desc',
+            failed: 'receipt_failed_desc'
+        };
+        statusZone.innerHTML = `
+            <div class="receipt-failed">
+                <span class="receipt-failed-icon"><i class="fas fa-${kind === 'expired' ? 'hourglass-end' : 'times-circle'}"></i></span>
+                <p class="receipt-failed-title">${escapeHtml(t(titles[kind]))}</p>
+                <p class="receipt-failed-desc">${escapeHtml(t(descs[kind]))}</p>
+            </div>`;
+    };
+
+    renderPaymentState();
 
     const poll = async () => {
         try {
@@ -701,15 +773,17 @@ function renderOrderReceipt({ email, orderId, giftToken }) {
             if (order.status === 'completed') {
                 stopReceiptPolling();
                 renderReceiptCodes(order);
+            } else if (order.status === 'cancelled' || order.paymentStatus === 'expired') {
+                showTerminal('expired');
             } else if (order.status === 'failed' || order.status === 'refunded') {
-                stopReceiptPolling();
-                if (statusZone) {
-                    statusZone.innerHTML = `
-                        <div class="receipt-failed">
-                            <span class="receipt-failed-icon"><i class="fas fa-times-circle"></i></span>
-                            <p class="receipt-failed-title">${escapeHtml(t('receipt_failed_title'))}</p>
-                            <p class="receipt-failed-desc">${escapeHtml(t('receipt_failed_desc'))}</p>
-                        </div>`;
+                showTerminal('failed');
+            } else {
+                const nextStatus = order.paymentStatus || currentPaymentStatus;
+                const nextDeadline = order.reservationExpiresAt ? new Date(order.reservationExpiresAt).getTime() : currentDeadline;
+                if (nextStatus !== currentPaymentStatus || nextDeadline !== currentDeadline) {
+                    currentPaymentStatus = nextStatus;
+                    currentDeadline = nextDeadline;
+                    renderPaymentState();
                 }
             }
         } catch (_e) { /* أي خطأ شبكة في جولة ما يُعاد في الجولة القادمة */ }
@@ -783,6 +857,15 @@ function getRegionDetails(region) {
 }
 
 // ======================================================
+//  إخفاء عناصر الرئيسية (الهيرو/البانر) عند فتح قسم أو منتج
+// ======================================================
+function setHomeChromeVisible(visible) {
+    document.querySelectorAll('.hero-section, .offer-banner, .trust-ticker, #homeStatsStrip').forEach(el => {
+        el.classList.toggle('is-home-hidden', !visible);
+    });
+}
+
+// ======================================================
 //  دالة لمعرفة القسم الحالي
 //  عرض المنتجات داخل القسم
 // ======================================================
@@ -808,6 +891,15 @@ export function selectCategory(categoryKey) {
     const homeSections = document.getElementById('homeSections');
 
     if (homeSections) homeSections.classList.add('hidden');
+    setHomeChromeVisible(false);
+    document.getElementById('filterTabs')?.classList.remove('is-home-hidden');
+
+    if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+        const url = new URL(window.location.href);
+        if (categoryKey && categoryKey !== 'all') url.searchParams.set('category', categoryKey);
+        else url.searchParams.delete('category');
+        window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
 
     if (!grid) return;
     grid.className = 'products-grid'; // تطبيق كلاس الشبكة للمنتجات
@@ -957,7 +1049,7 @@ function renderCategoryProducts(grid) {
         cardElement.dataset.productId = clientItem.id;
         cardElement.dataset.region = detectedRegion;
         cardElement.style.setProperty('--i', String(idx));
-        card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+        card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
         imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
@@ -1137,7 +1229,7 @@ function renderProductCards(products, containerId) {
         cardElement.dataset.productId = clientItem.id;
         cardElement.dataset.region = detectedRegion;
         cardElement.style.setProperty('--i', String(idx));
-        card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+        card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
         imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
@@ -1639,6 +1731,16 @@ async function handleLanguageChange(event) {
             renderPromotions();            // إعادة عرض "عروض جاهزة الشحن"
             renderTestimonials();          // إعادة عرض "قالوا عنا"
 
+            // تطبيق ?category= مرة واحدة بعد تحميل الأقسام (روابط قابلة للمشاركة)
+            if (!_initialCategoryApplied) {
+                _initialCategoryApplied = true;
+                const initialCategory = new URLSearchParams(window.location.search).get('category');
+                if (initialCategory && rawServerData.categories[initialCategory]) {
+                    selectCategory(initialCategory);
+                    return;
+                }
+            }
+
             const grid = document.getElementById('mainCategories');
             const inCategoryView = grid && grid.classList.contains('products-grid');
             if (inCategoryView) {
@@ -1887,8 +1989,9 @@ function setupEventListeners() {
         });
     }
 
-    // صائد ضغطات الكروت والدخول للسلة
-    document.getElementById('mainCategories').addEventListener('click', function(e) {
+    // صائد ضغطات الكروت والدخول للسلة (شبكة القسم + بطاقات أقسام الرئيسية)
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#mainCategories, #homeSections')) return;
         if (e.target.closest('[data-wishlist-btn]')) return; // لا تفتح التفاصيل عند ضغط زر الأمنيات
         if (e.target.closest('[data-quick-add]')) return; // لا تفتح التفاصيل عند ضغط زر الإضافة السريعة
         
@@ -2104,20 +2207,32 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         input.addEventListener('change', async()=>{
             const file=input.files?.[0];
             if(!file || !file.type.startsWith('image/')) return;
-            if(file.size>5*1024*1024){ showToast('حجم الصورة كبير (5MB max)','error'); input.value=''; return; }
+            if(file.size>5*1024*1024){ showToast(t('proof_too_large'),'error'); input.value=''; return; }
             const form=new FormData(); form.append('image', file);
             try{
-                const res=await fetch('/api/upload/review-image',{method:'POST', body:form});
+                const res=await fetch('/api/upload/payment-proof',{method:'POST', body:form});
                 const data=await res.json();
                 if(data.success && data.url){
                     paymentProofUrl=data.url;
-                    if(img) img.src=data.url;
+                    // معاينة محلية فقط: الإثبات محفوظ خارج الويب العام ولا يُعرض عبر رابط مباشر
+                    if(img){
+                        if (paymentProofObjectUrl) URL.revokeObjectURL(paymentProofObjectUrl);
+                        paymentProofObjectUrl=URL.createObjectURL(file);
+                        img.src=paymentProofObjectUrl;
+                    }
                     if(preview) preview.style.display='flex';
-                    showToast('تم رفع صورة الإثبات','success');
-                }else{ showToast(data.error||'فشل الرفع','error'); }
-            }catch(_e){ showToast('فشل الرفع','error'); }
+                    showToast(t('proof_uploaded'),'success');
+                }else{ showToast(data.error||t('proof_upload_failed'),'error'); }
+            }catch(_e){ showToast(t('proof_upload_failed'),'error'); }
         });
-        if(removeBtn) removeBtn.addEventListener('click',()=>{ paymentProofUrl=null; if(preview) preview.style.display='none'; if(img) img.src=''; input.value=''; });
+        const clearProofPreview=()=>{
+            paymentProofUrl=null;
+            if (paymentProofObjectUrl) { URL.revokeObjectURL(paymentProofObjectUrl); paymentProofObjectUrl=null; }
+            if(preview) preview.style.display='none';
+            if(img) img.src='';
+            input.value='';
+        };
+        if(removeBtn) removeBtn.addEventListener('click', clearProofPreview);
     })();
 
     // فتح السلة عبر زر الهيدر
@@ -2221,7 +2336,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         const payment = siteConfig?.payment || {};
         const jawwal = payment.jawwalNumber || '';
         const palpay = payment.palpayNumber || '';
-        const refakt = payment.reflectNumber || jawwal || '';
+        const reflect = payment.reflectNumber || '';
         const num = '<span style="color: #fff; font-weight: bold; letter-spacing: 1px;">';
         const foot = '<p style="margin: 5px 0; color: #b9bbbe;">';
         if (method === 'jawwal_pay') {
@@ -2232,9 +2347,9 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             instructionsZone.innerHTML = palpay
                 ? `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> ${t('pay_inst_palpay_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${palpay}</span></p>${foot}${t('pay_inst_followup_palpay')}</p>`
                 : `<p style="margin: 0 0 8px 0; color: #0072ff; font-weight: bold;"><i class="fas fa-university"></i> ${t('pay_inst_palpay_title')}</p>${foot}${t('pay_inst_later')}</p>`;
-        } else if (method === 'refakt') {
-            instructionsZone.innerHTML = refakt
-                ? `<p style="margin: 0 0 8px 0; color: #12b489; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_reflect_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${refakt}</span></p>${foot}${t('pay_inst_followup')}</p>`
+        } else if (method === 'reflect') {
+            instructionsZone.innerHTML = reflect
+                ? `<p style="margin: 0 0 8px 0; color: #12b489; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_reflect_title')}</p><p style="margin: 5px 0;">${t('pay_inst_transfer_wallet')} ${num}${reflect}</span></p>${foot}${t('pay_inst_followup')}</p>`
                 : `<p style="margin: 0 0 8px 0; color: #12b489; font-weight: bold;"><i class="fas fa-wallet"></i> ${t('pay_inst_reflect_title')}</p>${foot}${t('pay_inst_later')}</p>`;
         }
     };
@@ -2305,11 +2420,18 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                     clearAppliedPromo(); // إزالة كود الخصم بعد إتمام الطلب
                     clearAppliedLoyalty();
                     paymentProofUrl=null;
+                    if (paymentProofObjectUrl) { URL.revokeObjectURL(paymentProofObjectUrl); paymentProofObjectUrl=null; }
                     const ppPreview=document.getElementById('paymentProofPreview'); if(ppPreview) ppPreview.style.display='none';
                     const ppImg=document.getElementById('paymentProofImg'); if(ppImg) ppImg.src='';
                     const ppInput=document.getElementById('paymentProofInput'); if(ppInput) ppInput.value='';
                     updateCartUI();
-                    renderOrderReceipt({ email, orderId: result.orderId || '', giftToken: result.giftToken || null });
+                    renderOrderReceipt({
+                        email,
+                        orderId: result.orderId || '',
+                        giftToken: result.giftToken || null,
+                        paymentStatus: result.paymentStatus || 'awaiting_payment',
+                        reservationExpiresAt: result.reservationExpiresAt || null
+                    });
                     showToast(t('checkout_success'), 'success');
                 } else {
                     showToast(`❌ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');

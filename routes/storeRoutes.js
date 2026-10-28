@@ -200,4 +200,18 @@ router.post('/upload/review-image', reviewLimiter, (req, res, next) => {
     });
 });
 
+// إثبات الدفع — يُخزَّن في مجلد خاص ولا يُخدم مباشرة للعامة
+const proofLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    keyGenerator: rateLimitKey,
+    message: 'عدد محاولات رفع الإثبات كبير جداً، يرجى المحاولة لاحقاً.'
+});
+router.post('/upload/payment-proof', proofLimiter, (req, res, next) => {
+    upload.paymentProofUpload.single('image')(req, res, (err) => {
+        if (err) return res.status(400).json({ success: false, error: err.message || 'فشل رفع الإثبات' });
+        return uploadController.uploadPaymentProof(req, res, next);
+    });
+});
+
 module.exports = router;

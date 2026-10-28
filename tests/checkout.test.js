@@ -5,15 +5,23 @@ const { Product, Order } = require('../models');
 
 const mockSave = jest.fn().mockResolvedValue(true);
 
-jest.mock('../models', () => ({
-    Product: {
-        find: jest.fn()
-    },
-    Order: jest.fn().mockImplementation(() => ({
+jest.mock('../models', () => {
+    const OrderMock = jest.fn().mockImplementation(() => ({
         save: mockSave
-    })),
-    Category: {}
-}));
+    }));
+    OrderMock.exists = jest.fn().mockResolvedValue(null);
+    OrderMock.countDocuments = jest.fn().mockResolvedValue(0);
+    return {
+        Product: {
+            find: jest.fn(),
+            reserveCodesAtomic: jest.fn().mockResolvedValue(['SAFE-TEST-CODE']),
+            releaseReservedCodes: jest.fn().mockResolvedValue({})
+        },
+        Order: OrderMock,
+        Category: {},
+        User: {}
+    };
+});
 
 const app = express();
 app.use(express.json());

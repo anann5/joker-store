@@ -65,11 +65,34 @@ describe('GET /product/:productId — SEO meta injection', () => {
         expect(res.text).toContain('name="description" content="شحن فوري مضمون"');
         expect(res.text).toContain(`rel="canonical" href="https://joker.example/product/${PRODUCT_ID}"`);
         expect(res.text).toContain('property="og:type" content="product"');
+        expect(res.text).toContain('property="og:image" content="https://joker.example/image/pubg.png"');
         expect(res.text).toContain('property="og:url"');
         expect(res.text).toContain('name="twitter:card" content="summary"');
         expect(res.text).toContain('application/ld+json');
         expect(res.text).toContain('"@type":"Product"');
         expect(res.text).toContain('"price":199');
+        expect(res.text).toContain('"availability":"https://schema.org/InStock"');
+    });
+
+    it('يصلح مسار الصورة القديم ويحوّله إلى /image/ مطلق', async () => {
+        const product = makeProduct();
+        product.image = 'google.png';
+        mockFindById(product);
+
+        const res = await request(app).get(`/product/${PRODUCT_ID}`);
+
+        expect(res.text).toContain('property="og:image" content="https://joker.example/image/google.png"');
+        expect(res.text).toContain('"image":"https://joker.example/image/google.png"');
+    });
+
+    it('يعرض OutOfStock في JSON-LD عندما لا توجد أكواد متاحة', async () => {
+        const product = makeProduct();
+        product.codes = [];
+        mockFindById(product);
+
+        const res = await request(app).get(`/product/${PRODUCT_ID}`);
+
+        expect(res.text).toContain('"availability":"https://schema.org/OutOfStock"');
     });
 
     it('يترجم العنوان والوصف حسب ?lang=en مع الحفاظ على البيانات المتبقية', async () => {

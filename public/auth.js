@@ -143,6 +143,23 @@ export async function showOrderHistory() {
 }
 
 /**
+ * سطر موعد الدفع للطلبات المعلّقة في سجل الطلبات.
+ */
+function buildOrderPaymentLine(order) {
+    if (order.status !== 'pending') return '';
+    const status = order.paymentStatus;
+    if (!status || status === 'paid') return '';
+    const deadline = order.reservationExpiresAt ? new Date(order.reservationExpiresAt) : null;
+    const time = deadline && !Number.isNaN(deadline.getTime())
+        ? deadline.toLocaleString(getCurrentLanguage() === 'en' ? 'en-GB' : 'ar-EG', { dateStyle: 'short', timeStyle: 'short' })
+        : '';
+    const key = status === 'under_review'
+        ? (time ? 'track_payment_review_deadline' : 'track_payment_review')
+        : (time ? 'track_payment_awaiting_deadline' : 'track_payment_awaiting');
+    return `<div class="track-payment-line" style="margin-top:8px;"><i class="fas fa-clock"></i> ${escapeHtml(t(key).replace('{time}', time))}</div>`;
+}
+
+/**
  * عرض الطلبات في النافذة المنبثقة
  */
 function renderOrders(orders) {
@@ -154,7 +171,10 @@ function renderOrders(orders) {
 
     const statusMap = {
         completed: { text: t('auth_status_completed'), class: 'status-completed' },
+        processing: { text: t('auth_status_processing'), class: 'status-processing' },
         pending: { text: t('auth_status_pending'), class: 'status-pending' },
+        refunded: { text: t('auth_status_refunded'), class: 'status-failed' },
+        cancelled: { text: t('auth_status_cancelled'), class: 'status-failed' },
         failed: { text: t('auth_status_failed'), class: 'status-failed' }
     };
 
@@ -180,6 +200,7 @@ function renderOrders(orders) {
                     <div style="font-size: 0.85rem; color: var(--text-muted);">
                         <span>${t('auth_order_num')} #${escapeHtml(order.orderId)}</span> | <span>${t('auth_order_date')} ${orderDate}</span>
                     </div>
+                    ${buildOrderPaymentLine(order)}
                     ${codeHtml}
                 </div>
                 <div style="text-align: left;">

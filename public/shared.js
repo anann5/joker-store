@@ -102,14 +102,18 @@ export function syncWishlistButtons() {
  * توحيد مسار صورة إلى مسار مطلق، بغض النظر عن المسار الحالي للصفحة.
  * يجنّب أخطاء 404 عندما يُفتح المنتج من مسار ثانوي مثل /product/<id>.
  * - رابط خارجي (http/https) أو data: → يُترك كما هو
- * - مسار يبدأ بـ '/' → يُترك كما هو (مثل /uploads/xxx.png)
+ * - مسار يبدأ بـ '/uploads/' أو '/image/' → يُترك كما هو
+ * - ملف في جذر الموقع (/steam.png) → /image/steam.png
  * - اسم ملف فقط (steam.png) → /image/steam.png
  * - مسار نسبي (image/steam.png) → /image/steam.png
  */
 export function resolveImageUrl(value) {
     const src = String(value ?? '').trim();
     if (!src) return '';
-    if (/^https?:\/\//i.test(src) || /^data:/i.test(src) || src.startsWith('/')) return src;
+    if (/^https?:\/\//i.test(src) || /^data:/i.test(src)) return src;
+    if (src.startsWith('/image/') || src.startsWith('/uploads/')) return src;
+    if (/^\/[^/]+\.(png|jpe?g|webp|gif|svg)$/i.test(src)) return `/image${src}`;
+    if (src.startsWith('/')) return src;
     if (src.includes('/')) return `/${src}`;
     return `/image/${src}`;
 }

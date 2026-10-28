@@ -9,16 +9,23 @@ const mockProductFindOne = jest.fn();
 const mockProductFind = jest.fn();
 const mockOrderSave = jest.fn().mockResolvedValue(true);
 
-jest.mock('../models', () => ({
-    Promotion: { findOne: (...args) => mockPromotionFindOne(...args) },
-    Product: {
-        findOne: (...args) => mockProductFindOne(...args),
-        find: (...args) => mockProductFind(...args)
-    },
-    Order: jest.fn().mockImplementation((data) => ({ ...data, save: mockOrderSave })),
-    User: {},
-    Category: {}
-}));
+jest.mock('../models', () => {
+    const OrderMock = jest.fn().mockImplementation((data) => ({ ...data, save: mockOrderSave }));
+    OrderMock.exists = jest.fn().mockResolvedValue(null);
+    OrderMock.countDocuments = jest.fn().mockResolvedValue(0);
+    return {
+        Promotion: { findOne: (...args) => mockPromotionFindOne(...args) },
+        Product: {
+            findOne: (...args) => mockProductFindOne(...args),
+            find: (...args) => mockProductFind(...args),
+            reserveCodesAtomic: jest.fn().mockResolvedValue(['SAFE-TEST-CODE']),
+            releaseReservedCodes: jest.fn().mockResolvedValue({})
+        },
+        Order: OrderMock,
+        User: {},
+        Category: {}
+    };
+});
 
 const app = express();
 app.use(express.json());

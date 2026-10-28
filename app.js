@@ -18,6 +18,8 @@ const seoController = require('./controllers/seoController');
 const { getSafeBaseHost } = require('./controllers/helpers');
 const { Product } = require('./models');
 const siteSettings = require('./config/siteSettings');
+const uploadController = require('./controllers/uploadController');
+const objectStorage = require('./services/objectStorage');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -197,11 +199,15 @@ const homePageHandler = (req, res, next) => {
                 }
             ]
         });
+        const category = typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 60) : '';
+        const categoryQuery = category ? `?category=${encodeURIComponent(category)}` : '';
+        const categoryLangQuery = lang => `${categoryQuery}${categoryQuery ? '&' : '?'}lang=${lang}`;
         res.type('html').send(html
-            .replace('<link rel="canonical" href="/">', `<link rel="canonical" href="${origin}/">`)
-            .replace('<link rel="alternate" hreflang="ar" href="/?lang=ar">', `<link rel="alternate" hreflang="ar" href="${hreflangOrigin}/?lang=ar">`)
-            .replace('<link rel="alternate" hreflang="en" href="/?lang=en">', `<link rel="alternate" hreflang="en" href="${hreflangOrigin}/?lang=en">`)
-            .replace('<link rel="alternate" hreflang="x-default" href="/">', `<link rel="alternate" hreflang="x-default" href="${hreflangOrigin}/">`)
+            .replace('<link rel="canonical" href="/">', `<link rel="canonical" href="${origin}/${categoryQuery}">`)
+            .replace('<link rel="alternate" hreflang="ar" href="/?lang=ar">', `<link rel="alternate" hreflang="ar" href="${hreflangOrigin}/${categoryLangQuery('ar')}">`)
+            .replace('<link rel="alternate" hreflang="en" href="/?lang=en">', `<link rel="alternate" hreflang="en" href="${hreflangOrigin}/${categoryLangQuery('en')}">`)
+            .replace('<link rel="alternate" hreflang="x-default" href="/">', `<link rel="alternate" hreflang="x-default" href="${hreflangOrigin}/${categoryQuery}">`)
+            .replace('<meta property="og:image" content="/image/logo.png">', `<meta property="og:image" content="${origin}/image/logo.png">`)
             .replace('</head>', `<script type="application/ld+json">${homeJsonLd}</script></head>`));
     } catch (err) {
         next(err);
@@ -223,6 +229,9 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// صور المتجر المرفوعة: تُخدم من R2 عبر الخادم عند تفعيله، وإلا من القرص المحلي.
+app.get('/uploads/:filename', uploadController.servePublicUpload);
 
 // Cache headers للملفات الثابتة
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -380,6 +389,52 @@ function stripDuplicateSeoTags(html) {
 }
 
 /**
+ * يُرجع رابط صورة صالحاً للـSEO. يقبل الروابط المطلقة، ويصلح المسارات القديمة
+ * مثل /steam.png → /image/steam.png، ويعود لشعار المتجر إذا كان الملف غير موجود.
+ */
+function resolveProductImage(image, baseUrl) {
+    const raw = String(image || '').trim();
+    if (/^https?:\/\//i.test(raw)) return raw;
+
+    let local = raw;
+    if (!local) {
+        local = '/image/logo.png';
+    } else if (!local.startsWith('/image/') && !local.startsWith('/uploads/')) {
+        local = `/image/${path.basename(local)}`;
+    }
+
+    // صور /uploads/ تُخزَّن في R2 عند تفعيله، فلا يمكن التحقق من وجودها على القرص.
+    const isRemoteUpload = local.startsWith('/uploads/') && objectStorage.isEnabled();
+    if (!isRemoteUpload) {
+        const diskPath = path.join(__dirname, 'public', local.replace(/^\/+/, ''));
+        if (!fs.existsSync(diskPath)) local = '/image/logo.png';
+    }
+    return baseUrl ? `${baseUrl}${local}` : local;
+}
+
+/**
+ * حالة التوفر الفعلية: الخارجي بلا مخزون معروف يُعد متوفراً،
+ * والمحلي يُحسب من الأكواد المتاحة.
+ */
+function getProductAvailability(product) {
+    let stock = null;
+    if (product.availableStock !== null && product.availableStock !== undefined) {
+        const value = Number(product.availableStock);
+        if (Number.isFinite(value)) stock = value;
+    } else if (product.isExternal) {
+        if (product.providerStock === null || product.providerStock === undefined) {
+            return 'https://schema.org/InStock';
+        }
+        stock = Number(product.providerStock);
+    } else if (Array.isArray(product.codes)) {
+        stock = product.codes.filter(code => code && code.status === 'available').length;
+    }
+    return stock !== null && Number.isFinite(stock) && stock <= 0
+        ? 'https://schema.org/OutOfStock'
+        : 'https://schema.org/InStock';
+}
+
+/**
  * بناء كتلة وسوم SEO (title/description/canonical/og/twitter/JSON-LD)
  * لمنتج واحد، تُحقن مباشرة بعد <head> في صفحة /product/:id.
  * كل قيمة ديناميكية تُهرب عبر escapeHtml.
@@ -400,13 +455,11 @@ function buildProductSeoMeta(product, queryLang, productId, origin, hreflangOrig
     const hreflangBase = String(hreflangOrigin || '').replace(/\/+$/, '');
     const canonical = `${baseUrl}/product/${productId}`;
     const productPage = `${hreflangBase}/product/${productId}`;
-    const imageSource = product.image && String(product.image) ? String(product.image) : '/image/logo.png';
-    // تحويل الصورة إلى رابط مطلق عند توفر أصل صالح (لا تُترك روابط نسبية في og:image/JSON-LD)
-    const absoluteImage = imageSource.includes('://')
-        ? imageSource
-        : (baseUrl ? `${baseUrl}${imageSource.startsWith('/') ? '' : '/'}${imageSource}` : imageSource);
+    // تحويل الصورة إلى رابط مطلق مع التحقق من وجود الملف (يمنع og:image المكسور)
+    const absoluteImage = resolveProductImage(product.image, baseUrl);
     const price = Number(product.price);
     const hasValidPrice = Number.isFinite(price) && price > 0;
+    const availability = getProductAvailability(product);
 
     const schema = {
         '@context': 'https://schema.org',
@@ -419,7 +472,7 @@ function buildProductSeoMeta(product, queryLang, productId, origin, hreflangOrig
             '@type': 'Offer',
             priceCurrency: siteSettings.currency.code,
             price,
-            availability: 'https://schema.org/InStock',
+            availability,
             url: canonical
         } : undefined
     };
@@ -469,7 +522,7 @@ app.get('/product/:productId', async (req, res, next) => {
     let product;
     try {
         product = await Product.findById(productId)
-            .select('productName description price category region image rating reviewsCount isActive');
+            .select('productName description price category region image rating reviewsCount isActive isExternal providerStock codes.status');
     } catch (_err) {
         return next();
     }

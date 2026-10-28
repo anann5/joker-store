@@ -54,6 +54,9 @@ router.post('/upload', (req, res, next) => {
     });
 }, uploadController.uploadImage);
 
+// تقديم إثبات دفع خاص للأدمن فقط — الملفات لا تُخدم عبر express.static
+router.get('/payment-proofs/:filename', uploadController.servePaymentProof);
+
 router.get('/dashboard', statsController.getStats);
 router.get('/inventory', productController.getInventory);
 router.get('/inventory/stats', productController.getStockStats);

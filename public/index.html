@@ -100,7 +100,7 @@
             <button id="themeToggleBtn" class="header-btn theme-toggle-btn" title="تبديل المظهر (فاتح / داكن / النظام)" aria-label="تبديل المظهر">
                 <i class="fas fa-moon"></i>
             </button>
-            <button id="lang-switcher" class="header-btn" title="Switch Language">
+            <button id="lang-switcher" class="header-btn" title="Switch Language" aria-label="تغيير اللغة">
                 <i class="fas fa-globe"></i>
                 <span>EN</span>
             </button>
@@ -443,7 +443,7 @@
 <!-- مودال تسجيل الدخول / إنشاء حساب -->
 <div class="modal-overlay" id="authModal">
     <div class="auth-container">
-        <button class="close-modal-btn" id="closeAuthModal" data-close-modal>×</button>
+        <button class="close-modal-btn" id="closeAuthModal" data-close-modal aria-label="إغلاق">×</button>
         <div class="auth-tabs">
             <button class="auth-tab-btn active" data-form="loginForm" data-i18n-key="auth_tab_login">تسجيل الدخول</button>
             <button class="auth-tab-btn" data-form="registerForm" data-i18n-key="auth_tab_register">إنشاء حساب جديد</button>
@@ -486,7 +486,7 @@
 <!-- مودال السلة / الشراء -->
 <div class="modal-overlay" id="purchaseModal">
     <div class="delivery-container cart-modal">
-        <button class="close-modal-btn" id="closeModal" data-close-modal>×</button>
+        <button class="close-modal-btn" id="closeModal" data-close-modal aria-label="إغلاق">×</button>
         <div class="cart-modal-header">
             <h3><i class="fas fa-shopping-cart"></i> <span data-i18n-key="cart_title">سلة المشتريات الخاصة بك</span></h3>
         </div>
@@ -539,7 +539,7 @@
                     </div>
                 </div>
 
-                <button id="clearCartBtn" class="clear-cart-btn">
+                <button id="clearCartBtn" class="clear-cart-btn" aria-label="تفريغ السلة">
                     <i class="fas fa-trash"></i> <span data-i18n-key="clear_cart_label">تفريغ السلة</span>
                 </button>
 
@@ -605,7 +605,7 @@
                         <label class="payment-option-label">
                             <input type="radio" name="payment_gateway" value="reflect">
                             <div class="payment-option-content">
-                                <img class="pay-tile" src="/image/pay/refakt.svg" alt="ريفلكت" width="26" height="26" loading="lazy" decoding="async">
+                                <img class="pay-tile" src="/image/pay/reflect.svg" alt="ريفلكت" width="26" height="26" loading="lazy" decoding="async">
                                 <span class="payment-option-text"><b data-i18n-key="pay_reflect">رفلكت</b><small data-i18n-key="pay_reflect_hint">ادفع عبر تطبيق رفلكت</small></span>
                             </div>
                         </label>
@@ -620,11 +620,11 @@
                     <input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required>
                 </div>
                 <div class="form-group" style="margin-top:12px;">
-                    <label for="paymentProofInput" style="font-size:0.82rem;color:var(--text-muted);">إرفاق صورة الإثبات (اختياري)</label>
+                    <label for="paymentProofInput" data-i18n-key="checkout_proof_label" style="font-size:0.82rem;color:var(--text-muted);">إرفاق صورة الإثبات (اختياري)</label>
                     <input type="file" id="paymentProofInput" accept="image/*" style="margin-top:6px;display:block;">
                     <div id="paymentProofPreview" style="margin-top:8px;display:none;align-items:center;gap:8px;">
                         <img id="paymentProofImg" style="max-width:180px;max-height:120px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);object-fit:cover;" alt="proof">
-                        <button type="button" id="removeProofBtn" class="btn btn-secondary btn-sm">إزالة</button>
+                        <button type="button" id="removeProofBtn" class="btn btn-secondary btn-sm" data-i18n-key="checkout_proof_remove">إزالة</button>
                     </div>
                 </div>
             </div>
@@ -772,7 +772,7 @@
             <div class="payment-methods">
                 <div class="pay-item"><img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_jawwal">جوال بي</span></div>
                 <div class="pay-item"><img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_palpay">بال بي</span></div>
-                <div class="pay-item"><img class="pay-tile" src="/image/pay/refakt.svg" alt="ريفلكت" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_reflect">ريفلكت</span></div>
+                <div class="pay-item"><img class="pay-tile" src="/image/pay/reflect.svg" alt="ريفلكت" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_reflect">ريفلكت</span></div>
             </div>
         </div>
         <div class="footer-social">
@@ -858,7 +858,7 @@
             <div class="detail-thumbnails" data-thumbnails></div>
         </div>
         <div class="detail-info">
-            <h2 class="product-name"></h2>
+            <h1 class="product-name"></h1>
             <div class="detail-meta">
                 <div class="detail-rating" data-rating></div>
                 <button class="wishlist-btn detail-wishlist" data-wishlist-btn title="أضف لقائمة الأمنيات" data-i18n-title="wishlist_tooltip"><i class="far fa-heart"></i></button>
@@ -979,7 +979,7 @@
 </div>
 
 <!-- Lightbox overlay لعرض الصور بحجم كامل -->
-<div class="lightbox-overlay" id="lightboxOverlay" role="dialog" aria-hidden="true">
+<div class="lightbox-overlay" id="lightboxOverlay" role="dialog" aria-hidden="true" inert>
     <button type="button" class="lightbox-close" data-lightbox-close aria-label="إغلاق"><i class="fas fa-times"></i></button>
     <button type="button" class="lightbox-prev" data-lightbox-prev aria-label="الصورة السابقة"><i class="fas fa-chevron-left"></i></button>
     <button type="button" class="lightbox-next" data-lightbox-next aria-label="الصورة التالية"><i class="fas fa-chevron-right"></i></button>

@@ -180,6 +180,24 @@ setInterval(async () => {
 }, 24 * 60 * 60 * 1000);
 setTimeout(() => { purgeStaleSubscriptions(3 * 24 * 60 * 60 * 1000).catch(()=>{}); }, 5 * 60 * 1000);
 
+// إلغاء الطلبات التي انتهت مهلة الدفع/المراجعة: تحرير المخزون المحجوز وإعادة نقاط الولاء
+const { expireStaleOrders } = require('./controllers/orderController');
+let expiryInFlight = false;
+const runOrderExpiry = async () => {
+    if (expiryInFlight) return;
+    expiryInFlight = true;
+    try {
+        const count = await expireStaleOrders(io);
+        if (count > 0) console.log(`⌛ أُلغي ${count} طلب لانتهاء مهلة الدفع.`);
+    } catch (e) {
+        console.error('❌ فحص الطلبات المنتهية فشل:', e.message);
+    } finally {
+        expiryInFlight = false;
+    }
+};
+setInterval(runOrderExpiry, 60 * 1000);
+setTimeout(runOrderExpiry, 20 * 1000);
+
 const FINAL_PORT = process.env.PORT || 5850;
 // الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
 server.listen(FINAL_PORT, '::', () => {

@@ -12,15 +12,24 @@ process.env.JWT_SECRET = 'test-secret-for-loyalty';
 
 const mockOrderSave = jest.fn().mockResolvedValue(true);
 
-jest.mock('../models', () => ({
-    Product: { find: jest.fn() },
-    Order: jest.fn().mockImplementation(cfg => ({ ...cfg, save: mockOrderSave })),
-    Category: {},
-    User: {
-        findOneAndUpdate: jest.fn(),
-        updateOne: jest.fn().mockResolvedValue({ acknowledged: true })
-    }
-}));
+jest.mock('../models', () => {
+    const OrderMock = jest.fn().mockImplementation(cfg => ({ ...cfg, save: mockOrderSave }));
+    OrderMock.exists = jest.fn().mockResolvedValue(null);
+    OrderMock.countDocuments = jest.fn().mockResolvedValue(0);
+    return {
+        Product: {
+            find: jest.fn(),
+            reserveCodesAtomic: jest.fn().mockResolvedValue(['C1']),
+            releaseReservedCodes: jest.fn().mockResolvedValue({})
+        },
+        Order: OrderMock,
+        Category: {},
+        User: {
+            findOneAndUpdate: jest.fn(),
+            updateOne: jest.fn().mockResolvedValue({ acknowledged: true })
+        }
+    };
+});
 
 jest.mock('../controllers/helpers', () => ({
     createLog: jest.fn().mockResolvedValue(true),
@@ -31,7 +40,8 @@ jest.mock('../controllers/helpers', () => ({
 jest.mock('../controllers/notification', () => ({
     sendOrderCreatedEmail: jest.fn().mockResolvedValue(true),
     sendOrderConfirmationEmail: jest.fn().mockResolvedValue(true),
-    sendOrderRejectedEmail: jest.fn().mockResolvedValue(true)
+    sendOrderRejectedEmail: jest.fn().mockResolvedValue(true),
+    sendOrderExpiredEmail: jest.fn().mockResolvedValue(true)
 }));
 
 const storeRoutes = require('../routes/storeRoutes');

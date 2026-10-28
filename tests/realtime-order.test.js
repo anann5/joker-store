@@ -14,6 +14,7 @@ jest.mock('../models', () => ({
     Product: {
         findById: jest.fn(),
         claimCodeAtomic: jest.fn(),
+        findReservedCodesForOrder: jest.fn().mockResolvedValue([]),
         confirmReservedCodes: jest.fn().mockResolvedValue({ acknowledged: true }),
         releaseReservedCodes: jest.fn().mockResolvedValue({ acknowledged: true })
     },
@@ -33,7 +34,8 @@ jest.mock('../controllers/helpers', () => ({
 
 jest.mock('../controllers/notification', () => ({
     sendOrderConfirmationEmail: jest.fn().mockResolvedValue(true),
-    sendOrderRejectedEmail: jest.fn().mockResolvedValue(true)
+    sendOrderRejectedEmail: jest.fn().mockResolvedValue(true),
+    sendOrderExpiredEmail: jest.fn().mockResolvedValue(true)
 }));
 
 jest.mock('../providers/registry', () => ({

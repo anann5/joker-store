@@ -1366,6 +1366,24 @@ function exportOrdersCSV() {
     window.open(`/api/admin/orders/export?${params}`, '_blank');
 }
 
+const PAYMENT_STATUS_LABELS = {
+    awaiting_payment: 'بانتظار الدفع',
+    under_review: 'إثبات الدفع قيد المراجعة',
+    paid: 'مدفوع',
+    expired: 'انتهت المهلة',
+    cancelled: 'ملغى'
+};
+
+function formatAdminRemaining(deadline) {
+    const ms = new Date(deadline).getTime() - Date.now();
+    if (!Number.isFinite(ms) || ms <= 0) return 'انتهت المهلة';
+    const totalMin = Math.ceil(ms / 60000);
+    if (totalMin < 60) return `متبقي ${totalMin} د`;
+    const hours = Math.floor(totalMin / 60);
+    const mins = totalMin % 60;
+    return mins > 0 ? `متبقي ${hours} س ${mins} د` : `متبقي ${hours} س`;
+}
+
 function renderOrders(orders) {
     const tbody = document.getElementById('ordersList');
     if (!tbody) return;
@@ -1390,12 +1408,36 @@ function renderOrders(orders) {
                 return `${escapeHtml(itemName)} (×${qty})`;
             }).join('، ')
             : escapeHtml(order.productName || '—');
-        const proofLink = order.paymentProofUrl ? ` <a href="${escapeHtml(order.paymentProofUrl)}" target="_blank" rel="noopener" style="color:var(--primary-neon);font-size:0.8rem;text-decoration:underline;"><i class="fas fa-image"></i> إثبات</a>` : '';
+        const rawProofUrl = order.paymentProofUrl || '';
+        const proofFile = rawProofUrl.startsWith('/private-proofs/')
+            ? rawProofUrl.slice('/private-proofs/'.length)
+            : '';
+        // الإثباتات الجديدة خارج الويب العام — تُعرض فقط عبر مسار الأدمن الموثّق
+        const proofHref = proofFile
+            ? `/api/admin/payment-proofs/${encodeURIComponent(proofFile)}`
+            : rawProofUrl;
+        const proofLink = rawProofUrl
+            ? ` <a href="${escapeHtml(proofHref)}" target="_blank" rel="noopener" style="color:var(--primary-neon);font-size:0.8rem;text-decoration:underline;"><i class="fas fa-${proofFile ? 'lock' : 'image'}"></i> إثبات</a>`
+            : '';
         const items = itemsBase + proofLink;
         const total = order.price || order.totalAmount || 0;
         const status = order.status || 'pending';
-        const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : status === 'refunded' ? 'badge-danger' : 'badge-danger');
-        const statusText = status === 'completed' ? 'مكتمل' : (status === 'pending' ? 'معلّق' : (status === 'refunded' ? 'مرفوض' : (status === 'processing' ? 'قيد التنفيذ' : 'فشل')));
+        const statusBadge = status === 'completed' ? 'badge-success' : (status === 'pending' ? 'badge-warning' : 'badge-danger');
+        const statusText = status === 'completed' ? 'مكتمل'
+            : status === 'pending' ? 'معلّق'
+                : status === 'processing' ? 'قيد التنفيذ'
+                    : status === 'refunded' ? 'مرفوض'
+                        : status === 'cancelled' ? 'ملغى'
+                            : 'فشل';
+        const paymentStatus = order.paymentStatus || '';
+        const isPaymentPending = paymentStatus === 'awaiting_payment' || paymentStatus === 'under_review';
+        const paymentLine = PAYMENT_STATUS_LABELS[paymentStatus]
+            ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">${escapeHtml(
+                PAYMENT_STATUS_LABELS[paymentStatus] + (isPaymentPending && order.reservationExpiresAt
+                    ? ` · ${formatAdminRemaining(order.reservationExpiresAt)}`
+                    : '')
+            )}</div>`
+            : '';
         const actionButtons = status === 'pending'
             ? `<button class="btn btn-approve btn-sm" data-action="approve-order" data-order-id="${order.orderId}"><i class="fas fa-check"></i> اعتماد</button>
                <button class="btn btn-reject btn-sm" data-action="reject-order" data-order-id="${order.orderId}" style="margin-right:4px;"><i class="fas fa-times"></i> رفض</button>`
@@ -1412,7 +1454,7 @@ function renderOrders(orders) {
                 <td class="customer-email-cell">${escapeHtml(email)}</td>
                 <td>${items}</td>
                 <td class="price-cell">${formatMoney(total)}</td>
-                <td><span class="badge ${statusBadge}">${statusText}</span></td>
+                <td><span class="badge ${statusBadge}">${statusText}</span>${paymentLine}</td>
                 <td><div class="action-btns-group">${actionButtons}</div></td>
             </tr>
         `;

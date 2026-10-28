@@ -2774,7 +2774,7 @@ margin-bottom: 14px;
     text-align: start;
 }
 
-.detail-info h2 {
+.detail-info h2, .detail-info h1 {
     font-size: 2.1rem;
     color: #fff;
     margin-bottom: 14px;
@@ -4090,6 +4090,7 @@ margin-bottom: 14px;
 
 .status-completed { background: rgba(52, 211, 153, 0.15); color: var(--success); }
 .status-pending { background: rgba(241, 196, 15, 0.15); color: var(--accent-gold); }
+.status-processing { background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
 .status-failed { background: rgba(251, 113, 133, 0.15); color: var(--danger); }
 
 #orderHistoryList {
@@ -4110,6 +4111,15 @@ margin-bottom: 14px;
    =================================================== */
 #homeSections.hidden {
     display: none;
+}
+
+/* إخفاء الهيرو/البانر الترويجي خارج الصفحة الرئيسية */
+.hero-section.is-home-hidden,
+.offer-banner.is-home-hidden,
+.trust-ticker.is-home-hidden,
+#homeStatsStrip.is-home-hidden,
+#filterTabs.is-home-hidden {
+    display: none !important;
 }
 
 /* ===================================================
@@ -4408,7 +4418,7 @@ footer::before {
         padding: 24px;
     }
     .detail-media { max-width: 320px; }
-    .detail-info h2 { font-size: 1.8rem; }
+    .detail-info h2, .detail-info h1 { font-size: 1.8rem; }
 }
 
 @media (max-width: 768px) {
@@ -4669,7 +4679,7 @@ footer::before {
         margin: 0 auto;
     }
 
-    .detail-info h2 {
+    .detail-info h2, .detail-info h1 {
         font-size: 1.5rem;
         text-align: center;
     }
@@ -6579,6 +6589,24 @@ body.mobile-cart-open .social-proof {
     margin: 0;
 }
 
+.receipt-payment-timer {
+    margin: 10px 0 0;
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: var(--accent-gold);
+    font-variant-numeric: tabular-nums;
+}
+
+.track-payment-line {
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: var(--accent-gold);
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.22);
+    border-radius: 8px;
+    padding: 6px 10px;
+}
+
 .receipt-failed {
     text-align: center;
     padding: 18px 12px;
@@ -7052,6 +7080,7 @@ html[data-theme="light"] ::selection {
     :root:not([data-theme]) .category-card h3,
     :root:not([data-theme]) .card-content h3,
     :root:not([data-theme]) .detail-info h2,
+    :root:not([data-theme]) .detail-info h1,
     :root:not([data-theme]) .cart-item-name,
     :root:not([data-theme]) .cart-item-qty,
     :root:not([data-theme]) .cart-suggested-item .suggested-name,
@@ -7223,6 +7252,7 @@ html[data-theme="light"] .guarantee-card h3,
 html[data-theme="light"] .category-card h3,
 html[data-theme="light"] .card-content h3,
 html[data-theme="light"] .detail-info h2,
+html[data-theme="light"] .detail-info h1,
 html[data-theme="light"] .cart-item-name,
 html[data-theme="light"] .cart-item-qty,
 html[data-theme="light"] .cart-suggested-item .suggested-name,

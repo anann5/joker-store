@@ -8,7 +8,8 @@ const STATUS_MAP = {
     pending: 'track_status_pending',
     processing: 'track_status_processing',
     failed: 'track_status_failed',
-    refunded: 'track_status_refunded'
+    refunded: 'track_status_refunded',
+    cancelled: 'track_status_cancelled'
 };
 
 function escapeHtml(value) {

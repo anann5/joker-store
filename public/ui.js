@@ -6,6 +6,13 @@ import { t, getCurrentLanguage } from './i18n.js';
 let toastContainer = null;
 let _bumpQty = null;
 
+// إخفاء/إظهار عناصر الرئيسية الترويجية عند فتح قسم أو منتج
+function setHomeChromeVisible(visible) {
+    document.querySelectorAll('.hero-section, .offer-banner, .trust-ticker, #homeStatsStrip').forEach(el => {
+        el.classList.toggle('is-home-hidden', !visible);
+    });
+}
+
 /**
  * تهريب القيم لإدراجها بأمان في HTML (منع XSS).
  */
@@ -132,6 +139,16 @@ export function showAllCategories() {
 
     const homeSections = document.getElementById('homeSections');
     if (homeSections) homeSections.classList.remove('hidden');
+    setHomeChromeVisible(true);
+    document.getElementById('filterTabs')?.classList.remove('is-home-hidden');
+
+    if (history.replaceState) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('category')) {
+            url.searchParams.delete('category');
+            history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        }
+    }
 
     grid.className = '';
     grid.removeAttribute('style');
@@ -250,6 +267,8 @@ export function showProductDetails(product, currentCategory = '') {
 
     const homeSections = document.getElementById('homeSections');
     if (homeSections) homeSections.classList.add('hidden');
+    setHomeChromeVisible(false);
+    document.getElementById('filterTabs')?.classList.add('is-home-hidden');
 
     const toolbar = document.getElementById('categoryToolbar');
     if (toolbar) toolbar.classList.add('hidden');
@@ -298,7 +317,7 @@ export function showProductDetails(product, currentCategory = '') {
                     cardElement.dataset.productId = clientItem.id;
                     cardElement.dataset.region = detectedRegion;
                     cardElement.style.setProperty('--i', String(idx));
-                    card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" />`;
+                    card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
                     const imgElement = card.querySelector('.card-inner-img');
                     imgElement.src = clientItem.image;
                     imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
@@ -376,7 +395,9 @@ export function showProductDetails(product, currentCategory = '') {
             const overlay = document.getElementById('lightboxOverlay');
             const lbImg = overlay.querySelector('[data-lightbox-img]');
             lbImg.src = resolvedImages[currentImageIndex];
+            lbImg.alt = product.name || '';
             overlay.classList.add('active');
+            overlay.removeAttribute('inert');
             overlay.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
 
@@ -386,8 +407,10 @@ export function showProductDetails(product, currentCategory = '') {
 
             const closeLightbox = () => {
                 overlay.classList.remove('active');
+                overlay.setAttribute('inert', '');
                 overlay.setAttribute('aria-hidden', 'true');
                 document.body.style.overflow = '';
+                zoomBtn.focus();
             };
             const showImage = (idx) => {
                 currentImageIndex = (idx + resolvedImages.length) % resolvedImages.length;
@@ -401,6 +424,7 @@ export function showProductDetails(product, currentCategory = '') {
             closeBtn.onclick = closeLightbox;
             prevBtn.onclick = () => showImage(currentImageIndex - 1);
             nextBtn.onclick = () => showImage(currentImageIndex + 1);
+            closeBtn.focus();
             overlay.onclick = (e) => { if (e.target === overlay) closeLightbox(); };
             document.onkeydown = (e) => {
                 if (!overlay.classList.contains('active')) return;

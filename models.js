@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema({
     loyaltyHistory: {
         type: [{
             points: { type: Number, required: true },
-            type: { type: String, enum: ['earned', 'redeemed'], required: true },
+            type: { type: String, enum: ['earned', 'redeemed', 'refunded'], required: true },
             orderId: { type: mongoose.Schema.Types.ObjectId, default: null },
             createdAt: { type: Date, default: Date.now }
         }],
@@ -76,6 +76,8 @@ const codeSchema = new mongoose.Schema({
     soldAt: { type: Date, default: null },
     soldTo: { type: String, default: null },
     orderId: { type: String, default: null },
+    // مهلة الحجز المؤقت أثناء انتظار الدفع — تُحرَّر تلقائياً عند انتهائها
+    reservedUntil: { type: Date, default: null },
     claimId: { type: String, default: null, select: false }
 });
 
@@ -159,6 +161,55 @@ productSchema.virtual('availableStock').get(function() {
 });
 
 productSchema.index({ groupKey: 1, isExternal: 1 });
+productSchema.index({ 'codes.orderId': 1, 'codes.status': 1 });
+
+/**
+ * حجز عدد من الأكواد المحلية مؤقتاً لطلب لم يُدفع بعد.
+ * كل كود يُحجز بعملية ذرية منفصلة، وعند فشل أي منها تُحرَّر كل أكواد الطلب.
+ * @returns {Promise<string[]>} قيم الأكواد المحجوزة
+ */
+productSchema.statics.reserveCodesAtomic = async function(productId, quantity, orderId, buyerEmail, reservedUntil) {
+    const reservedCodes = [];
+    for (let index = 0; index < quantity; index += 1) {
+        const claimId = crypto.randomUUID();
+        const product = await this.findOneAndUpdate(
+            { _id: productId, codes: { $elemMatch: { status: 'available' } } },
+            {
+                $set: {
+                    'codes.$.status': 'reserved',
+                    'codes.$.soldAt': null,
+                    'codes.$.soldTo': buyerEmail,
+                    'codes.$.orderId': orderId,
+                    'codes.$.claimId': claimId,
+                    'codes.$.reservedUntil': reservedUntil,
+                    updatedAt: new Date()
+                }
+            },
+            { new: true, select: { codes: { $elemMatch: { claimId } } } }
+        );
+
+        if (!product?.codes?.length) {
+            if (reservedCodes.length > 0) {
+                await this.releaseReservedCodes(orderId).catch(() => {});
+            }
+            throw new Error('نفدت الكمية أو حدث خطأ أثناء الحجز');
+        }
+        reservedCodes.push(product.codes[0].value);
+    }
+    return reservedCodes;
+};
+
+/**
+ * جلب قيم الأكواد التي حُجزت سابقاً لطلب معيّن (بدون كشفها للواجهة).
+ * @returns {Promise<string[]>}
+ */
+productSchema.statics.findReservedCodesForOrder = async function(productId, orderId) {
+    const product = await this.findById(productId).select('codes').lean();
+    if (!product) return [];
+    return (product.codes || [])
+        .filter(code => code.orderId === orderId && code.status === 'reserved')
+        .map(code => code.value);
+};
 
 /**
  * Atomically claim a single local code for an order.
@@ -194,7 +245,13 @@ productSchema.statics.claimCodeAtomic = async function(productId, orderId, buyer
 productSchema.statics.confirmReservedCodes = async function(orderId) {
     return this.updateMany(
         { codes: { $elemMatch: { orderId, status: 'reserved' } } },
-        { $set: { 'codes.$[c].status': 'sold' } },
+        {
+            $set: {
+                'codes.$[c].status': 'sold',
+                'codes.$[c].soldAt': new Date()
+            },
+            $unset: { 'codes.$[c].reservedUntil': '' }
+        },
         { arrayFilters: [{ 'c.orderId': orderId, 'c.status': 'reserved' }] }
     );
 };
@@ -212,7 +269,8 @@ productSchema.statics.releaseReservedCodes = async function(orderId) {
                 'codes.$[c].soldAt': '',
                 'codes.$[c].soldTo': '',
                 'codes.$[c].orderId': '',
-                'codes.$[c].claimId': ''
+                'codes.$[c].claimId': '',
+                'codes.$[c].reservedUntil': ''
             }
         },
         { arrayFilters: [{ 'c.orderId': orderId, 'c.status': 'reserved' }] }
@@ -250,9 +308,24 @@ const orderSchema = new mongoose.Schema({
     costPrice: { type: Number, default: 0, min: 0 },
     status: {
         type: String,
-        enum: ['pending', 'processing', 'completed', 'failed', 'refunded'],
+        enum: ['pending', 'processing', 'completed', 'failed', 'refunded', 'cancelled'],
         default: 'pending'
     },
+    // حالة الدفع مستقلة عن حالة التسليم:
+    // awaiting_payment → بانتظار التحويل، under_review → وصل الإثبات،
+    // paid → اعتُمد الدفع، expired/cancelled → انتهت المهلة أو أُلغي.
+    paymentStatus: {
+        type: String,
+        enum: ['awaiting_payment', 'under_review', 'paid', 'expired', 'cancelled'],
+        default: 'awaiting_payment'
+    },
+    paymentSubmittedAt: { type: Date, default: null },
+    paymentProofHash: { type: String, default: null },
+    // مهلة حجز المخزون — تنتهي بإلغاء تلقائي وتحرير الأكواد
+    reservationExpiresAt: { type: Date, default: null },
+    stockReserved: { type: Boolean, default: false },
+    cancellationReason: { type: String, default: null },
+    loyaltyPointsRefunded: { type: Boolean, default: false },
     paymentGateway: { type: String, default: 'manual' },
     paymentRef: { type: String, default: null },
     paymentProofUrl: { type: String, default: null },
@@ -382,6 +455,8 @@ productSchema.index({ isActive: 1, 'productName.ar': 1 });
 productSchema.index({ isActive: 1, 'productName.en': 1 });
 orderSchema.index({ status: 1, completedAt: -1 });
 orderSchema.index({ buyerEmail: 1, createdAt: -1 });
+orderSchema.index({ status: 1, paymentStatus: 1, reservationExpiresAt: 1 });
+orderSchema.index({ paymentProofHash: 1 });
 categorySchema.index({ isActive: 1, order: 1 });
 // سجل النشاطات: يُفرز بـ createdAt في لوحة التحكم ويُحذف الأقدم عبر deleteMany
 logSchema.index({ createdAt: -1 });

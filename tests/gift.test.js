@@ -12,8 +12,16 @@ jest.mock('../models', () => {
     OrderMock.findOne = jest.fn();
     OrderMock.find = jest.fn();
     OrderMock.updateOne = jest.fn().mockResolvedValue({});
+    OrderMock.exists = jest.fn().mockResolvedValue(null);
+    OrderMock.countDocuments = jest.fn().mockResolvedValue(0);
     return {
-        Product: { find: jest.fn(), findOne: jest.fn(), findById: jest.fn() },
+        Product: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            findById: jest.fn(),
+            reserveCodesAtomic: jest.fn().mockResolvedValue(['GIFT-CODE-1']),
+            releaseReservedCodes: jest.fn().mockResolvedValue({})
+        },
         Order: OrderMock,
         Category: {},
         User: {},

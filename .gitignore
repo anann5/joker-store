@@ -12,6 +12,7 @@ logs/
 server.log
 .DS_Store
 public/uploads/
+private/uploads/
 
 # Capacitor / Android build
 /android/

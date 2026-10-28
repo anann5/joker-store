@@ -12,8 +12,28 @@ const STATUS_MAP = {
     pending: { text: () => t('track_status_pending'), cls: 'pending' },
     processing: { text: () => t('track_status_processing'), cls: 'processing' },
     failed: { text: () => t('track_status_failed'), cls: 'failed' },
-    refunded: { text: () => t('track_status_refunded'), cls: 'refunded' }
+    refunded: { text: () => t('track_status_refunded'), cls: 'refunded' },
+    cancelled: { text: () => t('track_status_cancelled'), cls: 'failed' }
 };
+
+function buildPaymentLine(order) {
+    const ps = order.paymentStatus;
+    if (!ps || ps === 'paid' || order.status === 'completed') return '';
+    if (ps === 'awaiting_payment' || ps === 'under_review') {
+        const deadline = order.reservationExpiresAt ? new Date(order.reservationExpiresAt) : null;
+        const deadlineText = deadline && !Number.isNaN(deadline.getTime())
+            ? deadline.toLocaleString(getCurrentLanguage() === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })
+            : '';
+        const key = ps === 'under_review'
+            ? (deadlineText ? 'track_payment_review_deadline' : 'track_payment_review')
+            : (deadlineText ? 'track_payment_awaiting_deadline' : 'track_payment_awaiting');
+        return `<div class="track-payment-line">${escapeHtml(t(key).replace('{time}', deadlineText))}</div>`;
+    }
+    if (ps === 'expired') {
+        return `<div class="track-payment-line">${escapeHtml(t('track_payment_expired'))}</div>`;
+    }
+    return '';
+}
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -121,7 +141,7 @@ async function trackOrder() {
 
         results.innerHTML = data.orders.map(order => {
             const st = STATUS_MAP[order.status] || { text: () => order.status, cls: '' };
-            const isFailure = order.status === 'failed' || order.status === 'refunded';
+            const isFailure = order.status === 'failed' || order.status === 'refunded' || order.status === 'cancelled';
             const date = new Date(order.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
             const items = (order.items || []).map(i => escapeHtml((i.name && (i.name[lang] || i.name.ar)) || i.name)).join('، ');
             const codesHtml = (!isFailure && order.codes && order.codes.length)
@@ -153,6 +173,7 @@ async function trackOrder() {
                     ${isFailure ? buildOrderFailureTimeline() : buildOrderTimeline(order.status)}
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b>${formatPrice(order.price)}</b></div>
+                    ${buildPaymentLine(order)}
                     ${codesHtml}
                     ${giftHtml}
                     ${maskedHint}

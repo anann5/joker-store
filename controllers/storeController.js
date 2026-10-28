@@ -1,6 +1,9 @@
 /* eslint-disable no-await-in-loop -- جلب منتجات العروض تسلسلياً مقصود (عدد صغير ومحدود) */
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
-const { Product, Order, Category, Promotion } = require('../models');
+const { Product, Order, Category, Promotion, User } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 const siteSettings = require('../config/siteSettings');
 const notification = require('./notification');
@@ -9,9 +12,18 @@ const { applyPromoCode, applyPromoCodeToProducts, applyPromoCodeToProductIds, ro
 const { normalizeRegion } = require('../providers/regions');
 const currency = require('../providers/currency');
 const fxPricing = require('../providers/fxPricing');
+const { PUBLIC_UPLOAD_DIR, PRIVATE_PROOF_DIR, MAX_UPLOAD_BYTES, PROOF_URL_RE } = require('../middleware/upload');
+const objectStorage = require('../services/objectStorage');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
+
+// نافذة الدفع: تُحرَّر الأكواد تلقائياً إذا لم يصل الطلب/الإثبات خلال هذه المدة.
+const PAYMENT_RESERVATION_MINUTES = Math.min(120, Math.max(5, Number.parseInt(process.env.PAYMENT_RESERVATION_MINUTES, 10) || 30));
+// بعد رفع الإثبات تُمْنَح مهلة أطول للأدمن لمراجعة التحويل.
+const PAYMENT_REVIEW_WINDOW_HOURS = Math.min(72, Math.max(1, Number.parseInt(process.env.PAYMENT_REVIEW_WINDOW_HOURS, 10) || 24));
+// حد بسيط يمنع إغراق المخزون بطلبات معلّقة من بريد واحد.
+const MAX_ACTIVE_PENDING_ORDERS = Math.max(1, Number.parseInt(process.env.MAX_ACTIVE_PENDING_ORDERS, 10) || 4);
 
 // ======================================================
 // كاش بسيط في الذاكرة لواجهة المتجر (TTL)
@@ -236,7 +248,7 @@ exports.getSiteConfig = async (_req, res) => {
                 payment: {
                     jawwalNumber: siteSettings.payment.jawwalNumber,
                     palpayNumber: siteSettings.payment.palpayNumber,
-                    refaktNumber: siteSettings.payment.refaktNumber
+                    reflectNumber: siteSettings.payment.reflectNumber
                 },
                 currency: { ...siteSettings.currency, ...displayCurrency },
                 social: siteSettings.social,
@@ -290,7 +302,7 @@ exports.trackOrder = async (req, res) => {
         const orders = await Order.find(query)
             .sort({ createdAt: -1 })
             .limit(10)
-            .select('orderId status price items.name items.qty items.createdAt code deliveredCodes completedAt');
+            .select('orderId status paymentStatus price items.name items.qty items.createdAt code deliveredCodes completedAt reservationExpiresAt');
 
         // عند البحث بالبريد وحده نُخفي رقم الطلب الكامل، فلا يمكن الانتقال لخطوة
         // لاحقة لسحب الأكواد بتخمين رقم الطلب (نمنع تعداد الطلبات بالبريد).
@@ -308,6 +320,8 @@ exports.trackOrder = async (req, res) => {
                 orderId: revealId ? order.orderId : maskOrderId(order.orderId),
                 masked: !revealId,
                 status: order.status,
+                paymentStatus: order.paymentStatus || (order.status === 'pending' ? 'awaiting_payment' : order.status === 'completed' ? 'paid' : null),
+                reservationExpiresAt: order.reservationExpiresAt || null,
                 price: order.price,
                 createdAt: order.createdAt,
                 completedAt: order.completedAt || null,
@@ -339,7 +353,7 @@ exports.getInvoice = async (req, res) => {
         }
 
         const order = await Order.findOne({ orderId, buyerEmail: email })
-            .select('orderId status price discount discountCode buyerEmail paymentGateway items.name items.qty items.unitPrice items.price items.fulfilmentStatus code deliveredCodes completedAt createdAt isGift giftToken');
+            .select('orderId status paymentStatus price discount discountCode buyerEmail paymentGateway items.name items.qty items.unitPrice items.price items.fulfilmentStatus code deliveredCodes completedAt createdAt isGift giftToken reservationExpiresAt');
         if (!order) {
             return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
         }
@@ -353,6 +367,8 @@ exports.getInvoice = async (req, res) => {
             invoice: {
                 orderId: order.orderId,
                 status: order.status,
+                paymentStatus: order.paymentStatus || (order.status === 'pending' ? 'awaiting_payment' : order.status === 'completed' ? 'paid' : null),
+                reservationExpiresAt: order.reservationExpiresAt || null,
                 price: order.price,
                 discount: Number(order.discount) || 0,
                 discountCode: order.discountCode || null,
@@ -608,9 +624,65 @@ exports.getActivePromotions = async (_req, res) => {
 exports.createOrder = async (req, res) => {
     try {
         const { cartItems, customerEmail, paymentGateway, paymentRef, paymentProofUrl: rawProofUrl, promoCode: rawPromoCode, gift: rawGift } = req.body;
-        const paymentProofUrl = typeof rawProofUrl === 'string' && rawProofUrl.trim() && (/^\/uploads\//.test(rawProofUrl.trim()) || /^https?:\/\//.test(rawProofUrl.trim())) ? rawProofUrl.trim().slice(0,500) : null;
+        const buyerEmail = String(customerEmail || '').trim().toLowerCase();
         if (!Array.isArray(cartItems) || cartItems.length === 0) {
             return res.status(400).json({ success: false, error: 'سلة المشتريات فارغة.' });
+        }
+
+        // إثبات الدفع: مسار داخلي فقط (خاص أو قديم عام) مع بصمة لاكتشاف إعادة الاستخدام.
+        let paymentProofUrl = null;
+        let paymentProofHash = null;
+        const rawProof = typeof rawProofUrl === 'string' ? rawProofUrl.trim() : '';
+        if (rawProof) {
+            const proofMatch = rawProof.match(PROOF_URL_RE);
+            if (!proofMatch) {
+                return res.status(400).json({ success: false, error: 'رابط إثبات الدفع غير صالح.' });
+            }
+            const [, proofScope, proofFilename] = proofMatch;
+            const isPrivateProof = proofScope === 'private-proofs';
+            let proofBuffer = null;
+            let proofLookupFailed = false;
+            try {
+                if (objectStorage.isEnabled()) {
+                    const key = `${isPrivateProof ? 'payment-proofs' : 'uploads'}/${proofFilename}`;
+                    proofBuffer = await objectStorage.getObjectBuffer(key, MAX_UPLOAD_BYTES);
+                } else {
+                    const proofPath = path.join(isPrivateProof ? PRIVATE_PROOF_DIR : PUBLIC_UPLOAD_DIR, proofFilename);
+                    if (fs.existsSync(proofPath)) {
+                        const localBuffer = fs.readFileSync(proofPath);
+                        if (localBuffer.length <= MAX_UPLOAD_BYTES) proofBuffer = localBuffer;
+                    }
+                }
+            } catch (err) {
+                proofLookupFailed = objectStorage.isEnabled() && !objectStorage.isNotFoundError(err);
+                proofBuffer = null;
+            }
+            if (proofLookupFailed) {
+                return res.status(503).json({ success: false, error: 'تعذّر التحقق من إثبات الدفع، حاول مجدداً.' });
+            }
+            if (!proofBuffer) {
+                return res.status(400).json({ success: false, error: 'ملف إثبات الدفع غير موجود.' });
+            }
+            paymentProofHash = crypto.createHash('sha256').update(proofBuffer).digest('hex');
+            const duplicateProof = await Order.exists({ paymentProofHash });
+            if (duplicateProof) {
+                return res.status(400).json({ success: false, error: 'تم استخدام إثبات الدفع هذا في طلب سابق.' });
+            }
+            paymentProofUrl = isPrivateProof
+                ? `/private-proofs/${proofFilename}`
+                : `/uploads/${proofFilename}`;
+        }
+
+        const activePendingOrders = await Order.countDocuments({
+            buyerEmail,
+            status: 'pending',
+            paymentStatus: { $in: ['awaiting_payment', 'under_review'] }
+        });
+        if (activePendingOrders >= MAX_ACTIVE_PENDING_ORDERS) {
+            return res.status(429).json({
+                success: false,
+                error: 'لديك طلبات معلّقة كثيرة. يرجى إكمال الدفع أو انتظار انتهاء مهلة الطلبات السابقة.'
+            });
         }
 
         const promoCode = typeof rawPromoCode === 'string' ? rawPromoCode.trim().toUpperCase() : '';
@@ -733,7 +805,6 @@ exports.createOrder = async (req, res) => {
             }
             // خصم ذرّي للنقاط: لا ينجح إلا إذا كان الرصيد كافياً لحظة الخصم،
             // فيمنع استبدال النقاط نفسها مرتين عبر طلبين متزامنين.
-            const { User } = require('../models');
             redemptionId = crypto.randomUUID();
             const deductedUser = await User.findOneAndUpdate(
                 { _id: req.user.userId, loyaltyPoints: { $gte: pts } },
@@ -754,6 +825,38 @@ exports.createOrder = async (req, res) => {
         }
 
         const orderId = uuidv4().split('-')[0].toUpperCase();
+        const paymentStatus = paymentProofUrl ? 'under_review' : 'awaiting_payment';
+        const reservationWindowMs = paymentProofUrl
+            ? PAYMENT_REVIEW_WINDOW_HOURS * 60 * 60 * 1000
+            : PAYMENT_RESERVATION_MINUTES * 60 * 1000;
+        const reservationExpiresAt = new Date(Date.now() + reservationWindowMs);
+
+        const refundLoyaltyPoints = async () => {
+            if (!redemptionId) return;
+            await User.updateOne(
+                { _id: req.user.userId },
+                { $inc: { loyaltyPoints: loyaltyPointsUsed }, $pull: { loyaltyHistory: { redemptionId } } }
+            ).catch(() => {});
+        };
+
+        // حجز المخزون المحلي قبل حفظ الطلب — يمنع بيع آخر كود لعميلين أثناء مراجعة الدفع.
+        // المنتجات الخارجية تُتحقق من مخزون المزود عند الاعتماد لأن الحجز لديها غير متاح.
+        const localItems = itemsForOrder.filter(item => item.fulfilmentType === 'local');
+        if (localItems.length > 0) {
+            try {
+                for (const item of localItems) {
+                    await Product.reserveCodesAtomic(item.productId, item.qty, orderId, buyerEmail, reservationExpiresAt);
+                }
+            } catch (_reserveErr) {
+                await Product.releaseReservedCodes(orderId).catch(() => {});
+                await refundLoyaltyPoints();
+                return res.status(409).json({
+                    success: false,
+                    error: 'نفدت الكمية المطلوبة أثناء إتمام الطلب. يرجى تحديث السلة والمحاولة مجدداً.'
+                });
+            }
+        }
+
         // الإهداء: يُفعّل فقط عند وجود اسم/جوال/رسالة فعلياً
         const giftToName = rawGift && typeof rawGift.toName === 'string' ? rawGift.toName.trim().slice(0, 60) : '';
         const giftToPhone = rawGift && typeof rawGift.toPhone === 'string' ? rawGift.toPhone.trim().slice(0, 20) : '';
@@ -765,10 +868,15 @@ exports.createOrder = async (req, res) => {
             productName: itemsForOrder.map(item => item.name.ar).join('، '),
             items: itemsForOrder,
             price: total,
-            buyerEmail: String(customerEmail).toLowerCase().trim(),
+            buyerEmail,
             paymentGateway,
             paymentRef,
             paymentProofUrl,
+            paymentProofHash,
+            paymentStatus,
+            paymentSubmittedAt: paymentProofUrl ? new Date() : null,
+            reservationExpiresAt,
+            stockReserved: localItems.length > 0,
             status: 'pending',
             userId: req.user?.userId || null,
             discount: round2(discountAmount + loyaltyDiscount),
@@ -786,14 +894,9 @@ exports.createOrder = async (req, res) => {
         try {
             await newOrder.save();
         } catch (saveErr) {
-            // تعويض بدل معاملة موزّعة: أعِد النقاط المخصومة إن فشل حفظ الطلب
-            if (redemptionId) {
-                const { User } = require('../models');
-                await User.updateOne(
-                    { _id: req.user.userId },
-                    { $inc: { loyaltyPoints: loyaltyPointsUsed }, $pull: { loyaltyHistory: { redemptionId } } }
-                ).catch(() => {});
-            }
+            // تعويض بدل معاملة موزّعة: حرّر المخزون وأعد النقاط المخصومة إن فشل حفظ الطلب
+            await Product.releaseReservedCodes(orderId).catch(() => {});
+            await refundLoyaltyPoints();
             throw saveErr;
         }
 
@@ -828,6 +931,8 @@ exports.createOrder = async (req, res) => {
             success: true,
             message: 'تم استلام طلبك بنجاح.',
             orderId,
+            paymentStatus,
+            reservationExpiresAt,
             discount: newOrder.discount,
             discountCode: newOrder.discountCode,
             total: newOrder.price,
@@ -1076,7 +1181,6 @@ exports.getTestimonials = async (_req, res) => {
 
 // ============ Cart Abandonment Tracking ============
 const { CartSession } = require('../models');
-const crypto = require('crypto');
 
 exports.trackCartSession = async (req, res) => {
     try {
@@ -1141,7 +1245,6 @@ exports.getLoyaltyBalance = async (req, res) => {
         if (!req.user?.userId) {
             return res.json({ success: false, points: 0, history: [], error: 'غير مسجل' });
         }
-        const { User } = require('../models');
         const user = await User.findById(req.user.userId).select('loyaltyPoints loyaltyHistory').lean();
         if (!user) {
             return res.status(404).json({ success: false, error: 'المستخدم غير موجود' });

@@ -8,7 +8,8 @@ describe('Admin API authentication', () => {
         ['/api/admin/orders', 'GET'],
         ['/api/admin/categories', 'GET'],
         ['/api/admin/logs', 'GET'],
-        ['/api/admin/balances', 'GET']
+        ['/api/admin/balances', 'GET'],
+        ['/api/admin/payment-proofs/1700000000000-0123456789abcdef.png', 'GET']
     ];
 
     protectedRoutes.forEach(([path, method]) => {

@@ -1,6 +1,6 @@
-const { Product, Order } = require('../models');
+const { Product, Order, User } = require('../models');
 const { createLog, sendTelegramAlert } = require('./helpers');
-const { sendOrderConfirmationEmail, sendOrderRejectedEmail } = require('./notification');
+const { sendOrderConfirmationEmail, sendOrderRejectedEmail, sendOrderExpiredEmail } = require('./notification');
 const pushService = require('./push');
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
@@ -11,6 +11,34 @@ const MIN_PROFIT_RATIO = Number.parseFloat(process.env.MIN_PROFIT_RATIO) || 1.0;
 
 function getItemProductId(item) {
     return item.productId || item.id;
+}
+
+/**
+ * إعادة نقاط الولاء المخصومة عند إلغاء الطلب — ذرّية ومرة واحدة فقط.
+ */
+async function refundOrderLoyaltyPoints(order) {
+    const points = Number(order?.loyaltyPoints) || 0;
+    if (!order?.userId || points <= 0 || order.loyaltyPointsRefunded) return false;
+
+    const claimed = await Order.findOneAndUpdate(
+        { _id: order._id, loyaltyPointsRefunded: { $ne: true } },
+        { $set: { loyaltyPointsRefunded: true } },
+        { new: true }
+    ).catch(() => null);
+    if (!claimed) return false;
+
+    await User.findByIdAndUpdate(order.userId, {
+        $inc: { loyaltyPoints: points },
+        $push: {
+            loyaltyHistory: {
+                points,
+                type: 'refunded',
+                orderId: order._id || null,
+                createdAt: new Date()
+            }
+        }
+    }).catch(() => {});
+    return true;
 }
 
 /**
@@ -179,8 +207,16 @@ exports.rejectOrder = async (req, res) => {
         }
 
         order.status = 'refunded';
+        order.paymentStatus = 'cancelled';
+        order.cancellationReason = 'rejected_by_admin';
+        order.stockReserved = false;
+        order.reservationExpiresAt = null;
         order.failedAt = new Date();
         await order.save();
+
+        // تحرير الأكواد المحلية المحجوزة وإعادة نقاط الولاء المخصومة
+        await Product.releaseReservedCodes(order.orderId).catch(() => {});
+        await refundOrderLoyaltyPoints(order);
 
         await createLog('رفض طلب', `تم رفض الطلب #${order.orderId}`, req, null, order.productName);
         await sendTelegramAlert(`⛔ تم رفض الطلب #${order.orderId}.`);
@@ -208,6 +244,83 @@ exports.rejectOrder = async (req, res) => {
     }
 };
 
+/**
+ * إلغاء الطلبات التي انتهت مهلة الدفع/المراجعة تلقائياً:
+ * تحرير المخزون المحجوز، إعادة نقاط الولاء، إعلام العميل، وتنبيه الأدمن
+ * للطلبات التي انتهت مهلة مراجعتها وهي تحمل إثبات دفع.
+ */
+exports.expireStaleOrders = async (io) => {
+    const now = new Date();
+    const staleOrders = await Order.find({
+        status: 'pending',
+        paymentStatus: { $in: ['awaiting_payment', 'under_review'] },
+        reservationExpiresAt: { $ne: null, $lte: now }
+    })
+        .select('_id orderId userId loyaltyPoints paymentStatus buyerEmail productName')
+        .limit(100);
+
+    let expiredCount = 0;
+    for (const candidate of staleOrders) {
+        // تحديث ذرّي مشروط بالحالة والمهلة: يمنع إلغاء طلب اعتمده الأدمن في نفس اللحظة
+        // eslint-disable-next-line no-await-in-loop
+        const order = await Order.findOneAndUpdate(
+            {
+                _id: candidate._id,
+                status: 'pending',
+                paymentStatus: { $in: ['awaiting_payment', 'under_review'] },
+                reservationExpiresAt: { $ne: null, $lte: now }
+            },
+            {
+                $set: {
+                    status: 'cancelled',
+                    paymentStatus: 'expired',
+                    stockReserved: false,
+                    cancellationReason: 'payment_window_expired',
+                    failedAt: now
+                }
+            },
+            { new: true }
+        );
+        if (!order) continue;
+        expiredCount += 1;
+
+        // eslint-disable-next-line no-await-in-loop
+        await Product.releaseReservedCodes(order.orderId).catch(() => {});
+        // eslint-disable-next-line no-await-in-loop
+        await refundOrderLoyaltyPoints(order);
+        // eslint-disable-next-line no-await-in-loop
+        await createLog(
+            'انتهاء مهلة الدفع',
+            `أُلغي الطلب #${order.orderId} تلقائياً لانتهاء مهلة الدفع.`,
+            { clientIp: 'system' },
+            order._id,
+            order.productName
+        );
+
+        if (io && order.userId) {
+            io.to(`user:${String(order.userId)}`).emit('order_status', {
+                orderId: order.orderId,
+                status: 'cancelled'
+            });
+        }
+
+        sendOrderExpiredEmail(order).catch(() => {});
+
+        // الطلب الذي وصل إثباته وانتهت مهلة مراجعته يحتاج انتباه الأدمن
+        if (candidate.paymentStatus === 'under_review') {
+            // eslint-disable-next-line no-await-in-loop
+            await sendTelegramAlert(
+                `⌛ *انتهت مهلة مراجعة الدفع*\n`
+                + `🧾 *الطلب:* #${order.orderId}\n`
+                + `📮 *البريد:* ${order.buyerEmail}\n`
+                + `ℹ️ أُلغي الطلب تلقائياً وتحرّر مخزونه.`
+            ).catch(() => {});
+        }
+    }
+
+    return expiredCount;
+};
+
 exports.approveOrder = async (req, res) => {
     let order;
     const io = req.app?.get('io');
@@ -215,7 +328,13 @@ exports.approveOrder = async (req, res) => {
     try {
         order = await Order.findOneAndUpdate(
             { orderId: req.params.orderId, status: 'pending' },
-            { $set: { status: 'processing' } },
+            {
+                $set: {
+                    status: 'processing',
+                    paymentStatus: 'paid',
+                    reservationExpiresAt: null
+                }
+            },
             { new: true }
         );
 
@@ -236,6 +355,7 @@ exports.approveOrder = async (req, res) => {
         if (order) {
             order.status = 'failed';
             order.failedAt = new Date();
+            order.stockReserved = false;
             order.items.forEach(item => {
                 if (item.fulfilmentStatus === 'processing') {
                     item.fulfilmentStatus = 'failed';
@@ -300,7 +420,12 @@ async function performFulfilment(order, io, req) {
             deliveredCodes.push(...purchase.codes);
             itemCost = purchase.costPrice;
         } else {
-            for (let claimed = 0; claimed < item.qty; claimed += 1) {
+            // الأكواد المحلية حُجزت لهذا الطلب لحظة إنشائه؛ نستهلكها أولاً.
+            // أي نقص (طلب قديم قبل نظام الحجز) يُكمَل بالحجز الذرّي المعتاد.
+            // eslint-disable-next-line no-await-in-loop
+            const reservedCodes = await Product.findReservedCodesForOrder(product._id, order.orderId);
+            deliveredCodes.push(...reservedCodes.slice(0, item.qty));
+            for (let claimed = deliveredCodes.length; claimed < item.qty; claimed += 1) {
                 // eslint-disable-next-line no-await-in-loop
                 const code = await Product.claimCodeAtomic(product._id, order.orderId, order.buyerEmail);
                 deliveredCodes.push(code);
@@ -323,6 +448,7 @@ async function performFulfilment(order, io, req) {
     }
 
     order.status = 'completed';
+    order.stockReserved = false;
     order.deliveredCodes = allDeliveredCodes;
     order.code = allDeliveredCodes.length === 1 ? allDeliveredCodes[0] : null;
     order.costPrice = totalCost;
@@ -342,7 +468,6 @@ async function performFulfilment(order, io, req) {
     if (order.userId) {
         const pointsEarned = Math.floor((Number(order.price) || 0) / 10);
         if (pointsEarned > 0) {
-            const {User} = require('../models');
             await User.findByIdAndUpdate(order.userId, {
                 $inc: { loyaltyPoints: pointsEarned },
                 $push: {

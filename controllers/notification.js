@@ -223,6 +223,39 @@ async function sendOrderRejectedEmail(order) {
     }
 }
 
+/**
+ * إرسال بريد إشعار للزبون عند انتهاء مهلة الدفع وإلغاء الطلب تلقائياً.
+ */
+async function sendOrderExpiredEmail(order) {
+    const mailer = getTransporter();
+    if (!mailer) return { skipped: true, reason: 'email not configured' };
+
+    const orderId = escapeHtml(order.orderId);
+    const wasUnderReview = order.paymentStatus === 'expired' && order.paymentSubmittedAt;
+    const siteUrl = String(process.env.SITE_URL || '').replace(/\/+$/, '');
+
+    const bodyHtml = `
+            <h2 style="margin:0 0 12px;color:#f59e0b;font-size:18px;">⌛ انتهت مهلة الدفع — أُلغي طلبك</h2>
+            <p style="margin:0 0 8px;">طلبك رقم <strong style="color:#f8fafc;">#${orderId}</strong> أُلغي تلقائياً لانتهاء مهلة ${wasUnderReview ? 'مراجعة إثبات الدفع' : 'الدفع'} دون تأكيد.</p>
+            <p style="margin:0 0 14px;color:#94a3b8;font-size:13px;">تم تحرير الكمية المحجوزة، وإذا كنت خصمت نقاط ولاء فقد أُعيدت إلى رصيدك تلقائياً. يمكنك إنشاء طلب جديد في أي وقت.</p>
+            <div style="text-align:center;margin-top:18px;"><a href="${siteUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;text-decoration:none;padding:10px 22px;border-radius:999px;font-weight:800;font-size:13px;">العودة للمتجر</a></div>
+    `;
+    const emailHtml = emailWrapper({ title: `انتهاء مهلة الطلب #${order.orderId}`, preheader: `أُلغي طلبك #${orderId} لانتهاء مهلة الدفع`, bodyHtml });
+
+    try {
+        await mailer.sendMail({
+            from: MAIL_FROM,
+            to: order.buyerEmail,
+            subject: `🎮 متجر الجوكر — انتهاء مهلة الطلب #${order.orderId}`,
+            html: emailHtml
+        });
+        return { skipped: false };
+    } catch (err) {
+        console.error('⚠️ فشل إرسال بريد انتهاء مهلة الطلب:', err.message);
+        return { skipped: false, error: err.message };
+    }
+}
+
 async function sendAbandonedCartEmail(cart) {
     const mailer = getTransporter();
     if (!mailer || !cart.email) return { skipped: true, reason: 'email not configured or no email' };
@@ -249,5 +282,6 @@ module.exports = {
     sendOrderCreatedEmail,
     sendOrderConfirmationEmail,
     sendOrderRejectedEmail,
+    sendOrderExpiredEmail,
     sendAbandonedCartEmail
 };
