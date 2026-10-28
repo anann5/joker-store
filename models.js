@@ -461,6 +461,20 @@ categorySchema.index({ isActive: 1, order: 1 });
 // سجل النشاطات: يُفرز بـ createdAt في لوحة التحكم ويُحذف الأقدم عبر deleteMany
 logSchema.index({ createdAt: -1 });
 
+// أحداث أمنية دائمة (بدل ملف logs/security.log المؤقت على قرص الاستضافة)
+// تُحذف تلقائياً بعد 90 يوماً عبر فهرس TTL.
+const securityEventSchema = new mongoose.Schema({
+    eventType: { type: String, required: true },
+    message: { type: String },
+    ip: { type: String },
+    userAgent: { type: String },
+    userId: { type: String },
+    path: { type: String },
+    createdAt: { type: Date, default: Date.now }
+});
+securityEventSchema.index({ eventType: 1, createdAt: -1 });
+securityEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
+
 const cartSessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true },
     email: { type: String, default: null },
@@ -547,6 +561,7 @@ module.exports = {
     Category: mongoose.model('Category', categorySchema),
     Order: mongoose.model('Order', orderSchema),
     Log: mongoose.model('Log', logSchema),
+    SecurityEvent: mongoose.model('SecurityEvent', securityEventSchema),
     User: mongoose.model('User', userSchema),
     ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema),
     AdminSession: mongoose.model('AdminSession', adminSessionSchema),

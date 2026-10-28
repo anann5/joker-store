@@ -15,6 +15,13 @@ const registry = require('./providers/registry');
 
 validateEnv();
 
+// في الإنتاج: توقيع جلسات المستخدمين بمفتاح الأدمن غير مسموح — نرفض الإقلاع
+// بدل الاستمرار بمفتاح مشترك (ظهور الخطأ في اللوج أوضح من اكتشافه لاحقاً).
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_USER_SECRET) {
+    console.error('❌ JWT_USER_SECRET غير مضبوط — رفض الإقلاع في الإنتاج. اضبطه في متغيرات البيئة.');
+    process.exit(1);
+}
+
 connectDB();
 
 const server = http.createServer(app);

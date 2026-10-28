@@ -10,8 +10,8 @@ describe('middleware/clientIp — IP الزائر خلف Cloudflare/Render', () 
         expect(resolveClientIp(headers, '10.0.0.1')).toBe('203.0.113.9');
     });
 
-    it('يرجع إلى True-Client-IP عند غياب ترويسة Cloudflare', () => {
-        expect(resolveClientIp({ 'true-client-ip': '198.51.100.4' }, '10.0.0.1')).toBe('198.51.100.4');
+    it('يتجاهل True-Client-IP القابل للتزييف ويرجع إلى IP الاتصال', () => {
+        expect(resolveClientIp({ 'true-client-ip': '198.51.100.4' }, '10.0.0.1')).toBe('10.0.0.1');
     });
 
     it('يتجاهل القيم غير الصالحة ويتجنب X-Forwarded-For القابل للتزوير', () => {

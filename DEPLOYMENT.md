@@ -10,6 +10,7 @@
    - `PORT=10000`
    - `MONGODB_URI=<your-mongodb-uri>`
    - `JWT_SECRET=<strong-secret>`
+   - `JWT_USER_SECRET=<different-strong-secret>` — required in production; the app refuses to boot without it
    - `ADMIN_PASSWORD_HASH=<bcrypt-hash>`
 4. Deploy the service.
 

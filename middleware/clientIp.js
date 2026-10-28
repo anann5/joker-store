@@ -9,10 +9,11 @@ const readIp = (value) => {
 
 // Render يضع Cloudflare أمام كل الطلبات، و req.ip يساوي عنوان الوكيل الداخلي
 // (أو عنوان حافة Cloudflare) وليس الزائر. CF-Connecting-IP يضبطه Cloudflare
-// ولا يمكن للزائر تزويره عبر النطاق، لذا نعتمده أولاً ثم True-Client-IP.
+// ويستبدل أي قيمة يرسلها العميل، لذا نعتمده أولاً.
+// لا نستخدم True-Client-IP: لا يستبدله Cloudflare، فيمكن تزويره لتحييد الحدود.
+// وإذا غاب ترويسة Cloudflare نرجع إلى IP الاتصال الفعلي (req.ip).
 const resolveClientIp = (headers = {}, fallback = '') => {
     return readIp(headers['cf-connecting-ip'])
-        || readIp(headers['true-client-ip'])
         || readIp(fallback)
         || 'unknown';
 };

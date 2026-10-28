@@ -13,9 +13,16 @@ const REQUIRED_VARS = [
  * المتغيرات الاختيارية (Telegram/Email/Push/...) تُسجَّل كتنبيه فقط.
  */
 function validateEnv() {
+    const isProduction = process.env.NODE_ENV === 'production';
     const missingRequired = REQUIRED_VARS
         .filter(({ name }) => !process.env[name])
         .map(({ name, hint }) => `${name} (${hint})`);
+
+    // في الإنتاج لا يُسمح بالرجوع إلى JWT_SECRET لتوقيع جلسات المستخدمين:
+    // فصل المفتاحين يمنع أي تداخل بين صلاحيات الأدمن والمستخدمين.
+    if (isProduction && !process.env.JWT_USER_SECRET) {
+        missingRequired.push('JWT_USER_SECRET (مفتاح توقيع جلسات المستخدمين — إلزامي في الإنتاج)');
+    }
 
     if (missingRequired.length > 0) {
         console.warn('\n⚠️  متغيرات أساسية ناقصة في بيئة التشغيل:');
@@ -29,9 +36,6 @@ function validateEnv() {
     }
     if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
         optionalWarnings.push('TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID غير مضبوطين — تنبيهات Telegram غير مفعلة');
-    }
-    if (!process.env.JWT_USER_SECRET) {
-        optionalWarnings.push('JWT_USER_SECRET غير مضبوط — سجلات مستخدمين غير آمنة في الإنتاج');
     }
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
         optionalWarnings.push('VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY غير مضبوطين — إشعارات Web Push غير مفعلة');
