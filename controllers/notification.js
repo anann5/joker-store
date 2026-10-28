@@ -283,7 +283,10 @@ async function sendAbandonedCartEmail(cart) {
  */
 async function sendPasswordResetEmail(to, resetUrl) {
     const mailer = getTransporter();
-    if (!mailer || !to) return { skipped: true, reason: 'email not configured or no email' };
+    if (!mailer || !to) {
+        console.warn('⚠️ بريد إعادة التعيين لم يُرسل: SMTP/MAIL_FROM غير مهيأ أو لا يوجد بريد للمستخدم.');
+        return { skipped: true, reason: 'email not configured or no email' };
+    }
     const safeUrl = escapeHtml(resetUrl);
     const bodyHtml = `
             <h2 style="margin:0 0 12px;color:#06b6d4;font-size:18px;">🔑 إعادة تعيين كلمة المرور</h2>
