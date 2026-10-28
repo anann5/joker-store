@@ -272,6 +272,17 @@ app.get('/admin-style.css', verifyAdminToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'private', 'admin-style.css'));
 });
 
+// صفحات استعادة كلمة المرور (لا فهرسة — لا تحتوي محتوى عاماً)
+app.get('/forgot-password', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, 'public', 'forgot-password.html'));
+});
+
+app.get('/reset-password', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
+});
+
 app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -298,7 +309,7 @@ app.get('/api/products/breadcrumb/:productId', seoController.breadcrumbSchema);
 
 // صفحات HTML عبر sendFile: منع التخزين المؤقت لضمان ظهور التحديثات فوراً
 app.use((req, res, next) => {
-    if (/^\/(about|track|invoice|support|privacy|terms|contact|offers|faq|login)(\.html)?\/?$/.test(req.path)) {
+    if (/^\/(about|track|invoice|support|privacy|terms|contact|offers|faq|login|forgot-password|reset-password)(\.html)?\/?$/.test(req.path)) {
         res.setHeader('Cache-Control', 'no-cache');
     }
     next();

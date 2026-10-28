@@ -50,6 +50,21 @@ exports.loginSchema = Joi.object({
         })
 });
 
+// كلمة مرور قوية: 8+ أحرف مع حرف كبير وحرف صغير ورقم
+const strongPasswordField = Joi.string()
+    .min(8)
+    .max(128)
+    .pattern(/(?=.*[a-z])/)
+    .pattern(/(?=.*[A-Z])/)
+    .pattern(/(?=.*[0-9])/)
+    .required()
+    .messages({
+        'string.empty': 'كلمة المرور مطلوبة',
+        'string.min': 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
+        'string.pattern.match': 'كلمة المرور يجب أن تحتوي على أحرف كبيرة وصغيرة وأرقام',
+        'any.required': 'كلمة المرور مطلوبة'
+    });
+
 /**
  * مخطط التحقق من صحة بيانات التسجيل
  */
@@ -62,19 +77,7 @@ exports.registerSchema = Joi.object({
             'string.email': 'البريد الإلكتروني غير صالح',
             'any.required': 'البريد الإلكتروني مطلوب'
         }),
-    password: Joi.string()
-        .min(8)
-        .max(128)
-        .pattern(/(?=.*[a-z])/)
-        .pattern(/(?=.*[A-Z])/)
-        .pattern(/(?=.*[0-9])/)
-        .required()
-        .messages({
-            'string.empty': 'كلمة المرور مطلوبة',
-            'string.min': 'كلمة المرور يجب أن تكون 8 أحرف على الأقل',
-            'string.pattern.match': 'كلمة المرور يجب أن تحتوي على أحرف كبيرة وصغيرة وأرقام',
-            'any.required': 'كلمة المرور مطلوبة'
-        }),
+    password: strongPasswordField,
     referralCode: Joi.string()
         .trim()
         .uppercase()
@@ -83,6 +86,36 @@ exports.registerSchema = Joi.object({
         .messages({
             'string.pattern.base': 'كود الإحالة غير صالح'
         })
+});
+
+/**
+ * مخطط طلب رابط إعادة تعيين كلمة المرور
+ */
+exports.forgotPasswordSchema = Joi.object({
+    email: Joi.string()
+        .trim()
+        .email()
+        .required()
+        .messages({
+            'string.empty': 'البريد الإلكتروني مطلوب',
+            'string.email': 'البريد الإلكتروني غير صالح',
+            'any.required': 'البريد الإلكتروني مطلوب'
+        })
+});
+
+/**
+ * مخطط إعادة تعيين كلمة المرور بالتوكن
+ */
+exports.resetPasswordSchema = Joi.object({
+    token: Joi.string()
+        .trim()
+        .pattern(/^[a-f0-9]{64}$/)
+        .required()
+        .messages({
+            'string.pattern.base': 'رابط إعادة التعيين غير صالح',
+            'any.required': 'رابط إعادة التعيين مطلوب'
+        }),
+    password: strongPasswordField
 });
 
 /**

@@ -3268,6 +3268,125 @@ margin-bottom: 14px;
     transform: translateY(-2px);
 }
 
+.auth-forgot {
+    margin: 14px 0 0;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.auth-forgot a {
+    color: var(--secondary-neon, #38bdf8);
+    text-decoration: none;
+}
+
+.auth-forgot a:hover {
+    text-decoration: underline;
+}
+
+/* صفحات استعادة كلمة المرور */
+.reset-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(600px 320px at 80% -10%, rgba(99, 102, 241, 0.28), transparent 60%),
+        radial-gradient(520px 300px at 10% 110%, rgba(56, 189, 248, 0.18), transparent 60%),
+        var(--bg-0);
+}
+
+.reset-card {
+    width: 100%;
+    max-width: 420px;
+    background: rgba(13, 17, 30, 0.82);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    padding: 36px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 14px 34px rgba(3, 6, 14, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    text-align: center;
+}
+
+.reset-card h1 {
+    color: var(--primary-neon);
+    font-size: 1.35rem;
+    margin: 12px 0 10px;
+}
+
+.reset-card p.reset-desc {
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.92rem;
+    line-height: 1.7;
+    margin-bottom: 22px;
+}
+
+.reset-card .form-group {
+    text-align: right;
+    margin-bottom: 16px;
+}
+
+.reset-card input:not([type="submit"]) {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.045);
+    color: #fff;
+    outline: none;
+    font-family: inherit;
+    transition: 0.3s;
+}
+
+.reset-card input:focus {
+    border-color: var(--primary-neon);
+    box-shadow: 0 0 10px rgba(129, 140, 248, 0.3);
+}
+
+.reset-card .reset-logo {
+    width: 72px;
+    margin-bottom: 6px;
+}
+
+.reset-status {
+    margin-top: 16px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    display: none;
+}
+
+.reset-status.visible {
+    display: block;
+}
+
+.reset-status.success {
+    color: #34d399;
+}
+
+.reset-status.error {
+    color: #fb7185;
+}
+
+.reset-back {
+    display: inline-block;
+    margin-top: 18px;
+    color: var(--secondary-neon, #38bdf8);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.reset-dev-link {
+    margin-top: 12px;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    word-break: break-all;
+}
+
+.reset-dev-link a {
+    color: #38bdf8;
+}
+
 /* ===================================================
    💳 خيارات الدفع
    =================================================== */

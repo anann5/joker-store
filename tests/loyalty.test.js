@@ -26,7 +26,9 @@ jest.mock('../models', () => {
         Category: {},
         User: {
             findOneAndUpdate: jest.fn(),
-            updateOne: jest.fn().mockResolvedValue({ acknowledged: true })
+            updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
+            // فحص إصدار الجلسة في authMiddleware
+            findById: jest.fn(() => ({ select: jest.fn().mockResolvedValue({ tokenVersion: 0 }) }))
         }
     };
 });

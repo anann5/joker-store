@@ -278,10 +278,37 @@ async function sendAbandonedCartEmail(cart) {
     }
 }
 
+/**
+ * بريد إعادة تعيين كلمة المرور — يُرسل رابطاً بتوكن صالح 30 دقيقة.
+ */
+async function sendPasswordResetEmail(to, resetUrl) {
+    const mailer = getTransporter();
+    if (!mailer || !to) return { skipped: true, reason: 'email not configured or no email' };
+    const safeUrl = escapeHtml(resetUrl);
+    const bodyHtml = `
+            <h2 style="margin:0 0 12px;color:#06b6d4;font-size:18px;">🔑 إعادة تعيين كلمة المرور</h2>
+            <p style="margin:0 0 10px;">وصلنا طلب لإعادة تعيين كلمة مرور حسابك في Joker Store.</p>
+            <p style="margin:0 0 18px;color:#94a3b8;font-size:13px;">اضغط الزر أدناه لاختيار كلمة مرور جديدة. الرابط صالح لمدة <strong>30 دقيقة</strong> ولمرة واحدة فقط.</p>
+            <div style="text-align:center;margin:18px 0;">
+                <a href="${safeUrl}" style="display:inline-block;background:linear-gradient(135deg,#06b6d4,#22d3ee);color:#0f172a;text-decoration:none;padding:12px 26px;border-radius:999px;font-weight:900;font-size:14px;">إعادة تعيين كلمة المرور</a>
+            </div>
+            <p style="margin:0;color:#94a3b8;font-size:12px;">إذا لم تطلب هذا، تجاهل الرسالة — كلمة مرورك الحالية تبقى كما هي. لا تشارك هذا الرابط مع أي شخص.</p>
+    `;
+    const emailHtml = emailWrapper({ title: 'إعادة تعيين كلمة المرور', preheader: 'رابط إعادة تعيين كلمة مرور حسابك صالح 30 دقيقة', bodyHtml });
+    try {
+        await mailer.sendMail({ from: MAIL_FROM, to, subject: '🔑 إعادة تعيين كلمة المرور — Joker Store', html: emailHtml });
+        return { skipped: false };
+    } catch (err) {
+        console.error('⚠️ فشل إرسال بريد إعادة التعيين:', err.message);
+        return { skipped: false, error: err.message };
+    }
+}
+
 module.exports = {
     sendOrderCreatedEmail,
     sendOrderConfirmationEmail,
     sendOrderRejectedEmail,
     sendOrderExpiredEmail,
-    sendAbandonedCartEmail
+    sendAbandonedCartEmail,
+    sendPasswordResetEmail
 };

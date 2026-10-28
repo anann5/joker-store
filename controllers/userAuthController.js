@@ -185,9 +185,10 @@ exports.login = async (req, res) => {
         // Reset failed attempts on successful login
         failedAttempts.delete(attemptKey);
 
-        // توكن صالح لمدة أسبوع، مُوقّع بمفتاح مستخدم منفصل
+        // توكن صالح لمدة أسبوع، مُوقّع بمفتاح مستخدم منفصل.
+        // ver = إصدار الجلسة الحالي؛ إعادة تعيين كلمة المرور ترفعه فتُبطل هذا التوكن.
         const token = jwt.sign(
-            { userId: user._id, email: user.email },
+            { userId: user._id, email: user.email, ver: Number(user.tokenVersion) || 0 },
             getUserSecret(),
             { expiresIn: '7d' }
         );

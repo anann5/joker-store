@@ -5,7 +5,7 @@ const { createLog, sendTelegramAlert } = require('./helpers');
 const { logSecurityEvent } = require('../middleware/securityLogger');
 const { verifyTotp } = require('../middleware/totp');
 const { resolveClientIp } = require('../middleware/clientIp');
-const { AdminSession } = require('../models');
+const { AdminSession, User } = require('../models');
 
 // Rate limiting storage for admin login attempts
 const adminFailedAttempts = new Map();
@@ -110,6 +110,12 @@ exports.verifyUserSocket = async (socket, next) => {
         const secret = process.env.JWT_USER_SECRET || process.env.JWT_SECRET;
         const decoded = jwt.verify(token, secret);
         if (!decoded || !decoded.userId) return next(new Error('unauthorized'));
+
+        // إصدار الجلسة: إعادة تعيين كلمة المرور تُبطل الاتصالات اللحظية القديمة أيضاً
+        const user = await User.findById(decoded.userId).select('tokenVersion');
+        if (!user || (Number(user.tokenVersion) || 0) !== (Number(decoded.ver) || 0)) {
+            return next(new Error('unauthorized'));
+        }
 
         socket.userId = decoded.userId;
         socket.join(`user:${decoded.userId}`);

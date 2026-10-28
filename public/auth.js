@@ -106,7 +106,12 @@ export function initAuth() {
     if (orderHistoryBtn) orderHistoryBtn.addEventListener('click', showOrderHistory);
 
     // التحقق من حالة تسجيل الدخول عند تحميل الصفحة
-    checkLoginState();
+    // ?login=1 يفتح نافذة الدخول تلقائياً (بعد إعادة تعيين كلمة المرور)
+    checkLoginState().then(() => {
+        if (!currentUser && new URLSearchParams(window.location.search).get('login') === '1') {
+            openModal(authModal);
+        }
+    });
 }
 
 /**

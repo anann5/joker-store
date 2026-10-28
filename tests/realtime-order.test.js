@@ -23,7 +23,9 @@ jest.mock('../models', () => ({
         findOne: jest.fn()
     },
     User: {
-        findByIdAndUpdate: jest.fn().mockResolvedValue({})
+        findByIdAndUpdate: jest.fn().mockResolvedValue({}),
+        // فحص إصدار الجلسة عند مصافحة المستخدم
+        findById: jest.fn(() => ({ select: jest.fn().mockResolvedValue({ tokenVersion: 0 }) }))
     }
 }));
 

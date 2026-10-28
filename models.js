@@ -39,6 +39,8 @@ const referralEntrySchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true, select: false },
+    // إصدار الجلسة: يُزاد عند إعادة تعيين كلمة المرور لإبطال كل التوكنات القديمة
+    tokenVersion: { type: Number, default: 0, min: 0 },
     balance: { type: Number, default: 0, min: 0 },
     loyaltyPoints: { type: Number, default: 0, min: 0 },
     loyaltyHistory: {
@@ -475,6 +477,15 @@ const securityEventSchema = new mongoose.Schema({
 securityEventSchema.index({ eventType: 1, createdAt: -1 });
 securityEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 
+// توكنات إعادة تعيين كلمة المرور — يُخزَّن هاش التوكن فقط، ويُحذف تلقائياً بانتهاء صلاحيته.
+const passwordResetTokenSchema = new mongoose.Schema({
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    tokenHash: { type: String, required: true, unique: true },
+    expiresAt: { type: Date, required: true },
+    createdAt: { type: Date, default: Date.now }
+});
+passwordResetTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 const cartSessionSchema = new mongoose.Schema({
     sessionId: { type: String, required: true, unique: true },
     email: { type: String, default: null },
@@ -562,6 +573,7 @@ module.exports = {
     Order: mongoose.model('Order', orderSchema),
     Log: mongoose.model('Log', logSchema),
     SecurityEvent: mongoose.model('SecurityEvent', securityEventSchema),
+    PasswordResetToken: mongoose.model('PasswordResetToken', passwordResetTokenSchema),
     User: mongoose.model('User', userSchema),
     ProviderSyncState: mongoose.model('ProviderSyncState', providerSyncStateSchema),
     AdminSession: mongoose.model('AdminSession', adminSessionSchema),
