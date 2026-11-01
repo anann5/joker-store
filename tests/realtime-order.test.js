@@ -37,6 +37,7 @@ jest.mock('../controllers/helpers', () => ({
 jest.mock('../controllers/notification', () => ({
     sendOrderConfirmationEmail: jest.fn().mockResolvedValue(true),
     sendOrderRejectedEmail: jest.fn().mockResolvedValue(true),
+    sendOrderFailedEmail: jest.fn().mockResolvedValue(true),
     sendOrderExpiredEmail: jest.fn().mockResolvedValue(true)
 }));
 

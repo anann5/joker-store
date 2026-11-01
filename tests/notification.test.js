@@ -37,6 +37,16 @@ describe('Email notification helper', () => {
         const result = await notification.sendOrderCreatedEmail(order);
         expect(result).toEqual({ skipped: true, reason: 'email not configured' });
     });
+
+    it('skips the fulfilment-failure email when SMTP is not configured', async () => {
+        process.env.SMTP_HOST = '';
+        const order = {
+            orderId: 'TEST999',
+            buyerEmail: 'buyer@example.com'
+        };
+        const result = await notification.sendOrderFailedEmail(order);
+        expect(result).toEqual({ skipped: true, reason: 'email not configured' });
+    });
 });
 
 describe('sendOrderCreatedEmail with SMTP configured', () => {
@@ -106,6 +116,37 @@ describe('sendOrderCreatedEmail with SMTP configured', () => {
         expect(callArg.html).toContain('#A&amp;B&lt;SCRIPT&gt;');
         expect(callArg.html).not.toContain('<b>مميز</b>');
         expect(callArg.html).toContain('منتج &lt;b&gt;مميز&lt;/b&gt;');
+    });
+
+    it('sends a manual-review email when fulfilment fails after payment', async () => {
+        sendMailMock.mockClear();
+
+        const result = await configuredNotification.sendOrderFailedEmail({
+            orderId: 'TESTFAIL',
+            buyerEmail: 'buyer@example.com'
+        });
+
+        expect(result).toEqual({ skipped: false });
+        const callArg = sendMailMock.mock.calls[0][0];
+        expect(callArg.subject).toContain('#TESTFAIL');
+        expect(callArg.html).toContain('قيد المراجعة اليدوية');
+        expect(callArg.html).toContain('إعادة المبلغ');
+    });
+
+    it('shows "awaiting payment" instead of "under review" for unpaid orders', async () => {
+        sendMailMock.mockClear();
+
+        await configuredNotification.sendOrderCreatedEmail({
+            orderId: 'TESTWAIT',
+            buyerEmail: 'buyer@example.com',
+            price: 10,
+            paymentStatus: 'awaiting_payment',
+            items: [{ name: { ar: 'منتج' }, qty: 1, unitPrice: 10 }]
+        });
+
+        const callArg = sendMailMock.mock.calls[0][0];
+        expect(callArg.html).toContain('بانتظار الدفع');
+        expect(callArg.html).not.toContain('وصل إثبات الدفع');
     });
 });
 

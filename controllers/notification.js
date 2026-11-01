@@ -159,19 +159,26 @@ function buildOrderSummaryRowsHtml(order) {
 
 /**
  * إرسال بريد "تم استلام طلبك" فور إنشاء الطلب:
- * يُطمئن الزبون أن الطلب وصل وأن الحالة قيد المراجعة ويُدرج ملخصاً بالمنتجات والإجمالي.
+ * يعكس حالة الدفع الفعلية (بانتظار الدفع أو إثبات قيد المراجعة) ويُدرج ملخصاً بالمنتجات والإجمالي.
  */
 async function sendOrderCreatedEmail(order) {
     const orderId = escapeHtml(order.orderId);
     const total = Number(order.price) || 0;
     const discount = Number(order.discount) || 0;
     const siteUrl = String(process.env.SITE_URL || '').replace(/\/+$/, '');
+    const awaitingPayment = order.paymentStatus === 'awaiting_payment';
+    const statusBadge = awaitingPayment
+        ? '<span style="background:rgba(56,189,248,0.15);color:#38bdf8;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;">بانتظار الدفع</span>'
+        : '<span style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;">قيد المراجعة</span>';
+    const statusNote = awaitingPayment
+        ? 'بانتظار وصول الدفع. حوّل المبلغ ثم أرسل صورة الإثبات عبر واتساب مع رقم الطلب قبل انتهاء المهلة، وسيصلك الكود بعد التأكيد.'
+        : 'وصل إثبات الدفع وسيراجعه الأدمن الآن، وسيصلك الكود فور التأكيد.';
 
     const bodyHtml = `
             <h2 style="margin:0 0 12px;color:#06b6d4;font-size:18px;">✅ تم استلام طلبك بنجاح</h2>
             <p style="margin:0 0 8px;">أهلاً بك،</p>
-            <p style="margin:0 0 14px;">تم استلام طلبك رقم <strong style="color:#f8fafc;">#${orderId}</strong> وهو الآن <span style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;">قيد المراجعة</span></p>
-            <p style="margin:0 0 14px;color:#94a3b8;font-size:13px;">سيتواصل الأدمن لتأكيد الدفع وسيصلك الكود فوراً بعد التأكيد.</p>
+            <p style="margin:0 0 14px;">تم استلام طلبك رقم <strong style="color:#f8fafc;">#${orderId}</strong> وهو الآن ${statusBadge}</p>
+            <p style="margin:0 0 14px;color:#94a3b8;font-size:13px;">${statusNote}</p>
             <table style="width:100%;border-collapse:collapse;margin-top:10px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);">
                 <thead>
                     <tr style="background:rgba(255,255,255,0.06);">
@@ -188,7 +195,13 @@ async function sendOrderCreatedEmail(order) {
             </table>
             <div style="text-align:center;margin-top:18px;"><a href="${siteUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;text-decoration:none;padding:10px 22px;border-radius:999px;font-weight:800;font-size:13px;">تتبع طلبك</a></div>
     `;
-    const emailHtml = emailWrapper({ title: `تأكيد استلام طلبك #${order.orderId}`, preheader: `طلبك #${orderId} قيد المراجعة — سيصلك الكود فور التأكيد`, bodyHtml });
+    const emailHtml = emailWrapper({
+        title: `تأكيد استلام طلبك #${order.orderId}`,
+        preheader: awaitingPayment
+            ? `طلبك #${orderId} بانتظار الدفع — أكمل الدفع ليصلك الكود`
+            : `طلبك #${orderId} قيد المراجعة — سيصلك الكود فور التأكيد`,
+        bodyHtml
+    });
 
     return sendEmail({
         to: order.buyerEmail,
@@ -248,6 +261,31 @@ async function sendOrderRejectedEmail(order) {
         subject: `🎮 متجر الجوكر — إلغاء الطلب #${order.orderId}`,
         html: emailHtml,
         label: 'بريد إلغاء الطلب'
+    });
+}
+
+/**
+ * إرسال بريد إشعار عند فشل التنفيذ التلقائي بعد تأكيد الدفع:
+ * يُطمئن الزبون أن الدفع وصل وأن الطلب قيد المراجعة اليدوية حتى لا يظن أن المبلغ ضاع.
+ */
+async function sendOrderFailedEmail(order) {
+    const orderId = escapeHtml(order.orderId);
+    const siteUrl = String(process.env.SITE_URL || '').replace(/\/+$/, '');
+
+    const bodyHtml = `
+            <h2 style="margin:0 0 12px;color:#f59e0b;font-size:18px;">⚠️ تعذر إكمال طلبك تلقائياً</h2>
+            <p style="margin:0 0 8px;">استلمنا دفعتك لطلبك رقم <strong style="color:#f8fafc;">#${orderId}</strong>، لكن حدث خطأ أثناء إصدار الأكواد.</p>
+            <p style="margin:0 0 14px;">طلبك الآن <strong style="color:#fbbf24;">قيد المراجعة اليدوية</strong> من فريقنا. سنتواصل معك لإتمام التسليم أو إعادة المبلغ كاملاً — لا حاجة لإنشاء طلب جديد.</p>
+            <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.18);border-radius:10px;padding:10px 12px;color:#fcd34d;font-size:12px;">📞 للدعم الفوري: واتساب عبر الموقع — اذكر رقم الطلب #${orderId}</div>
+            <div style="text-align:center;margin-top:18px;"><a href="${siteUrl || '#'}" style="display:inline-block;background:linear-gradient(135deg,#0e7490,#06b6d4);color:#fff;text-decoration:none;padding:10px 22px;border-radius:999px;font-weight:800;font-size:13px;">تتبع طلبك</a></div>
+    `;
+    const emailHtml = emailWrapper({ title: `طلبك #${order.orderId} قيد المراجعة اليدوية`, preheader: `استلمنا دفعتك — طلبك #${orderId} قيد المراجعة اليدوية`, bodyHtml });
+
+    return sendEmail({
+        to: order.buyerEmail,
+        subject: `🎮 متجر الجوكر — طلبك #${order.orderId} قيد المراجعة اليدوية`,
+        html: emailHtml,
+        label: 'بريد فشل تنفيذ الطلب'
     });
 }
 
@@ -321,6 +359,7 @@ module.exports = {
     sendOrderCreatedEmail,
     sendOrderConfirmationEmail,
     sendOrderRejectedEmail,
+    sendOrderFailedEmail,
     sendOrderExpiredEmail,
     sendAbandonedCartEmail,
     sendPasswordResetEmail

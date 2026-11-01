@@ -31,6 +31,7 @@ jest.mock('../controllers/helpers', () => ({
 jest.mock('../controllers/notification', () => ({
     sendOrderConfirmationEmail: jest.fn().mockResolvedValue(true),
     sendOrderRejectedEmail: jest.fn().mockResolvedValue(true),
+    sendOrderFailedEmail: jest.fn().mockResolvedValue(true),
     sendOrderExpiredEmail: jest.fn().mockResolvedValue(true)
 }));
 
@@ -48,7 +49,7 @@ jest.mock('../providers/adapter', () => ({
 
 const { Product, Order } = require('../models');
 const { sendTelegramAlert, createLog } = require('../controllers/helpers');
-const { sendOrderConfirmationEmail } = require('../controllers/notification');
+const { sendOrderConfirmationEmail, sendOrderFailedEmail } = require('../controllers/notification');
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
 const orderController = require('../controllers/orderController');
@@ -112,6 +113,7 @@ describe('approveOrder — حماية هامش الربح', () => {
         expect(createLog).toHaveBeenCalled();
         expect(Product.claimCodeAtomic).not.toHaveBeenCalled();
         expect(sendOrderConfirmationEmail).not.toHaveBeenCalled();
+        expect(sendOrderFailedEmail).toHaveBeenCalled();
     });
 
     it('يكمل التنفيذ من المزود عندما يكون الهامش سليماً', async () => {

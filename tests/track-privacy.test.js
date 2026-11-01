@@ -22,7 +22,8 @@ jest.mock('../models', () => ({
 
 jest.mock('../controllers/notification', () => ({
     sendOrderConfirmationEmail: jest.fn(),
-    sendOrderRejectedEmail: jest.fn()
+    sendOrderRejectedEmail: jest.fn(),
+    sendOrderFailedEmail: jest.fn()
 }));
 
 jest.mock('../controllers/push', () => ({

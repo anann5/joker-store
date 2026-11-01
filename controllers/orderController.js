@@ -1,6 +1,6 @@
 const { Product, Order, User } = require('../models');
 const { createLog, sendTelegramAlert } = require('./helpers');
-const { sendOrderConfirmationEmail, sendOrderRejectedEmail, sendOrderExpiredEmail } = require('./notification');
+const { sendOrderConfirmationEmail, sendOrderRejectedEmail, sendOrderFailedEmail, sendOrderExpiredEmail } = require('./notification');
 const pushService = require('./push');
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
@@ -366,6 +366,8 @@ exports.approveOrder = async (req, res) => {
             await Product.releaseReservedCodes(order.orderId).catch(() => {});
             await createLog('فشل تنفيذ طلب', `يتطلب الطلب #${order.orderId} تدخلاً يدوياً.`, req);
             await sendTelegramAlert(`🚨 فشل تنفيذ الطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
+            // الدفع وصل بالفعل — نُطمئن الزبون أن الطلب قيد المراجعة اليدوية بدل تركه بلا تفسير
+            await sendOrderFailedEmail(order).catch(() => {});
         }
 
         return res.status(502).json({
