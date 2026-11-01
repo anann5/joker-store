@@ -270,17 +270,27 @@ async function handleRegister(e) {
     try {
         const res = await fetch('/api/users/register', {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password, ...(referralCode ? { referralCode } : {}) })
         });
         const data = await res.json();
 
         if (data.success) {
-            showToast(t('auth_account_created'), 'success');
-            // التبديل إلى نموذج تسجيل الدخول تلقائياً
-            document.querySelector('.auth-tab-btn[data-form="loginForm"]').click();
-            document.getElementById('loginEmail').value = email;
-            document.getElementById('loginPassword').focus();
+            // الخادم أصدر جلسة تلقائية — نتحقق منها ثم نغلق النافذة مباشرة.
+            await checkLoginState();
+            if (currentUser) {
+                closeModal(document.getElementById('authModal'));
+                showToast(t('auth_account_ready'), 'success');
+                await syncUserCart();
+                realtimeAfterLogin();
+            } else {
+                // نادر: رفض المتصفح الكوكي — نعيده لنموذج الدخول
+                showToast(t('auth_account_created'), 'success');
+                document.querySelector('.auth-tab-btn[data-form="loginForm"]').click();
+                document.getElementById('loginEmail').value = email;
+                document.getElementById('loginPassword').focus();
+            }
         } else {
             showToast(`❌ ${escapeHtml(data.message)}`, 'error');
         }

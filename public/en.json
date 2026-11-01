@@ -193,6 +193,7 @@
     "contact_success": "Your message was sent successfully, we'll reply soon.",
     "contact_error": "Failed to send the message, please try again.",
     "auth_account_created": "✅ Account created successfully! You can now log in.",
+    "auth_account_ready": "✅ Your account is ready — you're now logged in!",
     "auth_account_label": "My Account",
     "auth_checking": "Verifying...",
     "auth_creating": "Creating account...",

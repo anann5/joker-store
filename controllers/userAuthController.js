@@ -53,6 +53,26 @@ const isLocalhostRequest = (req) => {
 };
 
 /**
+ * إصدار جلسة المستخدم في HttpOnly cookie (يُستخدم عند الدخول وبعد التسجيل).
+ * ver = إصدار الجلسة الحالي؛ إعادة تعيين كلمة المرور ترفعه فتُبطل كل التوكنات القديمة.
+ */
+function issueUserSession(req, res, user) {
+    const token = jwt.sign(
+        { userId: user._id, email: user.email, ver: Number(user.tokenVersion) || 0 },
+        getUserSecret(),
+        { expiresIn: '7d' }
+    );
+
+    res.cookie('user_token', token, {
+        httpOnly: true,
+        secure: !isLocalhostRequest(req),
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/'
+    });
+}
+
+/**
  * تسجيل مستخدم جديد
  */
 exports.register = async (req, res) => {
@@ -126,7 +146,13 @@ exports.register = async (req, res) => {
 
         logSecurityEvent('USER_REGISTERED', `تم تسجيل مستخدم جديد: ${email}`, req);
 
-        res.status(201).json({ success: true, message: 'تم إنشاء الحساب بنجاح! يمكنك الآن تسجيل الدخول.' });
+        issueUserSession(req, res, newUser);
+
+        res.status(201).json({
+            success: true,
+            message: 'تم إنشاء الحساب بنجاح!',
+            user: { email: newUser.email, balance: newUser.balance }
+        });
 
     } catch (err) {
         console.error('Registration error:', err);
@@ -185,23 +211,9 @@ exports.login = async (req, res) => {
         // Reset failed attempts on successful login
         failedAttempts.delete(attemptKey);
 
-        // توكن صالح لمدة أسبوع، مُوقّع بمفتاح مستخدم منفصل.
-        // ver = إصدار الجلسة الحالي؛ إعادة تعيين كلمة المرور ترفعه فتُبطل هذا التوكن.
-        const token = jwt.sign(
-            { userId: user._id, email: user.email, ver: Number(user.tokenVersion) || 0 },
-            getUserSecret(),
-            { expiresIn: '7d' }
-        );
-
         // أمان: التوكن يُحفظ في HttpOnly cookie فقط ولا يُمرَّر للجافاسكريبت
         // (يمنع سرقته عبر XSS من localStorage/document.cookie)
-        res.cookie('user_token', token, {
-            httpOnly: true,
-            secure: !isLocalhostRequest(req),
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: '/'
-        });
+        issueUserSession(req, res, user);
 
         logSecurityEvent('SUCCESSFUL_LOGIN', `تسجيل دخول ناجح: ${email}`, req);
 

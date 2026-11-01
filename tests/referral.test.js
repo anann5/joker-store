@@ -1,3 +1,5 @@
+process.env.JWT_USER_SECRET = 'test-user-secret-for-referral';
+
 const userAuthController = require('../controllers/userAuthController');
 
 const mockUpdateOne = jest.fn();
@@ -59,7 +61,7 @@ User.findOne = jest.fn((query) => {
 const WEAK_PASSWORD = 'StrongPass123';
 
 function makeRes() {
-    const res = { statusCode: 200, body: null };
+    const res = { statusCode: 200, body: null, cookie: jest.fn() };
     res.status = (code) => { res.statusCode = code; return res; };
     res.json = (data) => { res.body = data; return res; };
     return res;
@@ -132,6 +134,19 @@ describe('Referral (نظام الإحالة)', () => {
         expect(User.findOne).toHaveBeenCalled();
         expect(mockUpdateOne).not.toHaveBeenCalled();
         expect(lastCreatedUser().balance).toBe(0);
+    });
+
+    it('يسجل الدخول تلقائياً بعد إنشاء الحساب', async () => {
+        const res = makeRes();
+        await userAuthController.register(makeReq({ email: 'auto@example.com', password: WEAK_PASSWORD }), res);
+
+        expect(res.statusCode).toBe(201);
+        expect(res.cookie).toHaveBeenCalledWith(
+            'user_token',
+            expect.any(String),
+            expect.objectContaining({ httpOnly: true, path: '/' })
+        );
+        expect(res.body.user.email).toBe('auto@example.com');
     });
 
     it('يكرر إنشاء الكود عند التصادم النادر (findOne يرجع null دائماً للأكواد العشوائية)', async () => {
