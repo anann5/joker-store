@@ -86,7 +86,8 @@ export function initToastContainer() {
     if (!document.getElementById('toast-container')) {
         toastContainer = document.createElement('div');
         toastContainer.id = 'toast-container';
-        toastContainer.style.cssText = 'position:fixed; top:20px; left:20px; z-index:10000; display:flex; flex-direction:column; gap:10px;';
+        // فوق طبقة المودال (99999) وإلا تختفي رسائل التسجيل والدخول خلفها.
+        toastContainer.style.cssText = 'position:fixed; top:20px; left:20px; z-index:100000; display:flex; flex-direction:column; gap:10px;';
         document.body.appendChild(toastContainer);
     } else {
         toastContainer = document.getElementById('toast-container');
