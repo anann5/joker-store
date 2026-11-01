@@ -40,6 +40,10 @@ function validateEnv() {
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
         optionalWarnings.push('VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY غير مضبوطين — إشعارات Web Push غير مفعلة');
     }
+    // Render المجاني يحجب منافذ SMTP — بدون Brevo API أو SMTP لن يصل بريد الاستعادة.
+    if (!process.env.MAIL_FROM || (!process.env.BREVO_API_KEY && !process.env.SMTP_HOST)) {
+        optionalWarnings.push('البريد غير مهيأ — اضبط BREVO_API_KEY وMAIL_FROM (موصى به على Render) وإلا لن تُرسل روابط الاستعادة والإشعارات');
+    }
 
     if (optionalWarnings.length > 0) {
         console.warn('ℹ️  تنبيهات اختيارية:');

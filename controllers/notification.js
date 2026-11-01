@@ -1,17 +1,22 @@
 const nodemailer = require('nodemailer');
 
-// إعدادات البريد تُقرأ من .env — البريد اختياري (تعطيل → يكتفي السجل الحالي)
+// إعدادات البريد تُقرأ من .env — البريد اختياري (تعطيل → يكتفي السجل الحالي).
+// Render المجاني يحجب منافذ SMTP، لذا BREVO_API_KEY (عبر HTTPS) له الأولوية.
 const SMTP_HOST = process.env.SMTP_HOST || '';
 const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT, 10) || 587;
 const SMTP_USER = process.env.SMTP_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || '';
+const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
+const BREVO_API_URL = process.env.BREVO_API_URL || 'https://api.brevo.com/v3/smtp/email';
 const MAIL_FROM = process.env.MAIL_FROM || '';
+const MAIL_FROM_NAME = process.env.MAIL_FROM_NAME || 'Joker Store';
+const EMAIL_TIMEOUT_MS = 10000;
 const EMAIL_NOTIFICATIONS_ENABLED = String(process.env.EMAIL_NOTIFICATIONS_ENABLED ?? 'true').toLowerCase() !== 'false';
 
 let transporter = null;
 
 function getTransporter() {
-    if (!EMAIL_NOTIFICATIONS_ENABLED || !SMTP_HOST || !MAIL_FROM) return null;
+    if (!EMAIL_NOTIFICATIONS_ENABLED || !SMTP_HOST) return null;
     if (transporter) return transporter;
     transporter = nodemailer.createTransport({
         host: SMTP_HOST,
@@ -22,6 +27,56 @@ function getTransporter() {
             : undefined
     });
     return transporter;
+}
+
+// يقبل "الاسم <email>" أو بريداً مجرداً — Brevo يحتاج البريد منفصلاً عن الاسم.
+function parseSender(value) {
+    const match = String(value || '').match(/^\s*(.*?)\s*<([^>]+)>\s*$/);
+    if (match) return { name: match[1] || MAIL_FROM_NAME, email: match[2].trim() };
+    return { name: MAIL_FROM_NAME, email: String(value || '').trim() };
+}
+
+async function sendEmail({ to, subject, html, label }) {
+    if (!EMAIL_NOTIFICATIONS_ENABLED || !MAIL_FROM || (!BREVO_API_KEY && !getTransporter())) {
+        console.warn(`⚠️ ${label} لم يُرسل: البريد غير مهيأ.`);
+        return { skipped: true, reason: 'email not configured' };
+    }
+    if (!to) {
+        console.warn(`⚠️ ${label} لم يُرسل: لا يوجد بريد للمستلم.`);
+        return { skipped: true, reason: 'email not configured or no email' };
+    }
+
+    try {
+        if (BREVO_API_KEY) {
+            const response = await fetch(BREVO_API_URL, {
+                method: 'POST',
+                headers: {
+                    'api-key': BREVO_API_KEY,
+                    'content-type': 'application/json',
+                    accept: 'application/json'
+                },
+                body: JSON.stringify({
+                    sender: parseSender(MAIL_FROM),
+                    to: [{ email: to }],
+                    subject,
+                    htmlContent: html
+                }),
+                signal: globalThis.AbortSignal.timeout(EMAIL_TIMEOUT_MS)
+            });
+            if (!response.ok) {
+                const detail = (await response.text()).slice(0, 300);
+                throw new Error(`Brevo ${response.status}: ${detail}`);
+            }
+            return { skipped: false };
+        }
+
+        const mailer = getTransporter();
+        await mailer.sendMail({ from: MAIL_FROM, to, subject, html });
+        return { skipped: false };
+    } catch (err) {
+        console.error(`⚠️ فشل إرسال ${label}:`, err.message);
+        return { skipped: false, error: err.message };
+    }
 }
 
 function escapeHtml(value) {
@@ -107,9 +162,6 @@ function buildOrderSummaryRowsHtml(order) {
  * يُطمئن الزبون أن الطلب وصل وأن الحالة قيد المراجعة ويُدرج ملخصاً بالمنتجات والإجمالي.
  */
 async function sendOrderCreatedEmail(order) {
-    const mailer = getTransporter();
-    if (!mailer) return { skipped: true, reason: 'email not configured' };
-
     const orderId = escapeHtml(order.orderId);
     const total = Number(order.price) || 0;
     const discount = Number(order.discount) || 0;
@@ -138,27 +190,18 @@ async function sendOrderCreatedEmail(order) {
     `;
     const emailHtml = emailWrapper({ title: `تأكيد استلام طلبك #${order.orderId}`, preheader: `طلبك #${orderId} قيد المراجعة — سيصلك الكود فور التأكيد`, bodyHtml });
 
-    try {
-        await mailer.sendMail({
-            from: MAIL_FROM,
-            to: order.buyerEmail,
-            subject: `🎮 متجر الجوكر — تأكيد استلام طلبك #${order.orderId}`,
-            html: emailHtml
-        });
-        return { skipped: false };
-    } catch (err) {
-        console.error('⚠️ فشل إرسال بريد استلام الطلب:', err.message);
-        return { skipped: false, error: err.message };
-    }
+    return sendEmail({
+        to: order.buyerEmail,
+        subject: `🎮 متجر الجوكر — تأكيد استلام طلبك #${order.orderId}`,
+        html: emailHtml,
+        label: 'بريد استلام الطلب'
+    });
 }
 
 /**
  * إرسال بريد تأكيد للزبون مع الأكواد المرسلة.
  */
 async function sendOrderConfirmationEmail(order) {
-    const mailer = getTransporter();
-    if (!mailer) return { skipped: true, reason: 'email not configured' };
-
     const orderId = escapeHtml(order.orderId);
     const orderHtml = buildOrderItemsHtml(order);
 
@@ -178,27 +221,18 @@ async function sendOrderConfirmationEmail(order) {
     `;
     const emailHtml = emailWrapper({ title: `أكواد طلبك #${order.orderId} جاهزة`, preheader: `أكواد طلبك #${orderId} أصبحت جاهزة — انسخها الآن`, bodyHtml });
 
-    try {
-        await mailer.sendMail({
-            from: MAIL_FROM,
-            to: order.buyerEmail,
-            subject: `🎮 متجر الجوكر — أكواد طلبك #${order.orderId}`,
-            html: emailHtml
-        });
-        return { skipped: false };
-    } catch (err) {
-        console.error('⚠️ فشل إرسال بريد تأكيد الطلب:', err.message);
-        return { skipped: false, error: err.message };
-    }
+    return sendEmail({
+        to: order.buyerEmail,
+        subject: `🎮 متجر الجوكر — أكواد طلبك #${order.orderId}`,
+        html: emailHtml,
+        label: 'بريد تأكيد الطلب'
+    });
 }
 
 /**
  * إرسال بريد إشعار للزبون عند رفض الطلب.
  */
 async function sendOrderRejectedEmail(order) {
-    const mailer = getTransporter();
-    if (!mailer) return { skipped: true, reason: 'email not configured' };
-
     const orderId = escapeHtml(order.orderId);
 
     const bodyHtml = `
@@ -209,27 +243,18 @@ async function sendOrderRejectedEmail(order) {
     `;
     const emailHtml = emailWrapper({ title: `إلغاء الطلب #${order.orderId}`, preheader: `نأسف — تعذر تنفيذ طلبك #${orderId}`, bodyHtml });
 
-    try {
-        await mailer.sendMail({
-            from: MAIL_FROM,
-            to: order.buyerEmail,
-            subject: `🎮 متجر الجوكر — إلغاء الطلب #${order.orderId}`,
-            html: emailHtml
-        });
-        return { skipped: false };
-    } catch (err) {
-        console.error('⚠️ فشل إرسال بريد إلغاء الطلب:', err.message);
-        return { skipped: false, error: err.message };
-    }
+    return sendEmail({
+        to: order.buyerEmail,
+        subject: `🎮 متجر الجوكر — إلغاء الطلب #${order.orderId}`,
+        html: emailHtml,
+        label: 'بريد إلغاء الطلب'
+    });
 }
 
 /**
  * إرسال بريد إشعار للزبون عند انتهاء مهلة الدفع وإلغاء الطلب تلقائياً.
  */
 async function sendOrderExpiredEmail(order) {
-    const mailer = getTransporter();
-    if (!mailer) return { skipped: true, reason: 'email not configured' };
-
     const orderId = escapeHtml(order.orderId);
     const wasUnderReview = order.paymentStatus === 'expired' && order.paymentSubmittedAt;
     const siteUrl = String(process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -242,23 +267,15 @@ async function sendOrderExpiredEmail(order) {
     `;
     const emailHtml = emailWrapper({ title: `انتهاء مهلة الطلب #${order.orderId}`, preheader: `أُلغي طلبك #${orderId} لانتهاء مهلة الدفع`, bodyHtml });
 
-    try {
-        await mailer.sendMail({
-            from: MAIL_FROM,
-            to: order.buyerEmail,
-            subject: `🎮 متجر الجوكر — انتهاء مهلة الطلب #${order.orderId}`,
-            html: emailHtml
-        });
-        return { skipped: false };
-    } catch (err) {
-        console.error('⚠️ فشل إرسال بريد انتهاء مهلة الطلب:', err.message);
-        return { skipped: false, error: err.message };
-    }
+    return sendEmail({
+        to: order.buyerEmail,
+        subject: `🎮 متجر الجوكر — انتهاء مهلة الطلب #${order.orderId}`,
+        html: emailHtml,
+        label: 'بريد انتهاء مهلة الطلب'
+    });
 }
 
 async function sendAbandonedCartEmail(cart) {
-    const mailer = getTransporter();
-    if (!mailer || !cart.email) return { skipped: true, reason: 'email not configured or no email' };
     const items = (cart.items || []).map(i => escapeHtml(i.productName || i.productId)).join('، ');
     const total = Number(cart.total || 0).toFixed(2);
     const bodyHtml = `
@@ -269,24 +286,18 @@ async function sendAbandonedCartEmail(cart) {
             <div style="text-align:center;margin-top:16px;"><a href="${String(process.env.SITE_URL || '#').replace(/\/+$/, '')}" style="display:inline-block;background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#0f172a;text-decoration:none;padding:10px 22px;border-radius:999px;font-weight:900;font-size:13px;">إكمال الشراء</a></div>
     `;
     const emailHtml = emailWrapper({ title: 'سلة مهجورة — أكمل شراءك', preheader: `سلتك بقيمة ${total} ₪ بانتظارك`, bodyHtml });
-    try {
-        await mailer.sendMail({ from: MAIL_FROM, to: cart.email, subject: '🛒 سلّتك بانتظارك — أكمل شراءك من Joker Store', html: emailHtml });
-        return { skipped: false };
-    } catch (err) {
-        console.error('⚠️ فشل إرسال بريد السلة المهجورة:', err.message);
-        return { skipped: false, error: err.message };
-    }
+    return sendEmail({
+        to: cart.email,
+        subject: '🛒 سلّتك بانتظارك — أكمل شراءك من Joker Store',
+        html: emailHtml,
+        label: 'بريد السلة المهجورة'
+    });
 }
 
 /**
  * بريد إعادة تعيين كلمة المرور — يُرسل رابطاً بتوكن صالح 30 دقيقة.
  */
 async function sendPasswordResetEmail(to, resetUrl) {
-    const mailer = getTransporter();
-    if (!mailer || !to) {
-        console.warn('⚠️ بريد إعادة التعيين لم يُرسل: SMTP/MAIL_FROM غير مهيأ أو لا يوجد بريد للمستخدم.');
-        return { skipped: true, reason: 'email not configured or no email' };
-    }
     const safeUrl = escapeHtml(resetUrl);
     const bodyHtml = `
             <h2 style="margin:0 0 12px;color:#06b6d4;font-size:18px;">🔑 إعادة تعيين كلمة المرور</h2>
@@ -298,13 +309,12 @@ async function sendPasswordResetEmail(to, resetUrl) {
             <p style="margin:0;color:#94a3b8;font-size:12px;">إذا لم تطلب هذا، تجاهل الرسالة — كلمة مرورك الحالية تبقى كما هي. لا تشارك هذا الرابط مع أي شخص.</p>
     `;
     const emailHtml = emailWrapper({ title: 'إعادة تعيين كلمة المرور', preheader: 'رابط إعادة تعيين كلمة مرور حسابك صالح 30 دقيقة', bodyHtml });
-    try {
-        await mailer.sendMail({ from: MAIL_FROM, to, subject: '🔑 إعادة تعيين كلمة المرور — Joker Store', html: emailHtml });
-        return { skipped: false };
-    } catch (err) {
-        console.error('⚠️ فشل إرسال بريد إعادة التعيين:', err.message);
-        return { skipped: false, error: err.message };
-    }
+    return sendEmail({
+        to,
+        subject: '🔑 إعادة تعيين كلمة المرور — Joker Store',
+        html: emailHtml,
+        label: 'بريد إعادة التعيين'
+    });
 }
 
 module.exports = {

@@ -30,6 +30,20 @@ Render's free filesystem is ephemeral: uploaded product/review images and paymen
 
 Without these variables the app falls back to local disk storage (suitable only for local development).
 
+## Email (Brevo API)
+
+Render free web services block outbound SMTP ports (25/465/587), so Gmail/Outlook SMTP cannot work on the free plan. Use Brevo's HTTPS API instead (free: 300 emails/day), or move to a paid Render instance if you prefer SMTP.
+
+1. Create a Brevo account and verify a sender address under **Senders** (a custom domain is not required).
+2. Create an API key under **SMTP & API → API Keys**.
+3. Add these environment variables in Render:
+   - `BREVO_API_KEY=<api-key>`
+   - `MAIL_FROM=Joker Store <verified-sender@example.com>` — the email inside the brackets must match the verified sender
+   - Optional: `MAIL_FROM_NAME=Joker Store`
+4. Deploy and request a password reset to confirm delivery.
+
+If `BREVO_API_KEY` is absent, the app falls back to SMTP (`SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`). If neither is configured, emails are skipped and a warning is written to the logs.
+
 ## Docker
 ```bash
 docker build -t joker-store .
