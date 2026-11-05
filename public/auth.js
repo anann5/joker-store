@@ -105,6 +105,15 @@ export function initAuth() {
     // معالجة نافذة سجل الطلبات (الإغلاق عبر [data-close-modal] في initModalBehaviors)
     if (orderHistoryBtn) orderHistoryBtn.addEventListener('click', showOrderHistory);
 
+    // زر نسخ كود الشحن داخل سجل الطلبات (تفويض لأن القائمة تُعاد بناؤها)
+    const orderHistoryList = document.getElementById('orderHistoryList');
+    if (orderHistoryList) {
+        orderHistoryList.addEventListener('click', (e) => {
+            const copyBtn = e.target.closest('[data-copy-code]');
+            if (copyBtn) copyOrderCode(copyBtn);
+        });
+    }
+
     // التحقق من حالة تسجيل الدخول عند تحميل الصفحة
     // ?login=1 يفتح نافذة الدخول تلقائياً (بعد إعادة تعيين كلمة المرور)
     checkLoginState().then(() => {
@@ -165,6 +174,31 @@ function buildOrderPaymentLine(order) {
 }
 
 /**
+ * نسخ كود الشحن إلى الحافظة مع بديل للمتصفحات القديمة.
+ */
+async function copyOrderCode(btn) {
+    const code = btn.getAttribute('data-copy-code') || '';
+    if (!code) return;
+    try {
+        await navigator.clipboard.writeText(code);
+    } catch (_e) {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+    }
+    showToast(t('auth_code_copied'), 'success');
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    btn.classList.add('copied');
+    setTimeout(() => {
+        btn.innerHTML = '<i class="fas fa-copy"></i>';
+        btn.classList.remove('copied');
+    }, 1500);
+}
+
+/**
  * عرض الطلبات في النافذة المنبثقة
  */
 function renderOrders(orders) {
@@ -188,11 +222,29 @@ function renderOrders(orders) {
         const dateLocale = getCurrentLanguage() === 'en' ? 'en-US' : 'ar-EG';
         const orderDate = new Date(order.createdAt).toLocaleString(dateLocale, { dateStyle: 'medium', timeStyle: 'short' });
 
-        // عرض الكود فقط إذا كان الطلب مكتملاً
-        const codeHtml = order.status === 'completed' && order.code
-            ? `<div style="background: #1a1a2e; border:1px solid #ff9f43; border-radius:8px; padding:10px; margin-top:10px; font-size: 0.9rem;">
-                   <span style="color:#b9bbbe;">${t('auth_shipping_code_label')}</span>
-                   <strong style="color:#ff9f43; letter-spacing:1px; user-select:all;">${escapeHtml(order.code)}</strong>
+        // كل الأكواد المسلّمة (يطابق ما تعرضه الفاتورة) مع زر نسخ لكل كود
+        const codes = order.status === 'completed'
+            ? (order.deliveredCodes?.length ? order.deliveredCodes : (order.code ? [order.code] : []))
+            : [];
+        const codesHtml = codes.length
+            ? `<div class="order-codes">
+                   <div class="order-codes-label">${t('auth_shipping_codes_label')}</div>
+                   ${codes.map(code => `
+                       <div class="order-code-row">
+                           <strong dir="ltr">${escapeHtml(code)}</strong>
+                           <button type="button" class="order-code-copy" data-copy-code="${escapeHtml(code)}" title="${t('auth_copy_code')}" aria-label="${t('auth_copy_code')}">
+                               <i class="fas fa-copy"></i>
+                           </button>
+                       </div>`).join('')}
+               </div>`
+            : '';
+
+        const buyerEmail = order.buyerEmail || currentUser?.email || '';
+        const invoiceHtml = buyerEmail
+            ? `<div class="order-actions">
+                   <a class="order-invoice-btn" href="/invoice?order=${encodeURIComponent(order.orderId)}&email=${encodeURIComponent(buyerEmail)}" target="_blank" rel="noopener">
+                       <i class="fas fa-file-invoice"></i> ${t('auth_invoice_btn')}
+                   </a>
                </div>`
             : '';
 
@@ -206,7 +258,8 @@ function renderOrders(orders) {
                         <span>${t('auth_order_num')} #${escapeHtml(order.orderId)}</span> | <span>${t('auth_order_date')} ${orderDate}</span>
                     </div>
                     ${buildOrderPaymentLine(order)}
-                    ${codeHtml}
+                    ${codesHtml}
+                    ${invoiceHtml}
                 </div>
                 <div style="text-align: left;">
                     <div style="font-size: 1.2rem; font-weight: bold; color: var(--primary-neon); margin-bottom: 8px;">${formatPrice(order.price)}</div>
