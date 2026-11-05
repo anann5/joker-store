@@ -92,7 +92,7 @@ describe('قسم IPTV والاشتراكات', () => {
         expect(Category.create).toHaveBeenCalledWith(expect.objectContaining({
             key: 'iptv',
             title: { ar: 'IPTV', en: 'IPTV' },
-            image: 'image/iptv.svg',
+            image: 'image/iptv.jpg',
             isActive: true
         }));
         expect(clearStorefrontCache).toHaveBeenCalled();

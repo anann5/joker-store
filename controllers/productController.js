@@ -24,7 +24,7 @@ const AUTO_CATEGORY_DEFS = {
             ar: 'اشتراكات IPTV — قنوات مباشرة وأفلام ومسلسلات على جميع أجهزتك.',
             en: 'IPTV subscriptions — live channels, movies and series on all your devices.'
         },
-        image: 'image/iptv.svg',
+        image: 'image/iptv.jpg',
         order: 15
     }
 };
