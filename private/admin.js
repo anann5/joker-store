@@ -356,6 +356,25 @@ const initAdmin = async () => {
     const codesFileInput = document.getElementById('manualCodesFile');
     if (codesFileInput) codesFileInput.addEventListener('change', loadManualCodes);
 
+    // حقول الاشتراك تظهر فقط عند تفعيل خيار "منتج اشتراك"
+    const manualIsSubscription = document.getElementById('manualIsSubscription');
+    const manualSubscriptionFields = document.getElementById('manualSubscriptionFields');
+    const toggleManualSubscription = () => {
+        if (manualSubscriptionFields) {
+            manualSubscriptionFields.style.display = manualIsSubscription?.checked ? '' : 'none';
+        }
+    };
+    if (manualIsSubscription) manualIsSubscription.addEventListener('change', toggleManualSubscription);
+
+    const editIsSubscription = document.getElementById('editIsSubscription');
+    const editSubscriptionFields = document.getElementById('editSubscriptionFields');
+    const toggleEditSubscription = () => {
+        if (editSubscriptionFields) {
+            editSubscriptionFields.style.display = editIsSubscription?.checked ? '' : 'none';
+        }
+    };
+    if (editIsSubscription) editIsSubscription.addEventListener('change', toggleEditSubscription);
+
     const addManualModal = document.getElementById('addManualModal');
     if (addManualModal) {
         addManualModal.addEventListener('click', (e) => { if (e.target === addManualModal) closeAddManualModal(); });
@@ -1025,11 +1044,14 @@ function renderInventoryRow(item) {
     const stockText = item.isExternal ? '🔄 API' : `${availableCodes} / ${totalCodes}`;
     const stockBadgeClass = item.isExternal ? 'badge-accent' : (availableCodes > 0 ? 'badge-success' : 'badge-danger');
     const priceClass = item.price ? 'price-cell' : 'price-normal';
+    const subscriptionBadge = item.isSubscription
+        ? `<span class="badge badge-accent" style="margin-inline-start:6px;">اشتراك${item.subscriptionDuration ? ` · ${item.subscriptionDuration} شهر` : ''}</span>`
+        : '';
 
     return `
         <tr>
             <td><input type="checkbox" class="product-checkbox" data-product-id="${item._id}"></td>
-            <td class="product-name-cell">${nameAr}
+            <td class="product-name-cell">${nameAr}${subscriptionBadge}
                 ${nameEn ? `<div class="product-name-secondary">${nameEn}</div>` : ''}
             </td>
             <td><span class="badge badge-accent">${escapeHtml(item.category || '—')}</span></td>
@@ -1194,6 +1216,14 @@ function fillEditProductForm(product) {
     if (ratingInput) ratingInput.value = product.rating || 0;
     const reviewsInput = document.getElementById('editReviewsCount');
     if (reviewsInput) reviewsInput.value = product.reviewsCount || 0;
+    const editIsSubscription = document.getElementById('editIsSubscription');
+    if (editIsSubscription) editIsSubscription.checked = product.isSubscription === true;
+    const editSubscriptionFields = document.getElementById('editSubscriptionFields');
+    if (editSubscriptionFields) editSubscriptionFields.style.display = product.isSubscription ? '' : 'none';
+    const editSubscriptionDuration = document.getElementById('editSubscriptionDuration');
+    if (editSubscriptionDuration) editSubscriptionDuration.value = product.subscriptionDuration || '';
+    const editSubscriptionType = document.getElementById('editSubscriptionType');
+    if (editSubscriptionType) editSubscriptionType.value = product.subscriptionType || 'fixed';
     const imageUrl = product.image || '';
     document.getElementById('editImageUrl').value = imageUrl;
     const preview = document.getElementById('editImagePreview');
@@ -1261,6 +1291,14 @@ async function saveProductEdit() {
     const priceSourceCurrency = (document.getElementById('editPriceCurrency')?.value || 'USD').trim().toUpperCase();
     const ratingInput = document.getElementById('editRating');
     const reviewsInput = document.getElementById('editReviewsCount');
+    const isSubscription = document.getElementById('editIsSubscription')?.checked === true;
+    const subscriptionDuration = isSubscription
+        ? (parseInt(document.getElementById('editSubscriptionDuration')?.value, 10) || null)
+        : null;
+    if (isSubscription && !subscriptionDuration) {
+        showAdminToast('❌ حدد مدة الاشتراك بالأشهر', 'error');
+        return;
+    }
 
     try {
         const image = await uploadImageIfAny(
@@ -1274,7 +1312,12 @@ async function saveProductEdit() {
             autoPrice,
             profitMargin: margin,
             image,
-            images: _editExtraImages
+            images: _editExtraImages,
+            isSubscription,
+            subscriptionType: isSubscription
+                ? (document.getElementById('editSubscriptionType')?.value || 'fixed')
+                : 'fixed',
+            subscriptionDuration
         };
         const editRegionInput = document.getElementById('editRegion');
         const region = editRegionInput ? editRegionInput.value.trim().toLowerCase() : '';
@@ -1623,6 +1666,14 @@ function openAddManualModal() {
     document.getElementById('manualProfitMargin').value = '';
     const manualAutoPrice = document.getElementById('manualAutoPrice');
     if (manualAutoPrice) manualAutoPrice.checked = true;
+    const manualIsSubscription = document.getElementById('manualIsSubscription');
+    if (manualIsSubscription) manualIsSubscription.checked = false;
+    const manualSubscriptionFields = document.getElementById('manualSubscriptionFields');
+    if (manualSubscriptionFields) manualSubscriptionFields.style.display = 'none';
+    const manualSubscriptionDuration = document.getElementById('manualSubscriptionDuration');
+    if (manualSubscriptionDuration) manualSubscriptionDuration.value = '';
+    const manualSubscriptionType = document.getElementById('manualSubscriptionType');
+    if (manualSubscriptionType) manualSubscriptionType.value = 'fixed';
     document.getElementById('manualCodesTextarea').value = '';
     document.getElementById('manualCodesFile').value = '';
     const manualImageInput = document.getElementById('manualProductImage');
@@ -1778,9 +1829,20 @@ async function saveManualProduct() {
     const profitMargin = percentToMargin(document.getElementById('manualProfitMargin').value);
     const autoPrice = document.getElementById('manualAutoPrice')?.checked !== false;
     const priceSourceCurrency = (document.getElementById('manualPriceCurrency')?.value || 'USD').trim().toUpperCase();
+    const isSubscription = document.getElementById('manualIsSubscription')?.checked === true;
+    const subscriptionDuration = isSubscription
+        ? parseInt(document.getElementById('manualSubscriptionDuration')?.value, 10)
+        : null;
+    const subscriptionType = isSubscription
+        ? (document.getElementById('manualSubscriptionType')?.value || 'fixed')
+        : 'fixed';
 
     if (!productNameAr || !productNameEn || !category) {
         showAdminToast('❌ يرجى ملء جميع الحقول المطلوبة', 'error');
+        return;
+    }
+    if (isSubscription && (!Number.isFinite(subscriptionDuration) || subscriptionDuration < 1)) {
+        showAdminToast('❌ حدد مدة الاشتراك بالأشهر', 'error');
         return;
     }
 
@@ -1813,7 +1875,10 @@ async function saveManualProduct() {
                 autoPrice,
                 profitMargin: profitMargin || null,
                 manualCodes: codes,
-                image
+                image,
+                isSubscription,
+                subscriptionType,
+                subscriptionDuration
             })
         });
         const data = await res.json();

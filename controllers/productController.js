@@ -1,4 +1,4 @@
-const { Product } = require('../models');
+const { Product, Category } = require('../models');
 const { createLog } = require('./helpers');
 const { clearStorefrontCache } = require('./storeController');
 const providerSync = require('../providers/sync');
@@ -14,7 +14,20 @@ function getLocalizedValue(value, fallback = '') {
 
 const ALLOWED_CATEGORIES = ['gaming_general', 'pubg', 'fortnite', 'playstation', 'xbox',
     'microsoft_windows', 'adobe', 'antivirus', 'vpn', 'google',
-    'itunes', 'razer_gold', 'amazon', 'steam'];
+    'itunes', 'razer_gold', 'amazon', 'steam', 'iptv'];
+
+// أقسام تُنشأ تلقائياً عند أول منتج فيها (لا تحتاج صفاً مسبقاً في قاعدة البيانات)
+const AUTO_CATEGORY_DEFS = {
+    iptv: {
+        title: { ar: 'IPTV', en: 'IPTV' },
+        description: {
+            ar: 'اشتراكات IPTV — قنوات مباشرة وأفلام ومسلسلات على جميع أجهزتك.',
+            en: 'IPTV subscriptions — live channels, movies and series on all your devices.'
+        },
+        image: 'image/iptv.svg',
+        order: 15
+    }
+};
 
 // الحقول المسموح بإنشائها يدوياً فقط (whitelist) — يمنع Mass Assignment
 // من تمرير حقول النظام مثل _id / createdAt / updatedAt عبر req.body
@@ -30,6 +43,32 @@ const MANUAL_ADD_FIELDS = [
 
 function validateCategory(category) {
     return typeof category === 'string' && ALLOWED_CATEGORIES.includes(category);
+}
+
+/**
+ * يضمن وجود صف القسم في قاعدة البيانات حتى يظهر في واجهة المتجر.
+ * الأقسام الأخرى تُدار يدوياً من لوحة التحكم، لذا لا نُنشئ لها صفوفاً ضمنياً.
+ */
+async function ensureCategoryRecord(categoryKey) {
+    const def = AUTO_CATEGORY_DEFS[categoryKey];
+    if (!def) return false;
+    const existing = await Category.findOne({ key: categoryKey }).select('_id');
+    if (existing) return false;
+    try {
+        await Category.create({
+            key: categoryKey,
+            title: def.title,
+            description: def.description,
+            image: def.image,
+            order: def.order,
+            source: 'manual',
+            isActive: true
+        });
+        return true;
+    } catch (err) {
+        if (err.code === 11000) return false; // أُنشئ بالتزامن من طلب آخر
+        throw err;
+    }
 }
 
 /**
@@ -247,6 +286,12 @@ exports.createProduct = async (req, res) => {
         const newProduct = new Product(productData);
         await newProduct.save();
 
+        const categoryCreated = await ensureCategoryRecord(newProduct.category).catch((err) => {
+            console.error('Category auto-create failed:', err.message);
+            return false;
+        });
+        if (categoryCreated) clearStorefrontCache();
+
         await createLog(
             'إنشاء منتج',
             `تم إنشاء منتج جديد: ${productName.ar || productName}`,
@@ -455,6 +500,10 @@ exports.createProductWithManualCodes = async (req, res) => {
             productName.ar || productName.en
         );
 
+        await ensureCategoryRecord(newProduct.category).catch((err) => {
+            console.error('Category auto-create failed:', err.message);
+        });
+
         clearStorefrontCache();
         res.status(201).json({
             success: true,
@@ -551,6 +600,10 @@ exports.updateProduct = async (req, res) => {
 
         product.updatedAt = new Date();
         await product.save();
+
+        await ensureCategoryRecord(product.category).catch((err) => {
+            console.error('Category auto-create failed:', err.message);
+        });
 
         clearStorefrontCache();
         await createLog(

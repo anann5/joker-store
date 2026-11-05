@@ -513,7 +513,7 @@ export function showProductDetails(product, currentCategory = '') {
     const specCategoryValue = view.querySelector('[data-spec-category-value]');
     if (specCategoryValue) {
         const lang = getCurrentLanguage();
-        const categories = { ps: 'PlayStation', xbox: 'Xbox', nintendo: 'Nintendo', steam: 'Steam', pubg: 'PUBG', freefire: 'Free Fire', mobilelegends: 'Mobile Legends', roblox: 'Roblox', valorant: 'Valorant', leagueoflegends: 'League of Legends', spotify: 'Spotify', netflix: 'Netflix', itunes: 'iTunes', google: 'Google Play', amazon: 'Amazon', other: lang === 'ar' ? 'أخرى' : 'Other' };
+        const categories = { ps: 'PlayStation', xbox: 'Xbox', nintendo: 'Nintendo', steam: 'Steam', pubg: 'PUBG', freefire: 'Free Fire', mobilelegends: 'Mobile Legends', roblox: 'Roblox', valorant: 'Valorant', leagueoflegends: 'League of Legends', spotify: 'Spotify', netflix: 'Netflix', itunes: 'iTunes', google: 'Google Play', amazon: 'Amazon', iptv: 'IPTV', other: lang === 'ar' ? 'أخرى' : 'Other' };
         specCategoryValue.textContent = categories[product.category] || product.category || '—';
     }
     const specTypeValue = view.querySelector('[data-spec-type-value]');
@@ -521,7 +521,12 @@ export function showProductDetails(product, currentCategory = '') {
         const lang = getCurrentLanguage();
         if (product.isSubscription) {
             const subTypes = { fixed: lang === 'ar' ? 'اشتراك ثابت' : 'Fixed Subscription', recurring: lang === 'ar' ? 'اشتراك متجدد' : 'Recurring Subscription' };
-            specTypeValue.textContent = subTypes[product.subscriptionType] || (lang === 'ar' ? 'اشتراك' : 'Subscription');
+            const label = subTypes[product.subscriptionType] || (lang === 'ar' ? 'اشتراك' : 'Subscription');
+            const months = Number(product.subscriptionDuration) || 0;
+            const durationLabel = months > 0
+                ? (lang === 'ar' ? ` · ${months} شهر` : ` · ${months} month${months === 1 ? '' : 's'}`)
+                : '';
+            specTypeValue.textContent = `${label}${durationLabel}`;
         } else {
             specTypeValue.textContent = lang === 'ar' ? 'كود شحن' : 'Gift Code';
         }

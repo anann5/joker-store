@@ -180,6 +180,7 @@
                         <option value="amazon">Amazon</option>
                         <option value="google">Google Play</option>
                         <option value="itunes">iTunes</option>
+                        <option value="iptv">IPTV</option>
                     </select>
                     <select id="inventoryStockFilter" style="padding:8px 12px;border-radius:var(--radius-md);border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#fff;font-size:0.88rem;">
                         <option value="">كل المخزون</option>
@@ -523,6 +524,25 @@
                 <input type="text" id="editPriceCurrency" class="form-control" value="USD" maxlength="3" placeholder="USD / EUR / TRY / AED">
                 <small style="color: var(--text-muted);">رمز ISO من 3 أحرف. يُحوَّل إلى الشيكل بسعر الصرف اليومي.</small>
             </div>
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="editIsSubscription" style="width:auto;">
+                    منتج اشتراك
+                </label>
+            </div>
+            <div class="form-row" id="editSubscriptionFields" style="display:none;">
+                <div class="form-group">
+                    <label>مدة الاشتراك (بالأشهر)</label>
+                    <input type="number" id="editSubscriptionDuration" min="1" max="60" step="1" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>نوع الاشتراك</label>
+                    <select id="editSubscriptionType" class="form-control">
+                        <option value="fixed">ثابت (لا يتجدد)</option>
+                        <option value="recurring">متجدد</option>
+                    </select>
+                </div>
+            </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>التقييم (0 - 5)</label>
@@ -603,6 +623,7 @@
                         <option value="razer_gold"></option>
                         <option value="amazon"></option>
                         <option value="steam"></option>
+                        <option value="iptv"></option>
                     </datalist>
                 </div>
                 <div class="form-group">
@@ -669,6 +690,27 @@
                     ربط بسعر الصرف اليومي (تحديث تلقائي)
                 </label>
                 <small style="color: var(--text-muted);">مثال: 10 دولار × 3.098 = 30.98 + ربح 5 = 35.98 → 36 شيكل.</small>
+            </div>
+
+            <div class="form-group">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="manualIsSubscription" style="width:auto;">
+                    منتج اشتراك (مثل IPTV)
+                </label>
+                <small style="color: var(--text-muted);">يُسلَّم العميل بكود تفعيل كالمعتاد، وتظهر المدة والنوع في مواصفات المنتج.</small>
+            </div>
+            <div class="form-row" id="manualSubscriptionFields" style="display:none;">
+                <div class="form-group">
+                    <label>مدة الاشتراك (بالأشهر)</label>
+                    <input type="number" id="manualSubscriptionDuration" min="1" max="60" step="1" class="form-control" placeholder="12">
+                </div>
+                <div class="form-group">
+                    <label>نوع الاشتراك</label>
+                    <select id="manualSubscriptionType" class="form-control">
+                        <option value="fixed">ثابت (لا يتجدد)</option>
+                        <option value="recurring">متجدد</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">

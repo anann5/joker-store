@@ -163,7 +163,8 @@ function formatItem(item, categoryKey, region) {
         updatedAt: item.updatedAt || null,
         totalSold: Number(item.totalSold || 0),
         isSubscription: !!item.isSubscription,
-        subscriptionType: item.subscriptionType || null
+        subscriptionType: item.subscriptionType || null,
+        subscriptionDuration: Number(item.subscriptionDuration) || null
     };
 }
 

@@ -24,6 +24,7 @@ export const CATEGORY_THEMES = {
     itunes: { color: '#A2AAAD', icon: 'fab fa-apple' },
     razer_gold: { color: '#00A651', icon: 'fas fa-coins' },
     amazon: { color: '#FF9900', icon: 'fab fa-amazon' },
+    iptv: { color: '#E11D48', icon: 'fas fa-tv' },
     gaming_general: { color: '#818CF8', icon: 'fas fa-gamepad' },
     fallback: { color: '#818CF8', icon: 'fas fa-tag' }
 };
