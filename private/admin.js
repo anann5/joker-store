@@ -268,6 +268,7 @@ const initAdmin = async () => {
         { btn: 'logsTabBtn', section: 'logsSection' },
         { btn: 'promotionsTabBtn', section: 'promotionsSection' },
         { btn: 'settingsTabBtn', section: 'settingsSection' },
+        { btn: 'ticketsTabBtn', section: 'ticketsSection' },
         { btn: 'notificationsTabBtn', section: 'notificationsSection' }
     ];
 
