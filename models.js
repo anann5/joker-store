@@ -437,6 +437,7 @@ const adminSessionSchema = new mongoose.Schema({
     fingerprint: { type: String, required: true },
     ip: { type: String, default: null },
     createdAt: { type: Date, default: Date.now },
+    lastActivityAt: { type: Date, default: Date.now },
     expiresAt: {
         type: Date,
         default: () => new Date(Date.now() + 3 * 60 * 60 * 1000)

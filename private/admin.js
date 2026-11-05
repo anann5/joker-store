@@ -516,7 +516,10 @@ const initAdmin = async () => {
     // === Load initial data ===
     loadDashboard();
     populateCategoryDatalist();
-    setInterval(loadDashboard, 60000);
+    setInterval(() => {
+        if (document.hidden) return;
+        loadDashboard(true);
+    }, 60000);
 };
 
 if (document.readyState === 'loading') {
@@ -676,9 +679,11 @@ async function renderDashboardCharts() {
     }
 }
 
-async function loadDashboard() {
+async function loadDashboard(isAuto = false) {
     try {
-        const res = await fetch('/api/admin/dashboard', { credentials: 'include', headers: { 'Content-Type': 'application/json' } });
+        const headers = { 'Content-Type': 'application/json' };
+        if (isAuto) headers['X-Admin-Auto'] = '1';
+        const res = await fetch('/api/admin/dashboard', { credentials: 'include', headers });
         const data = await res.json();
 
         if (data.success) {

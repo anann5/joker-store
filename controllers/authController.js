@@ -12,6 +12,9 @@ const adminFailedAttempts = new Map();
 const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
 const MAX_FAILED_ATTEMPTS = 5;
 const SESSION_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours (matches JWT expiry)
+// تُبطل الجلسة بعد هذه المدة بلا أي طلب أدمن، حتى لو بقي التوكن صالحاً.
+const ADMIN_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const ACTIVITY_THROTTLE_MS = 60 * 1000; // تحديث آخر نشاط مرة كل دقيقة على الأكثر
 
 const computeFingerprint = (ip, userAgent) => {
     return crypto.createHash('sha256').update(`${ip}:${userAgent}`).digest('hex');
@@ -45,13 +48,24 @@ const registerFailedAdminAttempt = (attemptKey, attempts, req, reason, eventType
  * Verify an admin JWT against the DB-persisted session + client fingerprint.
  * Returns the decoded payload or null when invalid/expired/mismatched.
  */
-const verifyAdminSession = async (token, ip, userAgent) => {
+const verifyAdminSession = async (token, ip, userAgent, { touch = true } = {}) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const fingerprint = computeFingerprint(ip, userAgent);
         const session = await AdminSession.findOne({ jti: decoded.jti || token });
         if (!session || session.fingerprint !== fingerprint) {
             return null;
+        }
+        const now = Date.now();
+        const lastActivity = (session.lastActivityAt || session.createdAt || new Date(0)).getTime();
+        if (now - lastActivity > ADMIN_IDLE_TIMEOUT_MS) {
+            await Promise.resolve(AdminSession.deleteOne({ _id: session._id })).catch(() => {});
+            return null;
+        }
+        // التحديث التلقائي للوحة لا يُعد نشاطاً حتى لا يُبقي الجلسة حيّة بلا مستخدم
+        if (touch && now - lastActivity > ACTIVITY_THROTTLE_MS) {
+            Promise.resolve(AdminSession.updateOne({ _id: session._id }, { $set: { lastActivityAt: new Date(now) } }))
+                .catch(() => {});
         }
         return decoded;
     } catch (_err) {
@@ -151,7 +165,8 @@ exports.verifyAdminToken = async (req, res, next, redirectPath = null) => {
     const decoded = await verifyAdminSession(
         token,
         getClientIp(req),
-        req.headers['user-agent'] || 'unknown'
+        req.headers['user-agent'] || 'unknown',
+        { touch: req.headers['x-admin-auto'] !== '1' }
     );
     if (!decoded) {
         logSecurityEvent('INVALID_TOKEN', 'استخدام توكن غير صالح أو منتهي الصلاحية أو جلسة غير متطابقة', req);
