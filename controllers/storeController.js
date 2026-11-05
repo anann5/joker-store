@@ -338,6 +338,91 @@ exports.trackOrder = async (req, res) => {
 };
 
 /**
+ * إرفاق إثبات دفع لطلب قائم بحالة "بانتظار الدفع" من صفحة التتبع.
+ * الملكية تُثبت بالبريد + رقم الطلب (نفس مستوى حماية تتبع الطلبات)،
+ * والتبديل إلى under_review يمنح الطلب مهلة مراجعة جديدة بدل انتهاء مهلة الدفع.
+ */
+exports.attachPaymentProof = async (req, res) => {
+    try {
+        const email = String(req.body?.email || '').trim().toLowerCase();
+        const orderId = String(req.body?.orderId || '').trim().toUpperCase();
+
+        if (!email || email.length > 200 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            return res.status(400).json({ success: false, error: 'بريد إلكتروني غير صالح' });
+        }
+        if (!orderId || orderId.length > 40 || !/^[A-Z0-9-]+$/.test(orderId)) {
+            return res.status(400).json({ success: false, error: 'رقم الطلب غير صالح' });
+        }
+
+        const order = await Order.findOne({ orderId, buyerEmail: email })
+            .select('_id orderId status paymentStatus reservationExpiresAt buyerEmail price');
+        if (!order) {
+            return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+        }
+        if (order.status !== 'pending' || !['awaiting_payment', 'under_review'].includes(order.paymentStatus)) {
+            return res.status(409).json({ success: false, error: 'لا يمكن إرفاق إثبات لهذا الطلب في حالته الحالية.' });
+        }
+        if (order.paymentStatus === 'under_review') {
+            return res.status(409).json({ success: false, error: 'إثبات الدفع مرفوع بالفعل وهو قيد المراجعة.' });
+        }
+
+        const now = new Date();
+        if (order.reservationExpiresAt && order.reservationExpiresAt <= now) {
+            return res.status(410).json({ success: false, error: 'انتهت مهلة الدفع لهذا الطلب.' });
+        }
+
+        const proof = await inspectPaymentProof(req.body?.paymentProofUrl, { excludeOrderId: order._id });
+        if (!proof.ok) {
+            return res.status(proof.status).json({ success: false, error: proof.error });
+        }
+
+        // تحديث ذرّي مشروط بالحالة والمهلة: يمنع سباقاً مع الاعتماد أو الإلغاء التلقائي.
+        const updateFilter = { _id: order._id, status: 'pending', paymentStatus: 'awaiting_payment' };
+        if (order.reservationExpiresAt) updateFilter.reservationExpiresAt = { $gt: now };
+
+        const updated = await Order.findOneAndUpdate(
+            updateFilter,
+            {
+                $set: {
+                    paymentProofUrl: proof.paymentProofUrl,
+                    paymentProofHash: proof.paymentProofHash,
+                    paymentStatus: 'under_review',
+                    paymentSubmittedAt: now,
+                    reservationExpiresAt: new Date(now.getTime() + PAYMENT_REVIEW_WINDOW_HOURS * 60 * 60 * 1000)
+                }
+            },
+            { new: true }
+        );
+        if (!updated) {
+            return res.status(409).json({
+                success: false,
+                error: 'تعذّر تحديث الطلب — ربما انتهت المهلة أو تغيّرت حالته، حدّث الصفحة وحاول مجدداً.'
+            });
+        }
+
+        if (process.env.NODE_ENV !== 'test') {
+            require('./helpers').sendTelegramAlert(
+                `🧾 *إثبات دفع جديد من صفحة التتبع*\n`
+                + `📦 *الطلب:* #${updated.orderId}\n`
+                + `💵 *المبلغ:* \`${updated.price}\`\n`
+                + `📮 *البريد:* ${updated.buyerEmail}\n`
+                + `⏳ يرجى مراجعة الإثبات وتأكيد الطلب.`
+            ).catch(() => {});
+        }
+
+        return res.json({
+            success: true,
+            message: 'تم إرسال إثبات الدفع بنجاح، سيتم مراجعته قريباً.',
+            paymentStatus: 'under_review',
+            reservationExpiresAt: updated.reservationExpiresAt
+        });
+    } catch (err) {
+        console.error('Attach proof error:', err.message);
+        return res.status(500).json({ success: false, error: 'تعذّر إرسال إثبات الدفع، حاول مجدداً.' });
+    }
+};
+
+/**
  * فاتورة الطلب — متاحة فقط لصاحب الطلب (بريده + رقم الطلب معاً).
  * تُفضي الأكواد فقط عند اكتمال الطلب (نفس درجة حماية تتبع الطلبات).
  */
@@ -621,6 +706,57 @@ exports.getActivePromotions = async (_req, res) => {
     }
 };
 
+/**
+ * التحقق من رابط إثبات دفع داخلي: يمنع الروابط الخارجية، يتأكد من وجود الملف،
+ * ويحسب بصمته لمنع إعادة استخدام الإثبات نفسه في طلب آخر.
+ */
+async function inspectPaymentProof(rawProofUrl, { excludeOrderId = null } = {}) {
+    const rawProof = typeof rawProofUrl === 'string' ? rawProofUrl.trim() : '';
+    if (!rawProof) return { ok: true, paymentProofUrl: null, paymentProofHash: null };
+
+    const proofMatch = rawProof.match(PROOF_URL_RE);
+    if (!proofMatch) return { ok: false, status: 400, error: 'رابط إثبات الدفع غير صالح.' };
+
+    const [, proofScope, proofFilename] = proofMatch;
+    const isPrivateProof = proofScope === 'private-proofs';
+    let proofBuffer = null;
+    let proofLookupFailed = false;
+    try {
+        if (objectStorage.isEnabled()) {
+            const key = `${isPrivateProof ? 'payment-proofs' : 'uploads'}/${proofFilename}`;
+            proofBuffer = await objectStorage.getObjectBuffer(key, MAX_UPLOAD_BYTES);
+        } else {
+            const proofPath = path.join(isPrivateProof ? PRIVATE_PROOF_DIR : PUBLIC_UPLOAD_DIR, proofFilename);
+            if (fs.existsSync(proofPath)) {
+                const localBuffer = fs.readFileSync(proofPath);
+                if (localBuffer.length <= MAX_UPLOAD_BYTES) proofBuffer = localBuffer;
+            }
+        }
+    } catch (err) {
+        proofLookupFailed = objectStorage.isEnabled() && !objectStorage.isNotFoundError(err);
+        proofBuffer = null;
+    }
+    if (proofLookupFailed) {
+        return { ok: false, status: 503, error: 'تعذّر التحقق من إثبات الدفع، حاول مجدداً.' };
+    }
+    if (!proofBuffer) {
+        return { ok: false, status: 400, error: 'ملف إثبات الدفع غير موجود.' };
+    }
+
+    const paymentProofHash = crypto.createHash('sha256').update(proofBuffer).digest('hex');
+    const duplicateQuery = { paymentProofHash };
+    if (excludeOrderId) duplicateQuery._id = { $ne: excludeOrderId };
+    if (await Order.exists(duplicateQuery)) {
+        return { ok: false, status: 400, error: 'تم استخدام إثبات الدفع هذا في طلب سابق.' };
+    }
+
+    return {
+        ok: true,
+        paymentProofUrl: isPrivateProof ? `/private-proofs/${proofFilename}` : `/uploads/${proofFilename}`,
+        paymentProofHash
+    };
+}
+
 exports.createOrder = async (req, res) => {
     try {
         const { cartItems, customerEmail, paymentGateway, paymentRef, paymentProofUrl: rawProofUrl, promoCode: rawPromoCode, gift: rawGift } = req.body;
@@ -630,48 +766,11 @@ exports.createOrder = async (req, res) => {
         }
 
         // إثبات الدفع: مسار داخلي فقط (خاص أو قديم عام) مع بصمة لاكتشاف إعادة الاستخدام.
-        let paymentProofUrl = null;
-        let paymentProofHash = null;
-        const rawProof = typeof rawProofUrl === 'string' ? rawProofUrl.trim() : '';
-        if (rawProof) {
-            const proofMatch = rawProof.match(PROOF_URL_RE);
-            if (!proofMatch) {
-                return res.status(400).json({ success: false, error: 'رابط إثبات الدفع غير صالح.' });
-            }
-            const [, proofScope, proofFilename] = proofMatch;
-            const isPrivateProof = proofScope === 'private-proofs';
-            let proofBuffer = null;
-            let proofLookupFailed = false;
-            try {
-                if (objectStorage.isEnabled()) {
-                    const key = `${isPrivateProof ? 'payment-proofs' : 'uploads'}/${proofFilename}`;
-                    proofBuffer = await objectStorage.getObjectBuffer(key, MAX_UPLOAD_BYTES);
-                } else {
-                    const proofPath = path.join(isPrivateProof ? PRIVATE_PROOF_DIR : PUBLIC_UPLOAD_DIR, proofFilename);
-                    if (fs.existsSync(proofPath)) {
-                        const localBuffer = fs.readFileSync(proofPath);
-                        if (localBuffer.length <= MAX_UPLOAD_BYTES) proofBuffer = localBuffer;
-                    }
-                }
-            } catch (err) {
-                proofLookupFailed = objectStorage.isEnabled() && !objectStorage.isNotFoundError(err);
-                proofBuffer = null;
-            }
-            if (proofLookupFailed) {
-                return res.status(503).json({ success: false, error: 'تعذّر التحقق من إثبات الدفع، حاول مجدداً.' });
-            }
-            if (!proofBuffer) {
-                return res.status(400).json({ success: false, error: 'ملف إثبات الدفع غير موجود.' });
-            }
-            paymentProofHash = crypto.createHash('sha256').update(proofBuffer).digest('hex');
-            const duplicateProof = await Order.exists({ paymentProofHash });
-            if (duplicateProof) {
-                return res.status(400).json({ success: false, error: 'تم استخدام إثبات الدفع هذا في طلب سابق.' });
-            }
-            paymentProofUrl = isPrivateProof
-                ? `/private-proofs/${proofFilename}`
-                : `/uploads/${proofFilename}`;
+        const proof = await inspectPaymentProof(rawProofUrl);
+        if (!proof.ok) {
+            return res.status(proof.status).json({ success: false, error: proof.error });
         }
+        const { paymentProofUrl, paymentProofHash } = proof;
 
         const activePendingOrders = await Order.countDocuments({
             buyerEmail,

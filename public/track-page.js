@@ -105,6 +105,78 @@ async function copyCode(btn) {
     setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 1500);
 }
 
+/**
+ * صندوق رفع إثبات الدفع — يظهر فقط لطلب قائم بانتظار الدفع مع رقم طلب كامل،
+ * لأن نقطة الإرفاق تتطلب البريد + رقم الطلب معاً لإثبات الملكية.
+ */
+function buildProofBox(order, email) {
+    if (order.masked || order.status !== 'pending' || order.paymentStatus !== 'awaiting_payment') return '';
+    return `
+        <div class="track-proof-box">
+            <p class="track-proof-hint">🧾 ${escapeHtml(t('track_proof_hint'))}</p>
+            <input type="file" class="form-control track-proof-input" accept="image/jpeg,image/png,image/gif,image/webp">
+            <button type="button" class="enter-btn track-action-btn track-proof-submit" data-order-id="${escapeHtml(order.orderId)}" data-email="${escapeHtml(email)}" disabled>
+                <i class="fas fa-upload"></i> ${escapeHtml(t('track_proof_btn'))}
+            </button>
+            <p class="track-proof-msg" hidden></p>
+        </div>`;
+}
+
+function setProofMessage(box, text, isError) {
+    const msg = box && box.querySelector('.track-proof-msg');
+    if (!msg) return;
+    msg.hidden = false;
+    msg.textContent = text;
+    msg.style.color = isError ? '#e74c3c' : '#22c55e';
+}
+
+async function submitPaymentProof(btn) {
+    const box = btn.closest('.track-proof-box');
+    if (!box) return;
+    const input = box.querySelector('.track-proof-input');
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        setProofMessage(box, t('track_proof_too_large'), true);
+        return;
+    }
+
+    const orderId = btn.getAttribute('data-order-id') || '';
+    const email = btn.getAttribute('data-email') || '';
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    input.disabled = true;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${escapeHtml(t('track_proof_uploading'))}`;
+
+    try {
+        const form = new FormData();
+        form.append('image', file);
+        const uploadRes = await fetch('/api/upload/payment-proof', { method: 'POST', body: form });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success || !uploadData.url) {
+            throw new Error(uploadData.error || uploadData.message || t('track_proof_error'));
+        }
+
+        const attachRes = await fetch(`/api/track-order/${encodeURIComponent(orderId)}/payment-proof`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, orderId, paymentProofUrl: uploadData.url })
+        });
+        const attachData = await attachRes.json();
+        if (!attachData.success) {
+            throw new Error(attachData.error || t('track_proof_error'));
+        }
+
+        setProofMessage(box, t('track_proof_success'), false);
+        setTimeout(trackOrder, 1200);
+    } catch (err) {
+        setProofMessage(box, `❌ ${err.message || t('track_proof_error')}`, true);
+        btn.disabled = false;
+        input.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
 async function trackOrder() {
     const emailInput = document.getElementById('trackEmailInput');
     const orderIdInput = document.getElementById('trackOrderIdInput');
@@ -174,6 +246,7 @@ async function trackOrder() {
                     <div style="font-size:0.9rem; color:var(--text-muted);">${items}</div>
                     <div style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;">${date} | <b>${formatPrice(order.price)}</b></div>
                     ${buildPaymentLine(order)}
+                    ${buildProofBox(order, email)}
                     ${codesHtml}
                     ${giftHtml}
                     ${maskedHint}
@@ -202,4 +275,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const copyBtn = e.target.closest('.track-copy-btn');
         if (copyBtn) copyCode(copyBtn);
     });
+
+    const results = document.getElementById('trackOrderResults');
+    if (results) {
+        results.addEventListener('change', e => {
+            const input = e.target.closest('.track-proof-input');
+            if (!input) return;
+            const box = input.closest('.track-proof-box');
+            const submit = box && box.querySelector('.track-proof-submit');
+            if (!submit) return;
+            const file = input.files && input.files[0];
+            if (file && file.size > 5 * 1024 * 1024) {
+                submit.disabled = true;
+                setProofMessage(box, t('track_proof_too_large'), true);
+                return;
+            }
+            submit.disabled = !file;
+            const msg = box.querySelector('.track-proof-msg');
+            if (msg) msg.hidden = true;
+        });
+
+        results.addEventListener('click', e => {
+            const proofBtn = e.target.closest('.track-proof-submit');
+            if (proofBtn && !proofBtn.disabled) submitPaymentProof(proofBtn);
+        });
+    }
 });

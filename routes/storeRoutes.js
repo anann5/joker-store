@@ -214,4 +214,7 @@ router.post('/upload/payment-proof', proofLimiter, (req, res, next) => {
     });
 });
 
+// إرفاق إثبات دفع لطلب قائم من صفحة التتبع (يتطلب البريد + رقم الطلب)
+router.post('/track-order/:orderId/payment-proof', proofLimiter, storeController.attachPaymentProof);
+
 module.exports = router;

@@ -171,7 +171,7 @@ async function sendOrderCreatedEmail(order) {
         ? '<span style="background:rgba(56,189,248,0.15);color:#38bdf8;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;">بانتظار الدفع</span>'
         : '<span style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;">قيد المراجعة</span>';
     const statusNote = awaitingPayment
-        ? 'بانتظار وصول الدفع. حوّل المبلغ ثم أرسل صورة الإثبات عبر واتساب مع رقم الطلب قبل انتهاء المهلة، وسيصلك الكود بعد التأكيد.'
+        ? 'بانتظار وصول الدفع. حوّل المبلغ ثم ارفع صورة الإثبات من صفحة تتبع الطلب قبل انتهاء المهلة، وسيصلك الكود بعد التأكيد.'
         : 'وصل إثبات الدفع وسيراجعه الأدمن الآن، وسيصلك الكود فور التأكيد.';
 
     const bodyHtml = `

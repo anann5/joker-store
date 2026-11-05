@@ -92,6 +92,7 @@ const ORDER_ID = '507f191e810c19729de860ed';
 const app = express();
 app.use(express.json());
 app.post('/api/checkout', storeController.createOrder);
+app.post('/api/track-order/:orderId/payment-proof', storeController.attachPaymentProof);
 app.post('/api/admin/orders/:orderId/approve', orderController.approveOrder);
 app.post('/api/admin/orders/:orderId/reject', orderController.rejectOrder);
 
@@ -382,5 +383,120 @@ describe('دورة حياة الدفع', () => {
             orderId: 'T503',
             status: 'cancelled'
         });
+    });
+});
+
+describe('إرفاق إثبات الدفع من صفحة التتبع', () => {
+    let existsSpy;
+    let readSpy;
+
+    function makeAwaitingOrder(overrides = {}) {
+        return {
+            _id: ORDER_ID,
+            orderId: 'T600',
+            buyerEmail: 'buyer@example.com',
+            status: 'pending',
+            paymentStatus: 'awaiting_payment',
+            reservationExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+            price: 20,
+            ...overrides
+        };
+    }
+
+    function attachProof(body = {}) {
+        return request(app)
+            .post('/api/track-order/T600/payment-proof')
+            .send({
+                email: 'buyer@example.com',
+                orderId: 'T600',
+                paymentProofUrl: '/private-proofs/1700000000000-0123456789abcdef.png',
+                ...body
+            });
+    }
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        objectStorage.isEnabled.mockReturnValue(false);
+        objectStorage.isNotFoundError.mockReturnValue(false);
+        Order.exists.mockResolvedValue(null);
+        existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue(Buffer.from('proof-bytes'));
+    });
+
+    afterEach(() => {
+        existsSpy.mockRestore();
+        readSpy.mockRestore();
+    });
+
+    it('يحوّل الطلب إلى under_review ويمنحه مهلة مراجعة جديدة', async () => {
+        const order = makeAwaitingOrder();
+        Order.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(order) });
+        Order.findOneAndUpdate.mockResolvedValue({
+            ...order,
+            paymentStatus: 'under_review',
+            reservationExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        });
+
+        const res = await attachProof();
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.paymentStatus).toBe('under_review');
+        const update = Order.findOneAndUpdate.mock.calls[0][1].$set;
+        expect(update.paymentStatus).toBe('under_review');
+        expect(update.paymentProofHash).toMatch(/^[a-f0-9]{64}$/);
+        expect(update.paymentSubmittedAt).toBeInstanceOf(Date);
+        expect(update.reservationExpiresAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('يرفض الإرفاق إذا كان الإثبات مرفوعاً بالفعل', async () => {
+        Order.findOne.mockReturnValue({
+            select: jest.fn().mockResolvedValue(makeAwaitingOrder({ paymentStatus: 'under_review' }))
+        });
+
+        const res = await attachProof();
+
+        expect(res.statusCode).toBe(409);
+        expect(res.body.error).toContain('قيد المراجعة');
+        expect(Order.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('يرفض الإرفاق بعد انتهاء مهلة الدفع', async () => {
+        Order.findOne.mockReturnValue({
+            select: jest.fn().mockResolvedValue(makeAwaitingOrder({ reservationExpiresAt: new Date(Date.now() - 1000) }))
+        });
+
+        const res = await attachProof();
+
+        expect(res.statusCode).toBe(410);
+        expect(Order.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('يرفض الإرفاق عندما لا يطابق البريد رقم الطلب', async () => {
+        Order.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+        const res = await attachProof({ email: 'someone@example.com' });
+
+        expect(res.statusCode).toBe(404);
+        expect(Order.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('يمنع إعادة استخدام إثبات دفع مرتبط بطلب آخر', async () => {
+        Order.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(makeAwaitingOrder()) });
+        Order.exists.mockResolvedValue({ _id: 'another-order' });
+
+        const res = await attachProof();
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.error).toContain('إثبات الدفع');
+        expect(Order.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('يرفض روابط الإثبات غير الداخلية', async () => {
+        Order.findOne.mockReturnValue({ select: jest.fn().mockResolvedValue(makeAwaitingOrder()) });
+
+        const res = await attachProof({ paymentProofUrl: 'https://evil.example.com/proof.png' });
+
+        expect(res.statusCode).toBe(400);
+        expect(Order.findOneAndUpdate).not.toHaveBeenCalled();
     });
 });
