@@ -7,6 +7,7 @@
 const webPush = require('web-push');
 const { PushSubscription } = require('../models');
 const fcmService = require('./fcm');
+const notices = require('./notices');
 
 const PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
@@ -137,6 +138,16 @@ async function sendToSubscriptions({ subscriptions, messages, url = '/', tag = '
  */
 async function broadcast(messages, url = '/', tag = 'offers') {
     if (!messages) return { sent: 0, deleted: 0, failed: 0, skipped: true };
+    if (!isPushEnabled() && !fcmService.isFcmEnabled()) {
+        return { sent: 0, deleted: 0, failed: 0, skipped: true, total: 0 };
+    }
+
+    // وجهة الضغط = مركز الإشعارات ليقرأ العميل النص كاملاً؛ رابط الأدمن يبقى داخل الصفحة.
+    let inboxUrl = '/notifications';
+    try {
+        const notice = await notices.record({ messages, url, tag });
+        if (notice) inboxUrl = `/notifications?n=${notice._id}`;
+    } catch (_e) {}
 
     let subscriptions = [];
     let result = { sent: 0, deleted: 0, failed: 0 };
@@ -144,23 +155,22 @@ async function broadcast(messages, url = '/', tag = 'offers') {
         subscriptions = await PushSubscription.find({ topics: 'offers' })
             .select('_id endpoint keys userId lang failedCount')
             .lean();
-        result = await sendToSubscriptions({ subscriptions, messages, url, tag });
+        result = await sendToSubscriptions({ subscriptions, messages, url: inboxUrl, tag });
     }
 
     // Fan-out to native app installs (independent of Web Push availability)
     let fcm = { sent: 0, deleted: 0, failed: 0 };
     try {
-        fcm = await fcmService.broadcastToApps(messages, url, tag);
+        fcm = await fcmService.broadcastToApps(messages, inboxUrl, tag);
     } catch (_e) {}
 
     const webSent = result.sent || 0;
     const fcmSent = fcm.sent || 0;
-    const skipped = !isPushEnabled() && !fcmService.isFcmEnabled();
     return {
         sent: webSent + fcmSent,
         deleted: (result.deleted || 0) + (fcm.deleted || 0),
         failed: (result.failed || 0) + (fcm.failed || 0),
-        skipped,
+        skipped: false,
         total: subscriptions.length
     };
 }

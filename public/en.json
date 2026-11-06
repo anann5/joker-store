@@ -519,5 +519,13 @@
     "push_prompt_body": "Enable notifications to get new arrivals and exclusive offers right on your device.",
     "push_allow_btn": "Enable notifications",
     "push_later_btn": "Later",
-    "push_subscribed_toast": "Notifications enabled 🎉"
+    "push_subscribed_toast": "Notifications enabled 🎉",
+    "notifications_title": "Notifications",
+    "notifications_subtitle": "Every store offer and alert in one place — read the full notification, then open its link.",
+    "meta_notifications_desc": "All Joker Store offers and alerts in one place — read the full notification and follow its link.",
+    "notifications_empty": "No notifications yet — new store offers and alerts will appear here.",
+    "notifications_error": "Could not load notifications. Check your connection and try again.",
+    "notifications_retry": "Try again",
+    "notifications_open_link": "Open related link",
+    "header_notifications": "Notifications"
 }

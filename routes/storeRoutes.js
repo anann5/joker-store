@@ -97,6 +97,13 @@ router.get('/site-config', storeController.getSiteConfig);
 
 // Web Push notifications — subscription management
 router.get('/push/vapid-public-key', pushController.getStatus);
+const noticesLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    keyGenerator: rateLimitKey,
+    message: 'عدد الطلبات كبير جداً، يرجى المحاولة لاحقاً.'
+});
+router.get('/notifications', noticesLimiter, pushController.listNotices);
 router.post('/push/subscribe', pushLimiter, verifyUserTokenOptional, validate(pushSubscribeSchema), pushController.subscribe);
 router.post('/push/unsubscribe', pushLimiter, validate(pushUnsubscribeSchema), pushController.unsubscribe);
 router.post('/push/fcm-token', pushLimiter, verifyUserTokenOptional, validate(fcmTokenSchema), pushController.registerFcmToken);

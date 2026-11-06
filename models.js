@@ -547,6 +547,24 @@ const fcmTokenSchema = new mongoose.Schema({
 });
 
 // ======================================================
+// Schema مركز الإشعارات (نص كل بث يُحفظ ليقرأه العميل داخل المتجر)
+// ======================================================
+const noticeSchema = new mongoose.Schema({
+    title: {
+        ar: { type: String, required: true, trim: true },
+        en: { type: String, trim: true, default: '' }
+    },
+    body: {
+        ar: { type: String, trim: true, default: '' },
+        en: { type: String, trim: true, default: '' }
+    },
+    url: { type: String, trim: true, default: '' },
+    tag: { type: String, trim: true, default: 'general' },
+    createdAt: { type: Date, default: Date.now }
+});
+noticeSchema.index({ createdAt: -1 });
+
+// ======================================================
 // Schema تنبيهات عودة المخزون (Stock Alerts)
 // ======================================================
 const stockAlertSchema = new mongoose.Schema({
@@ -583,6 +601,7 @@ module.exports = {
     CartSession: mongoose.model('CartSession', cartSessionSchema),
     PushSubscription: mongoose.model('PushSubscription', pushSubscriptionSchema),
     FcmToken: mongoose.model('FcmToken', fcmTokenSchema),
+    Notice: mongoose.model('Notice', noticeSchema),
     StockAlert: mongoose.model('StockAlert', stockAlertSchema),
     SupportTicket: mongoose.model('SupportTicket', supportTicketSchema)
 };

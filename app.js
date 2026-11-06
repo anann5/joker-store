@@ -309,7 +309,7 @@ app.get('/api/products/breadcrumb/:productId', seoController.breadcrumbSchema);
 
 // صفحات HTML عبر sendFile: منع التخزين المؤقت لضمان ظهور التحديثات فوراً
 app.use((req, res, next) => {
-    if (/^\/(about|track|invoice|support|privacy|terms|contact|offers|faq|login|forgot-password|reset-password)(\.html)?\/?$/.test(req.path)) {
+    if (/^\/(about|track|invoice|support|privacy|terms|contact|offers|faq|login|forgot-password|reset-password|notifications)(\.html)?\/?$/.test(req.path)) {
         res.setHeader('Cache-Control', 'no-cache');
     }
     next();
@@ -345,6 +345,10 @@ app.get('/support', (req, res) => {
 
 app.get('/offers', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'offers.html'));
+});
+
+app.get('/notifications', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'notifications.html'));
 });
 
 app.get('/faq', (req, res) => {

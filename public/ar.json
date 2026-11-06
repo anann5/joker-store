@@ -519,5 +519,13 @@
     "push_prompt_body": "فعّل الإشعارات ليصلك كل جديد وعروض حصرية مباشرة على جهازك.",
     "push_allow_btn": "فعّل الإشعارات",
     "push_later_btn": "لاحقاً",
-    "push_subscribed_toast": "تم تفعيل الإشعارات بنجاح 🎉"
+    "push_subscribed_toast": "تم تفعيل الإشعارات بنجاح 🎉",
+    "notifications_title": "مركز الإشعارات",
+    "notifications_subtitle": "عروض المتجر وتنبيهاته في مكان واحد — اقرأ الإشعار كاملاً ثم افتح الرابط المرتبط به.",
+    "meta_notifications_desc": "كل عروض وتنبيهات Joker Store في مكان واحد — اقرأ الإشعار كاملاً وتابع الرابط المرتبط به.",
+    "notifications_empty": "لا توجد إشعارات بعد — سيظهر هنا كل عرض أو تنبيه جديد من المتجر.",
+    "notifications_error": "تعذّر جلب الإشعارات، تحقق من الاتصال وحاول مجدداً.",
+    "notifications_retry": "إعادة المحاولة",
+    "notifications_open_link": "فتح الرابط المرتبط",
+    "header_notifications": "مركز الإشعارات"
 }

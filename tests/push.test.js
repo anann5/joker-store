@@ -31,6 +31,12 @@ jest.mock('../models', () => ({
 const { PushSubscription } = require('../models');
 const webPush = require('web-push');
 
+jest.mock('../controllers/notices', () => ({
+    record: jest.fn().mockResolvedValue({ _id: 'notice1' }),
+    list: jest.fn().mockResolvedValue([])
+}));
+const notices = require('../controllers/notices');
+
 const app = express();
 app.use(express.json());
 app.use('/api', require('../routes/storeRoutes'));
@@ -105,7 +111,8 @@ describe('Push service — sendToSubscriptions/broadcast', () => {
         expect(webPush.sendNotification).toHaveBeenCalledTimes(1);
         const payload = JSON.parse(webPush.sendNotification.mock.calls[0][1]);
         expect(payload.title).toBe('عرض');
-        expect(payload.url).toBe('/offers');
+        expect(payload.url).toBe('/notifications?n=notice1');
+        expect(notices.record).toHaveBeenCalledWith({ messages, url: '/offers', tag: 'test' });
         expect(PushSubscription.updateOne).toHaveBeenCalledWith({ _id: 'sub1' }, expect.objectContaining({ $set: expect.objectContaining({ failedCount: 0 }) }));
     });
 

@@ -110,4 +110,17 @@ async function registerFcmToken(req, res) {
     }
 }
 
-module.exports = { getStatus, subscribe, unsubscribe, getAdminStats, broadcast, registerFcmToken };
+/**
+ * GET /api/notifications — مركز الإشعارات للواجهة (نصوص البث السابقة).
+ */
+async function listNotices(req, res) {
+    try {
+        const notices = require('./notices');
+        const items = await notices.list(req.query.lang);
+        res.json({ success: true, items });
+    } catch (_e) {
+        res.status(500).json({ success: false, error: 'فشل جلب الإشعارات' });
+    }
+}
+
+module.exports = { getStatus, subscribe, unsubscribe, getAdminStats, broadcast, registerFcmToken, listNotices };

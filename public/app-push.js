@@ -132,7 +132,7 @@
         });
     }
 
-    function inAppToast(title, body) {
+    function inAppToast(title, body, href) {
         try {
             if (document.getElementById('app-push-toast')) return;
             const el = document.createElement('div');
@@ -161,18 +161,46 @@
                 el.style.transform = 'translateY(-140%)';
                 el.style.opacity = '0';
                 setTimeout(function () { el.remove(); }, 350);
-            }, 5000);
-            el.addEventListener('click', function () { el.remove(); });
+            }, href ? 9000 : 5000);
+            el.addEventListener('click', function () {
+                el.remove();
+                if (href) openDeepLink(href);
+            });
+            if (href) el.style.cursor = 'pointer';
         } catch (_) {}
     }
 
     function openDeepLink(url) {
-        if (typeof url !== 'string' || url.charAt(0) !== '/') return;
+        if (typeof url !== 'string' || url.charAt(0) !== '/' || url.charAt(1) === '/') return;
         window.location.href = url;
+    }
+
+    const SEEN_NOTICE_KEY = 'joker_seen_notice';
+
+    // الضغط على إشعار والتطبيق مغلق قد يسبق تحميل الصفحة فيضيع الحدث؛
+    // هذا الشريط يضمن رؤية الإشعار الجديد عند فتح التطبيق.
+    async function announceUnseenNotice() {
+        try {
+            const res = await fetch(`/api/notifications?lang=${getLang()}`);
+            const data = await res.json();
+            if (!data.success || !Array.isArray(data.items) || !data.items.length) return;
+            const [latest] = data.items;
+            let seen = null;
+            try {
+                seen = localStorage.getItem(SEEN_NOTICE_KEY);
+            } catch (_) {}
+            if (seen === latest.id) return;
+            const cta = getLang() === 'en'
+                ? 'Tap to read the full notification.'
+                : 'اضغط هنا لقراءة الإشعار كاملاً.';
+            inAppToast(latest.title || 'Joker Store', cta, '/notifications');
+        } catch (_) {}
     }
 
     async function init() {
         if (typeof cap.nativePromise !== 'function') return;
+
+        announceUnseenNotice();
 
         const perm = await nativeCall(cap, 'PushNotifications', 'requestPermissions');
         reportDiag(`perm:${perm.data && perm.data.receive ? perm.data.receive : 'unknown'}`);
@@ -207,16 +235,10 @@
                 body = (n && (n.body || (n.data && n.data.body))) || '';
                 url = (n && n.data && n.data.url) || '';
             } catch (_) {}
-            if (title || body) inAppToast(title, body);
+            const href = typeof url === 'string' && url.charAt(0) === '/' ? url : '';
+            if (title || body) inAppToast(title, body, href);
             // إظهار الإشعار في شريط إشعارات النظام حتى والتطبيق مفتوح
-            showSystemNotification(title, body, url);
-            if (url && typeof url === 'string' && url.charAt(0) === '/') {
-                const el = document.getElementById('app-push-toast');
-                if (el) {
-                    el.style.cursor = 'pointer';
-                    el.addEventListener('click', function () { openDeepLink(url); });
-                }
-            }
+            showSystemNotification(title, body, href);
         });
 
         nativeListener(cap, 'PushNotifications', 'pushNotificationActionPerformed', function (a) {
