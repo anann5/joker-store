@@ -2,6 +2,7 @@
 import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, syncWishlistButtons, resolveImageUrl, getCategoryTheme, applyProductBadge, cartTotals, getAppliedPromo, getAppliedLoyalty, setAppliedLoyalty, clearAppliedLoyalty, setupReveal } from './shared.js';
 import { formatPrice, formatStorePrice, getDisplayCurrency } from './currency.js';
 import { t, getCurrentLanguage } from './i18n.js';
+import { openModal } from './modals.js';
 
 let toastContainer = null;
 let _bumpQty = null;
@@ -153,7 +154,6 @@ export function showAllCategories() {
 
     grid.className = '';
     grid.removeAttribute('style');
-    grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:30px;';
 
     const backContainer = document.getElementById('back-container');
     if (backContainer) backContainer.style.display = 'none';
@@ -570,6 +570,8 @@ export function showProductDetails(product, currentCategory = '') {
         notifyBtn.hidden = !outOfStock;
         if (outOfStock && product.id) {
             if (buyButton) buyButton.style.display = 'none';
+            const qtySelector = view.querySelector('.qty-selector');
+            if (qtySelector) qtySelector.style.display = 'none';
             void refreshNotifyStockState(product.id, notifyBtn);
             notifyBtn.addEventListener('click', () => handleNotifyStock(product.id, notifyBtn));
         }
@@ -703,6 +705,27 @@ export function showProductDetails(product, currentCategory = '') {
         });
     }
     renderProductReviews(product.id);
+
+    // الزائر غير المسجّل لا يرى نموذج تقييم غير قابل للإرسال
+    const reviewPanel = view.querySelector('.product-review-panel');
+    if (reviewPanel) {
+        fetch('/api/users/me', { credentials: 'include' })
+            .then(res => (res.ok ? res.json() : { success: false }))
+            .then(data => {
+                if (data && data.success && data.user) return;
+                if (!reviewPanel.isConnected) return;
+                const prompt = document.createElement('div');
+                prompt.className = 'review-guest-prompt';
+                prompt.innerHTML = `<p><i class="fas fa-lock"></i> ${escapeHtml(t('review_login_prompt'))}</p>
+                    <button type="button" class="review-login-btn"><i class="fas fa-sign-in-alt"></i> ${escapeHtml(t('auth_login_btn'))}</button>`;
+                prompt.querySelector('.review-login-btn').addEventListener('click', () => {
+                    const authModal = document.getElementById('authModal');
+                    if (authModal) openModal(authModal);
+                });
+                reviewPanel.replaceWith(prompt);
+            })
+            .catch(() => {});
+    }
 
     grid.className = 'product-details-wrapper';
     grid.innerHTML = ''; // تفريغ الشبكة أولاً
