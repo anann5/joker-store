@@ -56,7 +56,7 @@ jobs:
 
       - name: Install Capacitor
         run: |
-          npm install --save @capacitor/core@7 @capacitor/android@7 @capacitor/push-notifications@7 @capacitor/local-notifications@7
+          npm install --save @capacitor/core@7 @capacitor/android@7 @capacitor/app@7 @capacitor/status-bar@7 @capacitor/splash-screen@7 @capacitor/push-notifications@7 @capacitor/local-notifications@7
           npm install --save-dev @capacitor/cli@7
           npx cap --version
 
@@ -89,6 +89,10 @@ jobs:
           cp -R mobile-assets/res/. android/app/src/main/res/
           echo "Copied branded resources:"
           find android/app/src/main/res -name 'ic_launcher*' -o -name 'splash*' | sort
+
+      # شاشة الإقلاع الداكنة (Android 12+ والنظام الأقدم) لتطابق ثيم المتجر
+      - name: Apply dark splash theme
+        run: node mobile-assets/android-splash-patch.js
 
       # ربط Firebase FCM بمشروع Capacitor (يضيف إضافة google-services في Gradle)
       - name: Apply FCM (Firebase) Gradle wiring

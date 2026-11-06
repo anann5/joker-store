@@ -78,9 +78,12 @@ async function registerToken({ token, userId = null, lang = 'ar' }) {
     const patch = { token: clean };
     if (userId) patch.userId = userId;
     if (lang === 'en' || lang === 'ar') patch.lang = lang;
+    const update = { $set: patch, $setOnInsert: { failedCount: 0 } };
+    // زائر بلا جلسة = خروج من الحساب: لا نُبقي الجهاز مرتبطاً بمستخدم سابق.
+    if (!userId) update.$unset = { userId: '' };
     return FcmToken.findOneAndUpdate(
         { token: clean },
-        { $set: patch, $setOnInsert: { failedCount: 0 } },
+        update,
         { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 }

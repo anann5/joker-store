@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Joker Store — لا يوجد اتصال</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+            background: #0B0F1C;
+            color: #EDF1F8;
+            font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+            text-align: center;
+            -webkit-text-size-adjust: 100%;
+        }
+        .card {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+        .logo {
+            width: 72px;
+            height: 72px;
+            border-radius: 18px;
+            object-fit: cover;
+            box-shadow: 0 10px 28px rgba(3, 6, 14, .6);
+        }
+        .icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: rgba(129, 140, 248, .12);
+            border: 1px solid rgba(129, 140, 248, .28);
+            color: #A5B4FC;
+        }
+        .icon svg { width: 24px; height: 24px; display: block; }
+        h1 { font-size: 1.15rem; font-weight: 800; line-height: 1.5; }
+        p { font-size: .9rem; line-height: 1.75; color: #A9B3C6; }
+        .hint { font-size: .78rem; color: #7C869B; }
+        button {
+            width: 100%;
+            min-height: 48px;
+            margin-top: 4px;
+            border: 0;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #6366F1, #8B5CF6);
+            color: #fff;
+            font: inherit;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform .15s ease, opacity .15s ease;
+        }
+        button:active { transform: scale(.98); }
+        button:disabled { opacity: .55; cursor: default; }
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, .35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            display: none;
+        }
+        button.loading .spinner { display: inline-block; }
+        button.loading span { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <img class="logo" src="icon.png" alt="Joker Store">
+        <div class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 8.5a16 16 0 0 1 20 0"></path>
+                <path d="M5 12.5a11 11 0 0 1 14 0"></path>
+                <path d="M8.5 16.5a6 6 0 0 1 7 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+                <line x1="3" y1="3" x2="21" y2="21" stroke="#F87171"></line>
+            </svg>
+        </div>
+        <h1>تعذّر الاتصال بالمتجر</h1>
+        <p>تأكد من اتصالك بالإنترنت ثم أعد المحاولة.<br>إذا كان الاتصال بطيئاً فقد يستغرق أول تشغيل حتى دقيقة.</p>
+        <button id="retryBtn" type="button">
+            <span class="spinner"></span>
+            <span>إعادة المحاولة</span>
+        </button>
+        <div class="hint" id="hint" dir="ltr">No connection — check your internet and try again.</div>
+    </main>
+    <script>
+        (function () {
+            'use strict';
+            var STORE_URL = 'https://joker-store.onrender.com';
+            var btn = document.getElementById('retryBtn');
+            var hint = document.getElementById('hint');
+            var logo = document.querySelector('.logo');
+            var retrying = false;
+
+            if (logo) logo.addEventListener('error', function () { logo.style.display = 'none'; });
+
+            function setHint(text) {
+                hint.textContent = text;
+                hint.setAttribute('dir', /[\u0600-\u06FF]/.test(text) ? 'rtl' : 'ltr');
+            }
+
+            function go() {
+                if (retrying) return;
+                retrying = true;
+                btn.classList.add('loading');
+                btn.disabled = true;
+                setHint('جاري الاتصال…');
+                window.setTimeout(function () {
+                    window.location.replace(STORE_URL + (window.location.search || '') + (window.location.hash || ''));
+                }, 250);
+            }
+
+            btn.addEventListener('click', go);
+
+            window.addEventListener('online', go);
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible' && retrying) {
+                    retrying = false;
+                    btn.classList.remove('loading');
+                    btn.disabled = false;
+                    setHint(navigator.onLine ? '' : 'لا يزال الاتصال غير متاح.');
+                }
+            });
+
+            if (!navigator.onLine) {
+                setHint('لا يوجد اتصال بالإنترنت حالياً.');
+            }
+        })();
+    </script>
+</body>
+</html>

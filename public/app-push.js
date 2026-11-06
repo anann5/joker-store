@@ -1,5 +1,6 @@
 /* Joker Store — native app push registration (Capacitor only).
- * Uses the injected Capacitor runtime directly (no bundler needed for server.url apps).
+ * The storefront is loaded from server.url, so plugin JS proxies are not
+ * installed in the page; we call the injected native bridge directly.
  * Registers the FCM token server-side, shows a quiet in-app toast for
  * foreground notifications, and deep-links taps to notification.data.url.
  */
@@ -8,21 +9,15 @@
 
     const LS_TOKEN = 'joker_fcm_token';
 
-    function isNativeApp() {
-        try {
-            return Boolean(window.Capacitor
-                && typeof window.Capacitor.isNativePlatform === 'function'
-                && window.Capacitor.isNativePlatform());
-        } catch (_) {
-            return false;
-        }
+    function getCap() {
+        const cap = window.Capacitor;
+        return cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform() ? cap : null;
     }
 
     function reportDiag(stage) {
         try {
             const ua = navigator.userAgent || '';
             const cap = window.Capacitor || null;
-            const plugins = cap && cap.Plugins ? Object.keys(cap.Plugins) : [];
             fetch('/api/push/app-diag', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -30,17 +25,45 @@
                     stage: stage,
                     hasCapacitor: Boolean(cap),
                     isNative: cap && typeof cap.isNativePlatform === 'function' ? cap.isNativePlatform() : null,
-                    pushPlugins: plugins.filter(function (p) { return /push/i.test(p); }),
+                    hasNativeBridge: Boolean(cap && typeof cap.nativePromise === 'function'),
                     ua: ua.slice(0, 140)
                 })
             }).catch(function () {});
         } catch (_) {}
     }
 
-    // تشخيص: يُبلّغ حالة الجسر (يعمل حتى لو غاب الجسر) — مؤقت
+    function nativeCall(cap, pluginName, method, options) {
+        return new Promise(function (resolve) {
+            try {
+                const result = cap.nativePromise(pluginName, method, options || {});
+                Promise.resolve(result).then(
+                    function (data) { resolve({ ok: true, data: data }); },
+                    function () { resolve({ ok: false, data: null }); }
+                );
+            } catch (_) {
+                resolve({ ok: false, data: null });
+            }
+        });
+    }
+
+    function nativeListener(cap, pluginName, eventName, callback) {
+        try {
+            if (typeof cap.addListener === 'function') {
+                return cap.addListener(pluginName, eventName, callback);
+            }
+        } catch (_) {}
+        return null;
+    }
+
+    const cap = getCap();
+    if (!cap) return;
+
     reportDiag('load');
 
-    if (!isNativeApp()) return;
+    if (typeof cap.nativePromise !== 'function') {
+        reportDiag('no-native-bridge');
+        return;
+    }
 
     function getLang() {
         try {
@@ -60,6 +83,8 @@
         }
     }
 
+    let linkedThisSession = false;
+
     async function sendToken(token) {
         try {
             const res = await fetch('/api/push/fcm-token', {
@@ -69,6 +94,7 @@
                 body: JSON.stringify({ token: token, lang: getLang() })
             });
             if (res.ok) {
+                linkedThisSession = true;
                 try {
                     localStorage.setItem(LS_TOKEN, token);
                 } catch (_) {}
@@ -77,43 +103,33 @@
         } catch (_) {}
     }
 
-    function getPlugin(name) {
-        try {
-            return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[name]) || null;
-        } catch (_) {
-            return null;
-        }
-    }
+    // ربط/فكّ ربط الجهاز بالحساب فوراً عند تسجيل الدخول أو الخروج.
+    window.addEventListener('joker-auth-changed', function () {
+        const token = getStoredToken();
+        if (token) sendToken(token);
+    });
 
     function ensureNotifChannel() {
-        const LN = getPlugin('LocalNotifications');
-        if (!LN || typeof LN.createChannel !== 'function') return;
-        try {
-            LN.createChannel({
-                id: 'joker_push',
-                name: 'Joker Store',
-                description: 'إشعارات المتجر والعروض',
-                importance: 5,
-                visibility: 1,
-                vibration: true
-            }).catch(function () {});
-        } catch (_) {}
+        nativeCall(cap, 'LocalNotifications', 'createChannel', {
+            id: 'joker_push',
+            name: 'Joker Store',
+            description: 'إشعارات المتجر والعروض',
+            importance: 5,
+            visibility: 1,
+            vibration: true
+        });
     }
 
     function showSystemNotification(title, body, url) {
-        const LN = getPlugin('LocalNotifications');
-        if (!LN || typeof LN.schedule !== 'function') return;
-        try {
-            LN.schedule({
-                notifications: [{
-                    id: Math.floor(Math.random() * 2147483000),
-                    title: title || 'Joker Store',
-                    body: body || '',
-                    channelId: 'joker_push',
-                    extra: { url: url || '/' }
-                }]
-            }).catch(function () {});
-        } catch (_) {}
+        nativeCall(cap, 'LocalNotifications', 'schedule', {
+            notifications: [{
+                id: Math.floor(Math.random() * 2147483000),
+                title: title || 'Joker Store',
+                body: body || '',
+                channelId: 'joker_push',
+                extra: { url: url || '/' }
+            }]
+        });
     }
 
     function inAppToast(title, body) {
@@ -150,74 +166,67 @@
         } catch (_) {}
     }
 
+    function openDeepLink(url) {
+        if (typeof url !== 'string' || url.charAt(0) !== '/') return;
+        window.location.href = url;
+    }
+
     async function init() {
-        try {
-            const Plugins = window.Capacitor && window.Capacitor.Plugins;
-            const Push = Plugins && Plugins.PushNotifications;
-            if (!Push || typeof Push.requestPermissions !== 'function') { reportDiag('no-push-plugin'); return; }
+        if (typeof cap.nativePromise !== 'function') return;
 
-            let perm = null;
+        const perm = await nativeCall(cap, 'PushNotifications', 'requestPermissions');
+        reportDiag(`perm:${perm.data && perm.data.receive ? perm.data.receive : 'unknown'}`);
+        if (perm.data && perm.data.receive === 'denied') return;
+
+        ensureNotifChannel();
+
+        // المستمعون قبل register() حتى لا يضيع حدث التوكن.
+        nativeListener(cap, 'LocalNotifications', 'localNotificationActionPerformed', function (a) {
             try {
-                perm = await Push.requestPermissions();
-            } catch (_) {
-                perm = null;
-            }
-            reportDiag(`perm:${  perm && perm.receive ? perm.receive : 'unknown'}`);
-            if (perm && perm.receive === 'denied') return;
+                openDeepLink(a && a.notification && a.notification.extra && a.notification.extra.url);
+            } catch (_) {}
+        });
 
+        nativeListener(cap, 'PushNotifications', 'registration', function (t) {
+            if (!t || !t.value) return;
+            reportDiag('got-token');
+            // كل تشغيل: أعد الإرسال لربط الجهاز بالجلسة الحالية (أو كزائر).
+            if (t.value !== getStoredToken() || !linkedThisSession) sendToken(t.value);
+        });
+
+        nativeListener(cap, 'PushNotifications', 'registrationError', function (e) {
+            reportDiag(`reg-error:${JSON.stringify(e).slice(0, 160)}`);
+        });
+
+        nativeListener(cap, 'PushNotifications', 'pushNotificationReceived', function (n) {
+            let title = '';
+            let body = '';
+            let url = '';
             try {
-                await Push.register();
-                reportDiag('register-ok');
-            } catch (_) {
-                reportDiag('register-failed');
-                return;
+                title = (n && (n.title || (n.data && (n.data.title || n.data.pin)))) || '';
+                body = (n && (n.body || (n.data && n.data.body))) || '';
+                url = (n && n.data && n.data.url) || '';
+            } catch (_) {}
+            if (title || body) inAppToast(title, body);
+            // إظهار الإشعار في شريط إشعارات النظام حتى والتطبيق مفتوح
+            showSystemNotification(title, body, url);
+            if (url && typeof url === 'string' && url.charAt(0) === '/') {
+                const el = document.getElementById('app-push-toast');
+                if (el) {
+                    el.style.cursor = 'pointer';
+                    el.addEventListener('click', function () { openDeepLink(url); });
+                }
             }
+        });
 
-            ensureNotifChannel();
-            const LocalNotif = getPlugin('LocalNotifications');
-            if (LocalNotif && typeof LocalNotif.addListener === 'function') {
-                LocalNotif.addListener('localNotificationActionPerformed', function (a) {
-                    try {
-                        const url = a && a.notification && a.notification.extra && a.notification.extra.url;
-                        if (typeof url === 'string' && url.charAt(0) === '/') window.location.href = url;
-                    } catch (_) {}
-                });
-            }
+        nativeListener(cap, 'PushNotifications', 'pushNotificationActionPerformed', function (a) {
+            try {
+                openDeepLink(a && a.notification && a.notification.data && a.notification.data.url);
+            } catch (_) {}
+        });
 
-            if (typeof Push.addListener === 'function') {
-                Push.addListener('registration', function (t) {
-                    if (t && t.value) { reportDiag('got-token'); if (t.value !== getStoredToken()) sendToken(t.value); }
-                });
-                Push.addListener('registrationError', function (e) { reportDiag(`reg-error:${  JSON.stringify(e).slice(0, 160)}`); });
-                Push.addListener('pushNotificationReceived', function (n) {
-                    let title = '';
-                    let body = '';
-                    let url = '';
-                    try {
-                        title = (n && (n.title || (n.data && (n.data.title || n.data.pin)))) || '';
-                        body = (n && (n.body || (n.data && n.data.body))) || '';
-                        url = (n && n.data && n.data.url) || '';
-                    } catch (_) {}
-                    if (title || body) inAppToast(title, body);
-                    // إظهار الإشعار في شريط إشعارات النظام حتى والتطبيق مفتوح
-                    showSystemNotification(title, body, url);
-                    if (url && typeof url === 'string' && url.charAt(0) === '/') {
-                        // foreground tap-through: keep the toast tappable to open
-                        const el = document.getElementById('app-push-toast');
-                        if (el) {
-                            el.style.cursor = 'pointer';
-                            el.addEventListener('click', function () { window.location.href = url; });
-                        }
-                    }
-                });
-                Push.addListener('pushNotificationActionPerformed', function (a) {
-                    try {
-                        const url = a && a.notification && a.notification.data && a.notification.data.url;
-                        if (typeof url === 'string' && url.charAt(0) === '/') window.location.href = url;
-                    } catch (_) {}
-                });
-            }
-        } catch (_) {}
+        const registered = await nativeCall(cap, 'PushNotifications', 'register');
+        reportDiag(registered.ok ? 'register-ok' : 'register-failed');
     }
 
     if (document.readyState === 'loading') {

@@ -381,6 +381,7 @@ async function checkLoginState() {
         syncUserCart();
         // وصّل الأحداث اللحظية فور معرفة حالة الدخول (idempotent)
         realtimeAfterLogin();
+        window.dispatchEvent(new CustomEvent('joker-auth-changed', { detail: { loggedIn: true } }));
     } catch (_err) {
         currentUser = null;
         setAuthButtonLabel(t('auth_login_btn'));
@@ -493,6 +494,7 @@ async function handleLogout() {
         userAccountDropdown.classList.remove('active');
     }
     realtimeAfterLogout();
+    window.dispatchEvent(new CustomEvent('joker-auth-changed', { detail: { loggedIn: false } }));
     showToast(t('auth_logout_success'), 'success');
 }
 

@@ -88,6 +88,17 @@ describe('FCM wiring', () => {
         );
     });
 
+    it('unlinks the device from a user when registered as a guest', async () => {
+        mockFcmToken.findOneAndUpdate.mockResolvedValue({ createdAt: new Date('2026-01-01') });
+        const res = await request(app)
+            .post('/api/push/fcm-token')
+            .send({ token: 'fcm-device-token-guest-1234567890', lang: 'ar' });
+        expect(res.status).toBe(201);
+        const update = mockFcmToken.findOneAndUpdate.mock.calls[0][1];
+        expect(update.$unset).toEqual({ userId: '' });
+        expect(update.$set.userId).toBeUndefined();
+    });
+
     it('rejects short tokens (400)', async () => {
         const res = await request(app)
             .post('/api/push/fcm-token')

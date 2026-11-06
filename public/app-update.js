@@ -44,7 +44,7 @@
         } catch (_) {}
     }
 
-    function showBar(publishedAt) {
+    function showBar(stamp) {
         if (document.getElementById('app-update-bar')) return;
         const bar = document.createElement('div');
         bar.id = 'app-update-bar';
@@ -67,7 +67,7 @@
         bar.appendChild(go);
         bar.appendChild(later);
         function close(record) {
-            if (record) set(KEY_SEEN, publishedAt);
+            if (record) set(KEY_SEEN, String(stamp));
             bar.classList.remove('show');
             setTimeout(function () { bar.remove(); }, 300);
         }
@@ -77,6 +77,17 @@
         requestAnimationFrame(function () { bar.classList.add('show'); });
     }
 
+    // تحديث ملف APK داخل نفس الإصدار لا يغيّر published_at،
+    // لذا نعتمد على updated_at الخاص بالأصل (يتغيّر عند كل بناء جديد).
+    function releaseStamp(rel) {
+        const times = (rel.assets || [])
+            .map(function (a) { return Date.parse(a.updated_at || ''); })
+            .filter(function (t) { return Number.isFinite(t); });
+        if (times.length) return Math.max.apply(null, times);
+        const published = Date.parse(rel.published_at || '');
+        return Number.isFinite(published) ? published : 0;
+    }
+
     function check() {
         const lastCheck = Number(get(KEY_CHECK) || '0');
         if (Date.now() - lastCheck < DAY_MS) return;
@@ -84,15 +95,16 @@
         fetch(API_URL, { headers: { Accept: 'application/vnd.github+json' } })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (rel) {
-                if (!rel || !rel.published_at) return;
-                const seen = get(KEY_SEEN);
-                if (!seen) {
-                    set(KEY_SEEN, rel.published_at);
+                if (!rel) return;
+                const stamp = releaseStamp(rel);
+                if (!stamp) return;
+                const seen = Number(get(KEY_SEEN) || '0');
+                // أول تشغيل (أو صيغة قديمة) يسجّل الإصدار الحالي بصمت.
+                if (!Number.isFinite(seen) || !seen) {
+                    set(KEY_SEEN, String(stamp));
                     return;
                 }
-                if (new Date(rel.published_at).getTime() > new Date(seen).getTime()) {
-                    showBar(rel.published_at);
-                }
+                if (stamp > seen) showBar(stamp);
             })
             .catch(function () {});
     }

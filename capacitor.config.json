@@ -3,16 +3,34 @@
   "appName": "Joker Store",
   "webDir": "www",
   "bundledWebRuntime": false,
+  "backgroundColor": "#0B0F1C",
   "server": {
     "url": "https://joker-store.onrender.com",
     "cleartext": false,
     "allowNavigation": [
       "joker-store.onrender.com"
-    ]
+    ],
+    "errorPath": "error.html"
   },
   "android": {
     "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#0B0F1C",
+      "overlaysWebView": false
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "launchAutoHide": true,
+      "backgroundColor": "#0B0F1C",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
   }
 }
