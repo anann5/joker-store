@@ -145,8 +145,14 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
                         notification: { channelId: 'joker_push', sound: 'default', defaultVibrateTimings: true }
                     }
                 });
-            } catch (_e) {
+            } catch (e) {
                 failed += group.docs.length;
+                const code = String((e && e.code) || 'send-failed');
+                console.error('[fcm] multicast failed:', code, e && e.message ? e.message : e);
+                await FcmToken.updateMany(
+                    { _id: { $in: group.docs.map((d) => d._id) } },
+                    { $set: { lastErrorAt: new Date(), lastErrorCode: code }, $inc: { failedCount: 1 } }
+                ).catch(() => {});
                 continue;
             }
             for (let k = 0; k < group.docs.length; k += 1) {
@@ -156,7 +162,7 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
                     sent += 1;
                     await FcmToken.updateOne(
                         { _id: doc._id },
-                        { $set: { failedCount: 0, lastSuccessAt: new Date() } }
+                        { $set: { failedCount: 0, lastSuccessAt: new Date(), lastErrorCode: null } }
                     ).catch(() => {});
                 } else if (r && r.error && isDeadTokenError(r.error.code)) {
                     deleted += 1;
@@ -165,7 +171,10 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
                     failed += 1;
                     await FcmToken.updateOne(
                         { _id: doc._id },
-                        { $set: { lastErrorAt: new Date() }, $inc: { failedCount: 1 } }
+                        {
+                            $set: { lastErrorAt: new Date(), lastErrorCode: String(r.error.code || 'unknown') },
+                            $inc: { failedCount: 1 }
+                        }
                     ).catch(() => {});
                 }
             }

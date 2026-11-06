@@ -541,6 +541,7 @@ const fcmTokenSchema = new mongoose.Schema({
     platform: { type: String, enum: ['android'], default: 'android' },
     failedCount: { type: Number, default: 0 },
     lastErrorAt: { type: Date, default: null },
+    lastErrorCode: { type: String, default: null },
     lastSuccessAt: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now }
 });
