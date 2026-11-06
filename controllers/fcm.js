@@ -11,13 +11,18 @@ const MAX_FAILED = 10;
 const BATCH_SIZE = 500;
 
 let adminInstance = null;
+let lastInitError = null;
 
 function getCredential() {
     const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT || '').trim();
     if (!raw) return null;
     try {
-        const parsed = JSON.parse(raw);
+        let parsed = JSON.parse(raw);
+        // بعض اللوحات تحفظ القيمة ملفوفة بعلامات اقتباس إضافية.
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
         if (!parsed || !parsed.client_email || !parsed.private_key) return null;
+        // قيمة محفوظة بـ \n حرفية تمنع فك تشفير المفتاح فيفشل الإرسال بصمت.
+        parsed.private_key = String(parsed.private_key).replace(/\\n/g, '\n').trim();
         return parsed;
     } catch (_e) {
         return null;
@@ -37,19 +42,25 @@ function getAdmin() {
          
         admin = require('firebase-admin');
     } catch (_e) {
+        lastInitError = 'firebase-admin غير متاح';
         return null;
     }
     try {
         // firebase-admin v14: cert() أصبحت دالة عليا بدل admin.credential.cert()
         const cert = typeof admin.cert === 'function' ? admin.cert : admin.credential.cert;
         adminInstance = admin.initializeApp({ credential: cert(cred) });
-    } catch (_e) {
+    } catch (e) {
         try {
             [adminInstance] = admin.getApps();
         } catch (_e2) {
+            adminInstance = null;
+        }
+        if (!adminInstance) {
+            lastInitError = `init: ${e && e.message ? e.message : e}`;
             return null;
         }
     }
+    lastInitError = null;
     return adminInstance;
 }
 
@@ -96,7 +107,10 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
         return { sent: 0, deleted: 0, failed: 0 };
     }
     const app = getAdmin();
-    if (!app) return { sent: 0, deleted: 0, failed: 0 };
+    if (!app) {
+        console.error('[fcm] send skipped:', lastInitError || 'admin unavailable');
+        return { sent: 0, deleted: 0, failed: 0 };
+    }
 
     const docs = tokenDocs.filter((d) => d && d.token && (d.failedCount || 0) < MAX_FAILED);
     if (!docs.length) return { sent: 0, deleted: 0, failed: 0 };
@@ -201,7 +215,9 @@ async function broadcastToApps(messages, url = '/', tag = 'offers') {
 
 async function getStats() {
     const total = await FcmToken.estimatedDocumentCount().catch(() => 0);
-    return { enabled: isFcmEnabled(), totalDevices: total || 0 };
+    const enabled = isFcmEnabled();
+    const ready = Boolean(enabled && getAdmin());
+    return { enabled, ready, totalDevices: total || 0, initError: lastInitError || null };
 }
 
 module.exports = {
