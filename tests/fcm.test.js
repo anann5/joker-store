@@ -4,8 +4,12 @@ const express = require('express');
 const mockSendEach = jest.fn();
 
 jest.mock('firebase-admin', () => ({
-    initializeApp: jest.fn(() => ({ messaging: () => ({ sendEachForMulticast: mockSendEach }) })),
-    credential: { cert: jest.fn((c) => c) }
+    initializeApp: jest.fn(() => ({})),
+    cert: jest.fn((c) => c)
+}), { virtual: true });
+
+jest.mock('firebase-admin/messaging', () => ({
+    getMessaging: jest.fn(() => ({ sendEachForMulticast: mockSendEach }))
 }), { virtual: true });
 
 function mockMakeModel() {

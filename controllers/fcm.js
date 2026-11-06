@@ -11,6 +11,7 @@ const MAX_FAILED = 10;
 const BATCH_SIZE = 500;
 
 let adminInstance = null;
+let messagingInstance = null;
 let lastInitError = null;
 
 function getCredential() {
@@ -64,6 +65,21 @@ function getAdmin() {
     return adminInstance;
 }
 
+function getMessagingClient() {
+    if (messagingInstance) return messagingInstance;
+    const app = getAdmin();
+    if (!app) return null;
+    try {
+        // v14 لا يعرض messaging على كائن التطبيق؛ تُجلب الخدمة من الحزمة الفرعية.
+        const { getMessaging } = require('firebase-admin/messaging');
+        messagingInstance = getMessaging(app);
+    } catch (e) {
+        lastInitError = `messaging: ${e && e.message ? e.message : e}`;
+        return null;
+    }
+    return messagingInstance;
+}
+
 function localize(doc, messages) {
     const lang = doc && doc.lang === 'en' ? 'en' : 'ar';
     return {
@@ -106,8 +122,8 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
     if (!isFcmEnabled() || !Array.isArray(tokenDocs) || tokenDocs.length === 0) {
         return { sent: 0, deleted: 0, failed: 0 };
     }
-    const app = getAdmin();
-    if (!app) {
+    const messaging = getMessagingClient();
+    if (!messaging) {
         console.error('[fcm] send skipped:', lastInitError || 'admin unavailable');
         return { sent: 0, deleted: 0, failed: 0 };
     }
@@ -136,7 +152,7 @@ async function sendToTokens(tokenDocs, messages, { url = '/', tag = 'general' } 
         for (const group of groups.values()) {
             let resp;
             try {
-                resp = await app.messaging().sendEachForMulticast({
+                resp = await messaging.sendEachForMulticast({
                     tokens: group.docs.map((d) => d.token),
                     notification: { title: group.title, body: group.body },
                     data: { url: String(url || '/'), tag: String(tag || 'general') },
@@ -225,7 +241,7 @@ async function broadcastToApps(messages, url = '/', tag = 'offers') {
 async function getStats() {
     const total = await FcmToken.estimatedDocumentCount().catch(() => 0);
     const enabled = isFcmEnabled();
-    const ready = Boolean(enabled && getAdmin());
+    const ready = Boolean(enabled && getMessagingClient());
     return { enabled, ready, totalDevices: total || 0, initError: lastInitError || null };
 }
 
