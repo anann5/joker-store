@@ -77,6 +77,12 @@
     --grad-gold: linear-gradient(135deg, #F5C518, #FBBF24);
     --cat-color: var(--primary);
 
+    /* ── safe-area helpers (logical, so RTL/LTR both stay clear of notches) ── */
+    --safe-inline-start: env(safe-area-inset-left, 0px);
+    --safe-inline-end: env(safe-area-inset-right, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+
     /* ── aurora backdrop layers (swapped by light theme) ── */
     --aurora-a: rgba(99, 102, 241, 0.2);
     --aurora-b: rgba(167, 139, 250, 0.14);
@@ -87,6 +93,12 @@
     --header-bg: linear-gradient(to bottom, rgba(13, 17, 30, 0.82), rgba(13, 17, 30, 0.7));
     --header-shadow: 0 10px 30px rgba(3, 6, 14, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.07);
     --subheader-bg: linear-gradient(135deg, rgba(7, 10, 19, 0.95) 0%, rgba(11, 15, 28, 0.95) 100%);
+}
+
+/* In RTL the inline start is the physical right side and vice-versa */
+html[dir="rtl"] {
+    --safe-inline-start: env(safe-area-inset-right, 0px);
+    --safe-inline-end: env(safe-area-inset-left, 0px);
 }
 
 /* Ensure font-display swap for Cairo/Outfit loaded via Google Fonts */
@@ -120,6 +132,7 @@ html {
 body {
     background-color: var(--void);
     min-height: 100vh;
+    min-height: 100dvh;
     color: var(--text-1);
     overflow-x: hidden;
     position: relative;
@@ -2055,8 +2068,9 @@ margin-bottom: 14px;
 .product-badge {
     position: absolute;
     top: 12px;
-    inset-inline-start: 50%;
-    transform: translateX(50%);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
     z-index: 8;
     background: var(--grad-gold);
     color: #1a1205;
@@ -2089,8 +2103,8 @@ margin-bottom: 14px;
 }
 
 @keyframes badgePop {
-    from { opacity: 0; transform: translateX(50%) scale(0.6); }
-    to { opacity: 1; transform: translateX(50%) scale(1); }
+    from { opacity: 0; transform: translateX(-50%) scale(0.6); }
+    to { opacity: 1; transform: translateX(-50%) scale(1); }
 }
 
 /* شارة الريجن */
@@ -2821,6 +2835,7 @@ margin-bottom: 14px;
 .lightbox-img {
     max-width: 90vw;
     max-height: 85vh;
+    max-height: 85dvh;
     object-fit: contain;
     border-radius: var(--radius-md);
     box-shadow: 0 0 40px rgba(129, 140, 248, 0.2);
@@ -3148,19 +3163,31 @@ margin-bottom: 14px;
    =================================================== */
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
+    inset: 0;
+    width: 100%;
     height: 100vh;
+    height: 100dvh;
     background: rgba(7, 10, 19, 0.85);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     z-index: 99999;
     display: none;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    padding: 12px;
+    padding-top: max(12px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    padding-inline: max(12px, var(--safe-inline-start, 0px)) max(12px, var(--safe-inline-end, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     transition: opacity 0.3s ease-in-out;
     opacity: 0;
+}
+
+/* auto margins keep the dialog centered, yet scrollable when it is taller than the screen */
+.modal-overlay > * {
+    margin: auto;
 }
 
 .modal-overlay.active {
@@ -3244,6 +3271,7 @@ margin-bottom: 14px;
     max-width: 440px;
     width: 92%;
     max-height: 88vh;
+    max-height: 88dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -3411,6 +3439,7 @@ margin-bottom: 14px;
 /* صفحات استعادة كلمة المرور */
 .reset-page {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4620,8 +4649,8 @@ footer::before {
 /* زر واتساب العائم */
 .whatsapp-float {
     position: fixed;
-    bottom: 24px;
-    inset-inline-end: 24px;
+    bottom: calc(24px + var(--safe-bottom, 0px));
+    inset-inline-end: calc(24px + var(--safe-inline-end, 0px));
     z-index: 9999;
     width: 58px;
     height: 58px;
@@ -5111,7 +5140,7 @@ footer::before {
     .lightbox-close { top: 12px; right: 12px; }
 
     /* المودالات */
-    .cart-modal { max-height: 92vh; }
+    .cart-modal { max-height: 92vh; max-height: 92dvh; }
     .cart-modal-body { padding: 16px 18px; }
     .cart-total-row { padding: 12px 18px; }
     .cart-modal-header { padding: 14px 18px; }
@@ -5121,8 +5150,8 @@ footer::before {
         width: 50px;
         height: 50px;
         font-size: 1.6rem;
-        bottom: 16px;
-        inset-inline-end: 16px;
+        bottom: calc(16px + var(--safe-bottom, 0px));
+        inset-inline-end: calc(16px + var(--safe-inline-end, 0px));
     }
 }
 
@@ -5439,6 +5468,7 @@ footer::before {
 
 .not-found-wrap {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6584,7 +6614,9 @@ Code receipt flourish
     justify-content: space-between;
     gap: 12px;
     box-sizing: border-box;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 16px calc(10px + var(--safe-bottom, 0px));
+    padding-inline-start: calc(16px + var(--safe-inline-start, 0px));
+    padding-inline-end: calc(16px + var(--safe-inline-end, 0px));
     background: linear-gradient(90deg, rgba(13, 17, 30, 0.97), rgba(17, 24, 39, 0.97));
     border-top: 1px solid var(--primary-neon, #818CF8);
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
@@ -6691,7 +6723,7 @@ Code receipt flourish
 
     body.product-view:not(.mobile-cart-open) .product-sticky-cta {
         position: fixed;
-        inset-inline: 10px;
+        inset-inline: calc(10px + var(--safe-inline-start, 0px)) calc(10px + var(--safe-inline-end, 0px));
         bottom: calc(10px + env(safe-area-inset-bottom, 0px));
         z-index: 9997;
         display: flex;
@@ -7046,7 +7078,7 @@ Code receipt flourish
    =================================================== */
 .back-to-top-btn {
     position: fixed;
-    inset-inline-end: 24px;
+    inset-inline-end: calc(24px + var(--safe-inline-end, 0px));
     bottom: 94px;
     z-index: 9900;
     width: 46px;
@@ -7087,7 +7119,7 @@ Code receipt flourish
     .back-to-top-btn {
         width: 42px;
         height: 42px;
-        inset-inline-end: 16px;
+        inset-inline-end: calc(16px + var(--safe-inline-end, 0px));
         bottom: 140px;
     }
 }
@@ -7137,8 +7169,8 @@ Code receipt flourish
    =================================================== */
 .social-proof {
     position: fixed;
-    inset-inline-start: 16px;
-    bottom: 24px;
+    inset-inline-start: calc(16px + var(--safe-inline-start, 0px));
+    bottom: calc(24px + var(--safe-bottom, 0px));
     z-index: 9901;
     display: flex;
     align-items: center;
@@ -7221,7 +7253,7 @@ Code receipt flourish
 @media (max-width: 768px) {
     .social-proof {
         bottom: 78px;
-        inset-inline-start: 12px;
+        inset-inline-start: calc(12px + var(--safe-inline-start, 0px));
         max-width: min(340px, calc(100vw - 88px));
         padding: 10px 12px;
         gap: 8px;
@@ -8334,8 +8366,8 @@ html[data-theme="light"] .hero-section {
 /* ==================== PWA Install Bar ==================== */
 .pwa-install-bar {
     position: fixed;
-    inset-inline: 12px;
-    bottom: 12px;
+    inset-inline: calc(12px + var(--safe-inline-start, 0px)) calc(12px + var(--safe-inline-end, 0px));
+    bottom: calc(12px + var(--safe-bottom, 0px));
     z-index: 9998;
     display: flex;
     align-items: center;
@@ -8618,7 +8650,7 @@ body.mobile-cart-open .pwa-install-bar {
 /* ==================== App update bar (native app only) ==================== */
 .app-update-bar {
     position: fixed;
-    inset-inline: 12px;
+    inset-inline: calc(12px + var(--safe-inline-start, 0px)) calc(12px + var(--safe-inline-end, 0px));
     top: calc(12px + env(safe-area-inset-top, 0px));
     z-index: 9997;
     display: flex;
@@ -8814,9 +8846,13 @@ body.mobile-cart-open .pwa-install-bar {
     white-space: nowrap;
 }
 
-/* Android edge-to-edge (Android 15/16): keep content below the status bar */
-body { padding-top: env(safe-area-inset-top, 0px); }
-header { top: env(safe-area-inset-top, 0px); }
+/* Android edge-to-edge / iOS notch: keep content clear of system bars in every orientation */
+body {
+    padding-top: var(--safe-top, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+}
+header { top: var(--safe-top, 0px); }
 
 /* عملة العرض: تبديل الشيكل/الدولار + ملاحظة الدفع النهائي */
 .currency-switcher {

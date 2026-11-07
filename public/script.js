@@ -934,7 +934,10 @@ export function selectCategory(categoryKey) {
     grid.className = 'products-grid'; // تطبيق كلاس الشبكة للمنتجات
     grid.removeAttribute('style');
 
-    if (backContainer) backContainer.classList.remove('hidden');
+    if (backContainer) {
+        backContainer.style.display = '';
+        backContainer.classList.remove('hidden');
+    }
     if (toolbar) toolbar.classList.remove('hidden');
     if (regionBar) {
         // نُفرّغ الشريط أثناء الجلب حتى لا تظهر أزرار القسم السابق
@@ -1971,14 +1974,41 @@ function setupEventListeners() {
     if (backToMainBtn) backToMainBtn.addEventListener('click', goBack);
 
     const categoriesBtn = document.getElementById('categoriesBtn');
+
+    // Keep the wide categories mega-menu inside the viewport on every screen size
+    // (the menu is absolutely positioned, so on some widths it used to overflow off-screen).
+    function clampMegaMenu() {
+        const dropdown = document.getElementById('categoriesDropdown');
+        if (!dropdown) return;
+        const isOpen = dropdown.classList.contains('active');
+        // keep closed items out of the keyboard tab order
+        dropdown.inert = !isOpen;
+        if (!isOpen) {
+            dropdown.style.transform = '';
+            return;
+        }
+        dropdown.style.transform = '';
+        const rect = dropdown.getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const edge = 8;
+        let shift = 0;
+        if (rect.left < edge) shift = edge - rect.left;
+        else if (rect.right > vw - edge) shift = (vw - edge) - rect.right;
+        dropdown.style.transform = shift ? `translateX(${shift}px)` : '';
+    }
+
     if (categoriesBtn) {
+        clampMegaMenu(); // start closed + inert
         categoriesBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
             const dropdown = document.getElementById('categoriesDropdown');
             dropdown.classList.toggle('active');
             categoriesBtn.classList.toggle('active');
+            clampMegaMenu();
         });
+        window.addEventListener('resize', clampMegaMenu, { passive: true });
+        window.addEventListener('languageChanged', clampMegaMenu);
     }
 
     document.querySelectorAll('.dropdown-item[data-category]').forEach(function(btn) {
@@ -1986,6 +2016,7 @@ function setupEventListeners() {
             selectCategory(this.dataset.category);
             document.getElementById('categoriesDropdown').classList.remove('active');
             document.getElementById('categoriesBtn').classList.remove('active');
+            clampMegaMenu();
         });
     });
 
@@ -1995,6 +2026,7 @@ function setupEventListeners() {
             const btn = document.getElementById('categoriesBtn');
             if (dropdown) dropdown.classList.remove('active');
             if (btn) btn.classList.remove('active');
+            clampMegaMenu();
         }
     });
 

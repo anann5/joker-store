@@ -158,7 +158,10 @@ export function showAllCategories() {
     grid.removeAttribute('style');
 
     const backContainer = document.getElementById('back-container');
-    if (backContainer) backContainer.style.display = 'none';
+    if (backContainer) {
+        backContainer.style.display = 'none';
+        backContainer.classList.add('hidden');
+    }
 
     const regionBar = document.getElementById('regionFilterBar');
     if (regionBar) regionBar.style.display = 'none';
