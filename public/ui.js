@@ -131,6 +131,8 @@ export function showAllCategories() {
     const grid = document.getElementById('mainCategories');
     if (!grid) return;
 
+    document.body.classList.remove('product-view');
+
     // استعادة العنوان الافتراضي عند مغادرة صفحة تفاصيل المنتج
     document.title = t('site_title');
 
@@ -256,6 +258,32 @@ async function handleNotifyStock(productId, btn) {
     } finally {
         btn.disabled = false;
     }
+}
+
+/**
+ * هل النص وصف افتراضي/فارغ لا يستحق العرض؟
+ * يغطي النص الافتراضي القادم من قاعدة البيانات بكلتا اللغتين.
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+export function isDefaultProductDescription(value) {
+    const normalized = String(value ?? '')
+        .replace(/[\u064B-\u0652\u0670]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/[.،,!:؛;]+$/u, '')
+        .toLowerCase();
+    if (!normalized) return true;
+    const defaults = new Set([
+        'لا يوجد وصف متاح حاليا لهذا المنتج',
+        'لا يوجد وصف متاح لهذا المنتج',
+        'لا يوجد وصف',
+        'no description is available for this product at the moment',
+        'no description available for this product at the moment',
+        'no description available',
+        'no description'
+    ]);
+    return defaults.has(normalized) || normalized.length < 2;
 }
 
 /**
@@ -486,10 +514,15 @@ export function showProductDetails(product, currentCategory = '') {
         lastUpdateEl.textContent = txt;
     }
 
-    // عرض الوصف الحقيقي من قاعدة البيانات (إن وُجد)
+    // عرض الوصف الحقيقي فقط (إخفاء الوصف الافتراضي/الفارغ وعدم حجز مساحة له)
+    const descRow = view.querySelector('[data-desc-row]');
     const descriptionEl = view.querySelector('[data-detail-description]');
-    if (descriptionEl && product.description && product.description.trim()) {
-        descriptionEl.textContent = product.description;
+    const rawDescription = String(product.description ?? '').trim();
+    if (descRow && descriptionEl && !isDefaultProductDescription(rawDescription)) {
+        descriptionEl.textContent = rawDescription;
+        descRow.hidden = false;
+    } else if (descRow) {
+        descRow.hidden = true;
     }
 
     // شريط الثقة — عدد مرات البيع
@@ -725,6 +758,28 @@ export function showProductDetails(product, currentCategory = '') {
                 reviewPanel.replaceWith(prompt);
             })
             .catch(() => {});
+    }
+
+    // زر الشراء الثابت للموبايل — يظهر في صفحة المنتج فقط
+    const stickyCta = document.getElementById('productStickyCta');
+    if (stickyCta) {
+        document.body.classList.add('product-view');
+        const stickyPrice = stickyCta.querySelector('[data-sticky-price]');
+        if (stickyPrice) stickyPrice.textContent = formatPrice(product.price);
+        const stickyBuy = stickyCta.querySelector('#productStickyBuy');
+        const outOfStock = product.availableStock !== null
+            && product.availableStock !== undefined
+            && Number(product.availableStock) <= 0;
+        if (stickyBuy) {
+            stickyBuy.disabled = outOfStock;
+            const label = stickyBuy.querySelector('span');
+            if (label) label.textContent = outOfStock ? t('stock_out') : t('sticky_add_to_cart');
+            stickyBuy.onclick = () => {
+                if (outOfStock) return;
+                const detailBuyBtn = document.querySelector('.product-details-wrapper .buy-btn');
+                if (detailBuyBtn) detailBuyBtn.click();
+            };
+        }
     }
 
     grid.className = 'product-details-wrapper';

@@ -106,6 +106,22 @@ describe('GET /product/:productId — SEO meta injection', () => {
         // XML-السكيمة: بدون تقييمات تُحذف aggregateRating
     });
 
+    it('يستبدل الوصف الافتراضي بوصف SEO غني وواضح', async () => {
+        const product = makeProduct();
+        product.description = {
+            ar: 'لا يوجد وصف متاح حالياً لهذا المنتج.',
+            en: 'No description is available for this product at the moment.'
+        };
+        mockFindById(product);
+
+        const res = await request(app).get(`/product/${PRODUCT_ID}`);
+
+        expect(res.statusCode).toBe(200);
+        expect(res.text).toContain('اشترِ شدات ببجي 6600 من Joker Store');
+        expect(res.text).not.toContain('لا يوجد وصف متاح');
+        expect(res.text).toContain('"description":"اشترِ شدات ببجي 6600 من Joker Store');
+    });
+
     it('يحقن aggregateRating في JSON-LD عندما يكون التقييم أكبر من صفر', async () => {
         mockFindById(makeProduct());
 

@@ -49,7 +49,7 @@ function renderTickerItems() {
         return `<span class="ticker-item"><i class="fas fa-check-circle" aria-hidden="true"></i><b>${id}</b><span class="ticker-name">${name}</span><em>${t('ticker_moment')}</em></span>`;
     }).join('<span class="ticker-sep" aria-hidden="true">✦</span>');
 
-    tickerZone.innerHTML = `${itemsHtml} <span class="ticker-item trust">${t('trust_all_codes')}</span>`;
+    tickerZone.innerHTML = `${itemsHtml} <span class="ticker-item trust"><i class="fas fa-shield-alt" aria-hidden="true"></i> ${t('trust_all_codes')}</span>`;
 }
 
 async function updateTrustTicker() {
@@ -75,6 +75,10 @@ async function updateTrustTicker() {
 const _socialQueue = [];
 const _socialShown = new Set();
 let _socialTimer = null;
+let _socialDisplayed = 0;
+let _socialDismissed = false;
+const SOCIAL_PROOF_MAX = 2;
+const SOCIAL_PROOF_GAP_MS = 12000;
 
 function socialTimeAgo(ts) {
     if (!ts) return t('social_proof_now');
@@ -89,6 +93,7 @@ function socialTimeAgo(ts) {
 function enqueueSocialProof() {
     const chip = document.getElementById('socialProof');
     if (!chip) return;
+    if (_socialDismissed || _socialDisplayed >= SOCIAL_PROOF_MAX) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     _lastTickerOrders.forEach((o) => {
         const key = String(o.orderId || `${o.productName}-${o.time || ''}`);
@@ -101,11 +106,13 @@ function enqueueSocialProof() {
 
 function showNextSocialProof() {
     const chip = document.getElementById('socialProof');
-    if (!chip || _socialQueue.length === 0) return;
+    if (!chip || _socialDismissed || _socialDisplayed >= SOCIAL_PROOF_MAX) return;
+    if (_socialQueue.length === 0) return;
     const item = _socialQueue.shift();
     const nameEl = chip.querySelector('.social-proof-name');
     const metaEl = chip.querySelector('.social-proof-meta');
     if (!nameEl || !metaEl) return;
+    _socialDisplayed += 1;
     nameEl.textContent = item.name;
     metaEl.textContent = t('social_proof_bought')
         .replace('{name}', item.name)
@@ -116,8 +123,27 @@ function showNextSocialProof() {
         chip.classList.remove('show');
         chip.setAttribute('aria-hidden', 'true');
         _socialTimer = null;
-        setTimeout(showNextSocialProof, 3500);
+        if (!_socialDismissed && _socialDisplayed < SOCIAL_PROOF_MAX) {
+            setTimeout(showNextSocialProof, SOCIAL_PROOF_GAP_MS);
+        }
     }, 5000);
+}
+
+/**
+ * إغلاق نبضة social proof نهائياً لهذه الجلسة (زر الإغلاق).
+ */
+function dismissSocialProof() {
+    const chip = document.getElementById('socialProof');
+    _socialDismissed = true;
+    _socialQueue.length = 0;
+    if (_socialTimer) {
+        clearTimeout(_socialTimer);
+        _socialTimer = null;
+    }
+    if (chip) {
+        chip.classList.remove('show');
+        chip.setAttribute('aria-hidden', 'true');
+    }
 }
 
 // ======================================================
@@ -874,6 +900,8 @@ export function selectCategory(categoryKey) {
     // حفظ القسم الذي تمت زيارته في التخزين المحلي
     localStorage.setItem('joker_lastCategory', categoryKey);
 
+    document.body.classList.remove('product-view');
+
     // استعادة العنوان الافتراضي عند مغادرة صفحة تفاصيل المنتج
     document.title = t('site_title');
 
@@ -1142,7 +1170,11 @@ function renderRegionFilterButtons() {
             btn.appendChild(img);
             btn.appendChild(document.createTextNode(` ${label}`));
         } else if (key === 'global') {
-            btn.textContent = `🌐 ${label}`;
+            const icon = document.createElement('i');
+            icon.className = 'fas fa-globe';
+            icon.setAttribute('aria-hidden', 'true');
+            btn.appendChild(icon);
+            btn.appendChild(document.createTextNode(` ${label}`));
         } else {
             btn.textContent = label;
         }
@@ -1206,6 +1238,9 @@ function renderProductCards(products, containerId) {
     grid.innerHTML = ''; // تفريغ المحتوى
     const template = document.getElementById('product-card-template');
     const lang = getCurrentLanguage();
+
+    // بطاقة واحدة فقط → تخطيط "واجهة" عريض يمنع الفراغ الكبير في القسم
+    grid.classList.toggle('is-single', products.length === 1);
 
     if (products.length === 0) {
         renderEmptyState(container, {
@@ -2472,6 +2507,12 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
         backToTopBtn.addEventListener('click', function() {
             window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' });
         });
+    }
+
+    // إغلاق نبضة social proof (تظهر مرتين كحد أقصى لكل جلسة)
+    const socialProofClose = document.getElementById('socialProofClose');
+    if (socialProofClose) {
+        socialProofClose.addEventListener('click', dismissSocialProof);
     }
 
     // أزرار الأمنيات (تفويض)

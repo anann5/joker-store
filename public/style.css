@@ -490,6 +490,11 @@ nav a.active::after {
     box-shadow: 0 0 8px var(--neon-glow);
 }
 
+/* رابط يظهر داخل قائمة الموبايل فقط (العروض الخاصة) */
+.mobile-only-link {
+    display: none;
+}
+
 /* Dropdown الأقسام */
 .dropdown-wrapper {
     position: relative;
@@ -1727,7 +1732,7 @@ margin-bottom: 14px;
     margin: 0 auto;
 }
 #mainCategories:empty::before {
-    content: "⏳ جارٍ تحميل الأقسام…";
+    content: "جارٍ تحميل الأقسام…";
     flex: 1 0 100%;
     width: 100%;
     box-sizing: border-box;
@@ -1992,6 +1997,11 @@ margin-bottom: 14px;
     cursor: pointer;
     font-size: 0.95rem;
     margin-top: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
     box-shadow: 0 6px 18px rgba(129, 140, 248, 0.22);
     transition: all 0.3s ease;
 }
@@ -2377,20 +2387,30 @@ margin-bottom: 14px;
 .promo-discount-amount { color: var(--success, #34D399); font-weight: 800; }
 
 /* منع انزياح التخطيط أثناء تحميل الصور (CLS) */
+/* توحيد معالجة الصور: إطار ثابت + احتواء كامل للصورة بلا قصّ */
 .card-inner-img {
     width: 100%;
-    height: auto;
-    aspect-ratio: 5 / 4;
-    object-fit: cover;
-    background: rgba(255, 255, 255, 0.04);
+    height: 100%;
+    aspect-ratio: auto;
+    object-fit: contain;
+    object-position: center;
+    background: transparent;
 }
 .category-card img {
-    aspect-ratio: 5 / 3.4;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 10;
+    object-fit: contain;
+    object-position: center;
+    padding: 6px;
     background: rgba(255, 255, 255, 0.04);
 }
 .detail-img {
     aspect-ratio: 1 / 1;
-    object-fit: cover;
+    width: 100%;
+    object-fit: contain;
+    object-position: center;
+    padding: 12px;
 }
 
 @media (max-width: 900px) {
@@ -2485,6 +2505,47 @@ margin-bottom: 14px;
     inset: 0;
     background: linear-gradient(90deg, transparent 20%, rgba(129, 140, 248, 0.06) 50%, transparent 80%);
     animation: shimmer 1.5s infinite linear;
+}
+
+/* عنصر واحد فقط في القسم: بطاقة "واجهة" عريضة تملأ المساحة بدل بطاقة وحيدة وسط فراغ */
+.auto-products-grid.is-single {
+    justify-content: center;
+}
+
+.auto-products-grid.is-single > .product-item-card {
+    flex: 0 1 100%;
+    max-width: 880px;
+}
+
+@media (min-width: 701px) {
+    .auto-products-grid.is-single > .product-item-card {
+        display: grid;
+        grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+        align-items: center;
+        justify-content: initial;
+        gap: 26px;
+        padding: 18px;
+        text-align: start;
+    }
+
+    .auto-products-grid.is-single .card-img-container {
+        margin-bottom: 0;
+    }
+
+    .auto-products-grid.is-single .card-content {
+        align-items: stretch;
+        justify-content: center;
+    }
+
+    .auto-products-grid.is-single .card-content h3 {
+        text-align: start;
+        justify-content: flex-start;
+        min-height: 0;
+    }
+
+    .auto-products-grid.is-single .card-action-row {
+        max-width: 360px;
+    }
 }
 
 /* ===================================================
@@ -2824,6 +2885,34 @@ margin-bottom: 14px;
 
 .detail-desc b {
     color: #C3CBD9;
+}
+
+.detail-desc p {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0 0 10px;
+}
+
+.detail-desc p:last-child {
+    margin-bottom: 0;
+}
+
+.detail-desc p > i {
+    flex-shrink: 0;
+    margin-top: 5px;
+    color: var(--primary-neon);
+    font-size: 0.92rem;
+}
+
+.detail-desc .detail-note-row {
+    color: var(--primary-neon);
+    font-weight: 700;
+    margin-top: 14px;
+}
+
+.detail-desc [hidden] {
+    display: none !important;
 }
 
 .detail-meta {
@@ -4686,6 +4775,10 @@ footer::before {
         order: 2;
     }
 
+    .mobile-only-link {
+        display: flex;
+    }
+
     /* التنقل: مخفي افتراضياً ويظهر بزر القائمة */
     nav {
         display: none;
@@ -4868,13 +4961,18 @@ footer::before {
         max-width: none;
     }
 
+    .auto-products-grid.is-single > .product-item-card {
+        flex: 0 1 100%;
+        max-width: 340px;
+    }
+
     .category-card,
     .product-item-card {
         padding: 12px;
         border-radius: var(--radius-md);
     }
 
-    .category-card img { height: 96px; width: 140px; border-radius: var(--radius-sm); }
+    .category-card img { width: 100%; height: auto; aspect-ratio: 16 / 10; border-radius: var(--radius-sm); }
     .category-card h3 { font-size: 0.88rem; }
     .category-card p { font-size: 0.75rem; }
     .category-card .enter-btn, .product-item-card .enter-btn { padding: 10px 0; font-size: 0.86rem; }
@@ -5131,6 +5229,200 @@ footer::before {
     color: var(--text-muted);
     font-size: 0.9rem;
     max-width: 420px;
+}
+
+.empty-state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.empty-state-actions .enter-btn {
+    margin: 0;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: auto;
+}
+
+.empty-state-actions .enter-btn.ghost {
+    background: transparent;
+    color: var(--primary-neon);
+    border: 1px solid rgba(129, 140, 248, 0.45);
+    box-shadow: none;
+}
+
+.empty-state-actions .enter-btn.ghost:hover {
+    background: rgba(129, 140, 248, 0.12);
+    box-shadow: 0 0 18px rgba(129, 140, 248, 0.18);
+}
+
+.empty-suggestions-title {
+    margin: 12px 0 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.empty-state-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.empty-suggestion {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(129, 140, 248, 0.28);
+    background: rgba(129, 140, 248, 0.08);
+    color: #C3CBD9;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.25s ease;
+}
+
+.empty-suggestion:hover {
+    color: var(--primary-neon);
+    border-color: rgba(129, 140, 248, 0.6);
+    background: rgba(129, 140, 248, 0.16);
+    transform: translateY(-2px);
+}
+
+.empty-suggestion i {
+    font-size: 0.9rem;
+    color: var(--primary-neon);
+    opacity: 1;
+}
+
+/* صفحة العروض: الحالة الفارغة والعروض */
+.offers-page .offers-empty {
+    margin-top: 8px;
+}
+
+.offers-page .offers-empty .empty-state-icon {
+    width: 74px;
+    height: 74px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(129, 140, 248, 0.22), rgba(129, 140, 248, 0.04));
+    border: 1px solid rgba(129, 140, 248, 0.3);
+    margin-bottom: 4px;
+}
+
+.offers-page .offers-empty .empty-state-icon i {
+    font-size: 1.7rem;
+}
+
+.offers-page .promo-block {
+    grid-column: 1 / -1;
+    flex: 1 0 100%;
+    margin-bottom: 18px;
+    text-align: start;
+    background: var(--surface-glass);
+    border: 1px solid var(--border-cyan);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.offers-page .promo-block-inner {
+    padding: 24px;
+}
+
+.offers-page .promo-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.offers-page .promo-discount-pill {
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-weight: 900;
+    font-size: 1.1rem;
+}
+
+.offers-page .promo-block-title {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #fff;
+}
+
+.offers-page .promo-block-desc {
+    color: var(--text-muted);
+    margin-bottom: 12px;
+    line-height: 1.6;
+}
+
+.offers-page .promo-expiry {
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+}
+
+.offers-page .promo-products-grid {
+    gap: 12px;
+}
+
+.offers-page .promo-product-tile {
+    flex: 1 1 200px;
+    max-width: 260px;
+    padding: 10px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.offers-page .promo-product-tile img {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    object-position: center;
+    padding: 8px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.offers-page .promo-product-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 10px 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.offers-page .promo-price-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.offers-page .promo-sale-price {
+    color: var(--primary-neon);
+    font-weight: 900;
+}
+
+.offers-page .promo-old-price {
+    text-decoration: line-through;
+    color: var(--text-muted);
+    font-size: 0.8rem;
 }
 
 /* ===================================================
@@ -6385,6 +6677,98 @@ Code receipt flourish
     }
 }
 
+/* شريط شراء ثابت لصفحة المنتج (موبايل) */
+.product-sticky-cta {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    body.product-view:not(.mobile-cart-open) {
+        padding-bottom: 82px;
+    }
+
+    body.product-view:not(.mobile-cart-open) .product-sticky-cta {
+        position: fixed;
+        inset-inline: 10px;
+        bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        z-index: 9997;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px 8px 14px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(13, 17, 30, 0.97), rgba(17, 24, 39, 0.97));
+        border: 1px solid rgba(129, 140, 248, 0.35);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 18px rgba(129, 140, 248, 0.14);
+    }
+
+    .product-sticky-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+        text-align: start;
+    }
+
+    .product-sticky-price {
+        color: #fff;
+        font-weight: 900;
+        font-size: 1.05rem;
+        white-space: nowrap;
+    }
+
+    .product-sticky-info small {
+        color: var(--text-muted);
+        font-size: 0.68rem;
+    }
+
+    .product-sticky-buy {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        border: none;
+        border-radius: 12px;
+        padding: 11px 18px;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: #fff;
+        background: var(--grad-cyan);
+        box-shadow: 0 6px 18px rgba(129, 140, 248, 0.3);
+        cursor: pointer;
+    }
+
+    .product-sticky-buy:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+
+    .product-sticky-buy:focus-visible {
+        outline: 2px solid #fff;
+        outline-offset: 2px;
+    }
+
+    body.product-view:not(.mobile-cart-open) .whatsapp-float {
+        bottom: 86px;
+    }
+
+    body.product-view:not(.mobile-cart-open) .social-proof {
+        bottom: 148px;
+    }
+
+    body.product-view:not(.mobile-cart-open) .back-to-top-btn {
+        bottom: 210px;
+    }
+
+    body.product-view .social-proof {
+        display: none;
+    }
+}
+
 /* ===================================================
    هوية البطاقة الجامعة 🃏 — توكنز موحّدة + لمسات ورق اللعب
    =================================================== */
@@ -6661,7 +7045,7 @@ Code receipt flourish
 .back-to-top-btn {
     position: fixed;
     inset-inline-end: 24px;
-    bottom: 108px;
+    bottom: 94px;
     z-index: 9900;
     width: 46px;
     height: 46px;
@@ -6702,15 +7086,17 @@ Code receipt flourish
         width: 42px;
         height: 42px;
         inset-inline-end: 16px;
-        bottom: 86px;
+        bottom: 140px;
     }
 }
 
-body.mobile-cart-open .back-to-top-btn {
-    bottom: 148px;
-}
-body.mobile-cart-open .whatsapp-float {
-    bottom: 76px;
+@media (max-width: 768px) {
+    body.mobile-cart-open .back-to-top-btn {
+        bottom: 206px;
+    }
+    body.mobile-cart-open .whatsapp-float {
+        bottom: 82px;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6750,7 +7136,7 @@ body.mobile-cart-open .whatsapp-float {
 .social-proof {
     position: fixed;
     inset-inline-start: 16px;
-    bottom: 84px;
+    bottom: 24px;
     z-index: 9901;
     display: flex;
     align-items: center;
@@ -6772,6 +7158,36 @@ body.mobile-cart-open .whatsapp-float {
     opacity: 1;
     transform: none;
     visibility: visible;
+    pointer-events: auto;
+}
+
+.social-proof-close {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-muted, #C3CBD9);
+    font-size: 0.68rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.social-proof-close:hover {
+    color: #fff;
+    border-color: rgba(129, 140, 248, 0.55);
+    background: rgba(129, 140, 248, 0.16);
+}
+
+.social-proof-close:focus-visible {
+    outline: 2px solid var(--primary-neon);
+    outline-offset: 2px;
 }
 
 .social-proof i {
@@ -6800,14 +7216,17 @@ body.mobile-cart-open .whatsapp-float {
     font-size: 0.74rem;
 }
 
-body.mobile-cart-open .social-proof {
-    bottom: 96px;
-}
-
 @media (max-width: 768px) {
     .social-proof {
-        bottom: 16px;
+        bottom: 78px;
         inset-inline-start: 12px;
+        max-width: min(340px, calc(100vw - 88px));
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    body.mobile-cart-open .social-proof {
+        bottom: 144px;
     }
 }
 
@@ -7141,6 +7560,13 @@ body.mobile-cart-open .social-proof {
         gap: 5px;
     }
 
+    .header-controls { gap: 4px; }
+
+    .header-btn {
+        min-width: 30px;
+        justify-content: center;
+    }
+
     .logo-zone { gap: 6px; min-width: 0; }
     .logo-text {
         font-size: 1.05rem;
@@ -7174,8 +7600,9 @@ body.mobile-cart-open .social-proof {
     }
 
     .cart-icon-container {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
+        padding: 0;
         flex-shrink: 0;
     }
 }
@@ -7185,8 +7612,8 @@ body.mobile-cart-open .social-proof {
     .logo-text { display: none; }
 }
 
-/* الأجهزة الأصغر من 360px: إخفاء زر العروض المكرر في القائمة */
-@media (max-width: 360px) {
+/* الهواتف: إخفاء زر العروض من الهيدر (متاح داخل القائمة) لتخفيف الازدحام */
+@media (max-width: 620px) {
     .header-container > a[href="/offers"] { display: none; }
 }
 
@@ -8101,17 +8528,20 @@ html[data-theme="light"] .hero-section {
 body.pwa-bar-visible .whatsapp-float {
     bottom: 118px;
 }
-body.pwa-bar-visible .back-to-top-btn {
-    bottom: 196px;
-}
 body.pwa-bar-visible .social-proof {
+    bottom: 180px;
+}
+body.pwa-bar-visible .back-to-top-btn {
+    bottom: 242px;
+}
+body.pwa-bar-visible.mobile-cart-open .whatsapp-float {
     bottom: 184px;
 }
-body.pwa-bar-visible.mobile-cart-open .back-to-top-btn {
-    bottom: 216px;
-}
 body.pwa-bar-visible.mobile-cart-open .social-proof {
-    bottom: 200px;
+    bottom: 246px;
+}
+body.pwa-bar-visible.mobile-cart-open .back-to-top-btn {
+    bottom: 308px;
 }
 body.pwa-bar-visible .whatsapp-float,
 body.pwa-bar-visible .back-to-top-btn,
@@ -8267,6 +8697,11 @@ body.pwa-bar-visible .social-proof {
 .gift-toggle input:focus-visible + .gift-toggle-box {
     outline: 2px solid var(--primary-neon);
     outline-offset: 2px;
+}
+
+.gift-toggle-icon {
+    color: var(--accent-gold, #FBBF24);
+    font-size: 0.95rem;
 }
 
 #giftFields {

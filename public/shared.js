@@ -159,7 +159,13 @@ export function applyProductBadge(badgeEl, { productId, isNew = false } = {}) {
         badgeEl.classList.remove('best-seller', 'new-arrival', 'promo-badge');
         return;
     }
-    badgeEl.textContent = isBest ? t('best_badge') : t('new_badge');
+    const icon = isBest ? 'fas fa-fire' : 'fas fa-wand-magic-sparkles';
+    badgeEl.textContent = '';
+    const iconEl = document.createElement('i');
+    iconEl.className = icon;
+    iconEl.setAttribute('aria-hidden', 'true');
+    badgeEl.appendChild(iconEl);
+    badgeEl.appendChild(document.createTextNode(` ${t(isBest ? 'best_badge' : 'new_badge')}`));
     badgeEl.classList.toggle('best-seller', isBest);
     badgeEl.classList.toggle('new-arrival', Boolean(isNew) && !isBest);
 }

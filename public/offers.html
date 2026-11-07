@@ -12,14 +12,14 @@
     <meta name="apple-mobile-web-app-title" content="Joker Store">
     <meta name="theme-color" content="#0B0F1C" />
     <link rel="canonical" href="/offers" />
-    <title>العروض الخاصة | Joker Store</title>
+    <title data-page-title-key="offers_page_title">العروض الخاصة | Joker Store</title>
     <meta name="description" content="اكتشف أفضل العروض والخصومات الحالية في متجر Joker Store. أكواد أصلية بأسعار مميزة." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" />
         <script src="/theme.js?v=13"></script>
-<link rel="stylesheet" href="style.css?v=14" />
+<link rel="stylesheet" href="style.css?v=15" />
 </head>
 <body>
     <header class="sub-header">
@@ -41,7 +41,7 @@
         </div>
     </header>
 
-    <main class="sub-page-main">
+    <main class="sub-page-main offers-page">
         <div class="sub-page-hero">
             <h1><i class="fas fa-fire" style="color:#ef4444;"></i> <span data-i18n-key="offers_title">العروض الخاصة</span></h1>
             <p data-i18n-key="offers_subtitle">اكتشف أفضل الخصومات والحالات المتاحة الآن</p>
@@ -54,7 +54,7 @@
         </div>
 
         <div style="text-align:center; margin-top:10px;">
-            <a href="/" class="enter-btn"><i class="fas fa-store"></i> العودة للمتجر</a>
+            <a href="/" class="enter-btn"><i class="fas fa-store"></i> <span data-i18n-key="back_to_store">العودة للمتجر</span></a>
         </div>
     </main>
 
@@ -65,15 +65,30 @@
                 <p class="footer-slogan" data-i18n-key="footer_slogan">بوابتك الآمنة لشحن الألعاب والبطاقات الرقمية فورياً وبأعلى تشفير.</p>
             </div>
             <hr class="footer-divider">
+            <div class="payment-zone">
+                <h4 data-i18n-key="pay_methods_title">طرق الدفع المتاحة</h4>
+                <div class="payment-methods">
+                    <div class="pay-item"><img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_jawwal">جوال بي</span></div>
+                    <div class="pay-item"><img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_palpay">بال بي</span></div>
+                    <div class="pay-item"><img class="pay-tile" src="/image/pay/reflect.svg" alt="ريفلكت" width="22" height="22" loading="lazy" decoding="async"> <span data-i18n-key="pay_reflect">ريفلكت</span></div>
+                </div>
+            </div>
+            <div class="footer-social">
+                <a href="#" id="footerWhatsapp" target="_blank" rel="noopener" title="WhatsApp" class="social-link social-whatsapp" style="display: none;"><i class="fab fa-whatsapp"></i></a>
+                <a href="#" id="footerTelegram" target="_blank" rel="noopener" title="Telegram" class="social-link social-telegram" style="display: none;"><i class="fab fa-telegram-plane"></i></a>
+                <a href="#" id="footerInstagram" target="_blank" rel="noopener" title="Instagram" class="social-link social-instagram" style="display: none;"><i class="fab fa-instagram"></i></a>
+                <a href="#" id="footerTiktok" target="_blank" rel="noopener" title="TikTok" class="social-link social-tiktok" style="display: none;"><i class="fab fa-tiktok"></i></a>
+            </div>
             <div class="footer-links">
-                                <a href="/track" data-i18n-key="sub_footer_track">تتبع طلبك</a>
-<a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
+                <a href="/track" data-i18n-key="sub_footer_track">تتبع طلبك</a>
+                <a href="/about" data-i18n-key="sub_footer_about">من نحن</a>
                 <a href="/privacy" data-i18n-key="sub_footer_privacy">سياسة الخصوصية</a>
                 <a href="/terms" data-i18n-key="sub_footer_terms">الشروط والأحكام</a>
                 <a href="/offers" data-i18n-key="sub_footer_offers">العروض الخاصة</a>
                 <a href="/faq" data-i18n-key="sub_footer_faq">الأسئلة الشائعة</a>
                 <a href="/contact" data-i18n-key="sub_footer_contact">تواصل معنا</a>
-<a href="/support" data-i18n-key="sub_footer_support">الدعم الفني</a>
+                <a href="/download"><i class="fas fa-mobile-alt"></i> <span data-i18n-key="sub_footer_download">تحميل التطبيق</span></a>
+                <a href="/support" data-i18n-key="sub_footer_support">الدعم الفني</a>
             </div>
             <p class="copyright" data-i18n-key="copyright_text">© 2026 Joker Store — جميع الحقوق محفوظة</p>
         </div>

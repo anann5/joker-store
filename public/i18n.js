@@ -1,5 +1,6 @@
 let currentTranslations = {};
 let currentLang = 'ar'; // سيتم تحديده بشكل صحيح في setLanguage
+let translationsReady = false;
 const I18N_BASE = new URL('.', import.meta.url).href;
 
 /**
@@ -23,11 +24,12 @@ async function setLanguage(lang) {
     try {
         currentLang = lang;
         // تعديل: جلب الملفات من المجلد الرئيسي مباشرة
-        const response = await fetch(`${I18N_BASE}${lang}.json`);
+        const response = await fetch(`${I18N_BASE}${lang}.json?v=15`);
         if (!response.ok) {
             return;
         }
         currentTranslations = await response.json();
+        translationsReady = true;
 
         // حفظ اللغة المختارة
         localStorage.setItem('joker_language', lang);
@@ -123,6 +125,12 @@ export function initI18n() {
  * دالة مساعدة للحصول على اللغة الحالية.
  */
 export const getCurrentLanguage = () => currentLang;
+
+/**
+ * هل اكتمل تحميل ملف الترجمة؟ (تستخدمه الصفحات التي ترسم محتوى ديناميكياً فوراً)
+ * @returns {boolean}
+ */
+export const isI18nReady = () => translationsReady;
 
 /**
  * ترجمة مفتاح مباشرة من ملف الترجمة (للاستخدام في الكود الديناميكي).

@@ -460,6 +460,44 @@ function getProductAvailability(product) {
 }
 
 /**
+ * هل النص وصف افتراضي/فارغ؟ (نفس منطق الواجهة تقريباً)
+ * @param {unknown} value
+ * @returns {boolean}
+ */
+function isDefaultProductDescription(value) {
+    const normalized = String(value ?? '')
+        .replace(/[\u064B-\u0652\u0670]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/[.،,!:؛;]+$/u, '')
+        .toLowerCase();
+    if (!normalized) return true;
+    const defaults = new Set([
+        'لا يوجد وصف متاح حاليا لهذا المنتج',
+        'لا يوجد وصف متاح لهذا المنتج',
+        'لا يوجد وصف',
+        'no description is available for this product at the moment',
+        'no description available for this product at the moment',
+        'no description available',
+        'no description'
+    ]);
+    return defaults.has(normalized) || normalized.length < 2;
+}
+
+/**
+ * وصف SEO بديل وغني عندما لا يملك المنتج وصفاً حقيقياً.
+ * @param {string} name
+ * @param {'ar'|'en'} lang
+ * @returns {string}
+ */
+function buildFallbackProductDescription(name, lang) {
+    if (lang === 'en') {
+        return `Buy ${name} from Joker Store — a 100% genuine digital code with instant delivery after payment confirmation and a full refund guarantee.`;
+    }
+    return `اشترِ ${name} من Joker Store — كود رقمي أصلي مضمون 100% مع توصيل فوري بعد تأكيد الدفع وضمان استرجاع كامل.`;
+}
+
+/**
  * بناء كتلة وسوم SEO (title/description/canonical/og/twitter/JSON-LD)
  * لمنتج واحد، تُحقن مباشرة بعد <head> في صفحة /product/:id.
  * كل قيمة ديناميكية تُهرب عبر escapeHtml.
@@ -472,8 +510,14 @@ function buildProductSeoMeta(product, queryLang, productId, origin, hreflangOrig
     const arName = String(nameSource.ar || nameSource.en || nameFallback);
     const enName = String(nameSource.en || nameSource.ar || nameFallback);
     const name = lang === 'en' ? enName : arName;
-    const arDesc = String(descSource.ar || descSource.en || 'لا يوجد وصف متاح حالياً لهذا المنتج.');
-    const enDesc = String(descSource.en || descSource.ar || 'No description is available for this product at the moment.');
+    const rawArDesc = String(descSource.ar || descSource.en || '');
+    const rawEnDesc = String(descSource.en || descSource.ar || '');
+    const arDesc = isDefaultProductDescription(rawArDesc)
+        ? buildFallbackProductDescription(arName, 'ar')
+        : rawArDesc;
+    const enDesc = isDefaultProductDescription(rawEnDesc)
+        ? buildFallbackProductDescription(enName, 'en')
+        : rawEnDesc;
     const description = lang === 'en' ? enDesc : arDesc;
 
     const baseUrl = String(origin || process.env.SITE_URL || '').replace(/\/+$/, '');

@@ -67,7 +67,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" media="print" data-async-css>
     <script src="/theme.js?v=13"></script>
-    <link rel="stylesheet" href="/style.css?v=14">
+    <link rel="stylesheet" href="/style.css?v=15">
     <link rel="modulepreload" href="/script.js">
     <link rel="modulepreload" href="/i18n.js">
     <link rel="modulepreload" href="/ui.js">
@@ -171,6 +171,7 @@
                 </div>
             </div>
             <a href="#" id="digitalCardsLink" data-i18n-key="nav_digital_cards">البطاقات الرقمية</a>
+            <a href="/offers" class="mobile-only-link"><i class="fas fa-fire"></i> <span data-i18n-key="sub_footer_offers">العروض الخاصة</span></a>
             <a href="/notifications" id="notificationsLink"><i class="fas fa-bell"></i> <span data-i18n-key="header_notifications">مركز الإشعارات</span></a>
         </nav>
 
@@ -256,7 +257,7 @@
         <div class="offer-banner-content">
             <div class="offer-banner-text">
                 <span class="offer-kicker"><i class="fas fa-bolt"></i> <span data-i18n-key="offer_today_kicker">عرض اليوم</span></span>
-                <h2 class="offer-title"><span data-i18n-key="offer_today_title">خصومات على أكواد الشحن</span> <span class="offer-title-emoji">🎮</span></h2>
+                <h2 class="offer-title"><span data-i18n-key="offer_today_title">خصومات على أكواد الشحن</span> <i class="fas fa-gamepad offer-title-emoji" aria-hidden="true"></i></h2>
                 <p class="offer-sub" data-i18n-key="offer_today_sub">اشحن قبل انتهاء العرض بأفضل الأسعار — والتوصيل تلقائي بعد تأكيد الطلب.</p>
             </div>
             <div class="offer-timer-wrap">
@@ -312,7 +313,7 @@
             <div class="category-banner-icon"><i class="fas fa-gamepad" aria-hidden="true"></i></div>
             <div class="category-banner-info">
                 <h2 class="category-banner-title"></h2>
-                <p class="category-banner-tag" data-i18n-key="category_banner_tag">⚡ شحن فوري .. ضمان كامل</p>
+                <p class="category-banner-tag"><i class="fas fa-bolt" aria-hidden="true"></i> <span data-i18n-key="category_banner_tag">شحن فوري .. ضمان كامل</span></p>
                 <p class="category-banner-meta"><i class="fas fa-box"></i> <span data-banner-count></span></p>
             </div>
         </div>
@@ -350,7 +351,7 @@
         <!-- الأكثر مبيعاً -->
         <section class="info-section auto-section">
             <div class="section-head">
-                <h2 class="section-title auto-title"><i class="fas fa-fire"></i> <span data-i18n-key="best_selling_title">الأكثر مبيعاً 🔥</span></h2>
+                <h2 class="section-title auto-title"><i class="fas fa-fire"></i> <span data-i18n-key="best_selling_title">الأكثر مبيعاً</span></h2>
                 <p class="section-kicker" data-i18n-key="best_selling_kicker">الباقات الأكثر طلباً من عملائنا هذا الأسبوع</p>
             </div>
             <div id="best-selling-container" class="auto-products-zone">
@@ -361,7 +362,7 @@
         <!-- وصل حديثاً -->
         <section class="info-section auto-section">
             <div class="section-head">
-                <h2 class="section-title auto-title"><i class="fas fa-sparkles"></i> <span data-i18n-key="newly_added_title">وصل حديثاً ✨</span></h2>
+                <h2 class="section-title auto-title"><i class="fas fa-wand-magic-sparkles"></i> <span data-i18n-key="newly_added_title">وصل حديثاً</span></h2>
                 <p class="section-kicker" data-i18n-key="newly_added_kicker">آخر ما أضفناه إلى المتجر</p>
             </div>
             <div id="newly-added-container" class="auto-products-zone">
@@ -372,7 +373,7 @@
         <!-- عروض جاهزة الشحن — بيانات حقيقية من /api/promotions -->
         <section class="info-section auto-section" id="promoSection" hidden>
             <div class="section-head">
-                <h2 class="section-title auto-title"><i class="fas fa-badge-percent"></i> <span data-i18n-key="promo_section_title">عروض جاهزة الشحن 🎁</span></h2>
+                <h2 class="section-title auto-title"><i class="fas fa-percent"></i> <span data-i18n-key="promo_section_title">عروض جاهزة الشحن</span></h2>
                 <p class="section-kicker" data-i18n-key="promo_section_kicker">خصومات فعّالة على بطاقات متوفرة فوراً</p>
             </div>
             <div id="promoContainer" class="promo-cards-grid"></div>
@@ -526,7 +527,8 @@
                     <label class="gift-toggle" for="giftToggle">
                         <input type="checkbox" id="giftToggle">
                         <span class="gift-toggle-box" aria-hidden="true"><i class="fas fa-check"></i></span>
-                        <span data-i18n-key="gift_toggle">🎁 إهداء لصديق</span>
+                        <i class="fas fa-gift gift-toggle-icon" aria-hidden="true"></i>
+                        <span data-i18n-key="gift_toggle">إهداء لصديق</span>
                     </label>
                 </div>
                 <div id="giftFields" hidden>
@@ -836,7 +838,7 @@
             </div>
             <div class="card-action-row">
                 <button type="button" class="quick-add-btn" data-quick-add title="إضافة سريعة للسلة" data-i18n-title="quick_add"><i class="fas fa-plus"></i></button>
-                <button class="enter-btn" data-i18n-key="card_view_details">عرض التفاصيل 🔍</button>
+                <button class="enter-btn"><i class="fas fa-eye" aria-hidden="true"></i> <span data-i18n-key="card_view_details">عرض التفاصيل</span></button>
             </div>
         </div>
     </div>
@@ -848,7 +850,7 @@
         <img src="" alt="" loading="lazy" decoding="async" fetchpriority="low" width="200" height="135">
         <h3></h3>
         <p></p>
-        <button class="enter-btn" data-category="" data-i18n-key="category_enter">دخول القسم 📂</button>
+        <button class="enter-btn" data-category=""><i class="fas fa-folder-open" aria-hidden="true"></i> <span data-i18n-key="category_enter">دخول القسم</span></button>
     </div>
 </template>
 
@@ -869,10 +871,18 @@
                 <button class="wishlist-btn detail-wishlist" data-wishlist-btn title="أضف لقائمة الأمنيات" data-i18n-title="wishlist_tooltip"><i class="far fa-heart"></i></button>
             </div>
             <div class="detail-desc">
-                <p class="detail-description-text">✨ <b data-i18n-key="detail_desc_label">وصف المنتج:</b> <span data-detail-description data-i18n-key="detail_default_desc">استلم كود شحن أصلي ومضمون 100%.</span></p>
-                <p>🌍 <b data-i18n-key="detail_region_label">المنطقة:</b> <span class="product-region"></span></p>
-                <p>🛡️ <b data-i18n-key="detail_guarantee_label">الضمان:</b> <span data-i18n-key="detail_guarantee_text">ضمان Joker Store لعمل الكود بشكل فوري.</span></p>
-                <p style="margin-top:20px; color:var(--primary-neon);" data-i18n-key="detail_note">💡 ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</p>
+                <p class="detail-description-text" data-desc-row hidden>
+                    <i class="fas fa-align-right" aria-hidden="true"></i>
+                    <span><b data-i18n-key="detail_desc_label">وصف المنتج:</b> <span data-detail-description></span></span>
+                </p>
+                <p>
+                    <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                    <span><b data-i18n-key="detail_guarantee_label">الضمان:</b> <span data-i18n-key="detail_guarantee_text">ضمان Joker Store لعمل الكود بشكل فوري.</span></span>
+                </p>
+                <p class="detail-note-row">
+                    <i class="fas fa-lightbulb" aria-hidden="true"></i>
+                    <span data-i18n-key="detail_note">ملاحظة: الكود سيصلك فور تأكيد التحويل من قبل الأدمن.</span>
+                </p>
             </div>
             <!-- شريط الثقة -->
             <div class="product-trust-bar" data-trust-bar>
@@ -913,11 +923,11 @@
             <button class="share-btn">
                 <i class="fas fa-share-alt"></i> <span data-i18n-key="share_product_btn">مشاركة المنتج</span>
             </button>
-            <button class="back-to-main-btn" data-i18n-key="back_to_cards_btn">
-                ⬅️ العودة لقائمة البطاقات
+            <button class="back-to-main-btn">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i> <span data-i18n-key="back_to_cards_btn">العودة لقائمة البطاقات</span>
             </button>
             <div class="product-review-panel">
-                <h4 data-i18n-key="review_this_product">⭐ تقييمك للمنتج</h4>
+                <h4><i class="fas fa-star" aria-hidden="true"></i> <span data-i18n-key="review_this_product">تقييمك للمنتج</span></h4>
                 <div class="review-stars" data-review-stars>
                     <i class="far fa-star" data-star="1"></i>
                     <i class="far fa-star" data-star="2"></i>
@@ -975,12 +985,27 @@
 </button>
 
 <!-- نبضة social proof: آخر العمليات الفعلية من السجل -->
-<div class="social-proof" id="socialProof" role="status" aria-live="polite" aria-hidden="true">
+<div class="social-proof" id="socialProof" aria-live="polite" aria-hidden="true">
     <i class="fas fa-bolt" aria-hidden="true"></i>
-    <div class="social-proof-body">
+    <div class="social-proof-body" role="status">
         <b class="social-proof-name"></b>
         <span class="social-proof-meta"></span>
     </div>
+    <button type="button" class="social-proof-close" id="socialProofClose" aria-label="إغلاق التنبيه" title="إغلاق">
+        <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+</div>
+
+<!-- شريط شراء ثابت لصفحة المنتج على الموبايل -->
+<div class="product-sticky-cta" id="productStickyCta">
+    <div class="product-sticky-info">
+        <span class="product-sticky-price" data-sticky-price></span>
+        <small data-i18n-key="sticky_price_label">السعر النهائي</small>
+    </div>
+    <button type="button" class="product-sticky-buy" id="productStickyBuy">
+        <i class="fas fa-cart-plus" aria-hidden="true"></i>
+        <span data-i18n-key="sticky_add_to_cart">أضف للسلة</span>
+    </button>
 </div>
 
 <!-- Lightbox overlay لعرض الصور بحجم كامل -->
