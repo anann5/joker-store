@@ -32,6 +32,7 @@
                 <span id="currentDate"></span>
                 <span style="color: var(--accent); font-size: 0.8rem;" id="socketStatus"><i class="fas fa-circle" style="color: var(--warning);"></i> متصل</span>
                 <button class="logout-btn" id="themeToggleBtn" title="تبديل المظهر (فاتح/داكن/النظام)"><i class="fas fa-sun"></i> المظهر</button>
+                <button class="logout-btn sound-toggle-btn" id="soundToggleGlobalBtn" title="صوت التنبيه عند وصول طلب"><i class="fas fa-volume-up"></i></button>
                 <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
             </div>
         </header>
@@ -85,6 +86,17 @@
                     <div class="stat-icon">🆕</div>
                     <div class="stat-value" id="statTodayOrders">0</div>
                     <div class="stat-label">طلبات اليوم</div>
+                </div>
+            </div>
+
+            <!-- بطاقة الطلبات المعلقة السريعة — اعتماد/رفض بضغطة من لوحة الإحصائيات -->
+            <div class="card quick-pending-card" id="quickPendingCard">
+                <div class="card-header">
+                    <h2 class="section-title">⏳ طلبات معلّقة تحتاج اعتماد <span id="quickPendingCount" class="pending-badge">0</span></h2>
+                    <button class="btn btn-secondary btn-sm" id="quickPendingViewAll"><i class="fas fa-list"></i> عرض الكل</button>
+                </div>
+                <div id="quickPendingList">
+                    <div style="text-align:center;padding:18px;color:var(--text-muted);">جاري تحميل الطلبات المعلقة...</div>
                 </div>
             </div>
 

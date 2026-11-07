@@ -4,7 +4,14 @@
 // ======================================================
 
 /* eslint-disable no-await-in-loop -- عمليات لوحة التحكم تسلسلية مقصودة (ترتيب الطلبات + حدود المعدّل) */
+const SOUND_STORAGE_KEY = 'admin_sound_enabled';
+// تُستعاد حالة الصوت من جهاز الأدمن (هاتف/كمبيوتر) — التفعيل افتراضياً
 let isSoundEnabled = true;
+try {
+    const savedSound = localStorage.getItem(SOUND_STORAGE_KEY);
+    if (savedSound !== null) isSoundEnabled = savedSound !== '0';
+} catch (_) { /* localStorage غير متاح (تصفح خاص) */ }
+let _audioContext = null;
 let adminCsrfToken = null;
 let adminCsrfTokenPromise = null;
 let _allOrdersCache = [];
@@ -77,6 +84,7 @@ function connectWebSocket() {
     socket.on('new_order', (data) => {
         showAdminToast(`🆕 طلب جديد #${data.orderId} — ${data.buyerEmail || ''} (${formatMoney(data.price)})`, 'success');
         playNotificationSound();
+        flashQuickPendingCard();
         loadDashboard();
         loadRecentOrders();
     });
@@ -96,11 +104,54 @@ function connectWebSocket() {
 
 function playNotificationSound() {
     if (!isSoundEnabled) return;
+    // اهتزاز الجوال عند ورود طلب (اختياري ويعمل على Android)
+    if (navigator.vibrate) {
+        try { navigator.vibrate([120, 60, 120]); } catch (_) { /* غير مدعوم */ }
+    }
+    // نغمة مولّدة محلياً عبر WebAudio — تعمل دون اتصال ودون ملف خارجي،
+    // وتعمل على الجوال بعد أول تفاعل (سياسة المتصفحات).
+    try {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtor) {
+            if (!_audioContext) _audioContext = new AudioCtor();
+            if (_audioContext.state === 'suspended') _audioContext.resume();
+            const ctx = _audioContext;
+            const master = ctx.createGain();
+            master.gain.value = 0.18;
+            master.connect(ctx.destination);
+            [880, 1320].forEach((freq, index) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                const start = ctx.currentTime + index * 0.16;
+                gain.gain.setValueAtTime(0.0001, start);
+                gain.gain.exponentialRampToValueAtTime(0.6, start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+                osc.connect(gain);
+                gain.connect(master);
+                osc.start(start);
+                osc.stop(start + 0.16);
+            });
+            return;
+        }
+    } catch (_) { /* fallback أدناه */ }
+    // احتياطي: ملف الصوت الخارجي
     try {
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
         audio.volume = 0.5;
         audio.play();
-    } catch (_) { /* أومأ - قد لا يتمكن المتصفح من تشغيل الصوت */ }
+    } catch (_) { /* قد لا يتمكن المتصفح من تشغيل الصوت قبل تفاعل */ }
+}
+
+function flashQuickPendingCard() {
+    const card = document.getElementById('quickPendingCard');
+    if (!card) return;
+    card.classList.remove('flash');
+    // إعادة تشغيل الـanimation
+    void card.offsetWidth;
+    card.classList.add('flash');
+    setTimeout(() => card.classList.remove('flash'), 2600);
 }
 
 // ======================================================
@@ -245,15 +296,28 @@ const initAdmin = async () => {
         });
     }
 
-    // الصوت
+    // الصوت — زر التبديل في المخزون وزر الترويسة العام (يتصاحبان)
     const soundToggle = document.getElementById('soundToggle');
     if (soundToggle) {
         soundToggle.checked = isSoundEnabled;
-        soundToggle.onchange = () => {
-            isSoundEnabled = soundToggle.checked;
-            updateSoundIcon();
-        };
+        soundToggle.onchange = () => setSoundEnabled(soundToggle.checked, { playTest: false });
     }
+    const soundGlobalBtn = document.getElementById('soundToggleGlobalBtn');
+    if (soundGlobalBtn) {
+        soundGlobalBtn.addEventListener('click', () => setSoundEnabled(!isSoundEnabled, { playTest: true }));
+    }
+    updateSoundIcon();
+
+    // فتح الصوت عند أول تفاعل (مطلوب لتشغيل النغمة على الجوال)
+    const unlockAudio = () => {
+        try {
+            const AudioCtor = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtor && !_audioContext) _audioContext = new AudioCtor();
+            if (_audioContext && _audioContext.state === 'suspended') _audioContext.resume();
+        } catch (_) { /* لا بأس */ }
+    };
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
 
     // === Tab switching ===
     const tabs = [
@@ -342,6 +406,32 @@ const initAdmin = async () => {
     // === Dashboard ===
     const refreshDashboardBtn = document.getElementById('refreshDashboardBtn');
     if (refreshDashboardBtn) refreshDashboardBtn.addEventListener('click', loadDashboard);
+
+    // بطاقة الطلبات المعلقة: «عرض الكل» يفتح تبويب الطلبات على فلتر معلق
+    const quickViewAllBtn = document.getElementById('quickPendingViewAll');
+    if (quickViewAllBtn) {
+        quickViewAllBtn.addEventListener('click', () => {
+            document.getElementById('ordersTabBtn')?.click();
+            document.querySelectorAll('#orderFilterBar .filter-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.dataset.status === 'pending');
+            });
+            _ordersFilter = 'pending';
+            if (typeof loadRecentOrders === 'function') loadRecentOrders();
+        });
+    }
+    // النقر على إحصائية «معلق» يفتح أيضاً تبويب الطلبات
+    const statPendingCard = document.querySelector('.stat-pending');
+    if (statPendingCard) {
+        statPendingCard.style.cursor = 'pointer';
+        statPendingCard.addEventListener('click', () => {
+            document.getElementById('ordersTabBtn')?.click();
+            document.querySelectorAll('#orderFilterBar .filter-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.dataset.status === 'pending');
+            });
+            _ordersFilter = 'pending';
+            if (typeof loadRecentOrders === 'function') loadRecentOrders();
+        });
+    }
 
     // === Providers ===
     const providerSyncBtn = document.getElementById('providerSyncBtn');
@@ -619,8 +709,24 @@ async function handleBulkAction(action) {
 
 function updateSoundIcon() {
     const icon = document.getElementById('soundIcon');
-    if (!icon) return;
-    icon.className = isSoundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+    if (icon) icon.className = isSoundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+    const globalBtn = document.getElementById('soundToggleGlobalBtn');
+    if (globalBtn) {
+        globalBtn.classList.toggle('is-muted', !isSoundEnabled);
+        globalBtn.innerHTML = `<i class="fas fa-volume-${isSoundEnabled ? 'up' : 'mute'}"></i>`;
+        globalBtn.setAttribute('aria-pressed', String(isSoundEnabled));
+        globalBtn.title = isSoundEnabled ? 'صوت التنبيه: يعمل (اضغط للكتم)' : 'صوت التنبيه: مكتوم (اضغط للتشغيل)';
+        globalBtn.setAttribute('aria-label', globalBtn.title);
+    }
+    const toggle = document.getElementById('soundToggle');
+    if (toggle) toggle.checked = isSoundEnabled;
+}
+
+function setSoundEnabled(enabled, { playTest = false } = {}) {
+    isSoundEnabled = Boolean(enabled);
+    try { localStorage.setItem(SOUND_STORAGE_KEY, isSoundEnabled ? '1' : '0'); } catch (_) { /* تجاهل */ }
+    updateSoundIcon();
+    if (playTest && isSoundEnabled) playNotificationSound();
 }
 
 function openModal(modal) {
@@ -755,6 +861,9 @@ async function loadDashboard(isAuto = false) {
 
         // Recent orders
         loadRecentOrdersMini();
+
+        // بطاقة الطلبات المعلقة السريعة
+        loadQuickPending();
 
         // Providers status
         loadProviderStatus();
@@ -1077,6 +1186,73 @@ async function loadRecentOrdersMini() {
         `).join('');
     } catch (_) {
         container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);">فشل تحميل الطلبات</div>';
+    }
+}
+
+/**
+ * بطاقة الطلبات المعلقة السريعة — تُعرض في لوحة الإحصائيات
+ * حتى يعتمد الأدمن/يرفض دون دخول جدول الطلبات الكامل.
+ * الأزرار تستخدم نفس data-action (event delegation) فتعمل هنا مباشرة.
+ */
+async function loadQuickPending() {
+    const list = document.getElementById('quickPendingList');
+    const countEl = document.getElementById('quickPendingCount');
+    const card = document.getElementById('quickPendingCard');
+    if (!list) return;
+    try {
+        const res = await fetch('/api/admin/orders?status=pending&limit=20', {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!data.success) return;
+
+        const total = Number(data.total) || 0;
+        const orders = (data.orders || []).slice(0, 5);
+
+        if (countEl) {
+            countEl.textContent = String(total);
+            countEl.classList.toggle('is-zero', total === 0);
+        }
+        if (card) card.classList.toggle('has-pending', total > 0);
+
+        if (total === 0 || orders.length === 0) {
+            list.innerHTML = '<div class="quick-pending-empty"><i class="fas fa-check-circle"></i>لا توجد طلبات معلّقة — الكل محدّث ✔</div>';
+            return;
+        }
+
+        list.innerHTML = `<div class="quick-pending-list">${orders.map(order => {
+            const items = order.items && order.items.length > 0
+                ? order.items.map(i => {
+                    const name = (i.name && typeof i.name === 'object')
+                        ? (i.name.ar || i.name.en || '')
+                        : (i.name || i.id || '');
+                    const qty = i.qty ?? i.quantity ?? 1;
+                    return `${escapeHtml(name)} (×${qty})`;
+                }).join('، ')
+                : escapeHtml(order.productName || '—');
+            const when = order.createdAt
+                ? new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })
+                : '';
+            return `
+            <div class="quick-order-item">
+                <div class="quick-order-main">
+                    <div class="quick-order-top">
+                        <span class="quick-order-id">#${escapeHtml(order.orderId)}</span>
+                        <span class="quick-order-amount">${formatMoney(order.price)}</span>
+                    </div>
+                    <div class="quick-order-email">${escapeHtml(order.buyerEmail || '—')}</div>
+                    <div class="quick-order-products">${items}</div>
+                    <div class="quick-order-time">${escapeHtml(when)}</div>
+                </div>
+                <div class="quick-order-actions">
+                    <button class="btn btn-approve" data-action="approve-order" data-order-id="${escapeHtml(order.orderId)}"><i class="fas fa-check"></i> اعتماد</button>
+                    <button class="btn btn-reject" data-action="reject-order" data-order-id="${escapeHtml(order.orderId)}"><i class="fas fa-times"></i> رفض</button>
+                </div>
+            </div>`;
+        }).join('')}</div>${total > orders.length ? `<div style="text-align:center;margin-top:8px;font-size:.8rem;color:var(--text-muted);">و ${total - orders.length} طلبات أخرى — اضغط «عرض الكل»</div>` : ''}`;
+    } catch (_) {
+        list.innerHTML = '<div class="quick-pending-empty">تعذّر تحميل الطلبات المعلقة — حدّث الصفحة</div>';
     }
 }
 

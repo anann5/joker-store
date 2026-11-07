@@ -119,6 +119,8 @@ export default [
         Notification: 'readonly',
         PushManager: 'readonly',
         MutationObserver: 'readonly',
+        AudioContext: 'readonly',
+        webkitAudioContext: 'readonly',
       },
     },
     rules: {

@@ -1962,6 +1962,94 @@ code {
 }
 
 /* ============================================================
+   بطاقة الطلبات المعلقة السريعة + التنبيه الصوتي
+   ============================================================ */
+
+.quick-pending-card {
+    border-inline-start: 4px solid var(--warning, #f59e0b);
+}
+.quick-pending-card.has-pending {
+    border-color: rgba(245, 158, 11, .5);
+    background: linear-gradient(180deg, rgba(245,158,11,.05), transparent 55%);
+}
+.quick-pending-card.flash {
+    animation: quickPendingFlash 1.2s ease-out 2;
+}
+@keyframes quickPendingFlash {
+    0%, 100% { box-shadow: var(--shadow-1); }
+    50% { box-shadow: 0 0 0 3px rgba(245, 158, 11, .45), var(--shadow-1); }
+}
+.pending-badge {
+    display: inline-grid;
+    place-items: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 8px;
+    margin-inline-start: 6px;
+    border-radius: 999px;
+    background: var(--warning, #f59e0b);
+    color: #1a1200;
+    font-size: .78rem;
+    font-weight: 800;
+    vertical-align: middle;
+}
+.pending-badge.is-zero {
+    background: rgba(255,255,255,.08);
+    color: var(--text-muted);
+}
+
+.quick-pending-list {
+    display: grid;
+    gap: 10px;
+}
+.quick-order-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 12px;
+}
+.quick-order-main {
+    flex: 1 1 200px;
+    min-width: 0;
+}
+.quick-order-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.quick-order-id { color: var(--primary); font-weight: 800; }
+.quick-order-amount { font-weight: 800; }
+.quick-order-email { color: var(--text-muted); font-size: .82rem; overflow-wrap: anywhere; }
+.quick-order-products { font-size: .82rem; margin-top: 2px; overflow-wrap: anywhere; }
+.quick-order-time { font-size: .74rem; color: var(--text-muted); }
+.quick-order-actions {
+    display: flex;
+    gap: 8px;
+    flex: 1 1 220px;
+    min-width: 180px;
+}
+.quick-order-actions .btn {
+    flex: 1;
+    min-height: 44px;
+    justify-content: center;
+}
+.quick-pending-empty {
+    text-align: center;
+    padding: 18px;
+    color: var(--text-muted);
+}
+.quick-pending-empty i { font-size: 1.3rem; display: block; margin-bottom: 6px; color: var(--success, #22c55e); }
+
+/* زر الصوت في الترويسة */
+.sound-toggle-btn.is-muted { opacity: .6; }
+.logout-btn.sound-toggle-btn { min-width: 40px; }
+
+/* ============================================================
    تحسينات الجوال: تنقّل سفلي + أهداف لمس + جداول بطاقات
    ============================================================ */
 
