@@ -156,6 +156,30 @@ describe('GET /product/:productId — SEO meta injection', () => {
         expect(res.text).toContain('وصف &amp; &lt;b&gt;آمن&lt;/b&gt;');
     });
 
+    it('لا يحقن وسوم منتج لمنتج خارجي بلا مخزون (مخفي)', async () => {
+        const product = makeProduct();
+        product.isExternal = true;
+        product.providerStock = null;
+        mockFindById(product);
+
+        const res = await request(app).get(`/product/${PRODUCT_ID}`);
+
+        // منتج مخفي = غير موجود من منظور الزائر (نفس سلوك المنتج المحذوف)
+        expect(res.statusCode).toBe(404);
+        expect(res.text).not.toContain(`rel="canonical" href="https://joker.example/product/${PRODUCT_ID}"`);
+    });
+
+    it('يحقن وسوم المنتج الخارجي عندما يكون مخزونه معروفاً', async () => {
+        const product = makeProduct();
+        product.isExternal = true;
+        product.providerStock = 4;
+        mockFindById(product);
+
+        const res = await request(app).get(`/product/${PRODUCT_ID}`);
+
+        expect(res.text).toContain('"@type":"Product"');
+    });
+
     it('يبقي السلوك القديم: منتج غير موجود يقع على 404', async () => {
         mockFindById(null);
 

@@ -43,6 +43,19 @@ function validateEnv() {
     if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
         optionalWarnings.push('VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY غير مضبوطين — إشعارات Web Push غير مفعلة');
     }
+
+    // الدفع الإلكتروني: غياب الإعداد ليس خطأً (الوضع اليدوي يعمل)،
+    // لكن إعداداً ناقصاً لبوابة مختارة يعني تعطيلها بصمت — لذا ننبّه صراحةً.
+    const paymentGateway = String(process.env.PAYMENT_GATEWAY || '').trim().toLowerCase();
+    if (!paymentGateway || paymentGateway === 'manual') {
+        optionalWarnings.push('PAYMENT_GATEWAY غير مضبوط — الدفع يدوي (تحويل + إثبات)');
+    } else if (paymentGateway === 'mock' && isProduction) {
+        optionalWarnings.push('PAYMENT_GATEWAY=mock في الإنتاج — البوابة الوهمية معطّلة تلقائياً، الدفع الإلكتروني لن يعمل');
+    } else if (!process.env.PAYMENT_WEBHOOK_SECRET) {
+        optionalWarnings.push('PAYMENT_WEBHOOK_SECRET غير مضبوط — لا يمكن التحقق من أحداث بوابة الدفع');
+    } else if (!process.env.PAYMENT_GATEWAY_ORIGIN) {
+        optionalWarnings.push('PAYMENT_GATEWAY_ORIGIN غير مضبوط — قد تحجب سياسة CSP صفحة الدفع/الـwebhook');
+    }
     // Render المجاني يحجب منافذ SMTP — بدون Brevo API أو SMTP لن يصل بريد الاستعادة.
     if (!process.env.MAIL_FROM || (!process.env.BREVO_API_KEY && !process.env.SMTP_HOST)) {
         optionalWarnings.push('البريد غير مهيأ — اضبط BREVO_API_KEY وMAIL_FROM (موصى به على Render) وإلا لن تُرسل روابط الاستعادة والإشعارات');

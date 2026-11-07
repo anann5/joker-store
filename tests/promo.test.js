@@ -292,7 +292,7 @@ describe('POST /api/checkout with promo code', () => {
         mockPromotionFindOne.mockResolvedValue(makePromotion({ productId: null, category: 'pubg' }));
         mockProductFind.mockResolvedValue([
             makeProduct(),
-            makeProduct({ _id: OTHER_PRODUCT_ID, price: 15, isExternal: true, codes: [] })
+            makeProduct({ _id: OTHER_PRODUCT_ID, price: 15, isExternal: true, providerStock: 5, codes: [] })
         ]);
 
         const res = await request(app)

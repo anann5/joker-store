@@ -4,6 +4,7 @@ const { sendOrderConfirmationEmail, sendOrderRejectedEmail, sendOrderFailedEmail
 const pushService = require('./push');
 const registry = require('../providers/registry');
 const adapter = require('../providers/adapter');
+const payments = require('../providers/payments');
 
 // حماية هامش الربح: نسبة (سعر البيع / التكلفة) الدنيا المسموح بها عند التنفيذ.
 // الافتراضي 1.0 = منع البيع بسعر أقل من التكلفة؛ يمكن رفعه عبر MIN_PROFIT_RATIO.
@@ -321,17 +322,22 @@ exports.expireStaleOrders = async (io) => {
     return expiredCount;
 };
 
-exports.approveOrder = async (req, res) => {
+/**
+ * تحويل طلب مدفوع إلى «قيد التنفيذ» ثم تنفيذ التسليم.
+ * مسار واحد يستخدمه اعتماد الأدمن وwebhook بوابة الدفع معاً، لضمان نفس
+ * الحمايات: حماية الهامش، الحجز الذري، والاسترجاع التلقائي عند فشل التسليم.
+ */
+async function markOrderPaidAndFulfil(orderId, { io = null, req = null } = {}) {
     let order;
-    const io = req.app?.get('io');
 
     try {
         order = await Order.findOneAndUpdate(
-            { orderId: req.params.orderId, status: 'pending' },
+            { orderId, status: 'pending' },
             {
                 $set: {
                     status: 'processing',
                     paymentStatus: 'paid',
+                    paidAt: new Date(),
                     reservationExpiresAt: null
                 }
             },
@@ -339,41 +345,200 @@ exports.approveOrder = async (req, res) => {
         );
 
         if (!order) {
-            const existingOrder = await Order.findOne({ orderId: req.params.orderId }).select('status');
-            if (!existingOrder) {
-                return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
-            }
-            return res.status(409).json({ success: false, message: 'الطلب معالج مسبقاً' });
+            const existingOrder = await Order.findOne({ orderId }).select('status');
+            return { ok: false, reason: existingOrder ? 'not_pending' : 'not_found' };
         }
 
         await performFulfilment(order, io, req);
-
-        return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });
+        return { ok: true, order };
     } catch (err) {
         console.error('Approval Error:', err.message);
 
-        if (order) {
-            order.status = 'failed';
-            order.failedAt = new Date();
-            order.stockReserved = false;
-            order.items.forEach(item => {
-                if (item.fulfilmentStatus === 'processing') {
-                    item.fulfilmentStatus = 'failed';
-                }
-            });
-            await order.save();
-            // حرّر أي أكواد محلية حُجزت قبل الفشل لتعود متاحة للبيع
-            await Product.releaseReservedCodes(order.orderId).catch(() => {});
-            await createLog('فشل تنفيذ طلب', `يتطلب الطلب #${order.orderId} تدخلاً يدوياً.`, req);
-            await sendTelegramAlert(`🚨 فشل تنفيذ الطلب #${order.orderId}. يرجى مراجعته يدوياً.`);
-            // الدفع وصل بالفعل — نُطمئن الزبون أن الطلب قيد المراجعة اليدوية بدل تركه بلا تفسير
-            await sendOrderFailedEmail(order).catch(() => {});
+        if (!order) {
+            return { ok: false, reason: 'fulfilment_failed', error: err };
         }
 
-        return res.status(502).json({
-            success: false,
-            message: 'تعذر تنفيذ الطلب تلقائياً. تم تحويله للمراجعة اليدوية.'
+        order.status = 'failed';
+        order.failedAt = new Date();
+        order.stockReserved = false;
+        order.items.forEach(item => {
+            if (item.fulfilmentStatus === 'processing') {
+                item.fulfilmentStatus = 'failed';
+            }
         });
+
+        // الدفع الإلكتروني وصل فعلاً: نحاول الاسترجاع تلقائياً بدل ترك العميل
+        // بلا مال ولا كود. إن فشل الاسترجاع يبقى الطلب للمراجعة اليدوية بتنبيه واضح.
+        let refundNote = '';
+        if (order.paymentMode === 'online' && order.gatewayRef) {
+            const gateway = payments.getGatewayByName(order.paymentGateway);
+            const refund = gateway
+                ? await gateway.refund({
+                    gatewayRef: order.gatewayRef,
+                    amount: order.price,
+                    reason: 'fulfilment_failed'
+                }).catch(refundErr => ({ ok: false, error: refundErr.message }))
+                : { ok: false, error: 'gateway_not_configured' };
+
+            if (refund && refund.ok) {
+                order.paymentStatus = 'refunded';
+                order.refundedAt = new Date();
+                order.refundRef = refund.refundRef || null;
+                refundNote = 'تم استرجاع المبلغ تلقائياً.';
+            } else {
+                order.paymentStatus = 'failed';
+                refundNote = `فشل الاسترجاع التلقائي: ${refund?.error || 'unknown'}`;
+            }
+        }
+
+        await order.save();
+        // حرّر أي أكواد محلية حُجزت قبل الفشل لتعود متاحة للبيع
+        await Product.releaseReservedCodes(order.orderId).catch(() => {});
+        const refundSuffix = refundNote ? ` ${refundNote}` : '';
+        await createLog('فشل تنفيذ طلب', `يتطلب الطلب #${order.orderId} تدخلاً يدوياً.${refundSuffix}`, req);
+        await sendTelegramAlert(`🚨 فشل تنفيذ الطلب #${order.orderId}.${refundSuffix} يرجى مراجعته يدوياً.`);
+        // الدفع وصل بالفعل — نُطمئن الزبون أن الطلب قيد المراجعة اليدوية بدل تركه بلا تفسير
+        await sendOrderFailedEmail(order).catch(() => {});
+
+        return {
+            ok: false,
+            reason: 'fulfilment_failed',
+            error: err,
+            refunded: order.paymentStatus === 'refunded'
+        };
+    }
+}
+
+exports.markOrderPaidAndFulfil = markOrderPaidAndFulfil;
+
+/**
+ * إلغاء طلب معلّق (فشل دفع، انتهاء جلسة البوابة، أو رفض آلي):
+ * يحرّر المخزون المحجوز ويعيد نقاط الولاء المخصومة — مرة واحدة فقط.
+ */
+async function cancelPendingOrder(orderId, { paymentStatus = 'cancelled', reason = 'payment_failed', io = null } = {}) {
+    const now = new Date();
+    const order = await Order.findOneAndUpdate(
+        { orderId, status: 'pending' },
+        {
+            $set: {
+                status: 'cancelled',
+                paymentStatus,
+                stockReserved: false,
+                cancellationReason: String(reason).slice(0, 120),
+                reservationExpiresAt: null,
+                failedAt: now
+            }
+        },
+        { new: true }
+    );
+
+    if (!order) return { ok: false, reason: 'not_pending' };
+
+    await Product.releaseReservedCodes(order.orderId).catch(() => {});
+    await refundOrderLoyaltyPoints(order);
+    await createLog(
+        'إلغاء طلب',
+        `أُلغي الطلب #${order.orderId} (${reason}) وتحرّر مخزونه.`,
+        { clientIp: 'system' },
+        order._id,
+        order.productName
+    ).catch(() => {});
+
+    if (io && order.userId) {
+        io.to(`user:${String(order.userId)}`).emit('order_status', {
+            orderId: order.orderId,
+            status: 'cancelled'
+        });
+    }
+
+    return { ok: true, order };
+}
+
+exports.cancelPendingOrder = cancelPendingOrder;
+
+exports.approveOrder = async (req, res) => {
+    const io = req.app?.get('io');
+    const result = await markOrderPaidAndFulfil(req.params.orderId, { io, req });
+
+    if (result.ok) {
+        return res.json({ success: true, message: 'تم تأكيد الطلب بنجاح' });
+    }
+    if (result.reason === 'not_found') {
+        return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+    }
+    if (result.reason === 'not_pending') {
+        return res.status(409).json({ success: false, message: 'الطلب معالج مسبقاً' });
+    }
+    return res.status(502).json({
+        success: false,
+        message: 'تعذر تنفيذ الطلب تلقائياً. تم تحويله للمراجعة اليدوية.'
+    });
+};
+
+/**
+ * استرجاع طلب مدفوع إلكترونياً (كامل أو جزئي) عبر بوابة الدفع.
+ * لا يُستخدم للتحويلات اليدوية: تلك تُعاد يدوياً خارج النظام.
+ */
+exports.refundOrder = async (req, res) => {
+    try {
+        const order = await Order.findOne({ orderId: req.params.orderId });
+        if (!order) {
+            return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+        }
+        if (order.paymentMode !== 'online' || !order.gatewayRef) {
+            return res.status(400).json({ success: false, message: 'الطلب ليس مدفوعاً إلكترونياً' });
+        }
+        if (order.paymentStatus === 'refunded') {
+            return res.status(409).json({ success: false, message: 'تم استرجاع الطلب مسبقاً' });
+        }
+
+        const gateway = payments.getGatewayByName(order.paymentGateway);
+        if (!gateway) {
+            return res.status(503).json({ success: false, message: 'بوابة الدفع غير مهيّأة حالياً' });
+        }
+
+        const requested = Number(req.body?.amount);
+        const orderPrice = Number(order.price) || 0;
+        const amount = Number.isFinite(requested) && requested > 0
+            ? Math.min(requested, orderPrice)
+            : orderPrice;
+
+        const result = await gateway.refund({
+            gatewayRef: order.gatewayRef,
+            amount,
+            reason: String(req.body?.reason || 'admin_request').slice(0, 120)
+        });
+
+        if (!result?.ok) {
+            return res.status(502).json({ success: false, message: 'فشل الاسترجاع لدى بوابة الدفع' });
+        }
+
+        const isFullRefund = amount >= orderPrice;
+        if (isFullRefund) {
+            order.paymentStatus = 'refunded';
+            order.refundedAt = new Date();
+        }
+        order.refundRef = result.refundRef || order.refundRef;
+        await order.save();
+
+        await createLog(
+            'استرجاع دفع',
+            `تم استرجاع ${amount} من الطلب #${order.orderId}${isFullRefund ? ' (كامل)' : ' (جزئي)'}`,
+            req,
+            order._id,
+            order.productName
+        );
+
+        return res.json({
+            success: true,
+            message: isFullRefund ? 'تم استرجاع المبلغ بالكامل' : 'تم الاسترجاع الجزئي',
+            amount,
+            full: isFullRefund,
+            refundRef: order.refundRef || null
+        });
+    } catch (err) {
+        console.error('Refund Error:', err.message);
+        return res.status(500).json({ success: false, message: 'فشل تنفيذ الاسترجاع' });
     }
 };
 

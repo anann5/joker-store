@@ -318,9 +318,20 @@ const orderSchema = new mongoose.Schema({
     // paid → اعتُمد الدفع، expired/cancelled → انتهت المهلة أو أُلغي.
     paymentStatus: {
         type: String,
-        enum: ['awaiting_payment', 'under_review', 'paid', 'expired', 'cancelled'],
+        enum: ['awaiting_payment', 'under_review', 'paid', 'failed', 'refunded', 'expired', 'cancelled'],
         default: 'awaiting_payment'
     },
+    // manual = تحويل + إثبات يراجعه الأدمن | online = بوابة دفع إلكترونية
+    paymentMode: { type: String, enum: ['manual', 'online'], default: 'manual' },
+    // مرجع البوابة (intent/session) وجلسة الدفع — تُستخدم للمطابقة والاسترجاع
+    gatewayRef: { type: String, default: null },
+    paymentRedirectUrl: { type: String, default: null },
+    paymentSessionExpiresAt: { type: Date, default: null },
+    chargedAmount: { type: Number, default: null },
+    chargedCurrency: { type: String, default: null },
+    paidAt: { type: Date, default: null },
+    refundedAt: { type: Date, default: null },
+    refundRef: { type: String, default: null },
     paymentSubmittedAt: { type: Date, default: null },
     paymentProofHash: { type: String, default: null },
     // مهلة حجز المخزون — تنتهي بإلغاء تلقائي وتحرير الأكواد
@@ -460,6 +471,28 @@ orderSchema.index({ status: 1, completedAt: -1 });
 orderSchema.index({ buyerEmail: 1, createdAt: -1 });
 orderSchema.index({ status: 1, paymentStatus: 1, reservationExpiresAt: 1 });
 orderSchema.index({ paymentProofHash: 1 });
+orderSchema.index({ gatewayRef: 1 }, { sparse: true });
+orderSchema.index({ paymentMode: 1, paymentStatus: 1, paidAt: -1 });
+
+// ======================================================
+// أحداث بوابات الدفع (Payment Events)
+// ------------------------------------------------------
+// تُخزَّن كل أحداث الـwebhook لمنع المعالجة المزدوجة (idempotency) وللتدقيق.
+// الفهرس الفريد على (gateway, eventId) هو الحاجز النهائي ضد إعادة التشغيل.
+// ======================================================
+const paymentEventSchema = new mongoose.Schema({
+    gateway: { type: String, required: true },
+    eventId: { type: String, required: true },
+    orderId: { type: String, default: null, index: true },
+    status: { type: String, default: null },
+    amount: { type: Number, default: null },
+    currency: { type: String, default: null },
+    rawHash: { type: String, default: null },
+    processedAt: { type: Date, default: null },
+    createdAt: { type: Date, default: Date.now }
+});
+paymentEventSchema.index({ gateway: 1, eventId: 1 }, { unique: true });
+paymentEventSchema.index({ createdAt: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 categorySchema.index({ isActive: 1, order: 1 });
 // سجل النشاطات: يُفرز بـ createdAt في لوحة التحكم ويُحذف الأقدم عبر deleteMany
 logSchema.index({ createdAt: -1 });
@@ -603,5 +636,6 @@ module.exports = {
     FcmToken: mongoose.model('FcmToken', fcmTokenSchema),
     Notice: mongoose.model('Notice', noticeSchema),
     StockAlert: mongoose.model('StockAlert', stockAlertSchema),
-    SupportTicket: mongoose.model('SupportTicket', supportTicketSchema)
+    SupportTicket: mongoose.model('SupportTicket', supportTicketSchema),
+    PaymentEvent: mongoose.model('PaymentEvent', paymentEventSchema)
 };

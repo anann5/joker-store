@@ -78,6 +78,7 @@ router.get('/orders', orderController.getOrders);
 router.get('/orders/export', orderController.exportOrdersCSV);
 router.post('/orders/:orderId/approve', validateParams(orderIdParamSchema), orderController.approveOrder);
 router.post('/orders/:orderId/reject', validateParams(orderIdParamSchema), orderController.rejectOrder);
+router.post('/orders/:orderId/refund', validateParams(orderIdParamSchema), orderController.refundOrder);
 router.get('/reports', statsController.getReports);
 router.get('/pricing/compare', statsController.getLivePricing);
 router.get('/categories', categoryController.getCategories);

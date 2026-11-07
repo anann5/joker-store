@@ -100,6 +100,7 @@ describe('POST /api/checkout', () => {
             productName: { ar: 'منتج ثان', en: 'Second product' },
             price: 15,
             isExternal: true,
+            providerStock: 5,
             codes: []
         });
         Product.find.mockResolvedValue([firstProduct, secondProduct]);

@@ -2359,8 +2359,9 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                 if (!email || !email.value.trim()) { showToast(t('checkout_email_required'), 'error'); return; }
             }
             if (checkoutStep === 2) {
+                const selectedGateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
                 const refInput = document.getElementById('paymentRefInput');
-                if (!refInput || !refInput.value.trim()) {
+                if (selectedGateway !== 'online' && (!refInput || !refInput.value.trim())) {
                     showToast(t('checkout_ref_required'), 'error');
                     return;
                 }
@@ -2384,9 +2385,28 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     // تغيير المحافظ ديناميكياً داخل المودال
     const paymentOptionsContainer = document.querySelector('.payment-options');
     const instructionsZone = document.getElementById('paymentInstructions');
+    const onlinePaymentOption = document.getElementById('onlinePaymentOption');
+    const onlinePaymentsEnabled = Boolean(siteConfig?.payments?.enabled);
+    const manualPaymentFields = [
+        document.getElementById('paymentRefGroup'),
+        document.getElementById('paymentProofGroup')
+    ].filter(Boolean);
+
+    // إظهار/إخفاء حقول التحويل اليدوي حسب اختيار الدفع الإلكتروني
+    const applyManualFieldsVisibility = (online) => {
+        manualPaymentFields.forEach(el => { el.hidden = online; });
+        if (instructionsZone) instructionsZone.hidden = online;
+        document.querySelectorAll('[data-manual-payment]').forEach(el => { el.hidden = online; });
+        const refInput = document.getElementById('paymentRefInput');
+        if (refInput) refInput.required = !online;
+    };
 
     const updatePaymentInstructions = (method) => {
         if (!instructionsZone) return;
+        if (method === 'online') {
+            instructionsZone.innerHTML = '';
+            return;
+        }
         const payment = siteConfig?.payment || {};
         const jawwal = payment.jawwalNumber || '';
         const palpay = payment.palpayNumber || '';
@@ -2411,10 +2431,22 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     if (paymentOptionsContainer) {
         paymentOptionsContainer.addEventListener('change', (e) => {
             if (e.target.name === 'payment_gateway') {
+                const isOnline = e.target.value === 'online';
+                applyManualFieldsVisibility(isOnline);
                 updatePaymentInstructions(e.target.value);
             }
         });
-        // عرض التعليمات الافتراضية عند التحميل
+    }
+
+    // الدفع الإلكتروني يظهر فقط إذا رجعت البوابة مهيّأة من الخادم.
+    // بلا تهيئة تبقى الواجهة كما هي تماماً (تحويل + إثبات).
+    if (onlinePaymentOption && onlinePaymentsEnabled) {
+        onlinePaymentOption.hidden = false;
+        const onlineRadio = onlinePaymentOption.querySelector('input[name="payment_gateway"]');
+        if (onlineRadio) onlineRadio.checked = true;
+        applyManualFieldsVisibility(true);
+        updatePaymentInstructions('online');
+    } else if (paymentOptionsContainer) {
         updatePaymentInstructions('jawwal_pay');
     }
 
@@ -2425,9 +2457,11 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             const email = document.getElementById('user-email').value.trim();
             const paymentRef = document.getElementById('paymentRefInput').value.trim();
             const gateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
+            const isOnlinePayment = gateway === 'online';
 
             if (!email) { showToast(t('checkout_email_required'), 'error'); return; }
-            if (!paymentRef) { showToast(t('checkout_ref_required'), 'error'); return; }
+            // الدفع الإلكتروني لا يحتاج رقم عملية/إثبات — البوابة تؤكد الدفع بنفسها
+            if (!isOnlinePayment && !paymentRef) { showToast(t('checkout_ref_required'), 'error'); return; }
             if (cart.length === 0) { showToast(t('checkout_cart_empty'), 'error'); return; }
 
             // تجهيز مصفوفة المنتجات لكي يستلمها السيرفر دفعة واحدة
@@ -2479,14 +2513,37 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                     const ppImg=document.getElementById('paymentProofImg'); if(ppImg) ppImg.src='';
                     const ppInput=document.getElementById('paymentProofInput'); if(ppInput) ppInput.value='';
                     updateCartUI();
+                    const orderId = result.orderId || '';
                     renderOrderReceipt({
                         email,
-                        orderId: result.orderId || '',
+                        orderId,
                         giftToken: result.giftToken || null,
                         paymentStatus: result.paymentStatus || 'awaiting_payment',
                         reservationExpiresAt: result.reservationExpiresAt || null
                     });
-                    showToast(t('checkout_success'), 'success');
+
+                    if (isOnlinePayment && orderId) {
+                        // الطلب أُنشئ وحُجز مخزونه؛ الآن نطلب جلسة دفع ونحوّل العميل للبوابة.
+                        showToast(t('pay_online_redirect'), 'success');
+                        try {
+                            const sessionRes = await fetch('/api/payments/session', {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ orderId, email })
+                            });
+                            const sessionData = await sessionRes.json();
+                            if (sessionData.success && sessionData.redirectUrl) {
+                                window.location.assign(sessionData.redirectUrl);
+                                return;
+                            }
+                            showToast(t('pay_online_unavailable'), 'error');
+                        } catch (_sessionErr) {
+                            showToast(t('pay_online_unavailable'), 'error');
+                        }
+                    } else {
+                        showToast(t('checkout_success'), 'success');
+                    }
                 } else {
                     showToast(`❌ ${escapeHtml(result.error || t('checkout_error_generic'))}`, 'error');
                 }

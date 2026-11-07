@@ -597,21 +597,29 @@
                 <div class="form-group">
                     <label data-i18n-key="payment_method_label">اختر طريقة الدفع</label>
                     <div class="payment-options">
-                        <label class="payment-option-label">
+                        <!-- الدفع الإلكتروني: يظهر فقط عندما تكون بوابة الدفع مهيّأة (siteConfig.payments.enabled) -->
+                        <label class="payment-option-label" id="onlinePaymentOption" hidden>
+                            <input type="radio" name="payment_gateway" value="online">
+                            <div class="payment-option-content">
+                                <i class="fas fa-credit-card" aria-hidden="true" style="width:26px;height:26px;display:grid;place-items:center;color:#12b489;font-size:1.1rem;"></i>
+                                <span class="payment-option-text"><b data-i18n-key="pay_online">بطاقة أو محفظة إلكترونية</b><small data-i18n-key="pay_online_hint">دفع فوري آمن — يصلك الكود مباشرة بعد التأكيد</small></span>
+                            </div>
+                        </label>
+                        <label class="payment-option-label" data-manual-payment>
                             <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
                             <div class="payment-option-content">
                                 <img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="جوال بي" width="26" height="26" loading="lazy" decoding="async">
                                 <span class="payment-option-text"><b data-i18n-key="pay_jawwal">جوال بي</b><small data-i18n-key="pay_jawwal_hint">حوالة فورية عبر جوال بي</small></span>
                             </div>
                         </label>
-                        <label class="payment-option-label">
+                        <label class="payment-option-label" data-manual-payment>
                             <input type="radio" name="payment_gateway" value="palpay">
                             <div class="payment-option-content">
                                 <img class="pay-tile" src="/image/pay/palpay.svg" alt="بال بي" width="26" height="26" loading="lazy" decoding="async">
                                 <span class="payment-option-text"><b data-i18n-key="pay_palpay">بال بي</b><small data-i18n-key="pay_palpay_hint">الدفع عبر محفظة بال بي</small></span>
                             </div>
                         </label>
-                        <label class="payment-option-label">
+                        <label class="payment-option-label" data-manual-payment>
                             <input type="radio" name="payment_gateway" value="reflect">
                             <div class="payment-option-content">
                                 <img class="pay-tile" src="/image/pay/reflect.svg" alt="ريفلكت" width="26" height="26" loading="lazy" decoding="async">
@@ -624,11 +632,11 @@
 
                 <div id="paymentInstructions"></div>
 
-                <div class="form-group">
+                <div class="form-group" id="paymentRefGroup">
                     <label for="paymentRefInput" data-i18n-key="payment_ref_label">رقم العملية / اسم المحوّل</label>
                     <input type="text" id="paymentRefInput" data-i18n-key="payment_ref_placeholder" data-i18n-placeholder="true" placeholder="ادخل رقم العملية أو اسم المحوّل" required>
                 </div>
-                <div class="form-group" style="margin-top:12px;">
+                <div class="form-group" id="paymentProofGroup" style="margin-top:12px;">
                     <label for="paymentProofInput" data-i18n-key="checkout_proof_label" style="font-size:0.82rem;color:var(--text-muted);">إرفاق صورة الإثبات (اختياري)</label>
                     <input type="file" id="paymentProofInput" accept="image/*" style="margin-top:6px;display:block;">
                     <div id="paymentProofPreview" style="margin-top:8px;display:none;align-items:center;gap:8px;">

@@ -77,7 +77,112 @@ docker compose up -d --build
 
 ## تفعيل مزوّد أو الدفع التلقائي
 - المزوّدون: املأ `PROVIDER_1_*` (انظر [.env.example](.env.example)) ثم `PROVIDERS_COUNT=1` وأعد النشر، ثم اضغط «مزامنة» من لوحة الأدمن. يتطلب API key وBase URL ومسارات items/balance/purchase وطريقة المصادقة.
-- الدفع التلقائي غير مفعّل حالياً (التحويل يدوي). يتطلب من مزوّد الدفع: merchant ID وAPI key/secret وwebhook URL ووثائق API.
+- الدفع التلقائي: الهيكل جاهز ومُختبَر عبر بوابة محاكاة، ويُنشَّط بضبط:
+  `PAYMENT_GATEWAY` + `PAYMENT_WEBHOOK_SECRET` + `PAYMENT_GATEWAY_ORIGIN` (والمفاتيح عند إضافة البوابة الحقيقية).
+  - العقد الموحّد: [providers/payments/types.js](providers/payments/types.js) — كل بوابة تُضاف كملف مستقل يُنفّذ: `createSession` / `verifyWebhook` / `getStatus` / `refund`.
+  - المسار: إنشاء الطلب (حجز المخزون) → `POST /api/payments/session` → صفحة البوابة → `POST /api/payments/webhook` (توقيع + منع تكرار + مطابقة المبلغ) → تنفيذ تلقائي.
+  - عند فشل التسليم بعد استلام الدفع: استرجاع تلقائي + تنبيه تلجرام + تحويل الطلب للمراجعة اليدوية.
+  - الاسترجاع الإداري: `POST /api/admin/orders/:orderId/refund`.
+  - محلياً: `PAYMENT_GATEWAY=mock` يعطّل نفسه تلقائياً في الإنتاج ويستخدم صفحة دفع وهمية بلا أموال.
+  - عند إضافة البوابة الحقيقية يبقى ملف واحد جديد فقط: `providers/payments/<gateway>.js` + تسجيله في [providers/payments/index.js](providers/payments/index.js).
+
+### سيناريو الدفع الإلكتروني بالتفصيل
+
+#### الرسم التدفقي — المسار الكامل من الضغط على الشراء حتى التسليم
+
+```mermaid
+sequenceDiagram
+    actor User as العميل
+    participant UI as الواجهة (public/script.js)
+    participant API as خادم JOKER STORE (Express)
+    participant GW as بوابة الدفع (mock أو حقيقية)
+    participant DB as MongoDB (orders + PaymentEvent)
+
+    User->>UI: يختار "بطاقة أو محفظة إلكترونية"
+    UI->>API: POST /api/checkout<br/>paymentGateway=online, بدون paymentRef
+    API->>DB: إنشاء طلب pending + حجز كود ذري
+    API-->>UI: 201 orderId
+    UI->>API: POST /api/payments/session {orderId, email}
+    API->>DB: تحقق: pending + البريد يطابق صاحب الطلب
+    API->>GW: createSession(order)
+    GW-->>API: gatewayRef + redirectUrl + expiresAt
+    API->>DB: تخزين: paymentMode=online, gatewayRef, chargedAmount
+    API-->>UI: redirectUrl
+    UI->>GW: إعادة توجيه العميل لصفحة الدفع
+    Note right of GW: العميل يدفع بالبطاقة/المحفظة
+    GW->>API: POST /api/payments/webhook<br/>حدث موقّع بـ HMAC
+    API->>API: 1) تحقق التوقيع على الجسم الخام
+    API->>DB: 2) منع التكرار (gateway, eventId) فريد
+    API->>DB: 3) مطابقة gatewayRef + المبلغ + العملة
+    alt حدث paid صحيح
+        API->>DB: markOrderPaidAndFulfil → تسليم الكود
+        DB-->>API: status=completed, paymentStatus=paid
+        API-->>User: يظهر الكود في صفحة تتبع الطلب
+    else فشل التسليم بعد الدفع
+        API->>GW: refund تلقائي
+        API->>API: تنبيه تيليجرام + مراجعة يدوية
+    end
+```
+
+#### مخطط حالات الطلب
+
+```mermaid
+flowchart TD
+    A["طلب محلياً في السلة"] --> B["POST /api/checkout<br/>online بدون paymentRef"]
+    B --> C{"حجم المخزون كافٍ؟<br/>hasEnoughStock"}
+    C -- لا --> Z["409 غير متوفر"]
+    C -- نعم --> D["pending<br/>awaiting_payment<br/>+ حجز كود 30 دقيقة"]
+    D --> E["POST /api/payments/session<br/>تحقق بالبريد"]
+    E --> F{"جلسة سارية؟"}
+    F -- نعم --> G["إعادة نفس redirectUrl"]
+    F -- لا --> H["إنشاء جلسة بوابة<br/>gatewayRef + expiresAt"]
+    H --> I["صفحة البوابة<br/>العميل يدفع"]
+    I --> J{"webhook موقّع؟"}
+    J -- لا توقيع --> K["401 توقيع غير صالح"]
+    J -- توقيع صحيح --> L{"المبلغ والعملة<br/>مطابقان؟"}
+    L -- لا --> M["تنبيه أدمن<br/>إلغاء + تحرير حجز"]
+    L -- نعم --> N{"مكرر؟<br/>PaymentEvent.exists"}
+    N -- نعم --> O["200 duplicate<br/>بلا تنفيذ ثانٍ"]
+    N -- لا --> P["markOrderPaidAndFulfil<br/>نفس مسار اعتماد الأدمن"]
+    P --> Q{"نجح التسليم؟"}
+    Q -- نعم --> R["completed + paid<br/>الكود يصل العميل"]
+    Q -- لا --> S["failed<br/>+ استرجاع تلقائي + تنبيه<br/>+ مراجعة يدوية"]
+    I -. "إلغاء من البوابة" .-> T["failed / expired<br/>→ cancelPendingOrder<br/>تحرير المخزون"]
+```
+
+#### الحمايات الخمس في الـWebhook
+
+| # | الحارس | التطبيق |
+|---|---|---|
+| 1 | **التوقيع** | HMAC على الجسم الخام + `timingSafeEqual` |
+| 2 | **منع التكرار** | `PaymentEvent` بفهرس فريد `(gateway, eventId)` |
+| 3 | **مطابقة الطلب** | بحث بـ `gatewayRef`، مرجع غير معروف → 200 بلا تنفيذ |
+| 4 | **مطابقة المبلغ والعملة** | يقارن المبلغ المدفوع بـ `order.price` (تسامح 0.01) و`STORE_CURRENCY` |
+| 5 | **مسار تنفيذ موحّد** | `markOrderPaidAndFulfil` — نفس حماية الهامش والحجز الذري لاعتماد الأدمن |
+
+> **قاعدة ذهبية:** العودة من البوابة إلى `/api/payments/return` ليست إثبات دفع أبداً — **Webhhook وحده هو مصدر الحقيقة**.
+
+#### تجربة محلية (بدون أموال)
+
+```bash
+$env:PAYMENT_GATEWAY='mock'; $env:PAYMENT_WEBHOOK_SECRET='local-secret'; npm start
+# 1. أضف منتجاً للسلة
+# 2. اختر "بطاقة أو محفظة إلكترونية" → يُنشأ الطلب
+# 3. تُفتح صفحة "بوابة دفع تجريبية" → "إتمام الدفع"
+# 4. يُسلَّم الكود تلقائياً ويظهر في صفحة تتبع الطلب
+```
+
+#### لتفعيل بوابة حقيقية لاحقاً
+
+1. أضف `providers/payments/<gateway>.js` ينفّذ 4 دوال العقد.
+2. سجّله في `providers/payments/index.js`.
+3. عيّن في Render: `PAYMENT_GATEWAY` + `PAYMENT_WEBHOOK_SECRET` + `PAYMENT_GATEWAY_ORIGIN` (+ مفاتيح البوابة إن لزمت).
+4. لا يلزم تعديل الطلبات أو الواجهة أو الـWebhook.
+
+## سياسة المخزون
+- المنتج المحلي يُباع من أكواد `status=available` ويبقى ظاهراً حتى لو نفد (يُعرض «نفد المخزون»).
+- المنتج الخارجي يظهر ويُباع فقط إذا كان `providerStock` رقماً موجباً؛ المخزون غير المعروف (`null`) أو الصفري يعني إخفاء المنتج من القوائم والبحث وsitemap وصفحة المنتج.
+- الإخفاء مطبّق على مستوى الاستعلامات (`services/inventory.js` → `withDeliverableStock`) في كل مسارات الواجهة، وعلى مستوى الطلب (`hasEnoughStock` → 409 عند النقص)، فلا يمكن تجاوزه من الواجهة.
 
 ## الأداء والأصول المبنية
 - `public/style.min.css` و`public/script.min.js` و`public/ui.min.js` ملفات مُصغّرة **مُلتزمة في المستودع**.

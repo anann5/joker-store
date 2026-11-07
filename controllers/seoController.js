@@ -3,6 +3,7 @@ const path = require('path');
 const { Product, Category } = require('../models');
 const siteSettings = require('../config/siteSettings');
 const objectStorage = require('../services/objectStorage');
+const { withDeliverableStock } = require('../services/inventory');
 
 const STATIC_PAGES = [
     { path: '', ar: 'الرئيسية', en: 'Home' },
@@ -74,7 +75,7 @@ exports.sitemapXml = async (_req, res) => {
         }
 
         const [products, categories] = await Promise.all([
-            Product.find({ isActive: true })
+            Product.find(withDeliverableStock({ isActive: true }))
                 .select('category updatedAt')
                 .sort({ createdAt: -1 })
                 .lean(),
@@ -159,7 +160,7 @@ exports.productSchema = async (req, res) => {
             return res.status(400).json({ success: false, error: 'معرف منتج غير صالح' });
         }
 
-        const product = await Product.findById(productId);
+        const product = await Product.findOne(withDeliverableStock({ _id: productId }));
         if (!product || !product.isActive) {
             return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
         }
@@ -241,7 +242,9 @@ exports.breadcrumbSchema = async (req, res) => {
         ];
 
         if (productId && /^[a-fA-F0-9]{24}$/.test(productId)) {
-            const product = await Product.findById(productId).select('category productName').lean();
+            const product = await Product.findOne(withDeliverableStock({ _id: productId }))
+                .select('category productName')
+                .lean();
             if (product) {
                 const catNames = { pubg: 'PUBG', fortnite: 'Fortnite', playstation: 'PlayStation', xbox: 'Xbox', steam: 'Steam', nintendo: 'Nintendo', freefire: 'Free Fire', mobilelegends: 'Mobile Legends', spotify: 'Spotify', netflix: 'Netflix', amazon: 'Amazon', google: 'Google Play', itunes: 'iTunes' };
                 items.push({ name: catNames[product.category] || product.category, url: `${baseUrl}/?category=${product.category}` });

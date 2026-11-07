@@ -22,7 +22,20 @@ const uploadController = require('./controllers/uploadController');
 const objectStorage = require('./services/objectStorage');
 const logger = require('./config/logger');
 const { requestContext } = require('./middleware/requestContext');
+const paymentRoutes = require('./routes/paymentRoutes');
+const { isDeliverable } = require('./services/inventory');
 const packageJson = require('./package.json');
+
+// نطاق بوابة الدفع (إن وُجد) — يُضاف إلى CSP فقط عند تهيئة الدفع الإلكتروني.
+// لا نفتح سياسة الموقع لمزوّد غير مستخدم، ولا نسمح بأي نطاق عشوائي.
+const paymentGatewayOrigin = (() => {
+    try {
+        const raw = String(process.env.PAYMENT_GATEWAY_ORIGIN || '').trim();
+        return raw ? new URL(raw).origin : '';
+    } catch (_err) {
+        return '';
+    }
+})();
 
 const app = express();
 app.set('trust proxy', 1);
@@ -61,7 +74,8 @@ app.use(helmet({
                 'https://cdn.jsdelivr.net',
                 'https://www.googletagmanager.com',
                 'https://www.google-analytics.com',
-                'https://connect.facebook.net'
+                'https://connect.facebook.net',
+                ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])
             ],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
@@ -76,7 +90,8 @@ app.use(helmet({
                     'https://region1.google-analytics.com',
                     'https://stats.g.doubleclick.net',
                     'https://connect.facebook.net',
-                    'https://www.facebook.com'
+                    'https://www.facebook.com',
+                    ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])
                 ];
                 try {
                     // أصل الموقع يُشتق من SITE_URL بدل نطاق مكتوب يدوياً،
@@ -98,10 +113,10 @@ app.use(helmet({
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'", 'https://assets.mixkit.co'],
-            frameSrc: ["'self'"],
+            frameSrc: ["'self'", ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])],
             frameAncestors: ["'self'"],
             baseUri: ["'self'"],
-            formAction: ["'self'"],
+            formAction: ["'self'", ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])],
             upgradeInsecureRequests: null,
             ...(forceHttps ? { upgradeInsecureRequests: [] } : {})
         }
@@ -121,7 +136,8 @@ app.use(helmet({
 // helmet v8 أزال ميدلوير Permissions-Policy (فتجاهل الخيار بصمت)، لذا نضبط الترويسة يدوياً:
 // تعطيل الوصول للكاميرا/الميكروفون/الموقع/USB مع السماح بالدفع لنفس الأصل فقط.
 app.use((req, res, next) => {
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(self), usb=()');
+    const paymentAllowance = paymentGatewayOrigin ? ` ${paymentGatewayOrigin}` : '';
+    res.setHeader('Permissions-Policy', `camera=(), microphone=(), geolocation=(), payment=(self${paymentAllowance}), usb=()`);
     next();
 });
 
@@ -130,9 +146,19 @@ app.use((req, res, next) => {
 // قبل المحلل العام، وإلا رُفض الطلب بـ 413 قبل أن يصل إلى المتحكم.
 const jsonSmall = express.json({ limit: '10kb' });
 const jsonImport = express.json({ limit: '2mb' });
+// webhook بوابة الدفع يحتاج الجسم الخام (Buffer) للتحقق من التوقيع،
+// وصفحة المحاكاة ترسل نموذج HTML عادياً (urlencoded).
+const rawWebhook = express.raw({ type: '*/*', limit: '256kb' });
+const urlEncodedSmall = express.urlencoded({ extended: false, limit: '10kb' });
 app.use((req, res, next) => {
     if (req.method === 'POST' && req.path === '/api/admin/inventory/import') {
         return jsonImport(req, res, next);
+    }
+    if (req.method === 'POST' && req.path === '/api/payments/webhook') {
+        return rawWebhook(req, res, next);
+    }
+    if (req.method === 'POST' && req.path === '/api/payments/mock/complete') {
+        return urlEncodedSmall(req, res, next);
     }
     return jsonSmall(req, res, next);
 });
@@ -664,7 +690,7 @@ app.get('/product/:productId', async (req, res, next) => {
     } catch (_err) {
         return next();
     }
-    if (!product || !product.isActive) {
+    if (!product || !product.isActive || !isDeliverable(product)) {
         return next();
     }
 
@@ -731,6 +757,7 @@ app.use('/api/admin', (req, res, next) => {
     return csrfProtection.validate(req, res, next);
 });
 app.use('/api/admin', adminRoutes);
+app.use('/api', paymentRoutes);
 app.use('/api', storeRoutes);
 app.use('/api', userRoutes);
 

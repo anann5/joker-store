@@ -14,6 +14,8 @@ const currency = require('../providers/currency');
 const fxPricing = require('../providers/fxPricing');
 const { PUBLIC_UPLOAD_DIR, PRIVATE_PROOF_DIR, MAX_UPLOAD_BYTES, PROOF_URL_RE } = require('../middleware/upload');
 const objectStorage = require('../services/objectStorage');
+const payments = require('../providers/payments');
+const { computeAvailableStock, hasEnoughStock, withDeliverableStock } = require('../services/inventory');
 
 const DEFAULT_PRODUCT_LIMIT = 8;
 const MAX_PRODUCT_LIMIT = 24;
@@ -91,11 +93,9 @@ function toPublicProduct(product) {
         subscriptionDuration: source.subscriptionDuration,
         rating: Number(source.rating) || 0,
         reviewsCount: Number(source.reviewsCount) || 0,
-        availableStock: source.isExternal
-            ? null
-            : (Array.isArray(source.codes)
-                ? source.codes.filter(code => code.status === 'available').length
-                : null),
+        // المنتج الخارجي بلا مخزون معروف (providerStock = null) يُعرض كنافد،
+        // لا «متاح بلا حد» — وإلا قُبل طلب لا يمكن تسليمه من أي مزوّد.
+        availableStock: computeAvailableStock(source),
         updatedAt: source.updatedAt || null
     };
 }
@@ -176,7 +176,7 @@ exports.getProductsByCategory = async (req, res) => {
         const requestedRegion = typeof req.query.region === 'string'
             ? normalizeRegion(req.query.region, '')
             : '';
-        const filter = { category: categoryKey, isActive: true };
+        const filter = withDeliverableStock({ category: categoryKey, isActive: true });
         if (requestedRegion) filter.region = requestedRegion;
 
         const products = await Product.find(filter);
@@ -253,6 +253,8 @@ exports.getSiteConfig = async (_req, res) => {
                 currency: { ...siteSettings.currency, ...displayCurrency },
                 social: siteSettings.social,
                 analytics: siteSettings.analytics,
+                // الدفع الإلكتروني: enabled=false يُبقي الواجهة على التحويل اليدوي
+                payments: payments.getPublicConfig(),
                 push: {
                     enabled: pushService.isPushEnabled(),
                     publicKey: pushService.getPushStatus().publicKey,
@@ -494,7 +496,6 @@ exports.getBestSellingProducts = async (req, res) => {
                 }
             },
             { $sort: { totalSold: -1 } },
-            { $limit: limit },
             {
                 $lookup: {
                     from: 'products',
@@ -504,6 +505,17 @@ exports.getBestSellingProducts = async (req, res) => {
                 }
             },
             { $unwind: '$productDetails' },
+            // إخفاء المنتجات غير القابلة للتسليم من قائمة الأكثر مبيعاً
+            // (نفس قاعدة withDeliverableStock لكن داخل aggregation).
+            {
+                $match: {
+                    $or: [
+                        { 'productDetails.isExternal': { $ne: true } },
+                        { 'productDetails.providerStock': { $gt: 0 } }
+                    ]
+                }
+            },
+            { $limit: limit },
             {
                 $project: {
                     _id: '$productDetails._id',
@@ -513,6 +525,8 @@ exports.getBestSellingProducts = async (req, res) => {
                     image: '$productDetails.image',
                     category: '$productDetails.category',
                     region: '$productDetails.region',
+                    isExternal: '$productDetails.isExternal',
+                    providerStock: '$productDetails.providerStock',
                     isSubscription: '$productDetails.isSubscription',
                     subscriptionType: '$productDetails.subscriptionType',
                     subscriptionDuration: '$productDetails.subscriptionDuration',
@@ -546,11 +560,11 @@ exports.getSuggestedProducts = async (req, res) => {
         const categories = [...new Set(cartProducts.map(p => p.category).filter(Boolean))];
 
         // اقتراح منتجات من نفس الفئة + الأكثر مبيعاً + تستبعد المنتجات في السلة
-        const suggested = await Product.find({
+        const suggested = await Product.find(withDeliverableStock({
             isActive: true,
             category: { $in: categories },
             _id: { $nin: productIds }
-        }).sort({ reviewsCount: -1, rating: -1 }).limit(6);
+        })).sort({ reviewsCount: -1, rating: -1 }).limit(6);
 
         res.json({ success: true, products: suggested.map(toPublicProduct) });
     } catch (_err) {
@@ -565,7 +579,7 @@ exports.getNewlyAddedProducts = async (req, res) => {
     try {
         const limit = parseProductLimit(req.query.limit);
         const products = await cacheWrap(`newly-${limit}`, DEFAULT_CACHE_TTL_SECONDS, () =>
-            Product.find({ isActive: true }).sort({ createdAt: -1 }).limit(limit)
+            Product.find(withDeliverableStock({ isActive: true })).sort({ createdAt: -1 }).limit(limit)
         );
 
         res.json({ success: true, products: products.map(toPublicProduct) });
@@ -591,11 +605,11 @@ exports.getRelatedProducts = async (req, res) => {
             return res.status(404).json({ success: false, error: 'المنتج الأصلي غير موجود' });
         }
 
-        const products = await Product.find({
+        const products = await Product.find(withDeliverableStock({
             category: originalProduct.category,
             _id: { $ne: productId },
             isActive: true
-        }).limit(limit);
+        })).limit(limit);
 
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (err) {
@@ -614,7 +628,7 @@ exports.getProductItem = async (req, res) => {
         if (!productId || typeof productId !== 'string' || !/^[a-fA-F0-9]{24}$/.test(productId)) {
             return res.status(400).json({ success: false, error: 'معرف المنتج غير صالح' });
         }
-        const product = await Product.findOne({ _id: productId, isActive: true });
+        const product = await Product.findOne(withDeliverableStock({ _id: productId, isActive: true }));
         if (!product) {
             return res.status(404).json({ success: false, error: 'المنتج غير موجود' });
         }
@@ -645,7 +659,7 @@ exports.getProductItem = async (req, res) => {
  */
 exports.getSearchIndex = async (_req, res) => {
     try {
-        const products = await cacheWrap('search-index', 300, () => Product.find({ isActive: true }));
+        const products = await cacheWrap('search-index', 300, () => Product.find(withDeliverableStock({ isActive: true })));
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (_err) {
         res.status(500).json({ success: false, error: 'فشل في بناء فهرس البحث.' });
@@ -670,11 +684,14 @@ exports.getActivePromotions = async (_req, res) => {
             for (const promo of docs) {
                 let products = [];
                 if (promo.productId) {
-                    const product = await Product.findOne({ _id: promo.productId, isActive: true });
+                    const product = await Product.findOne(withDeliverableStock({ _id: promo.productId, isActive: true }));
                     if (product) products = [product];
                 } else if (promo.category) {
-                    products = await Product.find({ category: promo.category, isActive: true });
+                    products = await Product.find(withDeliverableStock({ category: promo.category, isActive: true }));
                 }
+
+                // عرض بلا منتجات ظاهرة (كلها مخفية) لا معنى لعرضه
+                if (products.length === 0) continue;
 
                 const discountFactor = 1 - Number(promo.discountPercent) / 100;
                 result.push({
@@ -838,13 +855,10 @@ exports.createOrder = async (req, res) => {
                 return res.status(400).json({ success: false, error: 'أحد المنتجات لم يعد متاحاً.' });
             }
 
-            if (!product.isExternal) {
-                const availableCodes = Array.isArray(product.codes)
-                    ? product.codes.filter(code => code.status === 'available').length
-                    : 0;
-                if (availableCodes < qty) {
-                    return res.status(409).json({ success: false, error: 'الكمية المطلوبة غير متوفرة لأحد المنتجات.' });
-                }
+            // فحص المخزون للجميع: المحلي من الأكواد المتاحة، والخارجي من مخزون المزوّد.
+            // المنتج الخارجي بمخزون غير معروف (null) يُرفض بدل قبول طلب لا يمكن تسليمه.
+            if (!hasEnoughStock(product, qty)) {
+                return res.status(409).json({ success: false, error: 'الكمية المطلوبة غير متوفرة لأحد المنتجات.' });
             }
 
             const unitPrice = fxPricing.resolveUnitPrice(product, fxRates);
@@ -1114,7 +1128,7 @@ exports.searchAll = async (req, res) => {
         else if (sort === 'rating') sortOption = { rating: -1 };
         else if (sort === 'popular') sortOption = { reviewsCount: -1 };
 
-        const products = await Product.find(query).sort(sortOption).limit(20);
+        const products = await Product.find(withDeliverableStock(query)).sort(sortOption).limit(20);
 
         res.json({ success: true, products: products.map(toPublicProduct) });
     } catch (_err) {

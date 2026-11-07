@@ -50,6 +50,7 @@ function makeActiveProduct() {
         image: '/image/pubg.png',
         isActive: true,
         isExternal: true,
+        providerStock: 10,
         rating: 4.5,
         reviewsCount: 12
     };
@@ -67,7 +68,11 @@ describe('GET /api/products/item/:productId', () => {
 
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
-        expect(Product.findOne).toHaveBeenCalledWith({ _id: PRODUCT_ID, isActive: true });
+        expect(Product.findOne).toHaveBeenCalledWith({
+            _id: PRODUCT_ID,
+            isActive: true,
+            $and: [{ $or: [{ isExternal: { $ne: true } }, { providerStock: { $gt: 0 } }] }]
+        });
         expect(res.body.product).toEqual(expect.objectContaining({
             _id: PRODUCT_ID,
             category: 'pubg',
