@@ -488,7 +488,11 @@ exports.refundOrder = async (req, res) => {
         if (order.paymentMode !== 'online' || !order.gatewayRef) {
             return res.status(400).json({ success: false, message: 'الطلب ليس مدفوعاً إلكترونياً' });
         }
-        if (order.paymentStatus === 'refunded') {
+        // ضابط صارم: الاسترجاع فقط لطلب مدفوع فعلياً (paid)
+        if (order.paymentStatus !== 'paid') {
+            return res.status(400).json({ success: false, message: 'الطلب ليس مدفوعاً (paid) — لا يمكن استرجاعه' });
+        }
+        if (order.paymentStatus === 'refunded' || order.refundRef) {
             return res.status(409).json({ success: false, message: 'تم استرجاع الطلب مسبقاً' });
         }
 
@@ -497,16 +501,29 @@ exports.refundOrder = async (req, res) => {
             return res.status(503).json({ success: false, message: 'بوابة الدفع غير مهيّأة حالياً' });
         }
 
-        const requested = Number(req.body?.amount);
+        const reason = String(req.body?.reason || '').trim();
+        if (reason.length < 5) {
+            return res.status(400).json({ success: false, message: 'سبب الاسترجاع مطلوب (5 أحرف على الأقل)' });
+        }
+
         const orderPrice = Number(order.price) || 0;
-        const amount = Number.isFinite(requested) && requested > 0
-            ? Math.min(requested, orderPrice)
-            : orderPrice;
+        const requested = Number(req.body?.amount);
+        // إن أُرسل مبلغ، يجب أن يكون صالحاً وموجباً ولا يتجاوز سعر الطلب
+        let amount = orderPrice;
+        if (req.body?.amount !== undefined && req.body?.amount !== null && req.body?.amount !== '') {
+            if (!Number.isFinite(requested) || requested <= 0) {
+                return res.status(400).json({ success: false, message: 'مبلغ الاسترجاع غير صالح' });
+            }
+            if (requested > orderPrice) {
+                return res.status(400).json({ success: false, message: 'مبلغ الاسترجاع يتجاوز سعر الطلب' });
+            }
+            amount = Math.round(requested * 100) / 100;
+        }
 
         const result = await gateway.refund({
             gatewayRef: order.gatewayRef,
             amount,
-            reason: String(req.body?.reason || 'admin_request').slice(0, 120)
+            reason: reason.slice(0, 120)
         });
 
         if (!result?.ok) {
@@ -523,7 +540,7 @@ exports.refundOrder = async (req, res) => {
 
         await createLog(
             'استرجاع دفع',
-            `تم استرجاع ${amount} من الطلب #${order.orderId}${isFullRefund ? ' (كامل)' : ' (جزئي)'}`,
+            `تم استرجاع ${amount} من الطلب #${order.orderId}${isFullRefund ? ' (كامل)' : ' (جزئي)'} — السبب: ${reason.slice(0, 120)}`,
             req,
             order._id,
             order.productName

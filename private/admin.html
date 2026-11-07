@@ -901,6 +901,45 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
         </div>
     </div>
 
+    <!-- Modal: استرجاع دفع إلكتروني (آمن + تأكيد) -->
+    <div class="modal-overlay" id="refundModal">
+        <div class="modal-content">
+            <button class="close-modal-btn" id="closeRefundModalBtn">&times;</button>
+            <h3 class="modal-title"><i class="fas fa-undo"></i> استرجاع دفع إلكتروني</h3>
+            <div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);border-radius:12px;padding:12px 14px;font-size:.85rem;margin-bottom:14px;">
+                ⚠️ **تحذير العمولة:** عمولة البوابة الأصلية **لا تُسترد** في أغلب البوابات وتتحملها أنت. راجِع المبلغ قبل التأكيد.
+            </div>
+            <div style="font-size:.88rem;margin-bottom:14px;" id="refundOrderSummary">—</div>
+            <div class="form-group">
+                <label>مبلغ الاسترجاع (اتركه فارغاً = كامل)</label>
+                <input type="number" id="refundAmount" class="form-control" min="0.01" step="0.01" placeholder="كامل المبلغ">
+                <small style="color:var(--text-muted);">سيُتحقق من أنه موجب ولا يتجاوز سعر الطلب.</small>
+            </div>
+            <div class="form-group">
+                <label>سبب الاسترجاع * (يُدقَّق في السجل)</label>
+                <select id="refundReasonSelect" class="form-control">
+                    <option value="faulty_code">كود تالف/غير صالح</option>
+                    <option value="duplicate_payment">دفع مكرر</option>
+                    <option value="customer_request">طلب الزبون</option>
+                    <option value="fulfilment_failed">تعذّر التسليم</option>
+                    <option value="other">سبب آخر (اشرح بالأسفل)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>ملاحظة إضافية (اختيارية، 5 أحرف على الأقل عند «سبب آخر»)</label>
+                <textarea id="refundReasonNote" class="form-control" rows="2" maxlength="120" placeholder="مثال: الكود تم إرساله لكنه مستعمل"></textarea>
+            </div>
+            <div class="form-group">
+                <label>تأكيد: اكتب رقم الطلب <b id="refundConfirmHint" style="color:var(--primary);"></b> *</label>
+                <input type="text" id="refundConfirmInput" class="form-control" placeholder="اكتب رقم الطلب للتأكيد" autocomplete="off">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelRefundBtn">إلغاء</button>
+                <button class="btn btn-reject" id="confirmRefundBtn" disabled style="min-width:170px;"><i class="fas fa-undo"></i> تنفيذ الاسترجاع</button>
+            </div>
+        </div>
+    </div>
+
     <!-- شريط تنقّل سفلي للجوال فقط (يظهر عند ≤900px) — نفس أزرار التبويبات العلوية -->
     <nav class="mobile-bottom-nav" aria-label="تنقّل سريع للجوال">
         <button class="mobile-nav-item active" data-target="dashboardTabBtn"><i class="fas fa-chart-pie"></i><span>الرئيسية</span></button>

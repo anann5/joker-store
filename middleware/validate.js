@@ -206,6 +206,22 @@ exports.contactSchema = Joi.object({
 });
 
 /**
+ * مخطط استرجاع طلب مدفوع إلكترونياً — ضوابط صارمة:
+ * سبب إلزامي واضح (للتدقيق) + مبلغ موجب اختياري (افتراضي = كامل)
+ */
+exports.refundSchema = Joi.object({
+    amount: Joi.number().positive().max(1000000).precision(2).optional().messages({
+        'number.positive': 'مبلغ الاسترجاع يجب أن يكون موجباً',
+        'number.max': 'مبلغ الاسترجاع كبير جداً'
+    }),
+    reason: Joi.string().trim().min(5).max(120).required().messages({
+        'string.empty': 'سبب الاسترجاع مطلوب (للتدقيق)',
+        'string.min': 'سبب الاسترجاع قصير جداً (5 أحرف على الأقل)',
+        'any.required': 'سبب الاسترجاع مطلوب'
+    })
+});
+
+/**
  * Middleware للتحقق المتسامح: يقبل الحقول الإضافية التي قد يرسلها
  * الواجهات الأمامية (مثل manualCodes) ولا يكسر الطلب.
  * @param {Object} schema - مخطط Joi للتحقق منه

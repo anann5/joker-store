@@ -239,6 +239,7 @@ const initAdmin = async () => {
         const id = btn.getAttribute('data-order-id') || btn.getAttribute('data-id');
         if (action === 'approve-order') approveOrder(id);
         else if (action === 'reject-order') rejectOrder(id);
+        else if (action === 'refund-order') openRefundModal(id, btn);
         else if (action === 'show-codes') showCodes(id);
         else if (action === 'add-codes') openAddCodesModal(id);
         else if (action === 'edit-product') editProduct(id);
@@ -522,6 +523,24 @@ const initAdmin = async () => {
     if (addCodesModalEl) {
         addCodesModalEl.addEventListener('click', (e) => { if (e.target === addCodesModalEl) closeAddCodesModal(); });
     }
+
+    // === استرجاع دفع إلكتروني (نافذة الواجب) ===
+    const refundModalEl = document.getElementById('refundModal');
+    const closeRefundBtn = document.getElementById('closeRefundModalBtn');
+    const cancelRefundBtn = document.getElementById('cancelRefundBtn');
+    const confirmRefundBtn = document.getElementById('confirmRefundBtn');
+    const closeRefundModal = () => closeModal(refundModalEl);
+    if (closeRefundBtn) closeRefundBtn.addEventListener('click', closeRefundModal);
+    if (cancelRefundBtn) cancelRefundBtn.addEventListener('click', closeRefundModal);
+    if (confirmRefundBtn) confirmRefundBtn.addEventListener('click', confirmRefund);
+    if (refundModalEl) refundModalEl.addEventListener('click', (e) => { if (e.target === refundModalEl) closeRefundModal(); });
+    ['refundConfirmInput', 'refundAmount', 'refundReasonNote', 'refundReasonSelect'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', updateRefundConfirmState);
+            el.addEventListener('change', updateRefundConfirmState);
+        }
+    });
 
     // Edit modal
     const saveEditBtn = document.getElementById('saveEditBtn');
@@ -1708,12 +1727,21 @@ function renderOrders(orders) {
                     : '')
             )}</div>`
             : '';
-        const actionButtons = status === 'pending'
-            ? `<button class="btn btn-approve btn-sm" data-action="approve-order" data-order-id="${order.orderId}"><i class="fas fa-check"></i> اعتماد</button>
-               <button class="btn btn-reject btn-sm" data-action="reject-order" data-order-id="${order.orderId}" style="margin-right:4px;"><i class="fas fa-times"></i> رفض</button>`
-            : (status === 'completed' && order.deliveredCodes && order.deliveredCodes.length > 0
-                ? `<button class="btn btn-secondary btn-sm" data-action="show-codes" data-order-id="${order.orderId}"><i class="fas fa-eye"></i> الأكواد</button>`
-                : '—');
+        const canRefund = order.paymentMode === 'online' && paymentStatus === 'paid';
+        const refundBtn = canRefund
+            ? `<button class="btn btn-secondary btn-sm refund-btn" data-action="refund-order" data-order-id="${escapeHtml(order.orderId)}" data-price="${total}" title="استرجاع إلكتروني (عمولة البوابة لا تعود)"><i class="fas fa-undo"></i> استرجاع</button>`
+            : '';
+        let actionButtons = '';
+        if (status === 'pending') {
+            actionButtons = `<button class="btn btn-approve btn-sm" data-action="approve-order" data-order-id="${order.orderId}"><i class="fas fa-check"></i> اعتماد</button>
+               <button class="btn btn-reject btn-sm" data-action="reject-order" data-order-id="${order.orderId}" style="margin-right:4px;"><i class="fas fa-times"></i> رفض</button>`;
+        } else if (status === 'completed' && order.deliveredCodes && order.deliveredCodes.length > 0) {
+            actionButtons = `<button class="btn btn-secondary btn-sm" data-action="show-codes" data-order-id="${order.orderId}"><i class="fas fa-eye"></i> الأكواد</button> ${refundBtn}`;
+        } else if (canRefund) {
+            actionButtons = refundBtn;
+        } else {
+            actionButtons = '—';
+        }
 
         const canBulk = status === 'pending';
         return `
@@ -1824,6 +1852,127 @@ async function rejectOrder(orderId) {
             showAdminToast(`❌ ${data.message || 'فشل رفض الطلب'}`, 'error');
         }
     } catch (_err) { showAdminToast('❌ فشل الاتصال بالسيرفر', 'error'); }
+}
+
+// ======================================================
+//  استرجاع دفع إلكتروني — ضوابط عالية
+//  - سبب إلزامي + كتابة رقم الطلب للتأكيد + مبلغ متحقق منه
+//  - زر معطّل حتى صحة الحقول + منع النقر المزدوج
+// ======================================================
+let _refundOrderId = null;
+let _refundOrderPrice = 0;
+let _refundSubmitting = false;
+
+function openRefundModal(orderId, btn) {
+    _refundOrderId = orderId;
+    const price = Number(btn?.dataset.price) || 0;
+    _refundOrderPrice = price;
+
+    const order = _allOrdersCache.find(o => o.orderId === orderId);
+    const products = order?.items?.map(i => {
+        const n = (i.name && typeof i.name === 'object') ? (i.name.ar || i.name.en || '') : (i.name || i.id || '');
+        const q = i.qty ?? i.quantity ?? 1;
+        return `${n} (×${q})`;
+    }).join('، ') || order?.productName || '—';
+    const summary = document.getElementById('refundOrderSummary');
+    if (summary) {
+        summary.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <span>الطلب: <b style="color:var(--primary);">#${escapeHtml(orderId)}</b></span>
+                <span>المبلغ: <b>${formatMoney(price)}</b></span>
+                <span>الزبون: ${escapeHtml(order?.buyerEmail || '—')}</span>
+            </div>
+            <div style="margin-top:6px;color:var(--text-muted);">المنتجات: ${escapeHtml(products)}</div>`;
+    }
+
+    const hint = document.getElementById('refundConfirmHint');
+    if (hint) hint.textContent = `#${orderId}`;
+    const amountInput = document.getElementById('refundAmount');
+    if (amountInput) { amountInput.value = ''; amountInput.placeholder = `كامل: ${price}`; }
+    const confirmInput = document.getElementById('refundConfirmInput');
+    if (confirmInput) confirmInput.value = '';
+    const reasonSelect = document.getElementById('refundReasonSelect');
+    if (reasonSelect) reasonSelect.value = 'faulty_code';
+    const reasonNote = document.getElementById('refundReasonNote');
+    if (reasonNote) reasonNote.value = '';
+    const confirmBtn = document.getElementById('confirmRefundBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    openModal(document.getElementById('refundModal'));
+    setTimeout(() => confirmInput?.focus(), 100);
+}
+
+function updateRefundConfirmState() {
+    const confirmBtn = document.getElementById('confirmRefundBtn');
+    const confirmInput = document.getElementById('refundConfirmInput');
+    const amountInput = document.getElementById('refundAmount');
+    const reasonNote = document.getElementById('refundReasonNote');
+    const reasonSelect = document.getElementById('refundReasonSelect');
+    if (!confirmBtn || !confirmInput) return;
+
+    const typed = confirmInput.value.trim().toUpperCase();
+    const expected = String(_refundOrderId || '').toUpperCase();
+    const typedOk = expected && typed === expected;
+
+    let amountOk = true;
+    const rawAmount = amountInput ? amountInput.value.trim() : '';
+    if (rawAmount !== '') {
+        const amt = Number(rawAmount);
+        amountOk = Number.isFinite(amt) && amt > 0 && amt <= _refundOrderPrice;
+    }
+    const reasonOk = reasonSelect && reasonNote
+        ? (reasonSelect.value !== 'other' || reasonNote.value.trim().length >= 5)
+        : true;
+
+    confirmBtn.disabled = !(typedOk && amountOk && reasonOk) || _refundSubmitting;
+}
+
+async function confirmRefund() {
+    if (_refundSubmitting) return;
+    if (!_refundOrderId) return;
+    const amountInput = document.getElementById('refundAmount');
+    const reasonSelect = document.getElementById('refundReasonSelect');
+    const reasonNote = document.getElementById('refundReasonNote');
+    const confirmBtn = document.getElementById('confirmRefundBtn');
+
+    const rawAmount = amountInput ? amountInput.value.trim() : '';
+    const amount = rawAmount === '' ? _refundOrderPrice : Number(rawAmount);
+    const baseReason = reasonSelect ? reasonSelect.value : 'admin_request';
+    const note = reasonNote ? reasonNote.value.trim() : '';
+    const reason = (note ? `${baseReason}: ${note}` : baseReason).slice(0, 120);
+
+    _refundSubmitting = true;
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جارٍ الاسترجاع...';
+    }
+
+    try {
+        const csrfToken = await ensureAdminCsrfToken();
+        const res = await fetch(`/api/admin/orders/${_refundOrderId}/refund`, {
+            method: 'POST', credentials: 'include',
+            headers: buildJsonHeaders({ 'X-CSRF-Token': csrfToken || '' }),
+            body: JSON.stringify({ amount, reason })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showAdminToast(`✅ ${data.message} — ${formatMoney(data.amount)} (مرجع: ${data.refundRef || '—'})`, 'success');
+            closeModal(document.getElementById('refundModal'));
+            loadRecentOrders();
+            loadDashboard();
+            loadQuickPending();
+        } else {
+            showAdminToast(`❌ ${data.message || 'فشل الاسترجاع'}`, 'error');
+        }
+    } catch (_err) {
+        showAdminToast('❌ فشل الاتصال بالسيرفر', 'error');
+    } finally {
+        _refundSubmitting = false;
+        if (confirmBtn) {
+            confirmBtn.innerHTML = '<i class="fas fa-undo"></i> تنفيذ الاسترجاع';
+        }
+        updateRefundConfirmState();
+    }
 }
 
 // تُستدعى من أزرار الجدول (event delegation)

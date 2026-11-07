@@ -29,7 +29,8 @@ const {
     categoryIdParamSchema,
     productIdParamSchema,
     promotionIdParamSchema,
-    pushBroadcastSchema
+    pushBroadcastSchema,
+    refundSchema
 } = require('../middleware/validate');
 
 // تعريف ليميتر بسيط خاص بمسارات الأدمن لحمايتها
@@ -38,6 +39,14 @@ const adminLimiter = rateLimit({
     max: 50,
     keyGenerator: rateLimitKey,
     message: "محاولات كثيرة، يرجى الانتظار." //
+});
+
+// ليميتر صارم للاسترجاع: عملية مالية حساسة — 20 محاولة/ساعة لكل IP
+const refundLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    keyGenerator: rateLimitKey,
+    message: { success: false, message: 'تجاوزت حد محاولات الاسترجاع (20/ساعة). يرجى الانتظار.' }
 });
 
 // مسار تسجيل الدخول (غير محمي بالتوكن)
@@ -78,7 +87,7 @@ router.get('/orders', orderController.getOrders);
 router.get('/orders/export', orderController.exportOrdersCSV);
 router.post('/orders/:orderId/approve', validateParams(orderIdParamSchema), orderController.approveOrder);
 router.post('/orders/:orderId/reject', validateParams(orderIdParamSchema), orderController.rejectOrder);
-router.post('/orders/:orderId/refund', validateParams(orderIdParamSchema), orderController.refundOrder);
+router.post('/orders/:orderId/refund', refundLimiter, validateParams(orderIdParamSchema), validate(refundSchema), orderController.refundOrder);
 router.get('/reports', statsController.getReports);
 router.get('/pricing/compare', statsController.getLivePricing);
 router.get('/categories', categoryController.getCategories);
