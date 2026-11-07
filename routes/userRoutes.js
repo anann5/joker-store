@@ -6,11 +6,13 @@ const { verifyUserToken, verifyUserTokenOptional } = require('../middleware/auth
 const { validate, loginSchema, registerSchema, forgotPasswordSchema, resetPasswordSchema } = require('../middleware/validate');
 const csrfProtection = require('../middleware/csrf');
 const rateLimit = require("express-rate-limit");
+const { rateLimitKey } = require('../middleware/clientIp');
 
 // Rate limiter for authentication routes (prevent brute force)
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 10, // max 10 attempts per IP
+    keyGenerator: rateLimitKey,
     message: "عدد محاولات تسجيل الدخول كبير جداً، يرجى المحاولة لاحقاً."
 });
 
@@ -18,11 +20,13 @@ const authLimiter = rateLimit({
 const forgotPasswordLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 5,
+    keyGenerator: rateLimitKey,
     message: "عدد طلبات الاستعادة كبير جداً، يرجى المحاولة بعد قليل."
 });
 const resetPasswordLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
+    keyGenerator: rateLimitKey,
     message: "عدد محاولات إعادة التعيين كبير جداً، يرجى المحاولة بعد قليل."
 });
 
@@ -47,10 +51,12 @@ router.put('/users/cart', csrfProtection.validate, verifyUserToken, userAuthCont
 const logoutLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
+    keyGenerator: rateLimitKey,
     message: "طلبات كثيرة، يرجى الانتظار قليلاً."
 });
 
-// تسجيل الخروج: يمسح الكوكي ولا يتطلب توكن صالحاً (حتى مع توكن منتهي)
-router.post('/users/logout', logoutLimiter, userAuthController.logout);
+// تسجيل الخروج: يمسح الكوكي ولا يتطلب توكن صالحاً (حتى مع توكن منتهي).
+// CSRF مطلوب لأن الكوكي وحدها تكفي لتنفيذ الطلب (منع تسجيل خروج قسري).
+router.post('/users/logout', logoutLimiter, csrfProtection.validate, userAuthController.logout);
 
 module.exports = router;

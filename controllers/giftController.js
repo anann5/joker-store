@@ -15,8 +15,10 @@ async function getGift(req, res) {
         if (!TOKEN_RE.test(token)) {
             return res.status(404).json({ success: false, error: 'الهدية غير موجودة' });
         }
+        // giftToken/giftOpenedAt يجب أن يكونا ضمن الـ projection وإلا صار الشرط
+        // التالي صحيحاً دائماً وأرجع المسار 404 لكل هدية صالحة.
         const order = await Order.findOne({ giftToken: token })
-            .select('orderId status productName items.name items.qty giftToName giftMessage deliveredCodes code completedAt')
+            .select('orderId status productName items.name items.qty giftToName giftMessage giftToken giftOpenedAt deliveredCodes code completedAt')
             .lean();
         if (!order || !order.giftToken) {
             return res.status(404).json({ success: false, error: 'الهدية غير موجودة' });

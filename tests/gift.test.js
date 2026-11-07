@@ -119,8 +119,25 @@ describe('POST /api/checkout with gift', () => {
 describe('GET /api/gift/:token', () => {
     const TOKEN = '123e4567-e89b-12d3-a456-426614174000';
 
+    // يحاكي projection في Mongoose: الحقول غير المطلوبة في select لا تُعاد.
+    // بدون هذا المحاكاة يمر الاختبار حتى لو نسي المتحكم اختيار giftToken.
     function mockOrder(order) {
-        Order.findOne.mockReturnValue({ select: () => ({ lean: async () => order }) });
+        Order.findOne.mockReturnValue({
+            select: (fields) => ({
+                lean: async () => {
+                    if (!order) return order;
+                    const allowed = new Set(['_id']);
+                    for (const raw of String(fields).split(/\s+/)) {
+                        if (!raw) continue;
+                        allowed.add(raw);
+                        allowed.add(raw.split('.')[0]);
+                    }
+                    return Object.fromEntries(
+                        Object.entries(order).filter(([key]) => allowed.has(key))
+                    );
+                }
+            })
+        });
     }
 
     it('reveals codes for completed gift orders without leaking buyer data', async () => {

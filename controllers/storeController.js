@@ -853,13 +853,20 @@ exports.createOrder = async (req, res) => {
             }
             const itemPrice = round2(unitPrice * qty);
             total += itemPrice;
-            orderCost += (Number(product.costPrice) || 0) * qty;
+            // تكلفة الوحدة = سعر الشراء الفعلي من المزوّد (basePrice)، أو آخر سعر
+            // مزوّد معروف. كلاهما بعملة المتجر (ILS). مخطط Product لا يحتوي costPrice،
+            // لذا كان الحساب السابق صفراً دائماً وأفسد حماية الهامش.
+            const unitCost = Number(product.basePrice) > 0
+                ? Number(product.basePrice)
+                : (Number(product.lastProviderPrice) > 0 ? Number(product.lastProviderPrice) : 0);
+            orderCost += unitCost * qty;
             itemsForOrder.push({
                 productId: product._id,
                 name: getLocalizedValue(product.productName),
                 qty,
                 unitPrice,
                 price: itemPrice,
+                costPrice: round2(unitCost * qty),
                 fulfilmentType: product.isExternal ? 'external' : 'local',
                 fulfilmentStatus: 'pending'
             });
@@ -923,7 +930,9 @@ exports.createOrder = async (req, res) => {
             total = round2(total - loyaltyDiscount);
         }
 
-        const orderId = uuidv4().split('-')[0].toUpperCase();
+        // 12 خانة ست عشرية (48-bit) بدل 8 (32-bit): يقلّل احتمال تصادم الفهرس الفريد
+        // بشكل كبير. يجب أن يبقى ضمن حد orderIdParamSchema (6-12).
+        const orderId = uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase();
         const paymentStatus = paymentProofUrl ? 'under_review' : 'awaiting_payment';
         const reservationWindowMs = paymentProofUrl
             ? PAYMENT_REVIEW_WINDOW_HOURS * 60 * 60 * 1000

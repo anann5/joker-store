@@ -124,7 +124,7 @@ describe('POST /api/checkout — نقاط الولاء', () => {
     });
 
     it('يقيّد خصم النقاط بأرضية التكلفة فلا يقل الإجمالي عن التكلفة', async () => {
-        Product.find.mockResolvedValue([makeProduct({ price: 10, costPrice: 9.5 })]);
+        Product.find.mockResolvedValue([makeProduct({ price: 10, basePrice: 9.5 })]);
         User.findOneAndUpdate.mockResolvedValue({ loyaltyPoints: 0 });
 
         const res = await checkout(10);
@@ -134,7 +134,7 @@ describe('POST /api/checkout — نقاط الولاء', () => {
     });
 
     it('يرفض استخدام النقاط ولا يخصمها إذا كانت الأرضية تمنع أي خصم', async () => {
-        Product.find.mockResolvedValue([makeProduct({ price: 10, costPrice: 10 })]);
+        Product.find.mockResolvedValue([makeProduct({ price: 10, basePrice: 10 })]);
 
         const res = await checkout(10);
 

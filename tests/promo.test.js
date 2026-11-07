@@ -352,7 +352,7 @@ describe('POST /api/checkout with promo code', () => {
 
     it('caps the discount so the total never drops below the order cost', async () => {
         mockPromotionFindOne.mockResolvedValue(makePromotion({ discountPercent: 50 }));
-        mockProductFind.mockResolvedValue([makeProduct({ price: 10, costPrice: 9 })]);
+        mockProductFind.mockResolvedValue([makeProduct({ price: 10, basePrice: 9 })]);
 
         const res = await request(app)
             .post('/api/checkout')

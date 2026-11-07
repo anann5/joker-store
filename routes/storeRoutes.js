@@ -139,6 +139,7 @@ router.get('/products/item/:productId', storeController.getProductItem);
 const reviewLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
+    keyGenerator: rateLimitKey,
     message: 'عدد التقييمات كبير جداً، يرجى المحاولة لاحقاً.'
 });
 router.post('/products/:productId/review', reviewLimiter, verifyUserToken, storeController.submitProductReview);
@@ -153,6 +154,7 @@ router.get('/promotions', storeController.getActivePromotions);
 const promoValidateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
+    keyGenerator: rateLimitKey,
     message: 'محاولات كثيرة للتحقق من الرمز، يرجى الانتظار قليلاً.'
 });
 router.post('/promotions/validate', promoValidateLimiter, storeController.validatePromoCode);
@@ -167,6 +169,7 @@ router.post('/products/suggested', storeController.getSuggestedProducts);
 const notifyLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
+    keyGenerator: rateLimitKey,
     message: 'محاولات كثيرة لتنبيهات المخزون، يرجى الانتظار قليلاً.'
 });
 // Stock-alert subscriptions — MUST be before :categoryKey catch-all
@@ -178,6 +181,7 @@ router.get('/products/:productId/notify', notifyLimiter, alertsController.getSto
 const giftLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 60,
+    keyGenerator: rateLimitKey,
     message: 'محاولات كثيرة، يرجى الانتظار قليلاً.'
 });
 router.get('/gift/:token', giftLimiter, giftController.getGift);

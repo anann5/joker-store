@@ -102,7 +102,17 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.json({ limit: '10kb' }));
+// الحد العام صغير لحماية الطلبات العادية، لكن استيراد CSV يرسل الملف كـ JSON
+// داخل { csvData } وقد يتجاوز 10KB بسهولة. نستخدم محللاً أكبر لهذا المسار فقط
+// قبل المحلل العام، وإلا رُفض الطلب بـ 413 قبل أن يصل إلى المتحكم.
+const jsonSmall = express.json({ limit: '10kb' });
+const jsonImport = express.json({ limit: '2mb' });
+app.use((req, res, next) => {
+    if (req.method === 'POST' && req.path === '/api/admin/inventory/import') {
+        return jsonImport(req, res, next);
+    }
+    return jsonSmall(req, res, next);
+});
 app.disable('x-powered-by');
 
 // قبل أي rate limiter: يحدد IP الزائر الحقيقي (CF-Connecting-IP) بدل IP الوكيل المشترك.

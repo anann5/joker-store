@@ -101,7 +101,7 @@ function makeProduct(overrides = {}) {
         _id: PRODUCT_ID,
         productName: { ar: 'منتج', en: 'Product' },
         price: 10,
-        costPrice: 4,
+        basePrice: 4,
         isActive: true,
         isExternal: false,
         codes: [

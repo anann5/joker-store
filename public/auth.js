@@ -479,7 +479,7 @@ async function syncUserCart() {
  */
 async function handleLogout() {
     try {
-        await fetch('/api/users/logout', {
+        await csrfFetch('/api/users/logout', {
             method: 'POST',
             credentials: 'include'
         });
