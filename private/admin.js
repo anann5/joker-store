@@ -844,13 +844,22 @@ async function loadHealth() {
         const data = await res.json();
         if (!data.success || !data.health) throw new Error('no health');
         const h = data.health;
+        // حالة 2FA تأتي من /api/admin/health (المسار محمي). تظهر كبطاقة خضراء
+        // عند التفعيل وحمراء عند التعطيل. تُخفى مع الخوادم الأقدم التي لا ترسل الحقل.
+        const twoFactorEnabled = h.security ? Boolean(h.security.twoFactorEnabled) : null;
         const cards = [
             { icon: '🟢', label: 'الحالة', value: h.status === 'healthy' ? 'سليم' : 'متدهور', color: h.status === 'healthy' ? '#22c55e' : '#ef4444' },
             { icon: '⏱️', label: 'مدة التشغيل', value: h.uptime },
             { icon: '🧠', label: 'الذاكرة', value: `${h.memory.heapUsed}/${h.memory.heapTotal} MB` },
             { icon: '🗄️', label: 'قاعدة البيانات', value: h.db, color: h.db === 'connected' ? '#22c55e' : '#ef4444' },
             { icon: '⏳', label: 'طلبات معلقة', value: String(h.orders.pending) },
-            { icon: '📦', label: 'مخزون منخفض', value: `${h.inventory.lowStockCount} / نفاد ${h.inventory.outOfStockCount}`, color: h.inventory.lowStockCount > 0 ? '#f59e0b' : '#22c55e' }
+            { icon: '📦', label: 'مخزون منخفض', value: `${h.inventory.lowStockCount} / نفاد ${h.inventory.outOfStockCount}`, color: h.inventory.lowStockCount > 0 ? '#f59e0b' : '#22c55e' },
+            ...(twoFactorEnabled === null ? [] : [{
+                icon: '🔐',
+                label: 'الحماية الثنائية (2FA)',
+                value: twoFactorEnabled ? 'مفعّلة' : 'معطّلة',
+                color: twoFactorEnabled ? '#22c55e' : '#ef4444'
+            }])
         ];
         grid.innerHTML = cards.map(c => `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;text-align:center;">
             <div style="font-size:1.1rem;">${c.icon}</div>
