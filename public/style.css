@@ -8549,6 +8549,30 @@ body.pwa-bar-visible .social-proof {
     transition: bottom 0.3s ease, opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
 }
 
+/* شريط السلة + شريط PWA: رفع شريط التثبيت فوق شريط السلة بدل تراكبهما */
+body.mobile-cart-open .pwa-install-bar {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+}
+
+/* صفحة المنتج + شريط تثبيت PWA: رفع شريط الشراء الثابت والطبقات فوق شريط التثبيت */
+@media (max-width: 768px) {
+    body.product-view.pwa-bar-visible:not(.mobile-cart-open) {
+        padding-bottom: 172px;
+    }
+
+    body.product-view.pwa-bar-visible:not(.mobile-cart-open) .product-sticky-cta {
+        bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.product-view.pwa-bar-visible:not(.mobile-cart-open) .whatsapp-float {
+        bottom: 176px;
+    }
+
+    body.product-view.pwa-bar-visible:not(.mobile-cart-open) .back-to-top-btn {
+        bottom: 238px;
+    }
+}
+
 /* ==================== Stock-alert notify button ==================== */
 .notify-stock-btn {
     width: 100%;
