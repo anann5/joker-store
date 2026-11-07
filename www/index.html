@@ -35,9 +35,10 @@
     <div class="brand">Joker Store</div>
     <div class="spinner"></div>
     <div class="hint">جاري تحميل المتجر…</div>
+    <script src="config.js"></script>
     <script>
-        if (location.hostname !== 'localhost') {
-            location.replace('https://joker-store.onrender.com' + (location.search || '') + (location.hash || ''));
+        if (location.hostname !== 'localhost' && window.JOKER_STORE_URL) {
+            location.replace(window.JOKER_STORE_URL + (location.search || '') + (location.hash || ''));
         }
     </script>
 </body>

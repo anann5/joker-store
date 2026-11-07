@@ -101,10 +101,11 @@
         </button>
         <div class="hint" id="hint" dir="ltr">No connection — check your internet and try again.</div>
     </main>
+    <script src="config.js"></script>
     <script>
         (function () {
             'use strict';
-            var STORE_URL = 'https://joker-store.onrender.com';
+            var STORE_URL = window.JOKER_STORE_URL || window.location.origin;
             var btn = document.getElementById('retryBtn');
             var hint = document.getElementById('hint');
             var logo = document.querySelector('.logo');

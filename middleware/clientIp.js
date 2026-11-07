@@ -12,8 +12,15 @@ const readIp = (value) => {
 // ويستبدل أي قيمة يرسلها العميل، لذا نعتمده أولاً.
 // لا نستخدم True-Client-IP: لا يستبدله Cloudflare، فيمكن تزويره لتحييد الحدود.
 // وإذا غاب ترويسة Cloudflare نرجع إلى IP الاتصال الفعلي (req.ip).
+//
+// على استضافة خاصة بلا Cloudflare (طلب مباشر إلى Caddy/Nginx) يستطيع العميل
+// إرسال CF-Connecting-IP مزوّراً، لذا اضبط TRUST_CF_CONNECTING_IP=false
+// ليعتمد التطبيق على req.ip المشتق من X-Forwarded-For (مع trust proxy).
+const trustCfConnectingIp = () => process.env.TRUST_CF_CONNECTING_IP !== 'false';
+
 const resolveClientIp = (headers = {}, fallback = '') => {
-    return readIp(headers['cf-connecting-ip'])
+    const fromCloudflare = trustCfConnectingIp() ? readIp(headers['cf-connecting-ip']) : '';
+    return fromCloudflare
         || readIp(fallback)
         || 'unknown';
 };

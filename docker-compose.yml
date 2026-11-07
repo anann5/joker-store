@@ -1,0 +1,57 @@
+# نشر خاص: تطبيق Node + Caddy (شهادة TLS تلقائية) على خادم VPS واحد.
+# الاستخدام:
+#   1. انسخ .env.example إلى .env واملأ القيم (بما فيها DOMAIN و SITE_URL).
+#   2. توجيه سجل DNS من النوع A (أو AAAA) للنطاق إلى عنوان الخادم.
+#   3. docker compose up -d --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: "5850"
+    expose:
+      - "5850"
+    # الرفوعات خارج الحاوية حتى لا تُفقد عند إعادة البناء أو التحديث.
+    volumes:
+      - uploads-public:/app/public/uploads
+      - uploads-private:/app/private/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5850/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      # القيمة تُقرأ من .env تلقائياً (Docker Compose interpolation).
+      # يفشل التشغيل بخطأ واضح إذا لم يُضبط DOMAIN.
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env, e.g. store.example.com}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  uploads-public:
+  uploads-private:
+  caddy-data:
+  caddy-config:

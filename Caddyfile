@@ -1,0 +1,21 @@
+# Caddyfile — TLS تلقائي عبر Let's Encrypt/ZeroSSL.
+# DOMAIN يُمرَّر من docker-compose (يُقرأ من .env).
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Caddy يضيف X-Forwarded-For وX-Forwarded-Proto تلقائياً؛ نضيف IP العميل
+	# الصريح ليستفيد التطبيق من req.ip عند تعطيل TRUST_CF_CONNECTING_IP.
+	reverse_proxy app:5850 {
+		header_up X-Real-IP {remote_host}
+	}
+
+	# لا نكرر ترويسات الأمان (HSTS/CSP) هنا — التطبيق يرسلها عبر helmet.
+	header {
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

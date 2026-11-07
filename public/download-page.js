@@ -2,7 +2,8 @@
 // ملف خارجي بدل سكربت سطري (سياسة CSP الصارمة تمنع السكربتات السطرية).
 (function () {
     const siteUrlEl = document.getElementById('siteUrl');
-    if (siteUrlEl) siteUrlEl.textContent = location.host || 'joker-store.onrender.com';
+    // نعرض المضيف الفعلي فقط — لا نطاق احتياطي حتى لا يظهر نطاق قديم بعد الانتقال.
+    if (siteUrlEl) siteUrlEl.textContent = location.host || location.hostname || '';
 
     const iosBtn = document.getElementById('iosBtn');
     const iosSteps = document.getElementById('iosSteps');

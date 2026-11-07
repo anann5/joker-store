@@ -41,4 +41,18 @@ describe('middleware/clientIp — IP الزائر خلف Cloudflare/Render', () 
         expect(rateLimitKey({ clientIp: '198.51.100.7' }))
             .toBe(rateLimitKey({ clientIp: '198.51.100.7', ip: '10.0.0.1' }));
     });
+
+    it('يتجاهل CF-Connecting-IP عند تعطيل الثقة به (استضافة خاصة بلا Cloudflare)', () => {
+        process.env.TRUST_CF_CONNECTING_IP = 'false';
+        try {
+            expect(resolveClientIp({ 'cf-connecting-ip': '1.2.3.4' }, '10.0.0.1')).toBe('10.0.0.1');
+        } finally {
+            delete process.env.TRUST_CF_CONNECTING_IP;
+        }
+    });
+
+    it('يبقي الثقة بـ CF-Connecting-IP مفعّلة افتراضياً', () => {
+        delete process.env.TRUST_CF_CONNECTING_IP;
+        expect(resolveClientIp({ 'cf-connecting-ip': '1.2.3.4' }, '10.0.0.1')).toBe('1.2.3.4');
+    });
 });

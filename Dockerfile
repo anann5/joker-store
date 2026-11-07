@@ -12,7 +12,11 @@ COPY --from=build /app/node_modules ./node_modules
 COPY . .
 
 # تشغيل التطبيق بمستخدم غير متميز (بلا صلاحيات root)
-RUN addgroup -S app && adduser -S -G app app && chown -R app:app /app
+# مجلدات الرفع تُنشأ مسبقاً بملكية مستخدم التطبيق حتى تعمل أحجام Docker
+# المسماة (named volumes) في docker-compose دون أخطاء صلاحيات.
+RUN addgroup -S app && adduser -S -G app app \
+    && mkdir -p public/uploads private/uploads/payments \
+    && chown -R app:app /app
 USER app
 
 EXPOSE 5850
