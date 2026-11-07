@@ -2408,6 +2408,8 @@ margin-bottom: 14px;
 .detail-img {
     aspect-ratio: 1 / 1;
     width: 100%;
+    height: auto;
+    display: block;
     object-fit: contain;
     object-position: center;
     padding: 12px;
