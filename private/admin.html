@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>لوحة تحكم JOKER STORE 🔒</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -189,7 +189,7 @@
                         <option value="out_of_stock">نفذ</option>
                     </select>
                 </div>
-                <table>
+                <table class="responsive-table">
                     <thead>
                         <tr>
                             <th style="width:36px;"><input type="checkbox" id="selectAllProducts" title="تحديد الكل"></th>
@@ -244,7 +244,7 @@
                     <button class="btn btn-approve btn-sm" id="bulkApproveBtn" data-tooltip="تأكيد الاختيارSelected"><i class="fas fa-check"></i> تأكيد المحدد</button>
                     <button class="btn btn-reject btn-sm" id="bulkRejectBtn" data-tooltip="رفض الطلبات المحددة"><i class="fas fa-times"></i> رفض المحدد</button>
                 </div>
-                <table>
+                <table class="responsive-table">
                     <thead>
                         <tr>
                             <th><input type="checkbox" id="ordersSelectAll"></th>
@@ -271,7 +271,7 @@
                     <h2 class="section-title">إدارة الأقسام</h2>
                     <button class="btn btn-approve" id="addCategoryBtn"><i class="fas fa-plus"></i> إضافة قسم</button>
                 </div>
-                <table>
+                <table class="responsive-table">
                     <thead>
                         <tr>
                             <th>المفتاح</th>
@@ -333,7 +333,7 @@
                     <button class="btn btn-secondary btn-sm" id="refreshAbandonedBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
                 </div>
                 <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:10px;">سلال لم يكمل أصحابها الشراء لأكثر من ساعة — يمكن التواصل معهم عبر البريد.</p>
-                <table>
+                <table class="responsive-table">
                     <thead>
                         <tr>
                             <th>البريد</th>
@@ -356,7 +356,7 @@
                     <h2 class="section-title"><i class="fas fa-users"></i> المستخدمون ونقاط الولاء</h2>
                     <button class="btn btn-secondary btn-sm" id="refreshUsersBtn"><i class="fas fa-sync-alt"></i> تحديث</button>
                 </div>
-                <table>
+                <table class="responsive-table">
                     <thead>
                         <tr>
                             <th>البريد</th>
@@ -888,6 +888,16 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
             </div>
         </div>
     </div>
+
+    <!-- شريط تنقّل سفلي للجوال فقط (يظهر عند ≤900px) — نفس أزرار التبويبات العلوية -->
+    <nav class="mobile-bottom-nav" aria-label="تنقّل سريع للجوال">
+        <button class="mobile-nav-item active" data-target="dashboardTabBtn"><i class="fas fa-chart-pie"></i><span>الرئيسية</span></button>
+        <button class="mobile-nav-item" data-target="ordersTabBtn"><i class="fas fa-file-invoice-dollar"></i><span>الطلبات</span></button>
+        <button class="mobile-nav-item" data-target="inventoryTabBtn"><i class="fas fa-boxes"></i><span>المخزون</span></button>
+        <button class="mobile-nav-item" data-target="promotionsTabBtn"><i class="fas fa-tags"></i><span>العروض</span></button>
+        <button class="mobile-nav-item" data-target="reportsTabBtn"><i class="fas fa-chart-line"></i><span>التقارير</span></button>
+        <button class="mobile-nav-item" data-target="settingsTabBtn"><i class="fas fa-cog"></i><span>الإعدادات</span></button>
+    </nav>
 
     <!-- Admin Toast -->
     <div id="adminToast" class="admin-toast"></div>

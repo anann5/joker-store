@@ -300,7 +300,43 @@ const initAdmin = async () => {
             else if (sectionId === 'settingsSection') loadPushSettings();
             else if (sectionId === 'ticketsSection') loadTickets();
             else if (sectionId === 'notificationsSection') { loadNotifications(); loadDiag(); }
+
+            // مزامنة شريط الجوال السفلي مع التبويب النشط
+            document.querySelectorAll('.mobile-nav-item').forEach(navItem => {
+                navItem.classList.toggle('active', navItem.dataset.target === btnId);
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
+    });
+
+    // === شريط التنقل السفلي (جوال) ===
+    // تُستدعى أزرار التبويبات نفسها حتى لا يتفرّع منطق التبديل
+    document.querySelectorAll('.mobile-nav-item').forEach(navItem => {
+        navItem.addEventListener('click', () => {
+            const target = document.getElementById(navItem.dataset.target);
+            if (target) target.click();
+        });
+    });
+
+    // === عناوين أعمدة الجداول للجوال ===
+    // تُحقن data-label في كل خلية من عنوان العمود لعرض البطاقات بعناوين واضحة
+    function applyResponsiveLabels() {
+        document.querySelectorAll('table.responsive-table').forEach(table => {
+            const headers = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim());
+            if (headers.length === 0) return;
+            table.querySelectorAll('tbody tr').forEach(row => {
+                [...row.children].forEach((cell, idx) => {
+                    cell.dataset.label = headers[idx] || '';
+                });
+            });
+        });
+    }
+    applyResponsiveLabels();
+
+    // الصفوف تُرسم ديناميكياً (طلبات/مخزون...) — أعد حقن العناوين تلقائياً
+    const tablesObserver = new MutationObserver(applyResponsiveLabels);
+    document.querySelectorAll('table.responsive-table tbody').forEach(tbody => {
+        tablesObserver.observe(tbody, { childList: true });
     });
 
     // === Dashboard ===

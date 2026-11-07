@@ -1961,6 +1961,183 @@ code {
     }
 }
 
+/* ============================================================
+   تحسينات الجوال: تنقّل سفلي + أهداف لمس + جداول بطاقات
+   ============================================================ */
+
+/* شريط تنقّل سفلي — مخفي على الديسكتوب */
+.mobile-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        z-index: 200;
+        gap: 2px;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+        background: rgba(13, 17, 30, .92);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-top: 1px solid var(--glass-border, rgba(255,255,255,.12));
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+    }
+    .mobile-bottom-nav::-webkit-scrollbar { display: none; }
+
+    .mobile-nav-item {
+        flex: 1 0 auto;
+        min-width: 64px;
+        min-height: 54px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        border: 0;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: .68rem;
+        font-family: var(--font-sans);
+        border-radius: 10px;
+        cursor: pointer;
+        padding: 6px 4px;
+    }
+    .mobile-nav-item i { font-size: 1.05rem; }
+    .mobile-nav-item.active {
+        color: #fff;
+        background: rgba(99, 102, 241, .22);
+    }
+    .mobile-nav-item:active { transform: scale(.96); }
+
+    /* مساحة سفلية حتى لا يغطي الشريط المحتوى */
+    body {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+}
+
+/* أهداف لمس كبيرة (44px) لأزرار الأدمن على الشاشات الصغيرة */
+@media (max-width: 768px) {
+    .tab-btn {
+        min-height: 44px;
+        padding: 10px 14px;
+    }
+    .btn {
+        min-height: 44px;
+        padding: 10px 16px;
+    }
+    .btn-sm {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: .82rem;
+    }
+    .action-btns-group {
+        gap: 8px;
+    }
+    .action-btns-group .btn {
+        flex: 1 1 auto;
+        min-height: 44px;
+    }
+    .action-icon {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-grid;
+        place-items: center;
+    }
+    .filter-chip {
+        min-height: 40px;
+        padding: 8px 14px;
+    }
+    input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        accent-color: var(--primary, #6366f1);
+    }
+    .logout-btn {
+        min-height: 40px;
+    }
+}
+
+/* عرض الجداول كبطاقات على الجوال — بدون JS يحتاج تدخلاً،
+   ومع data-label (يُحقن تلقائياً من admin.js) يعرض عنوان العمود */
+@media (max-width: 720px) {
+    .responsive-table,
+    .responsive-table thead,
+    .responsive-table tbody,
+    .responsive-table tr,
+    .responsive-table td {
+        display: block;
+        width: 100%;
+    }
+    .responsive-table {
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    .responsive-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+    .responsive-table tbody tr {
+        background: rgba(255,255,255,.03);
+        border: 1px solid rgba(255,255,255,.07);
+        border-radius: 12px;
+        margin-bottom: 12px;
+        padding: 10px 12px;
+        overflow: hidden;
+    }
+    .responsive-table tbody tr.loading-row,
+    .responsive-table tbody tr:first-child:only-child {
+        border-style: dashed;
+    }
+    .responsive-table tbody td {
+        border-bottom: 1px dashed rgba(255,255,255,.07);
+        padding: 9px 2px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        text-align: start;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .responsive-table tbody td:last-child {
+        border-bottom: 0;
+    }
+    /* عنوان العمود قبل قيمة الخلية — مع data-label من admin.js */
+    .responsive-table tbody td::before {
+        content: attr(data-label);
+        font-size: .68rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        flex-shrink: 0;
+        max-width: 38%;
+    }
+    .responsive-table tbody td[data-label=""]::before,
+    .responsive-table tbody td:not([data-label])::before {
+        content: "";
+    }
+    /* خلية العمليات تمتد عرضاً كاملاً بأزرار كبيرة */
+    .responsive-table tbody td:last-child {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .responsive-table tbody td:last-child::before {
+        max-width: 100%;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

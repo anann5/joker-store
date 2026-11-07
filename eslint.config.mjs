@@ -118,6 +118,7 @@ export default [
         Chart: 'readonly',
         Notification: 'readonly',
         PushManager: 'readonly',
+        MutationObserver: 'readonly',
       },
     },
     rules: {
