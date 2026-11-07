@@ -60,6 +60,11 @@ exports.getHealth = async (_req, res) => {
             orders: { pending: pendingOrders },
             inventory: { totalProducts, lowStockCount, outOfStockCount },
             providers,
+            // حالة الأمان غير الحساسة — تظهر للأدمن فقط (المسار محمي)
+            security: {
+                twoFactorEnabled: Boolean(process.env.ADMIN_TOTP_SECRET),
+                userSessionsUseDedicatedSecret: Boolean(process.env.JWT_USER_SECRET)
+            },
             timestamp: new Date().toISOString()
         }
     });

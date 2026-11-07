@@ -22,6 +22,11 @@ if (process.env.NODE_ENV === 'production' && !process.env.JWT_USER_SECRET) {
     process.exit(1);
 }
 
+// تنبيه لا يوقف الإقلاع: بدون سر TOTP يبقى دخول الأدمن محمياً بكلمة المرور فقط.
+if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_TOTP_SECRET) {
+    console.warn('⚠️ ADMIN_TOTP_SECRET غير مضبوط — المصادقة الثنائية للأدمن معطّلة. اضبطه لتفعيلها.');
+}
+
 connectDB();
 
 const server = http.createServer(app);

@@ -33,7 +33,9 @@ async function generateUniqueReferralCode() {
 
 // Track failed login attempts
 const failedAttempts = new Map();
-const MAX_FAILED_ATTEMPTS = 5;
+const failedEmailAttempts = new Map();
+const MAX_FAILED_ATTEMPTS = 5;            // لكل بريد + IP
+const MAX_FAILED_ATTEMPTS_PER_EMAIL = 20; // لكل بريد إجمالاً (هجوم موزّع من IPs متعددة)
 const ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes
 
 // Periodic cleanup of failed-attempt counters
@@ -44,7 +46,33 @@ setInterval(() => {
             failedAttempts.delete(key);
         }
     });
+    failedEmailAttempts.forEach((attempt, key) => {
+        if (now - attempt.firstAttempt > ATTEMPT_WINDOW) {
+            failedEmailAttempts.delete(key);
+        }
+    });
 }, 60 * 60 * 1000).unref();
+
+/**
+ * يزيد عدّاد فشل الدخول على مستوى البريد (بغض النظر عن IP) ويقفل الحساب
+ * مؤقتاً عند تجاوز الحد. يحمي من التخمين الموزّع الذي يتجاوز ليميتر الـ IP.
+ */
+function registerEmailFailure(email, req) {
+    const key = String(email || '').toLowerCase();
+    if (!key) return;
+    const now = Date.now();
+    const entry = failedEmailAttempts.get(key) || { count: 0, firstAttempt: now };
+    if (now - entry.firstAttempt > ATTEMPT_WINDOW) {
+        entry.count = 0;
+        entry.firstAttempt = now;
+    }
+    entry.count += 1;
+    if (entry.count >= MAX_FAILED_ATTEMPTS_PER_EMAIL) {
+        entry.lockedUntil = now + ATTEMPT_WINDOW;
+        logSecurityEvent('ACCOUNT_LOCKED_DISTRIBUTED', `قفل مؤقت للحساب بعد محاولات دخول موزّعة: ${key}`, req);
+    }
+    failedEmailAttempts.set(key, entry);
+}
 
 // في الإنتاج يكون secure دائماً — لا نثق إطلاقاً بترويسات X-Forwarded-Host المخادعة
 const isLocalhostRequest = (req) => {
@@ -187,13 +215,25 @@ exports.login = async (req, res) => {
             });
         }
 
+        // قفل على مستوى البريد بغض النظر عن IP — يوقف التخمين الموزّع.
+        const emailKey = String(email || '').toLowerCase();
+        const emailAttempt = failedEmailAttempts.get(emailKey);
+        if (emailAttempt && emailAttempt.lockedUntil && emailAttempt.lockedUntil > Date.now()) {
+            logSecurityEvent('ACCOUNT_LOCKED', `حساب مؤقتاً مغلق (محاولات موزّعة): ${email}`, req);
+            return res.status(429).json({
+                success: false,
+                message: 'تم إغلاق الحساب مؤقتاً. يرجى المحاولة بعد 15 دقيقة.'
+            });
+        }
+
         const user = await User.findOne({ email: email.toLowerCase() }).select('+passwordHash');
 
         if (!user) {
             // Increment failed attempts
             attempts.count++;
             failedAttempts.set(attemptKey, attempts);
-            
+            registerEmailFailure(email, req);
+
             logSecurityEvent('FAILED_LOGIN', `محاولة تسجيل دخول فاشلة - بريد غير موجود: ${email}`, req);
             return res.status(401).json({ success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' });
         }
@@ -203,13 +243,15 @@ exports.login = async (req, res) => {
             // Increment failed attempts
             attempts.count++;
             failedAttempts.set(attemptKey, attempts);
-            
+            registerEmailFailure(email, req);
+
             logSecurityEvent('FAILED_LOGIN', `محاولة تسجيل دخول فاشلة - كلمة مرور خاطئة: ${email}`, req);
             return res.status(401).json({ success: false, message: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' });
         }
 
         // Reset failed attempts on successful login
         failedAttempts.delete(attemptKey);
+        failedEmailAttempts.delete(emailKey);
 
         // أمان: التوكن يُحفظ في HttpOnly cookie فقط ولا يُمرَّر للجافاسكريبت
         // (يمنع سرقته عبر XSS من localStorage/document.cookie)
