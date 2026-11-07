@@ -7,5 +7,6 @@ module.exports = {
   // EXCEPT for the 'uuid' module.
   transformIgnorePatterns: ['/node_modules/(?!uuid)'],
   // Ignore tooling/private directories (e.g. .kilo worktrees) so `npm test` stays deterministic.
-  testPathIgnorePatterns: ['/node_modules/', '/\\.kilo/'],
+  // e2e/ contains Playwright specs (run with `npm run test:e2e`), not Jest tests.
+  testPathIgnorePatterns: ['/node_modules/', '/\\.kilo/', '/e2e/'],
 };

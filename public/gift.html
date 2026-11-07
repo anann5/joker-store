@@ -15,7 +15,7 @@
     <title>Joker Store | هدية لك 🎁</title>
     <meta name="description" content="وصلكت هدية من Joker Store — افتحها واستلم كودك.">
     <script src="/theme.js?v=13"></script>
-    <link rel="stylesheet" href="style.css?v=15">
+    <link rel="stylesheet" href="style.css?v=16">
     <style>
         .gift-page {
             min-height: 100vh;
@@ -132,9 +132,11 @@
             font-size: 0.8rem;
         }
     </style>
+    <script src="/consent.js?v=1" defer></script>
 </head>
 <body>
-    <main class="gift-page">
+<a class="skip-link" href="#main-content" data-i18n-key="skip_to_content">تخطي إلى المحتوى</a>
+    <main class="gift-page" id="main-content" tabindex="-1">
         <div class="gift-box-anim" aria-hidden="true">🎁</div>
         <h1 class="gift-title" id="giftTitle">هدية لك!</h1>
         <div class="gift-for" id="giftFor" hidden></div>

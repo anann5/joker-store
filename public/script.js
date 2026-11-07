@@ -7,6 +7,7 @@ import { rawServerData, renderRatingStars, renderStockBadge, setQuickAddState, s
 import { openModal, closeModal, initModalBehaviors } from './modals.js';
 import { initRealtime, initPublicPulse } from './realtime.js';
 import { normalizeRegion, regionMeta, REGION_ORDER } from './regions.js';
+import { initAnalytics } from './analytics.js';
 
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
@@ -381,23 +382,8 @@ function applySiteConfig() {
         homeStatsStrip.hidden = true;
     }
 
-    const analytics = siteConfig.analytics || {};
-    if (analytics.gaId && !document.querySelector('script[data-ga]')) {
-        const s1 = document.createElement('script');
-        s1.async = true; s1.dataset.ga = '1';
-        s1.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(analytics.gaId)}`;
-        document.head.appendChild(s1);
-        const s2 = document.createElement('script');
-        s2.dataset.ga = '1';
-        s2.textContent = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${analytics.gaId.replace(/'/g,"\\'")}');`;
-        document.head.appendChild(s2);
-    }
-    if (analytics.metaPixelId && !document.querySelector('script[data-meta-pixel]')) {
-        const s = document.createElement('script');
-        s.dataset.metaPixel = '1';
-        s.textContent = `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');fbq('init','${analytics.metaPixelId.replace(/'/g,"\\'")}');fbq('track','PageView');`;
-        document.head.appendChild(s);
-    }
+    // القياس: لا يُحمَّل أي وسم (GA/Meta) قبل موافقة الزائر — انظر consent.js وanalytics.js
+    initAnalytics(siteConfig.analytics || {});
 }
 
 /**

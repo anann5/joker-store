@@ -21,7 +21,9 @@ npm start
 
 ## الاختبارات
 ```bash
-npm test -- --runInBand
+npm test -- --runInBand          # اختبارات API والوحدات (Jest)
+npm run test:e2e                 # E2E + إمكانية الوصول (Playwright)
+npx playwright install chromium  # مرة واحدة لتنزيل المتصفح
 ```
 
 ## النشر على Render
@@ -77,15 +79,42 @@ docker compose up -d --build
 - المزوّدون: املأ `PROVIDER_1_*` (انظر [.env.example](.env.example)) ثم `PROVIDERS_COUNT=1` وأعد النشر، ثم اضغط «مزامنة» من لوحة الأدمن. يتطلب API key وBase URL ومسارات items/balance/purchase وطريقة المصادقة.
 - الدفع التلقائي غير مفعّل حالياً (التحويل يدوي). يتطلب من مزوّد الدفع: merchant ID وAPI key/secret وwebhook URL ووثائق API.
 
+## الأداء والأصول المبنية
+- `public/style.min.css` و`public/script.min.js` و`public/ui.min.js` ملفات مُصغّرة **مُلتزمة في المستودع**.
+- الخادم يخدمها تلقائياً في الإنتاج فقط (انظر `MINIFIED_ASSETS` في app.js)؛ التطوير يبقى على المصدر.
+- بعد أي تعديل على `style.css` أو `script.js` أو `ui.js` شغّل:
+```bash
+npm run build:assets      # يعيد بناء الملفات المصغّرة
+npm run optimize:images   # يولّد نسخ WebP الناقصة (sharp أو ffmpeg)
+```
+- CI يفشل إذا كانت الملفات المصغّرة قديمة (وظيفة `assets`).
+
+## المراقبة والسجلات
+- سجلات JSON منظّمة على stdout (متوافقة مع Render/Docker): `config/logger.js`.
+- كل استجابة تحمل `X-Request-Id`، وتُسجّل مدة الطلب والحالة والمسار.
+- `SENTRY_DSN` (اختياري) يفعّل إرسال الأخطاء إلى Sentry؛ لا يُرسل أي بيانات دفع أو كوكيز.
+- `GET /health` يعرض الإصدار، مدة التشغيل، حالة قاعدة البيانات والذاكرة.
+- إغلاق نظيف عند `SIGTERM`/`SIGINT` (Render يرسله قبل كل إعادة نشر).
+- تنبيه تلجرام تلقائي عند استثناء غير ملتقط (مع تهدئة 10 دقائق).
+
+## الخصوصية والكوكيز
+- `public/consent.js`: بانر موافقة + Consent Mode v2 (افتراضي: رفض كل غير الضروري).
+- `public/analytics.js`: لا يُحمَّل Google Analytics أو Meta Pixel قبل الموافقة.
+- الاختيار يُحفظ في `localStorage` بمفتاح `joker_consent_v1`، ويمكن تغييره من رابط «إعدادات الكوكيز» في الفوتر أو `/?cookie-settings=1`.
+- `public/sw.js` لا يخزّن `consent.js`/`analytics.js` بشكل يمنع التحديث (شبكة أولاً).
+
 ## هيكل المشروع
-- server.js: نقطة دخول التطبيق
-- app.js: إعداد Express والـ middleware
+- server.js: نقطة دخول التطبيق + إغلاق نظيف + معالجة الأخطاء غير الملتقطة
+- app.js: إعداد Express والـ middleware + CSP + الصحة
+- config/: الإعدادات، التحقق من البيئة، السجلات، Sentry
+- services/: خدمات مساندة (تخزين، تنبيهات)
 - routes/: تعريف المسارات العامة والإدارية
 - controllers/: المنطق التجاري والعمليات
-- middleware/: حماية، مصادقة، وسجلات الأمان
+- middleware/: حماية، مصادقة، سجلات، معرّف الطلب
 - public/: الواجهة الأمامية العامة
 - private/: واجهة الأدمن المحمية
-- tests/: اختبارات API والـ CSRF
+- tests/: اختبارات API والأمان والواجهة الثابتة
+- e2e/: اختبارات Playwright (موافقة كوكيز، إمكانية وصول، تخطيط)
 
 ## التحقق الثنائي (2FA)
 1. شغّل `node scripts/generate-totp.js` واحتفظ بالسر المعروض.

@@ -34,6 +34,9 @@ function validateEnv() {
     if (!process.env.SITE_URL) {
         optionalWarnings.push('SITE_URL غير مضبوط — sitemap.xml سيرجع 503 حتى يُحدد');
     }
+    if (!process.env.SENTRY_DSN) {
+        optionalWarnings.push('SENTRY_DSN غير مضبوط — مراقبة الأخطاء الخارجية معطّلة (السجلات المنظّمة تعمل دائماً)');
+    }
     if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
         optionalWarnings.push('TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID غير مضبوطين — تنبيهات Telegram غير مفعلة');
     }

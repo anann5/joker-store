@@ -7618,10 +7618,22 @@ Code receipt flourish
         flex-shrink: 0;
     }
 
-    /* أيقونات فقط: نخفي نصوص اللغة والعروض وتسجيل الدخول ليبقى الهيدر سطراً واحداً */
+    /* أيقونات فقط: نخفي نصوص اللغة والعروض ليبقى الهيدر سطراً واحداً.
+       نص زر الحساب يبقى متاحاً لقارئات الشاشة (مخفي بصرياً فقط) وإلا صار الزر بلا اسم. */
     .header-container > a[href="/offers"] span,
-    #userAuthBtn > span,
     #lang-switcher span { display: none; }
+
+    #userAuthBtn > span {
+        position: absolute !important;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
 
     #userAuthBtn { padding: 6px 9px; }
 
@@ -8882,3 +8894,227 @@ header { top: var(--safe-top, 0px); }
         padding-inline: 8px;
     }
 }
+
+/* ===================================================
+   ? Accessibility utilities
+   =================================================== */
+.sr-only {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ��� ���� ���� ������� �� ������: ���� ������ ��� ������� */
+.skip-link {
+    position: fixed;
+    top: calc(10px + var(--safe-top));
+    inset-inline-start: calc(10px + var(--safe-inline-start));
+    z-index: 100000;
+    padding: 12px 18px;
+    border-radius: var(--radius-pill);
+    background: var(--grad-primary);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-160%);
+    transition: transform 0.18s ease;
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+    transform: translateY(0);
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+main:focus { outline: none; }
+
+/* ===================================================
+   ?? Cookie consent banner
+   =================================================== */
+.cookie-banner {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 99990;
+    display: flex;
+    justify-content: center;
+    padding: 14px calc(14px + var(--safe-inline-end)) calc(14px + var(--safe-bottom)) calc(14px + var(--safe-inline-start));
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.cookie-banner-visible { opacity: 1; transform: translateY(0); }
+.cookie-banner-panel {
+    pointer-events: auto;
+    width: min(680px, 100%);
+    max-height: min(78dvh, 78vh);
+    overflow-y: auto;
+    padding: 18px 20px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(160deg, rgba(13, 17, 30, 0.97), rgba(9, 12, 23, 0.98));
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: 0 18px 50px rgba(3, 6, 14, 0.7);
+    -webkit-backdrop-filter: blur(var(--blur));
+    backdrop-filter: blur(var(--blur));
+    color: var(--text-1);
+}
+.cookie-banner-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+}
+.cookie-banner-head h2 {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: var(--text-1);
+}
+.cookie-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-soft);
+    color: var(--text-2);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.cookie-close:hover { background: var(--glass); color: var(--text-1); }
+.cookie-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.cookie-desc {
+    margin: 0 0 12px;
+    font-size: 0.86rem;
+    line-height: 1.7;
+    color: var(--text-2);
+}
+.cookie-options {
+    display: grid;
+    gap: 10px;
+    margin: 4px 0 14px;
+}
+/* [hidden] من المتصفح يُهزم بواسطة display:grid أعلاه — نعيده صراحةً */
+.cookie-options[hidden] { display: none; }
+.cookie-option {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--glass-soft);
+    border: 1px solid var(--glass-border);
+}
+.cookie-option-text { display: flex; flex-direction: column; gap: 2px; }
+.cookie-option-text strong { font-size: 0.85rem; color: var(--text-1); }
+.cookie-option-text span { font-size: 0.78rem; line-height: 1.6; color: var(--text-muted); }
+.cookie-switch {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: 0 0 auto;
+    position: relative;
+    width: 44px; height: 24px;
+    margin-top: 2px;
+    border-radius: var(--radius-pill);
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    transition: background 0.18s ease;
+}
+.cookie-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    inset-inline-start: 2px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform 0.18s ease;
+}
+.cookie-switch:checked { background: var(--primary-strong); border-color: var(--primary); }
+.cookie-switch:checked::after { transform: translateX(20px); }
+[dir="rtl"] .cookie-switch:checked::after { transform: translateX(-20px); }
+.cookie-switch:disabled { opacity: 0.55; cursor: not-allowed; }
+.cookie-switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.cookie-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+.cookie-btn {
+    min-height: 40px;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.cookie-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.cookie-btn:active { transform: scale(0.98); }
+.cookie-btn-ghost {
+    background: transparent;
+    border: 1px solid var(--glass-border-strong);
+    color: var(--text-2);
+}
+.cookie-btn-ghost:hover { background: var(--glass); color: var(--text-1); }
+.cookie-btn-primary {
+    background: var(--grad-primary);
+    border: 1px solid transparent;
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.3);
+}
+.cookie-btn-primary:hover { filter: brightness(1.06); }
+.cookie-privacy {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.cookie-privacy:hover { color: var(--text-2); }
+.footer-cookie-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.footer-cookie-link:hover { color: var(--text-1); }
+.footer-cookie-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+
+@media (max-width: 560px) {
+    .cookie-banner { padding: 10px calc(10px + var(--safe-inline-end)) calc(10px + var(--safe-bottom)) calc(10px + var(--safe-inline-start)); }
+    .cookie-banner-panel { padding: 14px; max-height: 82dvh; max-height: 82vh; }
+    .cookie-actions { justify-content: stretch; }
+    .cookie-btn { flex: 1 1 auto; text-align: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .cookie-banner, .cookie-btn, .cookie-switch, .cookie-switch::after, .skip-link { transition: none !important; }
+}
+
+/* ����� ����� ������ */
+[data-theme="light"] .cookie-banner-panel {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(244, 246, 252, 0.99));
+    color: var(--text-1);
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22);
+}
+[data-theme="light"] .cookie-switch { background: rgba(15, 23, 42, 0.18); }
+[data-theme="light"] .cookie-option { background: rgba(15, 23, 42, 0.04); }

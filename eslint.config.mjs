@@ -4,11 +4,11 @@
 
 export default [
   {
-    ignores: ['node_modules/**', 'dist/**', '.git/**', '.kilo/**'],
+    ignores: ['node_modules/**', 'dist/**', '.git/**', '.kilo/**', 'public/*.min.js', 'public/*.min.css'],
   },
   // === Server-side files (CommonJS) ===
   {
-    files: ['server.js', 'routes/**/*.js', 'controllers/**/*.js', 'models/**/*.js', 'middleware/**/*.js', 'scripts/**/*.js'],
+    files: ['server.js', 'app.js', 'routes/**/*.js', 'controllers/**/*.js', 'models/**/*.js', 'middleware/**/*.js', 'scripts/**/*.js', 'config/**/*.js', 'services/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
@@ -26,6 +26,11 @@ export default [
         setTimeout: 'readonly',
         clearInterval: 'readonly',
         clearTimeout: 'readonly',
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly',
+        AbortController: 'readonly',
+        Intl: 'readonly',
+        URLSearchParams: 'readonly',
       },
     },
     rules: {

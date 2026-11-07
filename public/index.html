@@ -67,7 +67,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-async-css>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" media="print" data-async-css>
     <script src="/theme.js?v=13"></script>
-    <link rel="stylesheet" href="/style.css?v=15">
+    <link rel="stylesheet" href="/style.css?v=16">
     <link rel="modulepreload" href="/script.js">
     <link rel="modulepreload" href="/i18n.js">
     <link rel="modulepreload" href="/ui.js">
@@ -78,9 +78,11 @@
     <link rel="modulepreload" href="/currency.js">
     <link rel="modulepreload" href="/realtime.js">
     <script src="/async-css.js" defer></script>
+    <script src="/consent.js?v=1" defer></script>
 </head>
 <body>
 
+<a class="skip-link" href="#main-content" data-i18n-key="skip_to_content">تخطي إلى المحتوى</a>
 <!-- ====================================================
      الهيدر — Aurora Glass
 ==================================================== -->
@@ -100,7 +102,7 @@
             <button id="themeToggleBtn" class="header-btn theme-toggle-btn" title="تبديل المظهر (فاتح / داكن / النظام)" aria-label="تبديل المظهر">
                 <i class="fas fa-moon"></i>
             </button>
-            <button id="lang-switcher" class="header-btn" title="Switch Language" aria-label="تغيير اللغة">
+            <button id="lang-switcher" class="header-btn" title="Switch Language" aria-label="EN — تغيير اللغة">
                 <i class="fas fa-globe"></i>
                 <span>EN</span>
             </button>
@@ -202,7 +204,7 @@
 <!-- ====================================================
      المحتوى الرئيسي
 ==================================================== -->
-<main class="page-shell">
+<main class="page-shell" id="main-content" tabindex="-1">
 
     <!-- ===== Hero Slider ===== -->
     <div class="hero-section">

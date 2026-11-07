@@ -19,9 +19,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" />
         <script src="/theme.js?v=13"></script>
-<link rel="stylesheet" href="style.css?v=15" />
+<link rel="stylesheet" href="style.css?v=16" />
+    <script src="/consent.js?v=1" defer></script>
 </head>
 <body>
+<a class="skip-link" href="#main-content" data-i18n-key="skip_to_content">تخطي إلى المحتوى</a>
     <header class="sub-header">
         <div class="header-container">
             <a href="/" class="logo-zone" title="العودة للرئيسية">
@@ -41,7 +43,7 @@
         </div>
     </header>
 
-    <main class="sub-page-main offers-page">
+    <main class="sub-page-main offers-page" id="main-content" tabindex="-1">
         <div class="sub-page-hero">
             <h1><i class="fas fa-fire" style="color:#ef4444;"></i> <span data-i18n-key="offers_title">العروض الخاصة</span></h1>
             <p data-i18n-key="offers_subtitle">اكتشف أفضل الخصومات والحالات المتاحة الآن</p>

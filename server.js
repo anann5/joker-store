@@ -1,6 +1,12 @@
 const dotenv = require('dotenv');
 dotenv.config();
 
+// تهيئة المراقبة قبل تحميل بقية الوحدات حتى تُلتقط الأخطاء مبكراً.
+const { initMonitoring, flushMonitoring } = require('./config/monitoring');
+const logger = require('./config/logger');
+const { alertCritical } = require('./services/alerting');
+initMonitoring();
+
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/database');
@@ -213,5 +219,74 @@ setTimeout(runOrderExpiry, 20 * 1000);
 const FINAL_PORT = process.env.PORT || 5850;
 // الاستماع على '::' يجعل الخادم يتلقى الوصول عبر IPv6 (`localhost` → ::1) ويدعم IPv4 أيضاً.
 server.listen(FINAL_PORT, '::', () => {
+    logger.info('server_started', {
+        port: Number(FINAL_PORT),
+        node: process.version,
+        providers: registry.getProviders().length
+    });
     console.log(`🚀 السيرفر شغال ومثالي على بورت ${FINAL_PORT}`);
+});
+
+server.on('error', (error) => {
+    logger.reportError(error, { scope: 'server_listen', port: Number(FINAL_PORT) });
+    if (error && error.code === 'EADDRINUSE') process.exit(1);
+});
+
+// ─────────────────────────────────────────────────────────────
+// إغلاق نظيف (Graceful shutdown): على Render/VPS يُرسَل SIGTERM قبل
+// إعادة النشر. نغلق الاستقبال، ثم WebSocket، ثم قاعدة البيانات — بدل
+// قطع الطلبات الجارية فجأة.
+// ─────────────────────────────────────────────────────────────
+const SHUTDOWN_TIMEOUT_MS = Math.max(1000, Number.parseInt(process.env.SHUTDOWN_TIMEOUT_MS, 10) || 10000);
+let shuttingDown = false;
+
+/**
+ * إغلاق تدريجي آمن لكل الموارد.
+ * @param {string} signal - مصدر الإغلاق (SIGTERM/SIGINT/uncaughtException).
+ * @param {number} [exitCode] - رمز الخروج.
+ * @returns {Promise<void>}
+ */
+async function shutdown(signal, exitCode = 0) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info('shutdown_started', { signal });
+
+    // شبكة أمان: لا نعلق للأبد إذا رفض اتصال ما الإغلاق.
+    const forceTimer = setTimeout(() => {
+        logger.warn('shutdown_forced', { signal, timeoutMs: SHUTDOWN_TIMEOUT_MS });
+        process.exit(exitCode || 1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    if (typeof forceTimer.unref === 'function') forceTimer.unref();
+
+    try {
+        await new Promise((resolve) => server.close(resolve));
+        await new Promise((resolve) => io.close(resolve));
+        const mongoose = require('mongoose');
+        await mongoose.disconnect();
+        await flushMonitoring(2000);
+    } catch (error) {
+        logger.warn('shutdown_error', { err: logger.serializeError(error) });
+    }
+
+    clearTimeout(forceTimer);
+    logger.info('shutdown_complete', { signal });
+    process.exit(exitCode);
+}
+
+process.on('SIGTERM', () => { shutdown('SIGTERM', 0); });
+process.on('SIGINT', () => { shutdown('SIGINT', 0); });
+
+// أخطاء غير ملتقطة: تُسجّل وتُرسل للمراقبة. الاستثناء غير الملتقط يوقف العملية
+// بعد محاولة تنظيف قصيرة، لأن استمرارها قد يعني حالة غير متسقة.
+process.on('unhandledRejection', (reason) => {
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    logger.reportError(error, { scope: 'unhandledRejection' });
+});
+
+process.on('uncaughtException', (error) => {
+    logger.reportError(error, { scope: 'uncaughtException' });
+    alertCritical('UNCAUGHT_EXCEPTION', `خطأ غير ملتقط أوقف العملية: ${error.message}`, {
+        env: process.env.NODE_ENV,
+        commit: process.env.RENDER_GIT_COMMIT
+    }).finally(() => shutdown('uncaughtException', 1));
 });

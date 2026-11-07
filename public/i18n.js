@@ -24,7 +24,7 @@ async function setLanguage(lang) {
     try {
         currentLang = lang;
         // تعديل: جلب الملفات من المجلد الرئيسي مباشرة
-        const response = await fetch(`${I18N_BASE}${lang}.json?v=15`);
+        const response = await fetch(`${I18N_BASE}${lang}.json?v=16`);
         if (!response.ok) {
             return;
         }
@@ -39,8 +39,16 @@ async function setLanguage(lang) {
         document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
 
         // تحديث نص زر تبديل اللغة
+        // الاسم الميسّر يجب أن يتضمن النص الظاهر (EN/AR) وإلا يخالف WCAG 2.5.3.
         const langSwitcher = document.getElementById('lang-switcher');
-        if (langSwitcher) langSwitcher.querySelector('span').textContent = lang === 'ar' ? 'EN' : 'AR';
+        if (langSwitcher) {
+            const nextLabel = lang === 'ar' ? 'EN' : 'AR';
+            langSwitcher.querySelector('span').textContent = nextLabel;
+            langSwitcher.setAttribute(
+                'aria-label',
+                lang === 'ar' ? 'EN — تغيير اللغة إلى الإنجليزية' : 'AR — Switch to Arabic'
+            );
+        }
 
         // تطبيق الترجمات على جميع العناصر
         translatePage();

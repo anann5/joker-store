@@ -539,4 +539,6 @@
     "notifications_retry": "Try again",
     "notifications_open_link": "Open related link",
     "header_notifications": "Notifications"
+,
+    "skip_to_content": "Skip to content"
 }

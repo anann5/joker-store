@@ -20,6 +20,9 @@ const { Product } = require('./models');
 const siteSettings = require('./config/siteSettings');
 const uploadController = require('./controllers/uploadController');
 const objectStorage = require('./services/objectStorage');
+const logger = require('./config/logger');
+const { requestContext } = require('./middleware/requestContext');
+const packageJson = require('./package.json');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -49,12 +52,32 @@ app.use(helmet({
             // Strict script policy: no 'unsafe-inline'. All JS is external
             // (admin bootstrap was moved to public/admin-boot.js, socket.io client
             // is served locally from node_modules/socket.io/client-dist).
-            scriptSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com', 'https://cdn.jsdelivr.net'],
+            // نطاقات القياس المسموح بها: تُحمَّل فقط بعد موافقة الكوكيز (consent.js)،
+            // لكن يجب أن تسمح بها السياسة وإلا حجبها المتصفح عند التفعيل.
+            scriptSrc: [
+                "'self'",
+                'https://cdnjs.cloudflare.com',
+                'https://www.gstatic.com',
+                'https://cdn.jsdelivr.net',
+                'https://www.googletagmanager.com',
+                'https://www.google-analytics.com',
+                'https://connect.facebook.net'
+            ],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
             connectSrc: (() => {
                 // api.github.com: فحص إصدار التطبيق من GitHub Releases (app-update.js / download.html)
-                const list = ["'self'", 'https://cdn.jsdelivr.net', 'https://api.github.com'];
+                const list = [
+                    "'self'",
+                    'https://cdn.jsdelivr.net',
+                    'https://api.github.com',
+                    'https://www.google-analytics.com',
+                    'https://analytics.google.com',
+                    'https://region1.google-analytics.com',
+                    'https://stats.g.doubleclick.net',
+                    'https://connect.facebook.net',
+                    'https://www.facebook.com'
+                ];
                 try {
                     // أصل الموقع يُشتق من SITE_URL بدل نطاق مكتوب يدوياً،
                     // حتى لا تتقادم قيمة WebSocket/الأصل عند تغيير النطاق.
@@ -117,6 +140,9 @@ app.disable('x-powered-by');
 
 // قبل أي rate limiter: يحدد IP الزائر الحقيقي (CF-Connecting-IP) بدل IP الوكيل المشترك.
 app.use(clientIpMiddleware);
+
+// معرّف طلب + سجل وصول منظّم (X-Request-Id يعود للعميل للدعم الفني)
+app.use(requestContext);
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -228,6 +254,22 @@ app.use(compression());
 
 app.get('/', homePageHandler);
 
+// في الإنتاج: نخدم النسخ المضغوطة/المصغّرة الجاهزة إن وُجدت (style.min.css / script.min.js).
+// الملفات المصدرية تبقى كما هي للتطوير، وإن غاب ملف .min يعمل الموقع طبيعياً بلا أي كسر.
+const MINIFIED_ASSETS = {
+    '/style.css': '/style.min.css',
+    '/script.js': '/script.min.js',
+    '/ui.js': '/ui.min.js'
+};
+app.use((req, res, next) => {
+    if (process.env.NODE_ENV !== 'production' || process.env.SERVE_MINIFIED === '0') return next();
+    const target = MINIFIED_ASSETS[req.path];
+    if (!target) return next();
+    if (!fs.existsSync(path.join(__dirname, 'public', target.slice(1)))) return next();
+    req.url = req.url.replace(req.path, target);
+    next();
+});
+
 // تقديم WebP تلقائياً إذا كان المتصفح يدعمه وملف .webp موجود
 app.use((req, res, next) => {
     const accept = req.headers.accept || '';
@@ -308,7 +350,34 @@ app.get('/favicon.ico', (req, res) => {
 app.get('/health', (req, res) => {
     // RENDER_GIT_COMMIT يوفره Render — يسمح بالتأكد من الإصدار المنشور فعلاً.
     const commit = String(process.env.RENDER_GIT_COMMIT || '').slice(0, 7);
-    res.json({ success: true, status: 'ok', timestamp: new Date().toISOString(), ...(commit ? { commit } : {}) });
+    // حالة الاتصال بقاعدة البيانات (1 = متصل) دون كشف أي تفاصيل حساسة.
+    let mongoose = null;
+    try {
+        mongoose = require('mongoose');
+    } catch (_error) {
+        mongoose = null;
+    }
+    const dbState = mongoose ? mongoose.connection.readyState : 0;
+    const database = ['disconnected', 'connected', 'connecting', 'disconnecting'][dbState] || 'unknown';
+    const memory = process.memoryUsage();
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({
+        success: true,
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        ...(commit ? { commit } : {}),
+        version: packageJson.version,
+        uptimeSeconds: Math.round(process.uptime()),
+        checks: {
+            database,
+            // readyState=1 يعني اتصالاً فعلياً بقاعدة البيانات
+            databaseReady: dbState === 1
+        },
+        memoryMb: {
+            rss: Math.round(memory.rss / 1024 / 1024),
+            heapUsed: Math.round(memory.heapUsed / 1024 / 1024)
+        }
+    });
 });
 
 app.get('/robots.txt', seoController.robotsTxt);
@@ -676,8 +745,19 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
     const status = err.status || 500;
     const isProd = process.env.NODE_ENV === 'production';
-    // سجل منسق ومصفي: لا نطبع كائن الخطأ الكامل (قد يحتوي بيانات حساسة) بل ملخصاً قصيراً
-    console.error(`${new Date().toISOString()} [${status}] ${req.method} ${req.originalUrl}: ${err.message || err.name || 'Internal Server Error'}`);
+    // سجل منظّم يحذف الحقول الحساسة تلقائياً، مع إرسال الأخطاء 5xx للمراقبة الخارجية.
+    const context = {
+        requestId: req.id,
+        method: req.method,
+        route: String(req.originalUrl || '').split('?')[0],
+        status,
+        userId: req.user?.userId || req.admin?.userId
+    };
+    if (status >= 500) {
+        logger.reportError(err, context);
+    } else {
+        logger.warn('request_error', { ...context, err: logger.serializeError(err) });
+    }
     if (status >= 500 || status === 401 || status === 403) {
         logSecurityEvent('SERVER_ERROR', `${err.message || 'Internal Server Error'} - ${req.method} ${req.originalUrl}`, req);
     }
@@ -685,6 +765,7 @@ app.use((err, req, res, next) => {
         success: false,
         // في الإنتاج لا نكشف لمحة داخلية عن أخطاء الخادم (5xx) للعملاء
         message: (status >= 500 && isProd) ? 'Internal Server Error' : (err.message || 'Internal Server Error'),
+        requestId: req.id,
         ...(!isProd && { stack: err.stack })
     });
 });

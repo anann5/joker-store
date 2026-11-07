@@ -23,6 +23,11 @@ private/uploads/
 /joker-store.apk
 www/icon.png
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
 # Firebase secrets - NEVER commit
 google-services.json
 *-firebase-adminsdk-*.json
