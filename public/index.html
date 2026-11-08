@@ -605,6 +605,20 @@
                                 <span class="payment-option-text"><b data-i18n-key="pay_online">بطاقة أو محفظة إلكترونية</b><small data-i18n-key="pay_online_hint">دفع فوري آمن — يصلك الكود مباشرة بعد التأكيد</small></span>
                             </div>
                         </label>
+                        <label class="payment-option-label" id="onlineJawwalpayOption" hidden>
+                            <input type="radio" name="payment_gateway" value="online_jawwalpay">
+                            <div class="payment-option-content">
+                                <img class="pay-tile" src="/image/pay/jawwal-pay.svg" alt="JawwalPay" width="26" height="26" loading="lazy" decoding="async">
+                                <span class="payment-option-text"><b data-i18n-key="pay_online_jawwalpay">الدفع عبر JawwalPay</b><small data-i18n-key="pay_online_jawwalpay_hint">دفع فوري من محفظة جوال بي</small></span>
+                            </div>
+                        </label>
+                        <label class="payment-option-label" id="onlinePalpayOption" hidden>
+                            <input type="radio" name="payment_gateway" value="online_palpay">
+                            <div class="payment-option-content">
+                                <img class="pay-tile" src="/image/pay/palpay.svg" alt="PalPay" width="26" height="26" loading="lazy" decoding="async">
+                                <span class="payment-option-text"><b data-i18n-key="pay_online_palpay">الدفع عبر PalPay</b><small data-i18n-key="pay_online_palpay_hint">دفع فوري من محفظة بال بي (Mahfazati)</small></span>
+                            </div>
+                        </label>
                         <label class="payment-option-label" data-manual-payment>
                             <input type="radio" name="payment_gateway" value="jawwal_pay" checked>
                             <div class="payment-option-content">

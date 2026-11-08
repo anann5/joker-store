@@ -46,16 +46,37 @@ function validateEnv() {
 
     // الدفع الإلكتروني: غياب الإعداد ليس خطأً (الوضع اليدوي يعمل)،
     // لكن إعداداً ناقصاً لبوابة مختارة يعني تعطيلها بصمت — لذا ننبّه صراحةً.
+    // تعدد البوابات: PAYMENT_GATEWAY أولوية أساسية، وكل مهيّأة تظهر في الواجهة.
     const paymentGateway = String(process.env.PAYMENT_GATEWAY || '').trim().toLowerCase();
+    const gatewayKeys = {
+        jawwalpay: ['JAWWALPAY_MERCHANT_ID', 'JAWWALPAY_SECRET_KEY'],
+        palpay: ['PALPAY_MERCHANT_ID', 'PALPAY_SECRET_KEY'],
+        mock: ['PAYMENT_WEBHOOK_SECRET']
+    };
+    const checkGateway = (name) => {
+        const keys = gatewayKeys[name] || ['PAYMENT_WEBHOOK_SECRET'];
+        const missing = keys.filter(k => !String(process.env[k] || '').trim());
+        if (missing.length) {
+            optionalWarnings.push(`${name.toUpperCase()} غير مهيّأة: ينقص ${missing.join(', ')}`);
+            return;
+        }
+        if (name !== 'mock' && !String(process.env.PAYMENT_WEBHOOK_SECRET || '').trim()
+            && !String(process.env[`${name.toUpperCase()}_WEBHOOK_SECRET`] || '').trim()) {
+            optionalWarnings.push(`PAYMENT_WEBHOOK_SECRET غير مضبوط — لا يمكن التحقق من أحداث ${name}`);
+        }
+    };
     if (!paymentGateway || paymentGateway === 'manual') {
         optionalWarnings.push('PAYMENT_GATEWAY غير مضبوط — الدفع يدوي (تحويل + إثبات)');
-    } else if (paymentGateway === 'mock' && isProduction) {
-        optionalWarnings.push('PAYMENT_GATEWAY=mock في الإنتاج — البوابة الوهمية معطّلة تلقائياً، الدفع الإلكتروني لن يعمل');
-    } else if (!process.env.PAYMENT_WEBHOOK_SECRET) {
-        optionalWarnings.push('PAYMENT_WEBHOOK_SECRET غير مضبوط — لا يمكن التحقق من أحداث بوابة الدفع');
-    } else if (!process.env.PAYMENT_GATEWAY_ORIGIN) {
-        optionalWarnings.push('PAYMENT_GATEWAY_ORIGIN غير مضبوط — قد تحجب سياسة CSP صفحة الدفع/الـwebhook');
+    } else if (gatewayKeys[paymentGateway]) {
+        if (paymentGateway === 'mock' && isProduction) {
+            optionalWarnings.push('PAYMENT_GATEWAY=mock في الإنتاج — البوابة الوهمية معطّلة تلقائياً، الدفع الإلكتروني لن يعمل');
+        } else {
+            checkGateway(paymentGateway);
+        }
     }
+    // تذكير إضافي إذا كانت أي من بوابات فلسطين مهيّأة جزئياً
+    if (String(process.env.JAWWALPAY_MERCHANT_ID || '').trim()) checkGateway('jawwalpay');
+    if (String(process.env.PALPAY_MERCHANT_ID || '').trim()) checkGateway('palpay');
     // Render المجاني يحجب منافذ SMTP — بدون Brevo API أو SMTP لن يصل بريد الاستعادة.
     if (!process.env.MAIL_FROM || (!process.env.BREVO_API_KEY && !process.env.SMTP_HOST)) {
         optionalWarnings.push('البريد غير مهيأ — اضبط BREVO_API_KEY وMAIL_FROM (موصى به على Render) وإلا لن تُرسل روابط الاستعادة والإشعارات');

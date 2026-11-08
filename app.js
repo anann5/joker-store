@@ -48,15 +48,23 @@ function computeWebVersion() {
 }
 const WEB_VERSION = computeWebVersion();
 
-// نطاق بوابة الدفع (إن وُجد) — يُضاف إلى CSP فقط عند تهيئة الدفع الإلكتروني.
-// لا نفتح سياسة الموقع لمزوّد غير مستخدم، ولا نسمح بأي نطاق عشوائي.
-const paymentGatewayOrigin = (() => {
-    try {
-        const raw = String(process.env.PAYMENT_GATEWAY_ORIGIN || '').trim();
-        return raw ? new URL(raw).origin : '';
-    } catch (_err) {
-        return '';
-    }
+// نطاقات بوابات الدفع (إن وُجدت) — تُضاف إلى CSP فقط للبوابات المهيّأة.
+// يدعم قائمة مفصولة بفاصلة لبوابات متعددة (JawwalPay + PalPay).
+// لا نفتح سياسة الموقع لمزوّد غير مستخدم، ولا نسمح بأي نطاق عشوائي عشوائي.
+const paymentGatewayOrigins = (() => {
+    const origins = new Set();
+    const collect = (raw) => {
+        for (const part of String(raw || '').split(',')) {
+            const value = part.trim();
+            if (!value) continue;
+            try { origins.add(new URL(value).origin); } catch (_err) { /* يُتجاوز غير الصالح */ }
+        }
+    };
+    collect(process.env.PAYMENT_GATEWAY_ORIGIN);
+    // نطاقات مخصصة لبوابات فلسطين عند توفرها
+    collect(process.env.JAWWALPAY_ORIGIN);
+    collect(process.env.PALPAY_ORIGIN);
+    return [...origins];
 })();
 
 const app = express();
@@ -97,7 +105,7 @@ app.use(helmet({
                 'https://www.googletagmanager.com',
                 'https://www.google-analytics.com',
                 'https://connect.facebook.net',
-                ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])
+                ...paymentGatewayOrigins
             ],
             styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com', 'https://www.gstatic.com'],
             imgSrc: ["'self'", 'data:', 'https:'],
@@ -113,7 +121,7 @@ app.use(helmet({
                     'https://stats.g.doubleclick.net',
                     'https://connect.facebook.net',
                     'https://www.facebook.com',
-                    ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])
+                    ...paymentGatewayOrigins
                 ];
                 try {
                     // أصل الموقع يُشتق من SITE_URL بدل نطاق مكتوب يدوياً،
@@ -135,10 +143,10 @@ app.use(helmet({
             fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'", 'https://assets.mixkit.co'],
-            frameSrc: ["'self'", ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])],
+            frameSrc: ["'self'", ...paymentGatewayOrigins],
             frameAncestors: ["'self'"],
             baseUri: ["'self'"],
-            formAction: ["'self'", ...(paymentGatewayOrigin ? [paymentGatewayOrigin] : [])],
+            formAction: ["'self'", ...paymentGatewayOrigins],
             upgradeInsecureRequests: null,
             ...(forceHttps ? { upgradeInsecureRequests: [] } : {})
         }
@@ -158,7 +166,7 @@ app.use(helmet({
 // helmet v8 أزال ميدلوير Permissions-Policy (فتجاهل الخيار بصمت)، لذا نضبط الترويسة يدوياً:
 // تعطيل الوصول للكاميرا/الميكروفون/الموقع/USB مع السماح بالدفع لنفس الأصل فقط.
 app.use((req, res, next) => {
-    const paymentAllowance = paymentGatewayOrigin ? ` ${paymentGatewayOrigin}` : '';
+    const paymentAllowance = paymentGatewayOrigins.length ? ` ${paymentGatewayOrigins.join(' ')}` : '';
     res.setHeader('Permissions-Policy', `camera=(), microphone=(), geolocation=(), payment=(self${paymentAllowance}), usb=()`);
     next();
 });

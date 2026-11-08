@@ -154,18 +154,18 @@ exports.checkoutSchema = Joi.object({
         'number.integer': 'النقاط يجب أن تكون رقماً صحيحاً'
     }),
     paymentGateway: Joi.string()
-        .valid('jawwal_pay', 'palpay', 'reflect', 'online')
+        .valid('jawwal_pay', 'palpay', 'reflect', 'online', 'online_jawwalpay', 'online_palpay', 'online_mock')
         .required()
         .messages({
             'any.only': 'بوابة الدفع غير صالحة',
             'any.required': 'بوابة الدفع مطلوبة'
         }),
-    // الدفع الإلكتروني (online) لا يحتاج رقم عملية — البوابة تؤكد الدفع بنفسها.
+    // أي قيمة online_* لا تحتاج رقم عملية — البوابة تؤكد الدفع بنفسها.
     // أما المحافظ اليدوية فتشترط رقم العملية/الاسم كما قبل.
     paymentRef: Joi.string()
         .trim()
         .when('paymentGateway', {
-            is: 'online',
+            is: Joi.string().pattern(/^online/),
             then: Joi.string().max(100).allow('').optional().messages({
                 'string.max': 'رقم العملية/الاسم طويل جداً'
             }),

@@ -2403,7 +2403,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
     const updatePaymentInstructions = (method) => {
         if (!instructionsZone) return;
-        if (method === 'online') {
+        if (typeof method === 'string' && method.startsWith('online')) {
             instructionsZone.innerHTML = '';
             return;
         }
@@ -2431,7 +2431,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
     if (paymentOptionsContainer) {
         paymentOptionsContainer.addEventListener('change', (e) => {
             if (e.target.name === 'payment_gateway') {
-                const isOnline = e.target.value === 'online';
+                const isOnline = typeof e.target.value === 'string' && e.target.value.startsWith('online');
                 applyManualFieldsVisibility(isOnline);
                 updatePaymentInstructions(e.target.value);
             }
@@ -2440,12 +2440,43 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
 
     // الدفع الإلكتروني يظهر فقط إذا رجعت البوابة مهيّأة من الخادم.
     // بلا تهيئة تبقى الواجهة كما هي تماماً (تحويل + إثبات).
-    if (onlinePaymentOption && onlinePaymentsEnabled) {
-        onlinePaymentOption.hidden = false;
-        const onlineRadio = onlinePaymentOption.querySelector('input[name="payment_gateway"]');
-        if (onlineRadio) onlineRadio.checked = true;
-        applyManualFieldsVisibility(true);
-        updatePaymentInstructions('online');
+    // تعدد البوابات: تُعرض كل مهيّأة (JawwalPay + PalPay معاً) ويختار العميل.
+    const enabledGateways = Array.isArray(siteConfig?.payments?.gateways)
+        ? siteConfig.payments.gateways.map(g => (typeof g === 'string' ? g : g.name)).filter(Boolean)
+        : [];
+    const showOnlineOption = (el, value, checkIt) => {
+        if (!el) return;
+        el.hidden = false;
+        if (checkIt) {
+            const radio = el.querySelector('input[name="payment_gateway"]');
+            if (radio) radio.checked = true;
+            applyManualFieldsVisibility(true);
+            updatePaymentInstructions(value);
+        }
+    };
+    const jawwalEl = document.getElementById('onlineJawwalpayOption');
+    const palpayEl = document.getElementById('onlinePalpayOption');
+    const hasJawwal = enabledGateways.includes('jawwalpay');
+    const hasPalpay = enabledGateways.includes('palpay');
+    if (onlinePaymentsEnabled) {
+        if (hasJawwal || hasPalpay) {
+            // عند وجود بوابات فلسطينية: اعرض كل مهيّأة وأخفِ العام
+            showOnlineOption(jawwalEl, 'online_jawwalpay', hasJawwal && !hasPalpay);
+            showOnlineOption(palpayEl, 'online_palpay', hasPalpay);
+            if (jawwalEl && !jawwalEl.hidden && !document.querySelector('input[name="payment_gateway"]:checked')) {
+                jawwalEl.querySelector('input')?.click();
+            }
+            // اختر الأول افتراضياً إن لم يُختر شيء
+            const anyChecked = document.querySelector('input[name="payment_gateway"]:checked');
+            if (!anyChecked) {
+                const first = (hasJawwal ? jawwalEl : palpayEl)?.querySelector('input');
+                if (first) first.click();
+            }
+            applyManualFieldsVisibility(true);
+        } else if (onlinePaymentOption) {
+            // بوابة واحدة (mock مثلاً) — الخيار العام يكفي
+            showOnlineOption(onlinePaymentOption, 'online', true);
+        }
     } else if (paymentOptionsContainer) {
         updatePaymentInstructions('jawwal_pay');
     }
@@ -2457,7 +2488,7 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
             const email = document.getElementById('user-email').value.trim();
             const paymentRef = document.getElementById('paymentRefInput').value.trim();
             const gateway = document.querySelector('input[name="payment_gateway"]:checked')?.value || 'jawwal_pay';
-            const isOnlinePayment = gateway === 'online';
+            const isOnlinePayment = typeof gateway === 'string' && gateway.startsWith('online');
 
             if (!email) { showToast(t('checkout_email_required'), 'error'); return; }
             // الدفع الإلكتروني لا يحتاج رقم عملية/إثبات — البوابة تؤكد الدفع بنفسها
@@ -2526,11 +2557,12 @@ const clientItem = formatItem(product, product.category, detectRegion(product));
                         // الطلب أُنشئ وحُجز مخزونه؛ الآن نطلب جلسة دفع ونحوّل العميل للبوابة.
                         showToast(t('pay_online_redirect'), 'success');
                         try {
+                            const preferredGateway = String(gateway).replace(/^online_/, '').replace(/^online$/, '');
                             const sessionRes = await fetch('/api/payments/session', {
                                 method: 'POST',
                                 credentials: 'include',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ orderId, email })
+                                body: JSON.stringify({ orderId, email, ...(preferredGateway ? { gateway: preferredGateway } : {}) })
                             });
                             const sessionData = await sessionRes.json();
                             if (sessionData.success && sessionData.redirectUrl) {

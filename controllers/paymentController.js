@@ -56,14 +56,21 @@ exports.createSession = async (req, res) => {
             return res.status(400).json({ success: false, message: 'بيانات الطلب غير صالحة' });
         }
 
-        const gateway = payments.getConfiguredGateway();
-        if (!gateway) {
-            return res.status(503).json({ success: false, message: 'الدفع الإلكتروني غير متاح حالياً' });
-        }
-
+        // اختيار البوابة (الخيار A للطلب، أو من body.guardian):
+        // يحدَّد من الطلب نفسه (online_jawwalpay / online_palpay) أو من طلب تفضيل صريح
         const order = await Order.findOne({ orderId, buyerEmail: email });
         if (!order) {
             return res.status(404).json({ success: false, message: 'الطلب غير موجود' });
+        }
+        let requestedName = String(req.body?.gateway || req.body?.preferredGateway || '').trim().toLowerCase();
+        if (!requestedName && typeof order.paymentGateway === 'string' && order.paymentGateway.startsWith('online_')) {
+            requestedName = order.paymentGateway.slice('online_'.length);
+        }
+        if (requestedName === 'online') requestedName = '';
+        const gateway = (requestedName && payments.getGatewayByName(requestedName))
+            || payments.getConfiguredGateway();
+        if (!gateway) {
+            return res.status(503).json({ success: false, message: 'الدفع الإلكتروني غير متاح حالياً' });
         }
         if (order.status !== 'pending') {
             return res.status(409).json({ success: false, message: 'الطلب لم يعد قابلاً للدفع' });
@@ -243,15 +250,30 @@ async function processEvent(gateway, rawBody, headers, { req = null } = {}) {
 }
 
 exports.webhook = async (req, res) => {
-    const gateway = payments.getConfiguredGateway();
-    if (!gateway) {
+    const gateways = payments.getEnabledGateways();
+    if (gateways.length === 0) {
         return res.status(404).json({ success: false, message: 'بوابة الدفع غير مهيّأة' });
     }
 
     try {
         const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '');
-        const result = await processEvent(gateway, rawBody, req.headers, { req });
-        return res.status(result.statusCode).json(result.body);
+
+        // تعدد البوابات معاً: جرّب كل مهيّأة – الأولى التي يتحقق توقيعها هي المصدّقة
+        let lastResult = null;
+        /* eslint-disable no-await-in-loop -- التجارب متسلسلة حتى نجد البوابة المصدّقة (عدد صغير ومحدود) */
+        for (const gateway of gateways) {
+            const verification = gateway.verifyWebhook({ rawBody, headers: req.headers });
+            if (!verification.ok) {
+                lastResult = { statusCode: 401, body: { success: false, error: 'توقيع غير صالح' } };
+                continue;
+            }
+            const result = await processEvent(gateway, rawBody, req.headers, { req });
+            return res.status(result.statusCode).json(result.body);
+        }
+        /* eslint-enable no-await-in-loop */
+        return res.status(lastResult ? lastResult.statusCode : 401).json(
+            lastResult ? lastResult.body : { success: false, error: 'توقيع غير صالح' }
+        );
     } catch (err) {
         logger.reportError(err, { route: '/api/payments/webhook' });
         // 5xx تجعل البوابة تعيد المحاولة — وهو المطلوب عند خطأ داخلي مؤقت

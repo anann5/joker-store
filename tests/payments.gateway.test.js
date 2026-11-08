@@ -130,7 +130,7 @@ describe('اختيار البوابة', () => {
     it('يعطّل الدفع الإلكتروني عندما تكون البوابة manual', () => {
         process.env.PAYMENT_GATEWAY = 'manual';
         expect(payments.isOnlinePaymentsEnabled()).toBe(false);
-        expect(payments.getPublicConfig()).toEqual({ enabled: false, gateway: 'manual', mode: 'sandbox' });
+        expect(payments.getPublicConfig()).toEqual({ enabled: false, gateway: 'manual', gateways: [], mode: 'sandbox' });
     });
 
     it('يفعّل البوابة الوهمية خارج الإنتاج عند ضبط السر', () => {
