@@ -3,6 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- لوحة الأدمن كتطبيق مثبّت للهاتف (PWA منفصل عن المتجر) -->
+    <link rel="manifest" href="/manifest-admin.json">
+    <link rel="icon" type="image/png" href="/image/logo.png">
+    <link rel="apple-touch-icon" href="/image/apple-touch-icon.png">
+    <meta name="theme-color" content="#0B0F1C">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Joker Admin">
     <title>لوحة تحكم JOKER STORE 🔒</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -958,6 +967,8 @@ ZZZZ-ZZZZ-ZZZZ"></textarea>
     <div id="toast-container" style="position: fixed; top: 20px; inset-inline-end: 20px; z-index: 10000;"></div>
 
     <script src="/vendor/socket.io/socket.io.min.js"></script>
+    <script src="/sw-register.js" defer></script>
+    <script src="/admin-install.js" defer></script>
     <script src="/admin-boot.js"></script>
 </body>
 </html>
