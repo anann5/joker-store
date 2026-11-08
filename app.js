@@ -408,6 +408,11 @@ app.get('/health', (req, res) => {
     const dbState = mongoose ? mongoose.connection.readyState : 0;
     const database = ['disconnected', 'connected', 'connecting', 'disconnecting'][dbState] || 'unknown';
     const memory = process.memoryUsage();
+    // حالة البريد (بدون كشف أسرار): true فقط إن وُجدت مفاتيح الإرسال
+    const emailConfigured = Boolean(
+        String(process.env.BREVO_API_KEY || '').trim()
+        && String(process.env.MAIL_FROM || '').trim()
+    );
     res.setHeader('Cache-Control', 'no-store');
     res.json({
         success: true,
@@ -419,7 +424,9 @@ app.get('/health', (req, res) => {
         checks: {
             database,
             // readyState=1 يعني اتصالاً فعلياً بقاعدة البيانات
-            databaseReady: dbState === 1
+            databaseReady: dbState === 1,
+            // البريد لا يعطّل الموقع إن غاب — فقط التأكيدات/الكوود لا تُرسل
+            emailConfigured
         },
         memoryMb: {
             rss: Math.round(memory.rss / 1024 / 1024),
