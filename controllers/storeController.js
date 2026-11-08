@@ -177,7 +177,13 @@ exports.getProductsByCategory = async (req, res) => {
             ? normalizeRegion(req.query.region, '')
             : '';
         const filter = withDeliverableStock({ category: categoryKey, isActive: true });
-        if (requestedRegion) filter.region = requestedRegion;
+        // دقة عالية: منطقة محددة تستبعد المنتج العالمي معاً (global متوافق مع الكل)
+        // global وحده يبقى صارماً (عالمي فقط)
+        if (requestedRegion) {
+            filter.region = requestedRegion === 'global'
+                ? 'global'
+                : { $in: [requestedRegion, 'global'] };
+        }
 
         const products = await Product.find(filter);
         res.json({ success: true, products: products.map(toPublicProduct) });
@@ -1118,6 +1124,13 @@ exports.searchAll = async (req, res) => {
         };
 
         if (category) query.category = category;
+        // فلترة منطقة دقيقة في البحث أيضاً: محددة = تلك + global
+        const requestedRegion = typeof req.query.region === 'string' ? normalizeRegion(req.query.region, '') : '';
+        if (requestedRegion) {
+            query.region = requestedRegion === 'global'
+                ? 'global'
+                : { $in: [requestedRegion, 'global'] };
+        }
         if (minPrice || maxPrice) {
             query.price = {};
             if (minPrice) query.price.$gte = Number(minPrice);

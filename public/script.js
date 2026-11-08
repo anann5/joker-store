@@ -1036,12 +1036,18 @@ function renderCategoryProducts(grid) {
         });
     }
 
-    // 3) فلترة المنطقة الحالية
+    // 3) فلترة المنطقة بدقة: منطقة محددة تشمل العالمي (متوافق مع الكل)
+    // 'all' = الكل، 'global' = عالمي فقط، أي منطقة أخرى = تلك المنطقة + global
     const activeRegion = document.querySelector('#regionFilterBar .filter-btn.active');
     const currentRegion = activeRegion ? activeRegion.dataset.target : 'all';
     const regionFiltered = currentRegion === 'all'
         ? visible
-        : visible.filter(item => detectRegion(item) === currentRegion);
+        : currentRegion === 'global'
+            ? visible.filter(item => detectRegion(item) === 'global')
+            : visible.filter(item => {
+                const r = detectRegion(item);
+                return r === currentRegion || r === 'global';
+            });
 
     // عدد البطاقات الظاهرة فعلياً (بعد فلترة المنطقة) لعرضه في بانر القسم
     const displayedCount = regionFiltered.length;
