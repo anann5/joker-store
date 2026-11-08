@@ -3023,6 +3023,23 @@ margin-bottom: 14px;
 }
 .trust-item i { font-size: 0.78rem; }
 
+/* شريط ثقة في خطوة الدفع (تسليم فوري / ضمان / دعم) */
+.trust-strip {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    background: rgba(18, 180, 137, .08);
+    border: 1px solid rgba(18, 180, 137, .25);
+    border-radius: var(--radius-md, 12px);
+}
+.trust-strip .trust-item {
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 36px;
+}
+
 .product-specs {
     display: flex;
     flex-direction: column;

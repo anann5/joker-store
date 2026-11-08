@@ -449,6 +449,8 @@ const initAdmin = async () => {
     });
     const refreshReportsBtn = document.getElementById('refreshReportsBtn');
     if (refreshReportsBtn) refreshReportsBtn.addEventListener('click', () => loadReports(_activeReportDays));
+    const exportReportsBtn = document.getElementById('exportReportsBtn');
+    if (exportReportsBtn) exportReportsBtn.addEventListener('click', exportReportsCsv);
     const refreshPricingBtn = document.getElementById('refreshPricingBtn');
     if (refreshPricingBtn) refreshPricingBtn.addEventListener('click', loadLivePricing);
 
@@ -917,6 +919,14 @@ async function loadLowStockAlerts() {
             return;
         }
         const data = await res.json();
+        // شارة المخزون على زر التبويب — تُحدَّث دائماً (حتى عند الصفر)
+        const count = data.success && Array.isArray(data.products) ? data.products.length : 0;
+        const badge = document.getElementById('lowStockBadge');
+        if (badge) {
+            badge.hidden = count === 0;
+            badge.textContent = String(count);
+            badge.setAttribute('aria-label', `مخزون منخفض: ${count}`);
+        }
         if (!data.success || !data.products || data.products.length === 0) return;
 
         const container = document.getElementById('recentOrdersList');
@@ -2465,9 +2475,51 @@ async function loadReports(days = 30) {
 
         byCatEl.innerHTML = renderTable(byCategory, true);
         byProvEl.innerHTML = renderTable(byProvider, false);
+        _lastReports = { days, totals, byCategory, byProvider, byProduct };
     } catch (_err) {
         summaryEl.innerHTML = `<div class="error-cell">❌ تعذر تحميل التقارير.</div>`;
     }
+}
+
+let _lastReports = null;
+
+function downloadCsv(filename, rows) {
+    const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    // BOM لفتح عربي صحيح في Excel
+    const csv = `\uFEFF${rows.map(r => r.map(csvCell).join(',')).join('\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function exportReportsCsv() {
+    if (!_lastReports) {
+        showAdminToast('لا توجد بيانات تقارير بعد — حمّل التقارير أولاً', 'error');
+        return;
+    }
+    const { days, totals, byProduct, byCategory, byProvider } = _lastReports;
+    const rows = [['Joker Store — تقرير الأرباح'], [`الفترة (يوم)`, String(days)], [`تاريخ التصدير`, new Date().toISOString()], []];
+    rows.push(['الملخص']);
+    rows.push(['الإيرادات', String(Number(totals.revenue) || 0)]);
+    rows.push(['التكلفة', String(Number(totals.cost) || 0)]);
+    rows.push(['الربح', String(Number(totals.profit) || 0)]);
+    rows.push([]);
+    rows.push(['حسب المنتج', 'الكمية', 'طلبات', 'إيرادات', 'ربح']);
+    (byProduct || []).forEach(r => rows.push([r.nameAr || r.nameEn || 'غير معروف', String(Number(r.qty) || 0), String(Number(r.orders) || 0), String(Number(r.revenue) || 0), String(Number(r.profit) || 0)]));
+    rows.push([]);
+    rows.push(['حسب القسم', 'طلبات', 'إيرادات', 'ربح']);
+    (byCategory || []).forEach(r => rows.push([String(r._id || ''), String(Number(r.orders) || 0), String(Number(r.revenue) || 0), String((Number(r.revenue) || 0) - (Number(r.cost) || 0))]));
+    rows.push([]);
+    rows.push(['حسب المزود', 'طلبات', 'إيرادات', 'ربح']);
+    (byProvider || []).forEach(r => rows.push([String(r._id || ''), String(Number(r.orders) || 0), String(Number(r.revenue) || 0), String((Number(r.revenue) || 0) - (Number(r.cost) || 0))]));
+    downloadCsv(`joker-reports-${days}d.csv`, rows);
+    showAdminToast('✅ تم تنزيل تقرير الأرباح CSV', 'success');
 }
 
 // ======================================================
