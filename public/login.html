@@ -96,11 +96,16 @@
         <img src="/image/logo.png" alt="Logo" class="login-logo">
         <h2>دخول المسؤول</h2>
         <form id="loginForm">
-            <input type="password" id="adminPassword" placeholder="أدخل كلمة مرور الإدارة" required>
+            <div style="position:relative;">
+                <input type="password" id="adminPassword" placeholder="أدخل كلمة مرور الإدارة" required autocomplete="current-password" style="padding-inline-end:52px;">
+                <button type="button" id="togglePasswordBtn" aria-label="إظهار كلمة المرور" style="position:absolute;inset-inline-end:8px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--text-muted);font-size:1.1rem;cursor:pointer;padding:8px;min-width:44px;min-height:44px;"><i class="fas fa-eye"></i></button>
+            </div>
             <input type="text" id="adminTotp" placeholder="رمز التحقق الثنائي (إن وُجد)" inputmode="numeric" autocomplete="one-time-code" style="display:none;">
             <button type="submit" class="login-btn">🔓 دخول للوحة التحكم</button>
         </form>
         <p id="errorMsg" class="error-message"></p>
+        <p style="margin-top:14px;"><a href="/" style="color:var(--primary-neon);font-size:.85rem;text-decoration:none;">← العودة للمتجر</a></p>
+        <p style="margin-top:10px;">على الهاتف: اضغط مربع التثبيت «إضافة إلى الشاشة الرئيسية» لفتح اللوحة بأيقونة واحدة.</p>
     </div>
     <script src="login-admin.js"></script>
     <script src="/sw-register.js" defer></script>

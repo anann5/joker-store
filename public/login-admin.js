@@ -3,6 +3,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('loginForm');
     const errorMsg = document.getElementById('errorMsg');
 
+    // زر إظهار/إخفاء كلمة المرور (مريح للوحة مفاتيح الهاتف)
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('adminPassword');
+    if (toggleBtn && passwordInput) {
+        toggleBtn.addEventListener('click', () => {
+            const show = passwordInput.type === 'password';
+            passwordInput.type = show ? 'text' : 'password';
+            toggleBtn.innerHTML = `<i class="fas fa-eye${show ? '-slash' : ''}"></i>`;
+            toggleBtn.setAttribute('aria-label', show ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
+            passwordInput.focus();
+        });
+    }
+
     const totpInput = document.getElementById('adminTotp');
     if (totpInput) totpInput.style.display = 'block';
     if (loginForm) {

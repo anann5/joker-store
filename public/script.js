@@ -9,6 +9,21 @@ import { initRealtime, initPublicPulse } from './realtime.js';
 import { normalizeRegion, regionMeta, REGION_ORDER } from './regions.js';
 import { initAnalytics } from './analytics.js';
 
+// اختصار سري للأدمن: الضغط المطول على الشعار لـ /admin (لمسة واحدة من الهاتف بدلا كتابة الرابط)
+(function initAdminLongPress() {
+    let timer = null;
+    const logo = document.querySelector('.logo-zone, .logo-text');
+    if (!logo) return;
+    const start = (_e) => {
+        timer = setTimeout(() => { window.location.href = '/admin'; }, 800);
+    };
+    const cancel = () => { if (timer) { clearTimeout(timer); timer = null; } };
+    logo.addEventListener('pointerdown', start);
+    logo.addEventListener('pointerup', cancel);
+    logo.addEventListener('pointerleave', cancel);
+    logo.addEventListener('contextmenu', (e) => { e.preventDefault(); window.location.href = '/admin'; });
+})();
+
 // ======================================================
 //  البيانات الأساسية للأقسام (مستوردة من shared.js)
 // ======================================================

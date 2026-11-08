@@ -4653,6 +4653,13 @@ footer::before {
     color: var(--primary-neon);
 }
 
+/* رابط الإدارة المتكتم — مرئي لكن باهت (الدخول ما يزال محمياً بكلمة مرور) */
+.footer-links .footer-admin-link {
+    opacity: .55;
+    font-size: .8rem;
+}
+.footer-links .footer-admin-link:hover { opacity: 1; }
+
 .footer-links a:hover::after {
     width: 100%;
 }
