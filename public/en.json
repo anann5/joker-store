@@ -303,6 +303,8 @@
     "testimonial_anonymous": "Rated without a written comment",
     "testimonial_verified": "Verified purchase",
     "share_popup_required": "Please allow pop-ups, or copy the link manually.",
+    "link_copied": "Product link copied",
+    "share_failed": "Sharing failed",
     "share_text": "🎁 Check out {name} on Joker Store!",
     "stock_in_stock": "In stock",
     "stock_low": "Only {count} left",

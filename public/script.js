@@ -1010,14 +1010,13 @@ function renderCategoryProducts(grid) {
         }
     });
 
-    // 2) فلترة التوفر (المتوفر فقط)
+    // 2) فلترة التوفر (المتوفر فقط) — محلي وخارجي معاً عبر availableStock
     const availabilityCheck = document.getElementById('availabilityFilter');
     const inStockOnly = availabilityCheck ? availabilityCheck.checked : false;
     let visible = sorted;
     if (inStockOnly) {
         visible = sorted.filter(item => {
-            // المنتجات الخارجية (API) تعتبر متوفرة ما لم تُعلم بخلاف ذلك
-            if (item.availableStock === null || item.availableStock === undefined) return true;
+            // المنتجات الخارجية بلا مخزون مخفية أصلاً، فكل الظاهر هنا يُقيّم بـ availableStock
             return Number(item.availableStock) > 0;
         });
     }

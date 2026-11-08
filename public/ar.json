@@ -303,6 +303,8 @@
     "testimonial_anonymous": "تقييم بدون تعليق مكتوب",
     "testimonial_verified": "شراء موثق",
     "share_popup_required": "يرجى السماح بالنوافذ المنبثقة، أو انسخ الرابط يدوياً.",
+    "link_copied": "تم نسخ رابط المنتج",
+    "share_failed": "تعذّرت المشاركة",
     "share_text": "🎁 شاهد {name} على Joker Store!",
     "stock_in_stock": "متوفر",
     "stock_low": "متبقي {count} فقط",

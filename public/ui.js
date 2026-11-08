@@ -57,7 +57,7 @@ export function setGuaranteeStripVisible(visible) {
  * @param {object} product - بيانات المنتج للمشاركة.
  */
 export function shareProduct(product) {
-    const pageUrl = window.location.href; // مشاركة رابط الصفحة الحالية
+    const pageUrl = product && product._id ? `${window.location.origin}/product/${product._id}` : window.location.href;
     const shareText = t('share_text').replace('{name}', product.name);
 
     if (navigator.share) {
@@ -70,13 +70,31 @@ export function shareProduct(product) {
         }).catch((error) => {
             console.error('Error sharing product:', error);
         });
-    } else {
-        // خيار احتياطي للمتصفحات التي لا تدعم Web Share API
-        // يمكن إضافة المزيد من خيارات المشاركة هنا (تويتر، واتساب، إلخ)
+        return;
+    }
+
+    // احتياطي: نسخ الرابط للحافظة — يعمل على كل المتصفحات والهواتف
+    const copyUrl = async () => {
+        try {
+            await navigator.clipboard.writeText(pageUrl);
+            showToast(t('link_copied') || 'تم نسخ رابط المنتج', 'success');
+        } catch (_err) {
+            const ta = document.createElement('textarea');
+            ta.value = pageUrl;
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); showToast(t('link_copied') || 'تم نسخ رابط المنتج', 'success'); } catch (__err) { showToast(t('share_failed') || 'تعذّرت المشاركة', 'error'); }
+            ta.remove();
+        }
+    };
+    // إن فشل النسخ (أذونات)، جرّب نافذة الفيسبوك كخيار أخير
+    if (!navigator.clipboard) {
         const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareText)}`;
         const shareWindow = window.open(facebookUrl, '_blank', 'width=600,height=400');
         if (shareWindow) shareWindow.focus();
         else showToast(t('share_popup_required'), 'info');
+    } else {
+        copyUrl();
     }
 }
 

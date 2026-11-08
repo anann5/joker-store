@@ -1103,14 +1103,17 @@ exports.searchAll = async (req, res) => {
             return res.status(400).json({ success: false, error: 'لغة غير صالحة' });
         }
 
-        const searchField = `productName.${lang}`;
-        // بحث يحتوي (contains) + تحمّل للأخطاء الإملائية البسيطة: همزة/تاء مربوطة/ياء
+        // بحث ثنائي اللغة: يطابق الاسم العربي والإنجليزي معاً
+        // (المستخدم قد يبحث بـ "steam" وهو عربي الواجهة، أو "ستيم" وهو إنجليزي)
         const normalized = q.trim().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
         const alt = escapeRegex(normalized);
         const orig = escapeRegex(q.trim());
         const queryRegex = new RegExp(`(${orig}|${alt})`, 'i');
         const query = {
-            [searchField]: queryRegex,
+            $or: [
+                { 'productName.ar': queryRegex },
+                { 'productName.en': queryRegex }
+            ],
             isActive: true
         };
 
