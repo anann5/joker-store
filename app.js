@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const helmet = require('helmet');
@@ -25,6 +26,27 @@ const { requestContext } = require('./middleware/requestContext');
 const paymentRoutes = require('./routes/paymentRoutes');
 const { isDeliverable } = require('./services/inventory');
 const packageJson = require('./package.json');
+
+// إصدار الويب (الخطة A): يتغيّر فقط عندما تتغيّر ملفات الواجهة الأساسية،
+// حتى يطلب التطبيق إعادة التحميل عند تغيير الهيكل — لا عند كل نشر خلفي.
+// 1) تجاوز صريح عبر APP_WEB_VERSION (للاستخدام اليدوي على Render)
+// 2) وإلا بصمة SHA-256 لأهم ملفات الواجهة (مخزنة مرة عند الإقلاع)
+function computeWebVersion() {
+    const override = String(process.env.APP_WEB_VERSION || '').trim();
+    if (override) return override;
+    const files = ['script.js', 'script.min.js', 'style.css', 'style.min.css', 'ui.js', 'ui.min.js', 'index.html', 'app-update.js'];
+    const hash = crypto.createHash('sha256');
+    for (const file of files) {
+        try {
+            hash.update(file);
+            hash.update(fs.readFileSync(path.join(__dirname, 'public', file)));
+        } catch (_err) {
+            // ملف غائب (مثل .min قبل البناء) — يُتجاوز دون كسر البصمة
+        }
+    }
+    return `web-${hash.digest('hex').slice(0, 12)}`;
+}
+const WEB_VERSION = computeWebVersion();
 
 // نطاق بوابة الدفع (إن وُجد) — يُضاف إلى CSP فقط عند تهيئة الدفع الإلكتروني.
 // لا نفتح سياسة الموقع لمزوّد غير مستخدم، ولا نسمح بأي نطاق عشوائي.
@@ -403,6 +425,19 @@ app.get('/health', (req, res) => {
             rss: Math.round(memory.rss / 1024 / 1024),
             heapUsed: Math.round(memory.heapUsed / 1024 / 1024)
         }
+    });
+});
+
+// إصدار الويب للواجهة/التطبيق (الخطة A): التطبيق يقارن هذه القيمة
+// بآخر قيمة رأها ويعرض شريط "يتوفر تحديث" لإعادة التحميل عند تغيير الهيكل.
+app.get('/api/app/web-version', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const commit = String(process.env.RENDER_GIT_COMMIT || '').slice(0, 7);
+    res.json({
+        success: true,
+        webVersion: WEB_VERSION,
+        ...(commit ? { commit } : {}),
+        version: packageJson.version
     });
 });
 
