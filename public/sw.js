@@ -1,5 +1,5 @@
 /* eslint-disable no-undef */
-const CACHE_NAME = 'joker-store-v29';
+const CACHE_NAME = 'joker-store-v30';
 const STATIC_ASSETS = [
     '/',
     '/index.html',

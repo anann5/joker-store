@@ -1,4 +1,4 @@
-/* Joker Store — PWA Install Button (Android/Chrome + iOS Safari instructions) */
+/* Joker Store — PWA Install (Android/Chrome + iOS Safari + APK fallback) */
 (function () {
     'use strict';
 
@@ -14,6 +14,12 @@
     const isAndroid = /android/i.test(window.navigator.userAgent);
     if (!isIOS && !isAndroid) return; // desktop — no banner
 
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+    });
+
     let t = null;
     try { t = JSON.parse(localStorage.getItem('joker_lang') || 'null'); } catch (_) {}
     const lang = (t && (t.lang || t.locale)) || (document.documentElement.getAttribute('lang') || 'ar');
@@ -22,7 +28,7 @@
     const i18n = {
         title: isEn ? 'Install Joker Store App' : 'ثبّت تطبيق Joker Store',
         body: isAndroid
-            ? (isEn ? 'Download the official Android app (APK file).' : 'حمّل تطبيق أندرويد الرسمي (ملف APK).')
+            ? (isEn ? 'Install instantly from your browser (PWA) or download the Android APK.' : 'ثبّت فوراً من المتصفح (PWA) أو حمّل تطبيق أندرويد الرسمي (APK).')
             : (isEn ? 'Add to your home screen — opens instantly like a native app.' : 'أضفه لشاشة هاتفك — يفتح فوراً مثل التطبيقات.'),
         btn: isEn ? 'Install' : 'تثبيت',
         iosBtn: isEn ? 'How to install' : 'طريقة التثبيت',
@@ -61,6 +67,15 @@
             btn.textContent = i18n.iosBtn;
             btn.addEventListener('click', function () {
                 iosBox.hidden = !iosBox.hidden;
+            });
+        } else if (deferredPrompt) {
+            btn.addEventListener('click', async function () {
+                const prompt = deferredPrompt;
+                deferredPrompt = null;
+                if (!prompt) return;
+                await prompt.prompt();
+                await prompt.userChoice.catch(() => null);
+                dismiss();
             });
         } else {
             // أندرويد: زر التثبيت ينزّل ملف APK الحقيقي (وليس إضافة الصفحة للشاشة)
