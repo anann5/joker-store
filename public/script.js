@@ -257,6 +257,8 @@ async function showWishlist() {
             cardElement.dataset.region = detectedRegion;
             cardElement.style.setProperty('--i', String(idx));
             card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
+        { const psBadge = card.querySelector('[data-ps-badge]'); if (psBadge) psBadge.hidden = !(detectedRegion === 'global' || detectedRegion === 'ps'); }
+            { const psBadge = card.querySelector('[data-ps-badge]'); if (psBadge) psBadge.hidden = !(detectedRegion === 'global' || detectedRegion === 'ps'); }
             const img = card.querySelector('.card-inner-img');
             img.src = clientItem.image;
             img.onerror = () => { img.src = '/image/logo.png'; };
@@ -1088,6 +1090,7 @@ function renderCategoryProducts(grid) {
         cardElement.dataset.region = detectedRegion;
         cardElement.style.setProperty('--i', String(idx));
         card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
+        { const psBadge = card.querySelector('[data-ps-badge]'); if (psBadge) psBadge.hidden = !(detectedRegion === 'global' || detectedRegion === 'ps'); }
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
         imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image
@@ -1275,6 +1278,7 @@ function renderProductCards(products, containerId) {
         cardElement.dataset.region = detectedRegion;
         cardElement.style.setProperty('--i', String(idx));
         card.querySelector('.card-flag-badge').innerHTML = regionInfo.isIcon ? '<i class="fas fa-globe"></i>' : `<img src="${regionInfo.flagUrl}" alt="${escapeHtml(detectedRegion.toUpperCase())}" />`;
+        { const psBadge = card.querySelector('[data-ps-badge]'); if (psBadge) psBadge.hidden = !(detectedRegion === 'global' || detectedRegion === 'ps'); }
         const imgElement = card.querySelector('.card-inner-img');
         imgElement.src = clientItem.image;
         imgElement.onerror = () => { imgElement.src = '/image/logo.png'; }; // Fallback image

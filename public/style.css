@@ -2138,6 +2138,26 @@ margin-bottom: 14px;
     color: var(--success);
 }
 
+/* شارة التوافق مع فلسطين على المنتج العالمي */
+.card-ps-badge {
+    position: absolute;
+    top: 12px;
+    inset-inline-end: 12px;
+    z-index: 7;
+    display: flex;
+    align-items: center;
+    min-width: 30px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(11, 15, 28, 0.85);
+    border: 1px solid rgba(52, 211, 153, 0.55);
+    font-size: .78rem;
+    line-height: 1;
+    pointer-events: none;
+}
+.card-ps-badge[hidden] { display: none; }
+
 /* شارات الريجن الملونة */
 .badge-global { color: var(--success); border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.12); }
 .badge-us { color: #38BDF8; border-color: rgba(56, 189, 248, 0.4); background: rgba(56, 189, 248, 0.12); }
